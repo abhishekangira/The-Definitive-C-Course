@@ -5,7 +5,7 @@ import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { cpp } from '@codemirror/lang-cpp';
-import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatching, HighlightStyle } from '@codemirror/language';
+import { syntaxHighlighting, indentOnInput, bracketMatching, HighlightStyle } from '@codemirror/language';
 import { linter, lintGutter, setDiagnostics, type Diagnostic as CmDiagnostic } from '@codemirror/lint';
 import { tags as t } from '@lezer/highlight';
 import type { Diagnostic } from '../content-model/types';
@@ -19,6 +19,18 @@ const darkHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#8b95a3', fontStyle: 'italic' },
   { tag: [t.processingInstruction, t.meta], color: '#c9a7ff' },
   { tag: t.function(t.variableName), color: '#ffe08a' },
+]);
+
+// Light palette: every colour is at least 5:1 on the code background and on the active-line highlight (WCAG AA is 4.5:1).
+// CodeMirror's built-in light style is not contrast-checked, so it is not used.
+const lightHighlight = HighlightStyle.define([
+  { tag: t.keyword, color: '#a01c58' },
+  { tag: [t.typeName, t.standard(t.typeName)], color: '#0a5c8c' },
+  { tag: [t.string, t.character], color: '#1a6b2d' },
+  { tag: [t.number, t.bool], color: '#8a4a00' },
+  { tag: t.comment, color: '#586270', fontStyle: 'italic' },
+  { tag: [t.processingInstruction, t.meta], color: '#6a3fb5' },
+  { tag: t.function(t.variableName), color: '#6b4f00' },
 ]);
 
 const theme = EditorView.theme({
@@ -78,7 +90,7 @@ export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileNa
         extensions: [
           lineNumbers(), highlightActiveLineGutter(), history(), drawSelection(), indentOnInput(), bracketMatching(), highlightActiveLine(),
           cpp(),
-          highlight.current.of(syntaxHighlighting(dark() ? darkHighlight : defaultHighlightStyle, { fallback: true })),
+          highlight.current.of(syntaxHighlighting(dark() ? darkHighlight : lightHighlight)),
           keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
           linter(null), lintGutter(),
           theme,
@@ -90,7 +102,7 @@ export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileNa
     });
     view.current = v;
     // Re-theme highlighting when the app theme changes.
-    const obs = new MutationObserver(() => v.dispatch({ effects: highlight.current.reconfigure(syntaxHighlighting(dark() ? darkHighlight : defaultHighlightStyle, { fallback: true })) }));
+    const obs = new MutationObserver(() => v.dispatch({ effects: highlight.current.reconfigure(syntaxHighlighting(dark() ? darkHighlight : lightHighlight)) }));
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => { obs.disconnect(); v.destroy(); view.current = null; };
     // The editor is created once; value/readOnly updates are applied by the effects below.

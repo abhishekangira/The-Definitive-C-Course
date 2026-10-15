@@ -78,7 +78,7 @@ export function CompilerError({ children, question, options, answer, explain, fi
           {lines.map((l, i) => (
             <li key={i}>
               <label className={`${styles.codeLine} ${lineGuess === i + 1 ? (lineRight ? styles.choiceRight : styles.choiceWrong) : ''}`} data-line={i + 1}>
-                <input type="radio" name={`${name}-line`} className="visually-hidden" checked={lineGuess === i + 1} onChange={() => setLineGuess(i + 1)} />
+                <input type="radio" name={`${name}-line`} className="visually-hidden" aria-label={`Line ${i + 1}: ${l.trim() || 'blank'}`} checked={lineGuess === i + 1} onChange={() => setLineGuess(i + 1)} />
                 <span className={styles.lineNo} aria-hidden="true">{i + 1}</span>
                 <code>{l || ' '}</code>
               </label>
