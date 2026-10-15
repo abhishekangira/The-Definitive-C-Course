@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "title": "Greeter",
+  "binary": "greet",
+  "sources": ["main.c", "greet.c"],
+  "memory": true,
+  "tests": [
+    {
+      "name": "make builds greet and tracks greet.h",
+      "make": { "target": "greet", "expectRebuild": ["greet.h"] },
+      "hints": ["Which files does each .o file really depend on?", "main.o and greet.o both #include greet.h, so list it as a prerequisite of both."]
+    },
+    { "name": "greets Ada", "run": { "stdin": "Ada\n" }, "expect": { "stdout": "Hello, Ada!\n" } },
+    { "name": "format_greeting() unit tests", "unit": { "harness": "tests/test_greet.c" } }
+  ]
+}

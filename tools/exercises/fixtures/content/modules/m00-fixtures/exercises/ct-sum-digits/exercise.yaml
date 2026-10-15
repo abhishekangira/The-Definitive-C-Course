@@ -1,0 +1,16 @@
+id: ct-sum-digits
+kind: ct
+title: Sum of digits
+prompt: |
+  Write `int sum_digits(int n)`, which returns the sum of the decimal digits of `n` (ignoring the
+  sign), and a `main` that reads one integer and prints `sum: N`.
+runsIn: browser
+file: main.c
+hints:
+  - "Peel digits off the right-hand end: what does n % 10 give you?"
+  - "Loop while n is not 0: add n % 10, then divide n by 10. Make n positive first, but careful: -INT_MIN does not fit in an int."
+  - |
+    long long m = n < 0 ? -(long long)n : n;
+    while (m > 0) { sum += (int)(m % 10); m /= 10; }
+variants: [v1]
+sampleStdin: "1234\n"

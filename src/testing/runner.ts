@@ -16,6 +16,12 @@ import {
   COMPILE_ALLOW_WARNINGS_TEST_NAME, COMPILE_TEST_NAME, hintsOf, isIoTest, isMakeTest, isUnitTest, MEMORY_TEST_NAME, type AnyTest,
 } from './spec';
 
+// The backend contract lives in exec.ts; it is re-exported so callers need only one import.
+export type { CompileOptions, CompileOutcome, ExecBackend, ExecOutcome, ExecRunOptions, MakeOptions, MakeOutcome } from './exec';
+export type { FirstDiff, MatchHow } from './compare';
+export type { SubtestResult } from './harness';
+export type { MemoryIssue } from './memory';
+
 export type TestStatus = 'pass' | 'fail' | 'skip';
 export type TestKind = 'compile' | 'io' | 'unit' | 'make' | 'memory';
 
@@ -254,7 +260,7 @@ export async function runTests<A>(
       allPassed: passed === plan.length,
       bits: results.map(r => (r.status === 'pass' ? '1' : '0')).join(''),
       compile: { ok: main.ok, diagnostics: main.diagnostics, raw: main.raw },
-      backend: exec.name,
+      backend: exec.name ?? 'unknown',
       ms: now() - t0,
     };
   };

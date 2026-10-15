@@ -7,7 +7,9 @@
 //
 //   TDCC1      token format version
 //   R1         check.mjs runner version (the app keeps ACCEPTED_RUNNER_VERSIONS)
-//   exercise   exercise or project id, lowercase, may itself contain "-" (e.g. m03-gdb-hunt)
+//   exercise   exercise or project id, lowercase, may itself contain "-" (e.g. m03-gdb-hunt). The app's
+//              ids contain "/" (project/mario-more, cash/variants/1); in a code "/" is written "."
+//              (see normaliseExerciseId), so callers can pass either spelling
 //   bits       one "1"/"0" per check, in check order (compile check first, memory check last)
 //   run        how many times check.mjs has run in this folder (decimal)
 //   src8       first 8 hex digits of SHA-256 over the learner's sources (sourceHash)
@@ -48,11 +50,20 @@ export interface CompletionToken {
 
 export type ParsedCode = ProgressCode | CompletionToken;
 
-const EXERCISE_RE = /^[a-z0-9][a-z0-9_.]*(?:-[a-z0-9_.]+)*$/;
+// Segments of letters, digits and "_", joined by "." or "-" (never empty, never doubled).
+const EXERCISE_RE = /^[a-z0-9][a-z0-9_]*(?:[.-][a-z0-9_]+)*$/;
 const SEED_RE = /^[0-9a-f]{16}$/;
 const HEX8_RE = /^[0-9a-f]{8}$/;
 
-export const isExerciseId = (s: string) => EXERCISE_RE.test(s);
+/**
+ * The spelling of an exercise id inside codes and .learner: lowercase, with "/" written ".", so
+ * "project/mario-more" and "project.mario-more" are the same exercise. A code is one pasteable
+ * word, and "/" would end it (parseCode stops at the first character a code cannot contain).
+ */
+export const normaliseExerciseId = (id: string) => id.trim().toLowerCase().replace(/\//g, '.');
+
+/** True for ids that can appear in a code (after normaliseExerciseId). */
+export const isExerciseId = (s: string) => EXERCISE_RE.test(normaliseExerciseId(s));
 export const isSeed = (s: string) => SEED_RE.test(s);
 
 /** A fresh learner seed: 16 lowercase hex digits from the platform's CSPRNG. */
@@ -104,7 +115,7 @@ export interface ProgressInput {
 
 /** Formats a progress code (see the header comment). */
 export async function encodeProgressCode(p: ProgressInput, seed: string): Promise<string> {
-  const exercise = p.exercise.toLowerCase();
+  const exercise = normaliseExerciseId(p.exercise);
   if (!isExerciseId(exercise)) throw new Error(`invalid exercise id ${JSON.stringify(p.exercise)}`);
   if (!/^[01]+$/.test(p.bits)) throw new Error(`invalid pass bitmap ${JSON.stringify(p.bits)}`);
   if (!Number.isInteger(p.run) || p.run < 0) throw new Error(`invalid run counter ${p.run}`);
@@ -117,7 +128,7 @@ export async function encodeProgressCode(p: ProgressInput, seed: string): Promis
 
 /** Formats a completion token (printed when every check passes). */
 export async function encodeCompletionToken(p: { exercise: string; runner?: number }, seed: string): Promise<string> {
-  const exercise = p.exercise.toLowerCase();
+  const exercise = normaliseExerciseId(p.exercise);
   if (!isExerciseId(exercise)) throw new Error(`invalid exercise id ${JSON.stringify(p.exercise)}`);
   const c = { type: 'completion' as const, runner: p.runner ?? RUNNER_VERSION, exercise };
   const mac = await macOf(payloadOf(c), checkSeed(seed));
@@ -167,7 +178,7 @@ export type VerifyResult =
   | { ok: false; reason: VerifyFailure; message: string; code?: ParsedCode };
 
 export interface VerifyOptions {
-  /** The exercise the code was pasted into; a code for another exercise is rejected. */
+  /** The exercise the code was pasted into (either id spelling); a code for another exercise is rejected. */
   exercise?: string;
   acceptedRunners?: readonly number[];
 }
@@ -181,7 +192,7 @@ export async function verifyCode(text: string, seed: string, opts: VerifyOptions
   if (!accepted.includes(code.runner)) {
     return { ok: false, reason: 'runner-version', code, message: `this code comes from check.mjs version ${code.runner}, which this course no longer accepts: download the project again for the current check.mjs` };
   }
-  if (opts.exercise && code.exercise !== opts.exercise.toLowerCase()) {
+  if (opts.exercise && code.exercise !== normaliseExerciseId(opts.exercise)) {
     return { ok: false, reason: 'wrong-exercise', code, message: `this code is for "${code.exercise}", not "${opts.exercise}"` };
   }
   const { mac, ...fields } = code;
@@ -201,7 +212,7 @@ export async function verifyCode(text: string, seed: string, opts: VerifyOptions
 export interface LearnerFile {
   version: 1;
   seed: string;
-  /** Exercise or project id the codes are for. */
+  /** Exercise or project id the codes are for (any spelling; stored normalised). */
   exercise: string;
   module?: string;
   title?: string;
@@ -221,6 +232,6 @@ export function parseLearnerFile(text: string): LearnerFile {
   const o = v as Partial<LearnerFile>;
   const seed = typeof o.seed === 'string' ? normaliseSeed(o.seed) : undefined;
   if (!seed) throw new Error('.learner has no valid seed (download the project again from the course)');
-  if (typeof o.exercise !== 'string' || !isExerciseId(o.exercise.toLowerCase())) throw new Error('.learner has no valid exercise id');
-  return { ...o, version: 1, seed, exercise: o.exercise.toLowerCase() } as LearnerFile;
+  if (typeof o.exercise !== 'string' || !isExerciseId(o.exercise)) throw new Error('.learner has no valid exercise id');
+  return { ...o, version: 1, seed, exercise: normaliseExerciseId(o.exercise) } as LearnerFile;
 }

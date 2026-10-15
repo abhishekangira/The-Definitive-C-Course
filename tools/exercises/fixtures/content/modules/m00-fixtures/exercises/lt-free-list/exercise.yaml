@@ -1,0 +1,19 @@
+id: lt-free-list
+kind: lt
+title: Free the whole list
+prompt: |
+  `list.c` reads integers from standard input into a linked list and prints their sum. It works,
+  but AddressSanitizer reports a leak. Download the project, run `make test`, read the report and
+  fix it so every node is freed. Paste the progress code `make test` prints.
+runsIn: native
+file: list.c
+hints:
+  - "Run the program under the sanitizer yourself: which line allocated the leaked blocks?"
+  - "Freeing the head frees only the head. Walk the list, and save each node's next pointer before you free the node."
+  - |
+    while (head != NULL) {
+        Node *next = head->next;
+        free(head);
+        head = next;
+    }
+variants: []

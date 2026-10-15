@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "sources": ["main.c"],
+  "tests": [
+    { "name": "1234 gives 10", "run": { "stdin": "1234\n" }, "expect": { "stdout": "sum: 10\n" } },
+    { "name": "0 gives 0", "run": { "stdin": "0\n" }, "expect": { "stdout": "sum: 0\n" } },
+    { "name": "negative numbers ignore the sign", "run": { "stdin": "-505\n" }, "expect": { "stdout": "sum: 10\n" }, "hint": "What does the loop do when n starts below zero?" },
+    { "name": "sum_digits() unit tests", "unit": { "harness": "tests/test_sum.c" } }
+  ]
+}

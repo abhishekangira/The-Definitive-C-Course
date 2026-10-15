@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
-  ACCEPTED_RUNNER_VERSIONS, encodeCompletionToken, encodeProgressCode, generateSeed, isSeed, normaliseSeed, parseCode,
+  ACCEPTED_RUNNER_VERSIONS, encodeCompletionToken, encodeProgressCode, generateSeed, isExerciseId, isSeed, normaliseExerciseId, normaliseSeed, parseCode,
   parseLearnerFile, PUBLIC_SALT, RUNNER_VERSION, serializeLearnerFile, sourceHash, verifyCode,
 } from './token';
 
@@ -36,6 +36,24 @@ describe('token vectors', () => {
     expect(await sourceHash({ 'caesar.c': 'int main(void) { return 0; }\n' })).toBe('243e4b3f');
     expect(await sourceHash({ 'b.c': 'B', 'a.c': 'A\r\n' })).toBe('0f4ee515');
     expect(await sourceHash({ 'a.c': 'A\n', 'b.c': 'B' })).toBe('0f4ee515');
+  });
+});
+
+describe('app-style exercise ids (with "/")', () => {
+  // The app's ids are folder paths: project/mario-more, cash/variants/1. In codes "/" is written ".".
+  it('writes "/" as "." and accepts either spelling everywhere', async () => {
+    expect(normaliseExerciseId(' Project/Mario-More ')).toBe('project.mario-more');
+    expect(isExerciseId('project/mario-more')).toBe(true);
+    expect(isExerciseId('project//')).toBe(false);
+    const code = 'TDCC1-R1-project.mario-more-111-1-deadbeef-71b6e7a2';
+    expect(await encodeProgressCode({ exercise: 'project/mario-more', bits: '111', run: 1, src: 'deadbeef' }, SEED_A)).toBe(code);
+    expect(await encodeCompletionToken({ exercise: 'project.mario-more' }, SEED_A)).toBe('TDCC1-R1-project.mario-more-DONE-9e173196');
+    expect(await encodeCompletionToken({ exercise: 'cash/variants/1' }, SEED_A)).toBe('TDCC1-R1-cash.variants.1-DONE-ac6281a1');
+    expect(await verifyCode(code, SEED_A, { exercise: 'project/mario-more' })).toMatchObject({ ok: true, passed: 3, total: 3 });
+    expect(await verifyCode(code, SEED_A, { exercise: 'project/mario-less' })).toMatchObject({ ok: false, reason: 'wrong-exercise' });
+  });
+  it('.learner stores the normalised id, and tolerates a missing "version"', () => {
+    expect(parseLearnerFile('{"seed":"0123456789abcdef","exercise":"project/mario-more"}')).toEqual({ version: 1, seed: SEED_A, exercise: 'project.mario-more' });
   });
 });
 

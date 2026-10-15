@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "sources": ["main.c"],
+  "tests": [
+    { "name": "1234 has 4 digits", "run": { "stdin": "1234\n" }, "expect": { "stdout": "digits: 4\n" } },
+    { "name": "0 has 1 digit", "run": { "stdin": "0\n" }, "expect": { "stdout": "digits: 1\n" } },
+    { "name": "count_digits() unit tests", "unit": { "harness": "tests/test_count.c" } }
+  ]
+}

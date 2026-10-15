@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "sources": ["list.c"],
+  "memory": true,
+  "tests": [
+    { "name": "sums 1 2 3", "run": { "stdin": "1 2 3\n" }, "expect": { "stdout": "sum: 6\n" } },
+    { "name": "an empty input sums to 0", "run": { "stdin": "" }, "expect": { "stdout": "sum: 0\n" } }
+  ]
+}

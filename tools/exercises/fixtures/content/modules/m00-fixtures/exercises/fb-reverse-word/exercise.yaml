@@ -1,0 +1,15 @@
+id: fb-reverse-word
+kind: fb
+title: The reversed word
+prompt: |
+  **Symptom report:** "`./reverse` prints the reversed word correctly, but the course's memory
+  checker complains." Reproduce the report, then fix the program so the checker is happy too.
+runsIn: browser
+hints:
+  - "Read the checker's message: it names the line where the block was allocated."
+  - "A string of n characters needs n + 1 bytes, and every block you malloc must be freed once you are done with it."
+  - |
+    char *out = malloc(n + 1);
+    ...
+    free(r);
+variants: []

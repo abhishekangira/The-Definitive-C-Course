@@ -1,0 +1,15 @@
+id: project/caesar
+kind: ct
+title: Caesar cipher
+prompt: |
+  Write `caesar.c`: read a line of text from standard input and print `ciphertext: ` followed by the
+  text with every letter rotated forward by the key (the first command-line argument). Keep case and
+  leave punctuation alone. Print `Usage: ./caesar key` to standard error and exit with 1 when the key is
+  missing or not a non-negative number.
+runsIn: native
+file: caesar.c
+hints:
+  - "Start with the usage check on argc and argv[1]; get one letter working before you handle a whole line."
+  - "A letter's position in the alphabet is c - 'a' (or c - 'A'). Add the key, wrap with % 26, add 'a' back."
+  - "return (char)('a' + (c - 'a' + key) % 26); for lowercase, and the same with 'A' for uppercase."
+variants: []

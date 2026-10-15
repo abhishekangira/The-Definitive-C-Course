@@ -1,0 +1,4 @@
+# Minimal module for the verify:exercises fixtures (only the fields the verifier reads).
+id: m00
+title: Verifier fixtures
+projectRunsIn: native

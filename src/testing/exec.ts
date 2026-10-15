@@ -78,8 +78,8 @@ export interface MakeOutcome {
 }
 
 export interface ExecBackend<A = unknown> {
-  /** Shown in reports, e.g. "gcc 13.3.0" or "clang 22 (in your browser)". */
-  readonly name: string;
+  /** Shown in reports, e.g. "gcc 13.3.0" or "clang 22 (in your browser)". Optional. */
+  readonly name?: string;
   /**
    * True when a leakcheck build behaves like the plain build for I/O, so the runner builds once
    * with leakcheck and gathers memory issues from the I/O runs themselves (the browser). Otherwise

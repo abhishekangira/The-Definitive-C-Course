@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "sources": ["main.c"],
+  "leakcheck": true,
+  "tests": [
+    { "name": "reverses hello", "run": { "stdin": "hello\n" }, "expect": { "stdout": "olleh\n" } },
+    { "name": "reverses a single letter", "run": { "stdin": "a\n" }, "expect": { "stdout": "a\n" } }
+  ]
+}

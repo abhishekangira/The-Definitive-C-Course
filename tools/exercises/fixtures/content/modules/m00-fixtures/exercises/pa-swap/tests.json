@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "sources": ["main.c"],
+  "tests": [
+    { "name": "prints 2 1", "run": { "stdin": "" }, "expect": { "stdout": "2 1\n" } },
+    { "name": "swap() unit tests", "unit": { "harness": "tests/test_swap.c" } }
+  ]
+}
