@@ -112,8 +112,12 @@ function emit() { listeners.forEach(l => l()); }
 export function update(fn: (draft: ProgressV1) => void): void {
   const draft = structuredClone(state);
   fn(draft);
+  const text = JSON.stringify(draft);
+  // A no-op update must not produce a new state object: components re-render on every new object, so an
+  // effect that "ensures" a value would otherwise loop forever (React error 185).
+  if (text === JSON.stringify(state)) return;
   state = draft;
-  storageSet(KEY, JSON.stringify(state));
+  storageSet(KEY, text);
   emit();
 }
 

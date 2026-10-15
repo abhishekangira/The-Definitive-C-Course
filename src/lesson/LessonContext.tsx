@@ -2,7 +2,7 @@
 // The remark plugin wraps lesson content in <Card index gated total>; interactions call
 // useCardDone() to report completion.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { markCard, update, useProgress } from '../progress/store';
+import { getProgress, markCard, update, useProgress } from '../progress/store';
 import type { SamplesFile } from '../content-model/types';
 import styles from './Lesson.module.css';
 
@@ -70,7 +70,7 @@ export function Card({ index, gated, total, children }: { index: string | number
   useEffect(() => {
     if (!lesson || i !== n - 1) return;
     const allDone = Array.from({ length: n }, (_, k) => k).every(k => completed.includes(k));
-    if (allDone) update(p => { p.lessons[lesson.lessonId] ??= { completedAt: new Date().toISOString() }; });
+    if (allDone && !getProgress().lessons[lesson.lessonId]) update(p => { p.lessons[lesson.lessonId] = { completedAt: new Date().toISOString() }; });
   }, [completed, lesson, i, n]);
 
   const card = useMemo(() => ({ index: i, gated: isGated }), [i, isGated]);

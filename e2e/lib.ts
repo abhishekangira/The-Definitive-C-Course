@@ -12,7 +12,7 @@ import { correctAnswer } from '../src/interactions/memory-answers';
 import { binary, hex, parseNumber, toBits, type Width } from '../src/visualizers/numbers';
 
 export const ROOT = process.cwd();
-const RUN_TIMEOUT = 180_000;
+const RUN_TIMEOUT = Number(process.env.E2E_RUN_TIMEOUT ?? 180_000);
 
 export interface QuizItemYaml {
   id: string; type: string; code?: string; choices?: string[]; answer?: number; exercise?: string; items?: string[];

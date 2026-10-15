@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysSinceExport, emptyProgress, exerciseProgress, mergeProgress, migrate, summarise, type ExerciseProgress, type ProgressV1 } from './store';
+import { daysSinceExport, emptyProgress, exerciseProgress, getProgress, mergeProgress, markCard, migrate, summarise, update, type ExerciseProgress, type ProgressV1 } from './store';
 
 const SEED = '0123456789abcdef';
 const at = '2026-01-01T00:00:00.000Z';
@@ -113,5 +113,22 @@ describe('daysSinceExport', () => {
 describe('exerciseProgress', () => {
   it('returns an empty record for exercises the learner has not touched', () => {
     expect(exerciseProgress(doc(), 'nope')).toMatchObject({ attempts: 0, passed: false, solutionViewed: false, mastered: false, hintsViewed: 0 });
+  });
+});
+
+describe('update', () => {
+  it('keeps the same state object when the updater changes nothing', () => {
+    // Components re-render on every new state object; an effect that "ensures" a value would loop forever
+    // (React error 185) if a no-op update still produced a new object.
+    const before = getProgress();
+    update(p => { p.lessons['already-there'] ??= { completedAt: at }; });
+    const afterFirst = getProgress();
+    expect(afterFirst).not.toBe(before);
+    update(p => { p.lessons['already-there'] ??= { completedAt: at }; });
+    expect(getProgress()).toBe(afterFirst);
+    markCard('lesson-x', 2);
+    const afterCard = getProgress();
+    markCard('lesson-x', 2);
+    expect(getProgress()).toBe(afterCard);
   });
 });
