@@ -3,7 +3,7 @@
 A self-paced, interactive web app that teaches C17 and low-level computer fundamentals to experienced front-end engineers.
 - It is a static site with no backend.
 - Learners write and run real C in the browser from the first lesson.
-- From Module 3 (week 4), they also use their own toolchain for debugging, sanitizers and projects.
+- From Module 3 (weeks 5–6), they also use their own toolchain for debugging, sanitizers and projects.
 
 > **Status:** Stage 1 (research + plan) is ready for your review. No app code exists yet.
 > - **[V]** marks a technical claim verified by running it in this repo's container during research.
@@ -16,12 +16,12 @@ A self-paced, interactive web app that teaches C17 and low-level computer fundam
 
 | Question | Decision | Why (short) |
 |---|---|---|
-| In-browser C compiler | **`@yowasp/clang` 22.0.0-git20542-10**, pinned and self-hosted | Real clang 22; diagnostics byte-identical to native clang for our tests; warm compile+link ≈100–150 ms; needs no COOP/COEP. Deterministic, so the same binary runs in Node for CI **[V]** |
+| In-browser C compiler | **`@yowasp/clang` 22.0.0-git20542-10**, pinned and self-hosted | Real clang 22; diagnostics matched native clang 18 on our test set, apart from warnings that clang 22 adds or renames (§3.1 step 4), and CI compares against native clang 22; warm compile+link ≈100–150 ms; needs no COOP/COEP. Deterministic, so the same binary runs in Node for CI **[V]** |
 | Running the compiled program | `@bjorn3/browser_wasi_shim` 0.4.2 in a per-run Web Worker, with our own stdin/stdout file descriptors | Small (6.7 KB gzip worker); stdin, in-memory FS and streaming output; MIT/Apache **[V]** |
 | Interactive `scanf` | **JSPI** where supported (Chrome/Edge 137+, Firefox 153+, Safari 27); a pre-filled stdin box elsewhere | Needs no special hosting headers **[V in Chromium]** |
 | App stack | Vite + React 19 + TypeScript; MDX + YAML content in `content/`; CodeMirror 6 editor; HashRouter | Lessons are editable without touching components; works from any static server or subpath |
 | Progress | `localStorage` (namespaced, versioned schema) + export/import as a JSON file | As specified |
-| Local toolchain | **Module 3 (week 4)**: macOS Command Line Tools or WSL Ubuntu 24.04. All projects from M3 on are local and checked by `check.mjs`. | Matches the spec's "early module… from then on, debugger, sanitizer and project work happens locally" |
+| Local toolchain | **Module 3 (weeks 5–6)**: macOS Command Line Tools or WSL Ubuntu 24.04. All projects from M3 on are local and checked by `check.mjs`. | Matches the spec's "early module… from then on, debugger, sanitizer and project work happens locally" |
 | Build-time truth | `tools/verify` compiles and runs every sample natively (gcc 13 + clang 22, x86-64), with the browser compiler in Node, and on macOS/arm64/Windows CI runners where relevant. Normalized outputs are diffed and flagged samples store every result. | Expected outputs and prediction answers always come from real runs |
 | Stepper data | Traces pre-baked by a gdb-Python tracer with a malloc/free shim **[V]**, labelled "x86-64 Linux" | A static site can't trace live; gdb gives scopes, types and heap for free |
 | Local projects | Starter zip (built client-side, with the learner's seed) → `make test` → `node check.mjs` (zero-dependency, check50-like) **[V on Linux]** | The audience has Node; the test format is shared with the in-browser runner |
@@ -39,7 +39,7 @@ Each candidate was installed and run here (Node 22, headless Chromium 141) unles
 
 | Candidate | Real compiler / diagnostics | stdin | First download | COOP/COEP | Verdict |
 |---|---|---|---|---|---|
-| **@yowasp/clang 22** (LLVM → WASI, via jco) | clang 22.1.0; diagnostics byte-identical to native clang 18 on our tests **[V]** | Pre-filled **[V]**; interactive via JSPI **[V]** | C-only sysroot: ≈15.2 MB brotli / ≈23.7 MB gzip. Full: ≈17.2 / ≈27 MB. Raw: 105 MB **[V]** | Not needed **[V]** | **Chosen** |
+| **@yowasp/clang 22** (LLVM → WASI, via jco) | clang 22.1.0; diagnostics match native clang 18 on our tests, apart from warnings new or renamed in clang 22 **[V]** | Pre-filled **[V]**; interactive via JSPI **[V]** | C-only sysroot: ≈15.2 MB brotli / ≈23.7 MB gzip. Full: ≈17.2 / ≈27 MB. Raw: 105 MB **[V]** | Not needed **[V]** | **Chosen** |
 | @live-codes/clang-wasm 0.3 (wasm-idle llvm-core) | clang 22.1.8; good diagnostics **[V]** | Pre-filled **[V]** | ≈23 MB brotli | Not needed | Best fallback. Only 3 weeks old and single-maintainer; its `run()` drops warnings and loses output on a trap |
 | Wasmer SDK + `clang/clang` | clang 16 (a 2024 personal build) | Truly interactive **[V]** | 110 MB uncompressed from Wasmer's CDN | **Required**; fails silently without it **[V]** | Rejected: stale, COI, broke under Vite bundling |
 | browsercc 0.1.1 | clang 20 | Pre-filled | ≈24 MB brotli | Not needed | Rejected: 1–2.5 s per compile (reloads clang each time); unmaintained since 2025-04 |
@@ -297,13 +297,13 @@ Short explanation of the wheel (≤ 250 words)…
   3. The learner pastes the code; each distinct code counts as an attempt for the hint and solution rules.
   4. A full pass prints the **completion token**.
 
-  The codes are tamper-evident, not tamper-proof. Without a backend this is an honour system, and the app says so. One token module (`tools/check/token.mjs`) is shared by `check.mjs` and the app, and both test suites run against fixed test vectors.
+  Codes carry the runner version, and the app keeps a list of accepted `check.mjs` and token-module versions. The codes are tamper-evident, not tamper-proof. Without a backend this is an honour system, and the app says so. One token module (`tools/check/token.mjs`) is shared by `check.mjs` and the app, and both test suites run against fixed test vectors.
 - **Retrieval quiz.** Opens every module: 6–10 items, about 10 min.
   - Roughly 40% from the previous module, 30% from two back, 30% older.
   - Missed checkpoint items are re-scheduled.
   - M1 uses a JS diagnostic quiz instead.
 - **Checkpoint.** 8–12 items, 30–45 min, pass mark 80%. It must include:
-  - a write-code item (CT, or LT in native-only modules);
+  - a write-code item (CT, or LT for a native-only skill);
   - a fix-a-bug item (FB or LT);
   - a memory-diagram or stepper item (MD/SP);
   - a compiler/tool-message item (CE);
@@ -343,14 +343,14 @@ This container's clang 18 lacks compiler-rt, but gcc's ASan works **[V]**. Proto
    - A separate "display" rendering rebases address clusters to stable, realistic values **[V]**.
 6. **Check.**
    - `expect` holds per compiler.
-   - Runtime output from gcc and clang must agree unless the sample is `platform` or `ub`.
+   - Runtime output from gcc and clang must agree unless the sample is `platform`, `ub` or `runtime-error`. Sanitizer and guardrail reports are compared by (file, line, error kind), ignoring column, addresses and frames.
    - Diagnostics are compared by (line, severity, normalised flag) per compiler, not by raw text, and gcc's and clang's warnings need not match **[V: they genuinely differ]**.
 7. **Write** `src/generated/samples/<module>.json`.
 8. **Cache** by content hash over code, meta, compiler versions, the verifier's own source, and all runtime files (`course_rt.c`, `ubsan_rt.c`, `leakcheck.c`, `learnc.h`, the slimmed sysroot).
 
 ### 3.2 The 64-bit vs browser difference check (automatic)
-- **Auto-flag.** Any sample whose normalised **browser** output differs from **native gcc x86-64** is flagged automatically. If the author hasn't added `platform` **and** a `predict64` decision, the build fails and prints the diff.
-- **Both results.** A flagged sample renders both results: "Your browser (wasm32)" and the learner's platform, for example "macOS arm64 (stored)" or "Linux/WSL x86-64 (stored)". The platform comes from the "my machine" setting, and "show all platforms" reveals every stored target.
+- **Auto-flag.** Any sample whose normalised **browser** output differs from **native gcc x86-64**, or from **any stored target output**, is flagged automatically. If the author hasn't added `platform` **and** a `predict64` decision, the build (or the targets workflow) fails and prints the diff.
+- **Both results.** A flagged sample renders both results: "Your browser (wasm32)" and the learner's platform, for example "macOS arm64 (stored)" or "Linux/WSL x86-64 (stored)". The platform comes from the "my machine" setting (Mac Apple Silicon, Mac Intel, Windows + WSL, Linux x86-64, Linux arm64 / WSL on ARM), and "show all platforms" reveals every stored target.
 - **64-bit prediction.** When the difference is derivable (sizeof, type limits, struct layout or padding), the author declares `predict64` and the learner **predicts the 64-bit value before it is revealed**. Pattern heuristics in the verifier only *suggest* candidates to the author.
 - **Edits.** The editor hashes source + stdin + args + mode. When the learner changes any of them on a flagged sample, the stored panels are replaced by: "Your edit changes this program, so the stored 64-bit output no longer applies. Run it locally (Module 3 shows how)." The stepper uses the same check to mark a trace stale.
 - **Per-target outputs.** A `targets` CI workflow writes `src/generated/targets/<target>/`:
@@ -358,7 +358,7 @@ This container's clang 18 lacks compiler-rt, but gcc's ASan works **[V]**. Proto
   | Target | Samples |
   |---|---|
   | macOS arm64 (Apple clang) | all |
-  | Linux aarch64 gcc (`ubuntu-24.04-arm`) | `platform` samples |
+  | Linux aarch64 gcc (`ubuntu-24.04-arm`) | all |
   | Windows x64 MSVC (`cl /std:c17 /W4`) | `platform` samples, e.g. the 4-byte `long` |
 
   - Results are committed by a fetch script or a bot commit, with a content-hash manifest.
@@ -454,7 +454,7 @@ This container's clang 18 lacks compiler-rt, but gcc's ASan works **[V]**. Proto
 **Unit-test harness, one scheme in both runners.**
 - The harness `#define`s `main` to `learner_main` and `#include`s only the file that defines `main`, with `-Wreturn-type` and `-Wmissing-prototypes` silenced around the include.
 - It never trusts `learner_main`'s return value.
-- Multi-file projects (M7+) are driven through **`make` targets declared in `check.json`**, so dependency and library checks (P8, P11) test the learner's real build.
+- Multi-file projects (P3 onward) are driven through **`make` targets declared in `check.json`**, so dependency and library checks (P3, P8, P11) test the learner's real build.
 - "Tests not shown by default" ship in the zip; nothing is truly hidden on a static site.
 
 ### 4.3 Helper header
@@ -466,7 +466,7 @@ This container's clang 18 lacks compiler-rt, but gcc's ASan works **[V]**. Proto
 
 ### 4.4 Conventions and licensing guard
 - **C17 + standard library** everywhere. POSIX appears only in M11 (`dlopen`, loading), M13 (the OS module) and the capstone's provided `memlib`.
-- **POSIX samples** start with `#define _POSIX_C_SOURCE 200809L`. Add `_DEFAULT_SOURCE` (glibc, for `d_type`) or `_DARWIN_C_SOURCE` (macOS, `MAP_ANON`) where needed, because strict `-std=c17` hides `clock_gettime`, `strdup`, `fileno` and `DT_DIR` on glibc **[V]**. This is taught in M13.1.
+- **POSIX samples** start with `#define _POSIX_C_SOURCE 200809L`. Add `_DEFAULT_SOURCE` (glibc, for `d_type`) or `_DARWIN_C_SOURCE` (macOS, `MAP_ANON`) where needed, because strict `-std=c17` hides `clock_gettime`, `strdup`, `fileno` and `DT_DIR` on glibc **[V]**. This is introduced in 11.3 and taught in M13.1.
 - **No POSIX before M11.** M9's benchmarking uses C11 `timespec_get` in a provided harness. Learners write their own case-insensitive compare instead of `strcasecmp`, and their own string duplication instead of `strdup`.
 - **Originality.** All specs, starters and datasets are original:
   - texts from Project Gutenberg;
@@ -483,7 +483,7 @@ This container's clang 18 lacks compiler-rt, but gcc's ASan works **[V]**. Proto
   - `anchorStart` and `anchorEnd`: the transcript lines at those times;
   - `why`;
   - `verifiedAt`.
-- **Transcripts.** Excerpts (±60 s around each boundary) are committed under `tools/videos/transcripts/`, so CI never needs yt-dlp.
+- **Transcripts.** The full segment plus 60 s either side is committed under `tools/videos/transcripts/`, so CI never needs yt-dlp.
 - **`<YouTube>` component.**
   - Embeds `https://www.youtube-nocookie.com/embed/ID?start=S&end=E` behind a click-to-load facade.
   - Shows the transcript excerpt and the duration.
@@ -535,7 +535,7 @@ Only the **MP4 is committed**, at ≈1.7 MB per minute, so ≈45 MB for 24 anima
 **Palette.** One theme-neutral "stage" palette that works in both app themes. Separate light and dark renders are possible through composition variables **[V]** (§12).
 
 ### 4.7 Hosting and deploy
-- **Pipeline.** GitHub Actions: verify (cached) → build → copy and slim the toolchain into `dist/toolchain/clang-<ver>/` → WebM transcode → deploy to Pages.
+- **Pipeline.** GitHub Actions: `toolchain:prepare` (copy and slim from `node_modules` into `build/toolchain/clang-<ver>/`) → verify (cached; uses that copy) → build → copy it into `dist/toolchain/clang-<ver>/` → WebM transcode → deploy to Pages.
 - **Portability.** The site needs no special headers; HashRouter with a relative base runs anywhere.
 - **Pages limits.** 1 GB per site and ≈100 GB/month soft bandwidth, i.e. about 4,000 first-time toolchain downloads a month **[DOCS]**.
 - **Alternatives.** Cloudflare Pages or Netlify serve brotli (≈15 MB first load) and allow headers.
@@ -561,6 +561,7 @@ Only the **MP4 is committed**, at ≈1.7 MB per minute, so ≈45 MB for 24 anima
 
 **Rules**
 - Raw run-specific addresses are never asked; derived addresses on stated bases are.
+- `[both]` marks a PR on a flagged sample, showing the browser panel plus the learner's platform panel (§3.2); `[all targets]` shows every stored target.
 - UB follows §3.4.
 - Where platforms differ, every prediction is tagged with the platform it refers to.
 
@@ -568,7 +569,7 @@ Only the **MP4 is committed**, at ≈1.7 MB per minute, so ≈45 MB for 24 anima
 
 ## 6. Course outline
 
-**Rhythm.** Each lesson is 30–60 minutes of 6–14 cards. Module hours include lessons (with video minutes), problem sets, the project, variants, the retrieval quiz and the checkpoint, at 5 h/week.
+**Rhythm.** Each lesson is 25–60 minutes of 6–14 cards. Module hours include lessons (with video minutes), problem sets, the project, variants, the retrieval quiz and the checkpoint, at 5 h/week.
 
 **Success criteria (SC):**
 
@@ -606,7 +607,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 | Cap | Build `malloc` (Track A) or Speller Pro (Track B) | native | native | 25 | 5 | 40 | — |
 | | **Total** | | | **200 h** | **40 wk** | | |
 
-- **Fast lane (≈190 h):** skips bitlab-lite, the "implement all three sorts" extension, the Runoff warm-up, the TinyCPU problem set, cachesim part C and `ls-lite`.
+- **Fast lane (≈190 h):** skips bitlab-lite, the "implement all three sorts" extension, the Runoff warm-up, the TinyCPU problem set, P12 part C (the ≥3× speedup; optional for the gate) and the mini `ls -l` (13.7).
 - Two optional flex weeks are recommended.
 - Interaction codes are from §5; visualizers V1–V10 from §7; animations A1–A24 from §8; videos from §9.
 
@@ -629,7 +630,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
   - re-prompting on 0, 9, −1, `abc`, empty input and `42x`;
   - byte-exact output for heights 1–8;
   - a clean build.
-- **Checkpoint:** 3 PR, 2 CE, 1 PA, 1 MD, 2 CT, 1 FB. The FB is the transfer item: a re-prompt loop that accepts 0.
+- **Checkpoint:** 3 PR, 2 CE, 1 PA, 1 MD, 2 CT, 1 FB (a re-prompt loop that accepts 0). The transfer item is a third CT: validate a 24-hour time `HH MM` with re-prompting.
 - **Retrieval:** JS diagnostic (`typeof null`, `0.1+0.2`, `Number.MAX_SAFE_INTEGER`, hoisting).
 - **Resources:** Beej's Guide to C (v0.11) ch. 2 "Hello, World!", ch. 3 "Variables and Statements", ch. 4 "Functions"; K&R 2e §1.1–1.10.
 - **Success criteria:** SC1 (I), SC2 (I), SC3 (I).
@@ -647,7 +648,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 ### M2. Bits, Bytes & Numbers (10 h, 2 weeks, browser)
 **Why it matters:** JS hides everything behind one IEEE double. Pointers, files, hashing and assembly all assume fluency with widths, signedness and bytes.
 
-**Time:** lessons 4.25 h (incl. 3 min video) · problem set 2 h · project 2.25 h · variants 0.5 h · quiz + checkpoint 1 h.
+**Time:** lessons 4.5 h (incl. 3 min video) · problem set 2 h · project 2 h · variants 0.5 h · quiz + checkpoint 1 h.
 
 | # | Lesson | Content | Interactions | Visual |
 |---|---|---|---|---|
@@ -656,7 +657,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 | 2.3 | Unsigned and two's complement (45m) | Unsigned wrap is defined; signed overflow is UB; casts; `-1 < 0u`; guardrail mode | PR, NP, CE (`-Wsign-compare`), FB (`unsigned i >= 0` loop) | **A3**, V1 |
 | 2.4 | Bitwise operators and masks (45m) | Masks, flags, RGBA packing; shift rules and UB | CT pack/unpack, FB | V1 |
 | 2.5 | Floating point (45m) | IEEE fields; `0.1+0.2`; `16777217.0f`; epsilon compares; NaN and Inf; C `round` vs `Math.round` | NP, PR | **A4**, V1 |
-| 2.6 | Overflow in the real world (25m) | Why 32-bit counters fail in production | PR (the 248-day count, worked out), NP | **YT-1** |
+| 2.6 | Overflow in the real world (25m) | Why 32-bit counters fail in production | PR (the 248-day count, worked out), NP | **YT-1**, V1 |
 | 2.7 | Characters as numbers (30m) | ASCII; `char` signedness varies by platform; bytes of a code point (shown in V2 only; strings come in M4) | PR, MD (bytes) | V2 |
 
 - **Problem set:**
@@ -701,7 +702,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
   - UBSan clean, and Valgrind or `leaks` clean;
   - `diagnosis.md` names the right lines;
   - then it prints the token.
-- **Checkpoint:** 1 PR (64-bit sizeof), 1 SP (debugger state), 2 PA (debugger commands, Makefile), 3 CE (UBSan report, Valgrind/`leaks` report, linker error), 1 LT fix-bug, 1 LT write-code (add a module + header + Make rule). The transfer item is a CE: classify 3 failures by build stage.
+- **Checkpoint:** 1 PR (64-bit sizeof), 1 SP (debugger state), 2 PA (debugger commands, Makefile), 3 CE (UBSan report, Valgrind/`leaks` report, linker error), 1 LT fix-bug, 1 LT write-code (add a module + header + Make rule). The transfer item is a CE: diagnose an unseen two-library link-order failure.
 - **Retrieval:** M2, M1.
 - **Resources:** Effective C 2e ch. 11 "Debugging, Testing, and Analysis"; GNU Make manual ch. 2 "An Introduction to Makefiles".
 - **Success criteria:** SC4 (I→D), SC1 (D), SC11 (I).
@@ -757,7 +758,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 | 5.1 | Search and Big-O (45m) | Linear vs binary search; O/Ω/Θ; overflow-safe midpoint | PR (comparison counts), TT, FB | V9 |
 | 5.2 | Simple sorts (50m) | Bubble, selection, insertion; invariants; stability | PA, TT | V9 |
 | 5.3 | Recursion and the call stack (50m) | Base cases, frames; what stack overflow looks like (browser vs native; outcome, never depth) | SP, PR [both] | **A5**, V3 |
-| 5.4 | Merge sort (50m) | Divide and conquer, n log n; `merge_sort(a, tmp, n)` with a caller-provided scratch buffer | CT `merge_sort`, PR | **A6**, V9 |
+| 5.4 | Merge sort (50m) | Divide and conquer, n log n; `merge_sort(a, tmp, n)` with a caller-provided scratch buffer | CT `merge_sort`, TT (merge buffer, after A6), PR | **A6**, V9 |
 | 5.5 | Quicksort and partitioning (40m) | Lomuto/Hoare partition; average vs worst case; why libraries randomise pivots | CT `partition`, PR (worst case on sorted input) | V9 |
 | 5.6 | Structs, first contact (40m) | `struct`, `typedef`, arrays of structs, designated initializers; **assignment copies** | PR (copy surprise), MD | V3 |
 | 5.7 | Measuring growth (30m) | Doubling experiments, log–log plots; coarsened browser timers | BENCH, PR | V9 |
@@ -773,7 +774,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
   - `print_winner`;
   - a 9-candidate × 1000-voter time limit;
   - ASan clean.
-- **Checkpoint:** 3 Big-O classifications, 2 TT, 1 SP (stack frame), 1 PA, 1 CE (`-Wreturn-type` on a recursive function missing a return), 2 CT (`partition`; count inversions with merge sort as the transfer), 1 FB (binary search).
+- **Checkpoint:** 3 PR (Big-O classification), 2 TT, 1 SP (stack frame), 1 PA, 1 CE (`-Wreturn-type` on a recursive function missing a return), 2 CT (`partition`; count inversions with merge sort as the transfer), 1 FB (binary search).
 - **Retrieval:** M4, M3, M2.
 - **Resources:** CLRS 4e ch. 2 "Getting Started" and ch. 3 "Characterizing Running Times"; Erickson, *Algorithms*, ch. 6 "Depth-First Search".
 - **Success criteria:** SC6 (A), SC2 (D), SC3 (D).
@@ -788,7 +789,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 ### M6. Pointers & Dynamic Memory (15.5 h, 3.1 weeks; lessons in browser with [both] panels, project native)
 **Why it matters:** this is the core skill gap. In wasm32, data memory really is one `ArrayBuffer` and a data pointer really is a byte offset, which makes the idea concrete. Stored native results show what a 64-bit OS does differently, and ASan is already on hand.
 
-**Time:** lessons 6.25 h (incl. 3 min video) · problem set 1.5 h · project 5 h · variants 1.5 h · quiz + checkpoint 1.25 h.
+**Time:** lessons 5.75 h (incl. 3 min video) · problem set 1.5 h · project 5.5 h · variants 1.5 h · quiz + checkpoint 1.25 h.
 
 | # | Lesson | Content | Interactions | Visual |
 |---|---|---|---|---|
@@ -797,7 +798,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 | 6.3 | Swap and out-parameters (45m) | `swap`; why `scanf` needs `&`; returning several values; `strtol`'s end pointer as an out-parameter | SP, FB (broken swap), CT (`parse_int(const char*, int *out)`) | **A7**, V3, V4 |
 | 6.4 | Pointer arithmetic and arrays (45m) | `a[i] ≡ *(a+i)`, decay, one past the end; view a `uint32_t` byte by byte (endianness in code) | PR, PA | V2, V4 |
 | 6.5 | `malloc`/`calloc`/`realloc`/`free` (50m) | `sizeof *p`, NULL checks, ownership, double free, leaks; ASan/LSan locally; leakcheck in browser | FB, SP, CE (ASan/LSan reports) | **A24**, V3 (heap) |
-| 6.6 | Where every variable lives (45m) | text, rodata (string literals, `const` globals), data vs bss, heap, stack; `static` locals (static storage duration); register-only locals; native vs wasm32 region order; returning a local's address (a compiler-warning question) | MD (place 20 declarations), PR [both] (region order), CE (`-Wreturn-stack-address`/`-Wreturn-local-addr`) | **A8**, V3 |
+| 6.6 | Where every variable lives (45m) | text, rodata (string literals, `const` globals), data vs bss, heap, stack; `static` locals (static storage duration); register-only locals; native vs wasm32 region order; returning a local's address (a compiler-warning question); code-region addresses come from stored `nm` output, never from `(void*)main` | MD (place 20 declarations), PR [both] (region order), CE (`-Wreturn-stack-address`/`-Wreturn-local-addr`) | **A8**, V3 |
 | 6.7 | Strings revisited, `char **`, streams (45m) | Literals are read-only natively; copying; arrays of pointers; `argv` layout; `getc` and `EOF` | PR [both], MD | V4 (argv mode) |
 | 6.8 | `const` and ownership (30m) | `const T*` vs `T* const`; documenting who frees | PA, CE | — |
 
@@ -834,8 +835,8 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 | 7.2 | Alignment and padding (45m) | `offsetof`, reordering fields, `_Alignof`; why you don't `fread` into a padded struct | PR [all targets] with the 64-bit step, MD (padding bytes) | V2 (target toggle) |
 | 7.3 | Text streams (40m) | `FILE*`, modes, `perror`/`errno`, stderr, exit codes | LT `mycp`, FB (unchecked `fopen`) | — |
 | 7.4 | Binary I/O (45m) | `fread`/`fwrite` semantics, short reads, the `while(!feof)` bug; WAV header; scale and clamp | PR, FB, LT Volume | V2 (WAV overlay) |
-| 7.5 | Images as pixel arrays (50m) | BMP headers, BGR, bottom-up rows, row padding; a flat pixel buffer `img[y*w + x]` (optional card: pointer-to-array `T (*p)[w]`); kernels | CT, PR (blur value), FB (in-place blur) | **A10**, V2, BMP preview |
-| 7.6 | Signatures and recovery (35m) | JPEG signatures, 512-byte blocks, a state machine, a mini `xxd` | CT | **A11**, V2 |
+| 7.5 | Images as pixel arrays (50m) | BMP headers, BGR, bottom-up rows, row padding; a flat pixel buffer `img[y*w + x]` (optional card: pointer-to-array `T (*p)[w]`); kernels | MD (padding in a 3-pixel row, after A10), CT, PR (blur value), FB (in-place blur) | **A10**, V2, BMP preview |
+| 7.6 | Signatures and recovery (35m) | JPEG signatures, 512-byte blocks, a state machine, a mini `xxd` | TT (recovery state machine, after A11), CT | **A11**, V2 |
 
 - **Problem set:** Volume (sample-exact, including clipping).
 - **Project P7, Media Lab (local).** **All five filters** (grayscale, sepia, reflect, blur, edges) plus **Recover**. The runner checks:
@@ -883,7 +884,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
   - unit tests per module, via `make`;
   - 10⁵ events within a time limit;
   - ASan clean.
-- **Checkpoint:** 2 MD, 1 SP, 2 CT, 1 FB, 1 PR, 1 CE. The transfer item is a complexity table for a new ADT.
+- **Checkpoint:** 2 MD, 1 SP, 2 CT, 1 FB, 1 PR, 1 CE. The transfer item is 1 PR: a complexity table for a new ADT.
 - **Retrieval:** M7, M6, M5, M3.
 - **Resources:** K&R 2e §5.11 "Pointers to Functions" and §6.5 "Self-referential Structures".
 - **Success criteria:** SC5 (A: lists, stacks, queues, BST), SC3 (A), SC6 (D), SC4 (D).
@@ -899,12 +900,12 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 ### M9. Data Structures II: Hash Tables, Tries & Speller (15.5 h, 3.1 weeks; visualizers in browser, project native) → CS50 C parity
 **Why it matters:** `Map`, `Set` and object keys are hash tables these learners have never seen inside. Speller is CS50's showcase, and ours adds a performance gate.
 
-**Time:** lessons 4.5 h · problem set 1.5 h · project 6.5 h · variants 1.75 h · quiz + checkpoint 1.25 h.
+**Time:** lessons 4.25 h · problem set 1.5 h · project 6.75 h · variants 1.75 h · quiz + checkpoint 1.25 h.
 
 | # | Lesson | Content | Interactions | Visual |
 |---|---|---|---|---|
 | 9.1 | Hashing (40m) | djb2, FNV-1a; uniformity; mask vs `%`; case folding; the `unsigned char` cast | PR (bucket indices), CT | V5 |
-| 9.2 | Separate chaining (45m) | Load factor, resize and rehash, key ownership | CT, SP | **A14**, V5 |
+| 9.2 | Separate chaining (45m) | Load factor, resize and rehash, key ownership | PR (bucket after growing, after A14), CT, SP | **A14**, V5 |
 | 9.3 | Open addressing (40m) | Linear probing, tombstones, clustering | SP | V5 (probing mode) |
 | 9.4 | Tries (50m) | 27-way nodes; memory cost per target (computed by the pipeline); O(L) lookup | MD, PR, **CT trie insert/lookup/free** (leak-checked) | V5 (trie mode) |
 | 9.5 | Measuring honestly (40m) | C11 `timespec_get` in a provided harness; `-O2`; warm-up; median; a counting allocator | BENCH | — |
@@ -916,7 +917,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
   - `unload` frees everything;
   - **`check` time ≥ 2× faster than a provided sorted-array + `bsearch` baseline** (median of 5 runs at `-O2`, on the learner's machine);
   - the report parses.
-- **Checkpoint:** 1 SP (V5 collisions, probes, resize), 1 MD (trie after inserts), 2 CT (open-addressing set with delete; trie prefix count), 1 FB (negative bucket index from signed `char`), 1 CE (ASan heap overflow), 2 PR (complexity; bytes per trie node per target). The transfer item: choose a structure for a new workload and justify it.
+- **Checkpoint:** 1 SP (V5 collisions, probes, resize), 1 MD (trie after inserts), 2 CT (open-addressing set with delete; trie prefix count), 1 FB (negative bucket index from signed `char`), 1 CE (ASan heap overflow), 2 PR (complexity; bytes per trie node per target). The transfer item is 1 PR: choose a structure for a new workload, from 4 options.
 - **Retrieval:** M8, M7, M2, M5.
 - **Resources:** K&R 2e §6.6 "Table Lookup".
 - **Success criteria:** SC5 (A: hash tables, tries), SC6 (A), SC4 (A).
@@ -947,8 +948,8 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
   - A **4-phase** `phases.o` (string compare, arithmetic loop / jump table, recursion, linked nodes) chosen by seed from a **pool of 16 pre-built variants per target** (x86-64 ELF, aarch64 ELF, arm64 Mach-O, x86-64 Mach-O), built in CI. The learner links it and defuses it with the debugger.
   - Two "write C equivalent to this listing" items, checked with test vectors and an instruction budget at `-O1`.
   - Register values at a breakpoint.
-- **Checkpoint:** 3 AS (asm→C on the learner's ISA), 1 MD (calling convention), 1 PA, 2 SP (register traces), 1 CE (interpret real `bt`/`info frame` output and an optimizer diagnostic), 1 FB (a signed/unsigned compare bug visible in the listing), 1 CT (write C for a listing). The transfer item: predict a mystery function's result.
-- **Retrieval:** M9, M6, M2, M7.
+- **Checkpoint:** 3 AS (asm→C on the learner's ISA), 1 MD (calling convention), 1 PA, 2 SP (register traces), 1 CE (interpret real `bt`/`info frame` output and an optimizer diagnostic), 1 FB (a signed/unsigned compare bug visible in the listing), 1 CT (write C for a listing). The transfer item is 1 AS: predict a mystery function's result.
+- **Retrieval:** M9, M8, M6, M2.
 - **Resources:** CS:APP 3e §3.1–3.7; plus one AArch64 reading for Mac learners, chosen and chapter-verified when M10 is built.
 - **Success criteria:** SC8 (A: CPU, registers), SC9 (A), SC2 (A).
 - **Analogies:**
@@ -967,7 +968,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 |---|---|---|---|---|
 | 11.1 | The four stages, for real (45m) | `-E -S -c`, link, `-v`; `nm`, `objdump`/`otool` | CE ("which stage failed?" ×6) | A2 recap, V7 |
 | 11.2 | Symbols and linkage (45m) | `extern`/`static`, the one-definition rule, strong and weak symbols, relocation; ELF vs Mach-O | CE, FB (duplicate symbol; browser multi-file) | **A17** |
-| 11.3 | Libraries (40m) | `ar`; `-fPIC -shared`; `-L`/`-l`; link order; `ldd`/`otool -L`; rpath; `dlopen` (POSIX) | LT, CE (loader errors) | V7 |
+| 11.3 | Libraries (40m) | `ar`; `-fPIC -shared`; `-L`/`-l`; link order; `ldd`/`otool -L`; rpath; `dlopen` (POSIX; feature-test macros first met here) | LT, CE (loader errors) | V7 |
 | 11.4 | Loading (40m) | Segments, entry → `main`, the dynamic loader, the PLT/GOT idea, ASLR | PR (`target=native`) | **A18**, V2 |
 | 11.5 | Make, properly (40m) | Pattern rules, automatic variables, `-MMD -MP`, `.PHONY`, `-j` | PA, LT | — |
 | 11.6 | The C ABI and FFI (40m) | Calling convention and struct layout as ABI; opaque pointers; symbol naming on macOS; wasm exports called from JS | CT (call your C from JS in the browser) | V7 |
@@ -977,8 +978,8 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
   - static and dynamic clients pass;
   - touching a header rebuilds only its dependents (from `make -n`);
   - **changing an internal struct and relinking only the library keeps the old client working**.
-- **Checkpoint:** 3 CE (preprocess / compile / link-or-load), 1 PA (Makefile), 1 MD (segments), 2 PR, 1 CT (header + implementation pair in browser multi-file mode), 1 FB (missing `static`). The transfer item: "why does this library crash when the struct changes?"
-- **Retrieval:** M10, M3, M1, M7.
+- **Checkpoint:** 3 CE (preprocess / compile / link-or-load), 1 PA (Makefile), 1 MD (segments), 2 PR, 1 CT (header + implementation pair in browser multi-file mode), 1 FB (missing `static`). The transfer item is 1 PR: "why does this library crash when the struct changes?"
+- **Retrieval:** M10, M9, M3, M7.
 - **Resources:** CS:APP 3e ch. 7 §7.1–7.12; GNU Make manual ch. 4 "Writing Rules" (incl. §4.14).
 - **Success criteria:** SC1 (A), SC11 (A).
 - **Analogies:**
@@ -1001,7 +1002,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 | 12.2 | Caches (50m) | Lines (64 B on most x86, 128 B on Apple Silicon), sets, ways, tags; direct-mapped vs associative; LRU; address split | SP (hit or miss), NP (tag/set/offset) | **A19**, V6 |
 | 12.3 | Locality in loops (45m) | Row vs column order, measured natively and in the browser (ratios from pipeline runs) | PR (direction and order of magnitude), BENCH | V6 |
 | 12.4 | Data layout (40m) | AoS vs SoA; pointer chasing vs arrays; chaining vs probing | PR, CT | V6, V2 |
-| 12.5 | Honest benchmarking (40m) | Warm-up, median, sinks against dead-code elimination, variance; `getrusage`; `valgrind --tool=cachegrind` (Linux/WSL); `perf` and Instruments as optional extras | FB (a flawed benchmark), CE (cachegrind summary) | — |
+| 12.5 | Honest benchmarking (40m) | Warm-up, median, sinks against dead-code elimination, variance; `clock()` for CPU time and `timespec_get` for wall time; `valgrind --tool=cachegrind` (Linux/WSL); `perf` and Instruments as optional extras | FB (a flawed benchmark), CE (cachegrind summary) | — |
 | 12.6 | Blocking and compiler help (40m) | Tiling; `-O` levels, inlining, vectorisation (`-Rpass=loop-vectorize`), `restrict` | PR | V7 |
 
 - **Project P12, cachesim + Make It Fast (local).**
@@ -1022,7 +1023,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 ### M13. The Operating System: Processes, System Calls, Files & Virtual Memory (15.5 h, 3.1 weeks, native POSIX; WSL on Windows)
 **Why it matters:** Node's `fs` and `child_process` are thin wrappers over these calls, and every shell pipe is `fork`, `exec` and `dup2`.
 
-**Time:** lessons 5.15 h · small tools 1.5 h · project 6 h · variants 1.6 h · quiz + checkpoint 1.25 h.
+**Time:** lessons 5.25 h · small tools 1.5 h · project 6 h · variants 1.5 h · quiz + checkpoint 1.25 h.
 
 | # | Lesson | Content | Interactions | Visual |
 |---|---|---|---|---|
@@ -1040,7 +1041,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
   - no zombies and no leaked fds;
   - Ctrl-C handling: it starts msh in its own process group, runs `sleep 5`, then sends SIGINT to the group, as a terminal does. The child must die and msh must print the next prompt;
   - ASan clean.
-- **Checkpoint:** 2 PR (fork output, scheduling), 2 MD (fd table, VM translation), 1 LT write-code (`run_pipeline`), 1 LT fix-bug (an unclosed pipe end hangs), 1 CE (an `strace` excerpt). The transfer item: "why does output appear twice after `fork`?"
+- **Checkpoint:** 2 PR (fork output, scheduling), 2 MD (fd table, VM translation), 1 PA (order the calls for `a | b`), 1 LT write-code (`run_pipeline`), 1 LT fix-bug (an unclosed pipe end hangs), 1 CE (an `strace` excerpt). The transfer item is 1 PR: "why does output appear twice after `fork`?" (`stdout=pipe`).
 - **Retrieval:** M12, M11, M7, M6, M3.
 - **Resources:** OSTEP v1.10 ch. 5 "Process API", ch. 6 "Mechanism: Limited Direct Execution" and ch. 39 "Files and Directories"; CS:APP 3e ch. 10 "System-Level I/O".
 - **Success criteria:** SC10 (A), SC2 (A), SC1 (A), SC8 (D).
@@ -1061,7 +1062,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 | 1 | Implicit free list, boundary tags, first fit, and an `mm_check` invariant checker |
 | 2 | Coalescing, splitting, in-place `realloc` (A23) |
 | 3 | Explicit free list, then segregated lists |
-| 4 | **Integration:** Speller (M9), `eventloop` (M8) and `msh` (M13) rebuilt on the learner's allocator. A provided `mm_shim.h` maps `malloc`/`free`/… in the learner's own files to shim functions. The shim's `free` forwards any pointer outside the mm heap to libc's `free`, so memory from `getline` or `opendir` stays safe. `mm_dump()` JSON feeds the V3 heap view |
+| 4 | **Integration:** Speller (M9), `eventloop` (M8) and `msh` (M13) rebuilt on the learner's allocator. A provided `mm_shim.h` uses object-like macros (`#define free shim_free`, …), so `free` passed as a pointer still routes through the shim. The shim's `realloc` and `free` forward any pointer outside the mm heap to libc, so memory from `getline` or `opendir` stays safe. `mm_dump()` JSON feeds the V3 heap view |
 | 5 | Benchmarking, tuning, and a report on utilisation vs throughput |
 
 The runner uses about 12 trace-driven workloads. It checks:
@@ -1084,13 +1085,15 @@ The runner uses about 12 trace-driven workloads. It checks:
 | SC2 memory layout | I | | | | D | **A** | D | | | **A** | D | | **A** | D |
 | SC3 pointers/arrays/strings/structs/heap | I | D | | D | D | **A** | **A** | **A** | D | | | | | **A** |
 | SC4 debugger + ASan/Valgrind | | | D | D | | **A** | D | D | **A** | D | | | | **A** |
-| SC5 lists/stacks/queues/hash/BST/trie | | | | | I | D | | **A** | **A** | | D | | | D |
+| SC5 lists/stacks/queues/hash/BST/trie | | | | | I | | | **A** | **A** | | D | | | D |
 | SC6 Big-O, sort/search | | | | | **A** | | | D | **A** | | | D | | |
 | SC7 bin/hex/2's comp/float/endian/bitwise | I | **A** | | D | | D | **A** | | D | D | | D | | D |
 | SC8 CPU, registers, caches, access patterns | | | | | | | | | | **A** | | **A** | D | D |
 | SC9 read assembly of own C | | | I | | | | | | | **A** | D | D | | |
 | SC10 syscalls, files, processes, OS role | | | | | | | I | | | | | | **A** | D |
 | SC11 multi-file, Make, headers, C ABI | | | I | | | | D | D | D | D | **A** | | D | **A** |
+
+This matrix is authoritative. The per-module "Success criteria" lines list only the main entries.
 
 ### 6.2 CS50x (2026) problem-set parity
 These were checked against cs50.harvard.edu/x/psets in October 2026.
@@ -1120,16 +1123,16 @@ CS50 now compiles with `-std=c23 -Werror` (per cs50/cli). We teach **C17** as sp
 ## 7. Visualizers (React components the learner controls)
 | ID | Name | Used in | Modes | Prediction hook |
 |---|---|---|---|---|
-| V1 | Number Playground | M1, M2, M4, M6, M10, M12 | binary/hex/decimal; two's-complement wheel; IEEE-754 float/double bit editor; overflow wheel; JS `Number` comparison | NP drills; PR on wrap and rounding |
+| V1 | Number Playground | M1, M2, M4 | binary/hex/decimal; two's-complement wheel; IEEE-754 float/double bit editor; overflow wheel; JS `Number` comparison | NP drills; PR on wrap and rounding |
 | V2 | Byte Viewer | M2, M4, M6, M7, M11, M12 | hexdump; endianness; **struct padding with a wasm32 / x86-64 / arm64 / Windows toggle**; WAV/BMP/JPEG header overlays; live wasm data memory after a run | MD on padding and bytes |
 | V3 | Stack/Heap Stepper | M1, M3, M5, M6, M8, M10, M13, Cap | frames, locals and typed heap blocks from gdb traces ("x86-64 Linux"); **predict the next state before stepping**; capstone `mm_dump` | SP |
-| V4 | Pointer Diagram | M6–M9, M13 | auto-drawn from traces, plus drag-to-draw; list, tree, argv and fd-table modes | MD |
-| V5 | Hash-Table Visualizer | M9, M12, Cap B | hash function, bucket count, load factor, chaining, probing, tombstones, resize, trie mode, chain histogram | PR on bucket, probes, resize |
+| V4 | Pointer Diagram | M6–M8, M13 | auto-drawn from traces, plus drag-to-draw; list, tree, argv and fd-table modes | MD |
+| V5 | Hash-Table Visualizer | M9, Cap B | hash function, bucket count, load factor, chaining, probing, tombstones, resize, trie mode, chain histogram | PR on bucket, probes, resize |
 | V6 | Cache Simulator | M12, M13 | s/E/b, LRU, address trace from a C loop, hit/miss heat map, address-split mode reused for page translation | SP (hit or miss), NP (split) |
 | V7 | Pipeline Explorer | M1, M3, M10–M12 | **live** in-browser `-E/-S/-c/nm/link` for wasm32; stored native x86-64/arm64 `.s`, `nm` and `objdump` panes with source-line highlighting | PR ("which line produced this?"), CE |
-| V8 | Syscall Tracer | M1 (teaser), M13 | live WASI import log of a browser run, next to a stored native `strace` | PR (number of `write` calls) |
-| V9 | Algorithm Race | M5, M8, M9 | bars with comparison and swap counters, doubling chart, graph/DFS mode | TT, PR |
-| V10 | TinyCPU / Register Stepper | M10, M12 | toy ISA plus stored gdb `stepi` register traces (x86-64 and aarch64 runners) | SP on registers and flags |
+| V8 | Syscall Tracer | M13 | live WASI import log of a browser run, next to a stored native `strace` | PR (number of `write` calls) |
+| V9 | Algorithm Race | M5 | bars with comparison and swap counters, doubling chart, graph/DFS mode | TT, PR |
+| V10 | TinyCPU / Register Stepper | M10 | toy ISA plus stored gdb `stepi` register traces (x86-64 and aarch64 runners) | SP on registers and flags |
 
 ---
 
@@ -1152,7 +1155,7 @@ CS50 now compiles with `-std=c23 -Werror` (per cs50/cli). We teach **C17** as sp
 | A14 | 9.2 | 75 s | Hashing into buckets, chaining, resize and rehash | V5 PR: bucket after growing |
 | A15 | 10.1 | 60 s | Fetch–decode–execute | SP: next PC and register |
 | A16 | 10.6 | 60 s | Calling convention: argument registers, `call`/`ret`, the frame | SP: rdi/x0 at callee entry |
-| A17 | 11.2 | 75 s | Symbol resolution and relocation | Match symbols to definitions; CE |
+| A17 | 11.2 | 75 s | Symbol resolution and relocation | CE: which definition does each reference resolve to? |
 | A18 | 11.4 | 75 s | exec → loader → dynamic linker → `main` | PR: what changes between runs (ASLR) |
 | A19 | 12.2 | 75 s | Cache lines and sets; row vs column order | V6 SP: next 8 accesses |
 | A20 | 13.1 | 60 s | `printf` → buffer → `write` syscall → kernel → terminal | PR: `write` count, tty vs pipe |
@@ -1171,7 +1174,7 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 | ID | Video | Start–end (s) | Length | Topic | Lesson | Why it earns its place |
 |---|---|---|---|---|---|---|
 | YT-1 | CS50x Lecture 1 – C `SlqjA04_dpk` | 8531–8699 (02:22:11–02:24:59) | 2:48 | Integer overflow in the real world: the Boeing 787 "248 days" power-off bug and Pac-Man's level 256 | 2.6 | Real incidents give the stakes behind a 32-bit counter, which no visualizer can. It's followed by working out the 248-day figure with V1 |
-| YT-2 | CS50x Lecture 4 – Memory `db0H0U13YsA` | 5260–5424 (01:27:40–01:30:24) | 2:44 | Binky Pointer Fun (Stanford claymation): pointer vs pointee, dereferencing an unassigned pointer | 6.2 | A memorable, widely loved mental model of pointee allocation that our diagrams can't make as sticky. It's followed by an MD of the exact Binky code |
+| YT-2 | CS50x Lecture 4 – Memory `db0H0U13YsA` | 5260–5424 (01:27:40–01:30:24) | 2:44 | Binky Pointer Fun (Stanford claymation): pointer vs pointee, dereferencing an unassigned pointer | 6.2 | A memorable, widely loved mental model of pointee allocation that our diagrams can't make as sticky. It's followed by an MD of an original Binky-style program up to `y = x`; the unassigned-pointer write is a categorical PR [both] (§3.4) |
 
 **Anchor lines from the transcripts**
 - YT-1 begins "So that too was a problem, and this happens truly in the real world. So picture here is a Boeing 787…" and ends "…hit level 256 in this way because of this bug."
@@ -1230,4 +1233,4 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 5. **Browser floor.** Interactive `scanf` needs JSPI (Chrome/Edge 137+, Firefox 153+, Safari 27); other browsers get a pre-filled stdin box. Acceptable?
 6. **Animation palette.** One theme-neutral render per animation, or separate light and dark renders (double the size)?
 7. **Videos.** Only two short CS50 segments so far, because I dropped every segment our app teaches better. Do you want more video, or is "only when it clearly beats the app" the right bar?
-8. **Local toolchain timing.** It's now Module 3 (week 4), with P1–P2 graded in the browser. Is that early enough, or should installation come right after M1?
+8. **Local toolchain timing.** It's now Module 3 (weeks 5–6), with P1–P2 graded in the browser. Is that early enough, or should installation come right after M1?
