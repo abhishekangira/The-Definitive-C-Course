@@ -233,26 +233,26 @@
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "-766339688\n"
+            "stdout": "-690580856\n"
           },
           {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "-688503624\n"
+            "stdout": "-323376200\n"
           },
           {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "-327169576\n"
+            "stdout": "-376824504\n"
           }
         ],
         "run": {
           "exit": 0,
           "signal": null,
           "stderr": "",
-          "stdout": "-766339688\n"
+          "stdout": "-690580856\n"
         },
         "target": "linux-aarch64-gcc"
       }

@@ -615,26 +615,26 @@
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "15834070\n"
+            "stdout": "8641494\n"
           },
           {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "40426454\n"
+            "stdout": "10181590\n"
           },
           {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "85056470\n"
+            "stdout": "52075478\n"
           }
         ],
         "run": {
           "exit": 0,
           "signal": null,
           "stderr": "",
-          "stdout": "15834070\n"
+          "stdout": "8641494\n"
         },
         "target": "macos-arm64-appleclang"
       }
