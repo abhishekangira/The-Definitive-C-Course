@@ -12,11 +12,12 @@ for (const mod of modules) {
   test.describe.serial(`${mod.id}: ${mod.meta.title}`, () => {
     let page: Page;
     test.beforeAll(async ({ browser }) => {
-      page = await browser.newPage();
+      // AxeBuilder needs a page that came from a browser context, not browser.newPage().
+      page = await (await browser.newContext()).newPage();
       page.on('pageerror', e => { throw e; });
       page.on('dialog', d => void d.accept());
     });
-    test.afterAll(async () => { await page.close(); });
+    test.afterAll(async () => { await page.context().close(); });
 
     test('course map and module page', async () => {
       await page.goto('');
@@ -46,7 +47,7 @@ for (const mod of modules) {
       await page.goto(`#/m/${mod.id}`);
       for (const [i, id] of mod.meta.problemSet.entries()) {
         const details = page.locator('details', { has: page.locator(`[data-exercise="${id}"]`) });
-        await details.locator('summary').click();
+        await details.locator(':scope > summary').click();
         await completeExercise(page, mod, details.locator(`[data-exercise="${id}"]`), { viewHint: i === 0 });
       }
     });
@@ -73,7 +74,7 @@ for (const mod of modules) {
       await page.goto('#/settings');
       const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export progress' }).click()]);
       const file = await download.path();
-      const fresh = await browser.newPage();
+      const fresh = await (await browser.newContext()).newPage();
       await fresh.goto('#/settings');
       await fresh.locator('input[type=file]').setInputFiles(file);
       await fresh.getByRole('button', { name: 'Replace my progress' }).click();
@@ -83,7 +84,7 @@ for (const mod of modules) {
       expect(after.lessons).toEqual(before.lessons);
       expect(after.quizzes).toEqual(before.quizzes);
       await expectAccessible(fresh, 'settings');
-      await fresh.close();
+      await fresh.context().close();
     });
   });
 }
@@ -98,7 +99,7 @@ test('hint tiers, solution gate and variants', async ({ page }) => {
   const id = mod.meta.problemSet.find(x => x !== 'hello-world') ?? mod.meta.problemSet[0];
   await page.goto(`#/m/${mod.id}`);
   const details = page.locator('details', { has: page.locator(`[data-exercise="${id}"]`) });
-  await details.locator('summary').click();
+  await details.locator(':scope > summary').click();
   const box = details.locator(`[data-exercise="${id}"]`);
 
   const showSolution = box.getByRole('button', { name: 'Show the solution' });

@@ -40,7 +40,7 @@ int main(void) {
 }
 ```
 
-<Analogy js="let n: number" c="int n;" breaksDown="TypeScript types vanish at runtime; every number is still an 8-byte float. A C `int` really is 4 bytes holding a whole number, so a fraction assigned to it is silently cut off, with no error. Module 2 shows exactly what those bytes look like." />
+<Analogy js="let n: number" c="int n;" breaksDown="TypeScript types vanish at runtime; every number is still an 8-byte float. A C `int` really is 4 bytes holding a whole number, so a fraction assigned to it is silently cut off, with no error. Module 2 shows what those bytes look like, bit by bit." />
 
 Arithmetic follows the types of the operands. When **both** operands are integers, `/` is integer division: the fractional part is thrown away, rounding toward zero.
 

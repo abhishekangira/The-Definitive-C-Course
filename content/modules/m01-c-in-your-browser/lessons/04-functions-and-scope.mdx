@@ -28,7 +28,7 @@ void bump(int n) {
 }
 ```
 
-<Analogy js="function bump(n) { n++ }" c="void bump(int n) { n++; }" breaksDown="For JS primitives it's the same: the caller's variable never changes. But a JS object is passed as a *reference*, so mutations show through. C has no hidden references: everything is a copy, and sharing requires an explicit pointer (Module 6)." />
+<Analogy js="function bump(n) { n++ }" c="void bump(int n) { n++; }" breaksDown="JS copies primitives too, but passes an object as a *reference*, so mutations show through. C has no hidden references: everything is a copy, and sharing requires an explicit pointer (Module 6)." />
 
 Each call gets its own **stack frame**: a block of memory holding that call's parameters and local variables. It's the same idea as the call stack in DevTools, except here it's real memory with real sizes. Step through this program. Before each jump, predict which line runs next.
 

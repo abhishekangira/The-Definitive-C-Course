@@ -21,7 +21,7 @@ int main(void) {
 }
 ```
 
-<Analogy js="if (count) { … }" c="if (count) { … }" breaksDown="For numbers it's the same rule: zero is false, everything else true. But C has no `undefined`, `null` or `NaN` checks built into truthiness (and no `===`). And a comparison is a number you can add up, as you just saw." />
+<Analogy js="if (count) { … }" c="if (count) { … }" breaksDown="C has no `undefined`, `null` or `NaN` to test in a condition, and no `===`: zero is false and everything else is true. A comparison is also just a number you can add up, as you just saw." />
 
 A classic C bug: `=` assigns, `==` compares. `if (x = 5)` *assigns* 5 to `x`, then tests the result, 5, which is always true. It compiles, so the compiler warns instead.
 

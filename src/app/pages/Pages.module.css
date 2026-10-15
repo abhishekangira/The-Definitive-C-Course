@@ -18,7 +18,9 @@
 .moduleCard { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); box-shadow: var(--shadow); min-height: 140px; }
 .moduleCard > div, .cardLink { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); height: 100%; color: var(--text); text-decoration: none; border-radius: var(--radius); }
 .cardLink:hover { background: color-mix(in srgb, var(--accent) 5%, var(--bg-elev)); }
-.locked { opacity: 0.6; box-shadow: none; }
+/* Not-yet-available cards: a dashed border and muted text, not opacity (which fails WCAG AA contrast). */
+.locked { box-shadow: none; background: transparent; border-style: dashed; }
+.locked .moduleTitle { color: var(--text-muted); font-weight: 600; }
 .moduleTop { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
 .moduleNo { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
 .moduleTitle { font-weight: 700; font-size: 1.05rem; line-height: 1.3; }
