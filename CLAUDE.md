@@ -3,8 +3,8 @@
 This is an interactive, static (no backend) React + TypeScript web app that teaches C17 and low-level fundamentals to front-end engineers. **Read `PLAN.md` first.** It is the source of truth for architecture, the content format (§2.4), the verification pipeline (§3), the course outline (§6) and the per-module definition of done (§3.6).
 
 ## Status
-- Stage 1 (research + PLAN.md) is done and awaiting client review.
-- Stage 2 (app shell + Module 1) has not started.
+- Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12 (public repo → GitHub Pages; MP4s committed; allocator-only capstone; dark-only animation renders).
+- Stage 2 (app shell + Module 1) is in progress.
 - The client reviews after each stage and after each module, so stop and ask for review at those points.
 - Stage 2 exit criteria include replacing the placeholder sections below with the real content format, schemas and npm scripts.
 

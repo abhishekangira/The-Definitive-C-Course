@@ -5,7 +5,7 @@ A self-paced, interactive web app that teaches C17 and low-level computer fundam
 - Learners write and run real C in the browser from the first lesson.
 - From Module 3 (weeks 5–6), they also use their own toolchain for debugging, sanitizers and projects.
 
-> **Status:** Stage 1 (research + plan) is ready for your review. No app code exists yet.
+> **Status:** Stage 1 (research + plan) was reviewed and approved; the client's decisions are recorded in §12. Stage 2 (app shell + Module 1) is in progress.
 > - **[V]** marks a technical claim verified by running it in this repo's container during research.
 > - **[DOCS]** marks a claim read in documentation only.
 > - Raw reports and working prototypes are in `research/reports/` and `research/prototypes/`. Three independent adversarial reviews of the first draft are in `research/reports/review-*.md`; their confirmed findings are folded in below.
@@ -532,7 +532,7 @@ Only the **MP4 is committed**, at ≈1.7 MB per minute, so ≈45 MB for 24 anima
 - Keyboard controls.
 - Reduced-motion still sequence.
 
-**Palette.** One theme-neutral "stage" palette that works in both app themes. Separate light and dark renders are possible through composition variables **[V]** (§12).
+**Palette.** A single **dark** render per animation, shown as-is in both app themes (§12).
 
 ### 4.7 Hosting and deploy
 - **Pipeline.** GitHub Actions: `toolchain:prepare` (copy and slim from `node_modules` into `build/toolchain/clang-<ver>/`) → verify (cached; uses that copy) → build → copy it into `dist/toolchain/clang-<ver>/` → WebM transcode → deploy to Pages.
@@ -604,7 +604,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 | 11 | Linking, Loading, Libraries & the C ABI | native + browser | native | 10 | 2 | 29.2 | — |
 | 12 | Memory Hierarchy & Performance | browser simulator + native | native | 13.5 | 2.7 | 31.9 | — |
 | 13 | The Operating System (POSIX) | native | native | 15.5 | 3.1 | 35 | — |
-| Cap | Build `malloc` (Track A) or Speller Pro (Track B) | native | native | 25 | 5 | 40 | — |
+| Cap | Build `malloc`: your own allocator | native | native | 25 | 5 | 40 | — |
 | | **Total** | | | **200 h** | **40 wk** | | |
 
 - **Fast lane (≈190 h):** skips bitlab-lite, the "implement all three sorts" extension, the Runoff warm-up, the TinyCPU problem set, P12 part C (the ≥3× speedup; optional for the gate) and the mini `ls -l` (13.7).
@@ -1055,7 +1055,7 @@ Coverage levels: I = introduced, D = developed, **A** = assessed.
 | WASI in our runtime | syscalls | WASI calls are imported JS functions in the same process: no trap, no privilege switch, and no `fork` |
 
 ### Capstone: build `malloc`, then run your own programs on it (25 h, 5 weeks, native)
-**Track A (default).** Implement `mm_malloc`, `mm_free`, `mm_realloc` and `mm_calloc` with 16-byte alignment, over a provided `memlib` (one `mmap` region; works on macOS and Linux).
+Implement `mm_malloc`, `mm_free`, `mm_realloc` and `mm_calloc` with 16-byte alignment, over a provided `memlib` (one `mmap` region; works on macOS and Linux).
 
 | Week | Milestone |
 |---|---|
@@ -1069,8 +1069,6 @@ The runner uses about 12 trace-driven workloads. It checks:
 - **correctness:** alignment, no overlap, payload integrity across `realloc`, `calloc` zeroing, and `mm_check` after every operation;
 - **scores** relative to a provided reference allocator (pre-built objects per target from CI). To pass: utilisation within 10 points of the reference and throughput ≥0.5× the reference on the learner's machine. Beating the reference earns distinction;
 - **integration:** byte-identical output from all three programs.
-
-**Track B, Speller Pro.** Chained, open-addressing, trie and baseline backends; a median-of-N `-O2` harness; byte-exact memory accounting; a cache-reasoned choice. It must be **≥4× faster than the baseline** and sanitizer-clean.
 
 **Graduation check (60–90 min).** Draw a memory layout, diagnose errors by stage, read assembly, predict a fork program, interpret an ASan report, and choose a data structure.
 
@@ -1112,7 +1110,7 @@ These were checked against cs50.harvard.edu/x/psets in October 2026.
 | Filter less / more | one | **all five filters + a 4000×3000 heap test** | M7 | the union of both |
 | Recover | yes | yes, on a synthetic card with SHA-256 checks | M7 | randomized data |
 | Inheritance | yes | yes, 1000 seeded runs, leak-free | M8 | — |
-| Speller | yes | yes **+ must beat a `bsearch` baseline 2×**; a required trie exercise; then Libify (M11) and capstone integration or Track B (≥4×) | M9 | performance gate + ABI packaging |
+| Speller | yes | yes **+ must beat a `bsearch` baseline 2×**; a required trie exercise; then Libify (M11) and capstone integration on the learner's own allocator | M9 | performance gate + ABI packaging |
 
 Beyond CS50: bitlab-lite, hexcolor, Toolchain Lab, Bug Hunt, `libstr`, `eventloop`, word frequency, TinyCPU, Asm Detective, Libify, cachesim, `msh`, `malloc`.
 
@@ -1127,7 +1125,7 @@ CS50 now compiles with `-std=c23 -Werror` (per cs50/cli). We teach **C17** as sp
 | V2 | Byte Viewer | M2, M4, M6, M7, M11, M12 | hexdump; endianness; **struct padding with a wasm32 / x86-64 / arm64 / Windows toggle**; WAV/BMP/JPEG header overlays; live wasm data memory after a run | MD on padding and bytes |
 | V3 | Stack/Heap Stepper | M1, M3, M5, M6, M8, M10, M13, Cap | frames, locals and typed heap blocks from gdb traces ("x86-64 Linux"); **predict the next state before stepping**; capstone `mm_dump` | SP |
 | V4 | Pointer Diagram | M6–M8, M13 | auto-drawn from traces, plus drag-to-draw; list, tree, argv and fd-table modes | MD |
-| V5 | Hash-Table Visualizer | M9, Cap B | hash function, bucket count, load factor, chaining, probing, tombstones, resize, trie mode, chain histogram | PR on bucket, probes, resize |
+| V5 | Hash-Table Visualizer | M9 | hash function, bucket count, load factor, chaining, probing, tombstones, resize, trie mode, chain histogram | PR on bucket, probes, resize |
 | V6 | Cache Simulator | M12, M13 | s/E/b, LRU, address trace from a C loop, hit/miss heat map, address-split mode reused for page translation | SP (hit or miss), NP (split) |
 | V7 | Pipeline Explorer | M1, M3, M10–M12 | **live** in-browser `-E/-S/-c/nm/link` for wasm32; stored native x86-64/arm64 `.s`, `nm` and `objdump` panes with source-line highlighting | PR ("which line produced this?"), CE |
 | V8 | Syscall Tracer | M13 | live WASI import log of a browser run, next to a stored native `strace` | PR (number of `write` calls) |
@@ -1225,12 +1223,12 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 
 ---
 
-## 12. Decisions I'd like you to confirm
-1. **Hosting and CI cost.** GitHub Pages via Actions needs a public repo, or a paid plan for private Pages. The per-target CI runners (macOS, arm64 Linux, Windows) are free for public repos, while private repos pay, with macOS minutes at 10×. The alternative is Cloudflare Pages or Netlify, which serve brotli (≈15 MB vs ≈24 MB first load).
-2. **Rendered animations.** Commit only the MP4s (≈45 MB total), with WebM generated at deploy. The alternatives are rendering everything in CI (repo stays small, deploy is slower) or Git LFS.
-3. **Course length.** ≈200 h (40 weeks at 5 h/week), with a fast lane of ≈190 h. That's above CS50, because projects are sized like the CMU labs they mirror. Trim, or keep the rigor?
-4. **Capstone.** Track A (allocator) by default, with Track B (Speller Pro) as the alternative?
-5. **Browser floor.** Interactive `scanf` needs JSPI (Chrome/Edge 137+, Firefox 153+, Safari 27); other browsers get a pre-filled stdin box. Acceptable?
-6. **Animation palette.** One theme-neutral render per animation, or separate light and dark renders (double the size)?
-7. **Videos.** Only two short CS50 segments so far, because I dropped every segment our app teaches better. Do you want more video, or is "only when it clearly beats the app" the right bar?
-8. **Local toolchain timing.** It's now Module 3 (weeks 5–6), with P1–P2 graded in the browser. Is that early enough, or should installation come right after M1?
+## 12. Decisions (confirmed by the client, Stage 1 review)
+1. **Hosting.** The repo is public, so we deploy to GitHub Pages via Actions. The macOS, arm64-Linux and Windows CI runners are free.
+2. **Rendered animations.** Commit the MP4s; WebM is transcoded at deploy. Each re-render adds a new copy to git history, but at ≈2 MB per animation this is negligible.
+3. **Course length.** Keep ≈200 h (40 weeks at 5 h/week), with the fast lane as defined.
+4. **Capstone.** The allocator only; Speller Pro is dropped. CS50's Speller parity is already met in M9.
+5. **Browser floor.** Accepted: JSPI browsers get interactive `scanf`; others get the pre-filled stdin box.
+6. **Animation palette.** A single dark render per animation, shown as-is in both app themes.
+7. **Videos.** "Only when it clearly beats the app" is the bar.
+8. **Local toolchain timing.** Module 3 (weeks 5–6) stays.
