@@ -1,0 +1,4 @@
+[
+ {"text":"The compiler turns main.c into an object file.","start":1.5,"end":3.8},
+ {"text":"The linker turns main.o into an executable, a.out.","start":3.9,"end":6.5}
+]

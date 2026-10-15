@@ -1,0 +1,39 @@
+<template id="cp-bg-template">
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    #cp-bg-ground {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 45%, #1b2433 0%, #0d1117 70%);
+    }
+    #cp-bg-grid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 2160px;
+      height: 1080px;
+      background-image:
+        linear-gradient(#2d3a4d 2px, transparent 2px),
+        linear-gradient(90deg, #2d3a4d 2px, transparent 2px);
+      background-size: 120px 120px;
+      opacity: 0.25;
+    }
+  </style>
+  <div data-hf-id="hf-w0xi" id="root" data-composition-id="cp-bg" data-width="1920" data-height="1080" data-duration="8">
+    <div data-hf-id="hf-kffo" id="cp-bg-ground"></div>
+    <div data-hf-id="hf-g0jc" id="cp-bg-grid" data-layout-ignore></div>
+  </div>
+  <script>
+    (function () {
+      const tl = gsap.timeline({ paused: true });
+      // Ambient drift for the whole film so the closing hold is not frozen.
+      tl.fromTo("#cp-bg-grid", { x: 0 }, { x: -120, duration: 8, ease: "none" }, 0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["cp-bg"] = tl;
+    })();
+  </script>
+</template>

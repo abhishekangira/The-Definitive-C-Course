@@ -1,0 +1,15 @@
+import { chromium } from 'playwright-core';
+import { readFileSync, readdirSync } from 'node:fs';
+const [port, userDataDir] = process.argv.slice(2);
+const ctx = await chromium.launchPersistentContext(userDataDir, { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', headless: true, args: ['--no-sandbox'] });
+const page = ctx.pages()[0] ?? await ctx.newPage();
+const procs = () => readdirSync('/proc').filter(p => /^\d+$/.test(p)).map(pid => { try { const cmd = readFileSync(`/proc/${pid}/cmdline`, 'utf8'); if (!cmd.includes('chrome-linux/chrome')) return null; const st = readFileSync(`/proc/${pid}/status`, 'utf8'); return { pid, type: (cmd.match(/--type=([a-z-]+)/) || [, 'browser'])[1], rssMB: Math.round(+st.match(/VmRSS:\s+(\d+)/)[1] / 1024) }; } catch { return null; } }).filter(Boolean);
+console.log('blank', JSON.stringify(procs()));
+await page.goto(`http://localhost:${port}/the-definitive-c-course/`);
+await page.waitForFunction(() => window.__app);
+console.log('page loaded', JSON.stringify(procs()));
+await page.evaluate(() => new Promise(res => { const rt = window.__app.getRuntime(); rt.onReady = res; rt.prefetch(); }));
+console.log('toolchain ready', JSON.stringify(procs()));
+for (let i = 0; i < 20; i++) await page.evaluate(async () => { const rt = window.__app.getRuntime(); const c = await rt.compile('#include <stdio.h>\nint main(void){puts("x");}'); await rt.run(c.wasm, { onOutput() {} }).done; });
+console.log('after 20 compile+run', JSON.stringify(procs()));
+await ctx.close();

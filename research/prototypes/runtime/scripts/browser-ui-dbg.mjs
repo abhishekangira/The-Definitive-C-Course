@@ -1,0 +1,21 @@
+// UI-level test: click Run, watch progress bar, type into the stdin box, read the terminal.
+import { chromium } from 'playwright-core';
+const [port, userDataDir, shot] = process.argv.slice(2);
+const ctx = await chromium.launchPersistentContext(userDataDir, { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', headless: true, args: ['--no-sandbox'], viewport: { width: 900, height: 1000 } });
+const page = ctx.pages()[0] ?? await ctx.newPage(); page.on('console', m => console.log('[console]', m.text())); page.on('pageerror', e => console.log('[pageerror]', e.message));
+await page.goto(`http://localhost:${port}/the-definitive-c-course/`);
+const t0 = Date.now();
+await page.click('#run');
+const samples = [];
+const poll = setInterval(async () => { try { const v = await page.evaluate(() => { const p = document.querySelector('#dl'); return p ? [p.value, p.max] : null; }); if (v) samples.push([Date.now() - t0, Math.round(100 * v[0] / v[1])]); } catch {} }, 500);
+await page.waitForSelector('#stdin', { timeout: 60000 });
+clearInterval(poll);
+const tPrompt = Date.now() - t0;
+const outAtPrompt = await page.textContent('#out');
+await page.fill('#stdin', 'Ada'); await page.press('#stdin', 'Enter');
+await page.waitForFunction(() => document.querySelector('#out').textContent.includes('Age: '));
+await page.fill('#stdin', '36'); await page.press('#stdin', 'Enter');
+await page.waitForFunction(() => document.querySelector('#out').textContent.includes('exited with code'));
+console.log(JSON.stringify({ msUntilFirstPrompt: tPrompt, progressSamples: samples, outAtPrompt, finalOut: await page.textContent('#out'), status: await page.textContent('#status') }, null, 1));
+await page.screenshot({ path: shot, fullPage: true });
+await ctx.close();

@@ -1,0 +1,37 @@
+const { chromium } = require('/opt/node22/lib/node_modules/playwright');
+(async () => {
+  const browser = await chromium.launch({ args: process.env.NOLAZY ? ['--js-flags=--no-wasm-lazy-compilation'] : [] });
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const reqs = [];
+  page.on('request', r => reqs.push(r.url().replace(/^http:\/\/[^/]+/, '')));
+  page.on('console', m => console.log('[console]', m.text()));
+  page.on('pageerror', e => console.log('[pageerror]', e.message));
+  ctx.on('weberror', e => console.log('[weberror]', e.error().message));
+  const t0 = Date.now();
+  await page.goto('http://127.0.0.1:' + (process.env.PORT || 8123) + '/');
+  await page.waitForFunction(() => window.compileRun);
+  console.log('page info', await page.evaluate(() => window.info), 'requests before Run:', reqs);
+  const hello = '#include <stdio.h>\nint main(void){ printf("hello from the browser, sizeof(long)=%zu\\n", sizeof(long)); return 0; }\n';
+  let r = await page.evaluate(src => window.compileRun(src), hello);
+  console.log('RUN1 (cold)', JSON.stringify(r));
+  console.log('requests after Run:', reqs.slice());
+  r = await page.evaluate(src => window.compileRun(src), hello);
+  console.log('RUN2 (warm)', JSON.stringify(r.T));
+  r = await page.evaluate(src => window.compileRun(src), '#include <stdio.h>\nint main(void){ int x = 5\n return 0; }\n');
+  console.log('RUN3 (error)', JSON.stringify(r));
+  r = await page.evaluate(src => window.compileRun(src, ['-O0'], '21 21\n'), '#include <stdio.h>\nint main(void){ int a,b; scanf("%d %d",&a,&b); printf("%d\\n", a+b); int *p = 0; return *p + 3; }\n');
+  console.log('RUN4 (stdin)', JSON.stringify(r));
+  const m = await page.evaluate(src => window.mainThread(src), hello);
+  console.log('main-thread async compile', JSON.stringify(m));
+  // reload: is everything served from HTTP cache?
+  reqs.length = 0;
+  const resp = [];
+  page.on('response', x => resp.push([x.url().replace(/^http:\/\/[^/]+/, ''), x.fromServiceWorker(), x.status(), x.request().timing ? '' : '']));
+  await page.reload();
+  await page.waitForFunction(() => window.compileRun);
+  const t1 = Date.now();
+  r = await page.evaluate(src => window.compileRun(src), hello);
+  console.log('RUN after reload', JSON.stringify(r.T), 'wall', Date.now() - t1, 'ms');
+  await browser.close();
+})();

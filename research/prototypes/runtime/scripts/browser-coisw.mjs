@@ -1,0 +1,21 @@
+import { chromium } from 'playwright-core';
+const [port, userDataDir] = process.argv.slice(2);
+const ctx = await chromium.launchPersistentContext(userDataDir, { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome', headless: true, args: ['--no-sandbox'] });
+const page = ctx.pages()[0] ?? await ctx.newPage();
+const logs = []; page.on('console', m => logs.push(m.text()));
+let navs = 0; page.on('framenavigated', f => { if (f === page.mainFrame()) navs++; });
+const t0 = Date.now();
+await page.goto(`http://localhost:${port}/the-definitive-c-course/`);
+await page.waitForFunction(() => window.crossOriginIsolated === true && window.__app, null, { timeout: 30000 });
+console.log('isolated after ms', Date.now() - t0, 'navigations', navs, 'logs', logs);
+const r = await page.evaluate(async () => {
+  const rt = window.__app.getRuntime();
+  await new Promise(res => { rt.onReady = res; rt.prefetch(); });
+  const c = await rt.compile('#include <stdio.h>\nint main(void){ char w[16]; printf("word? "); scanf("%15s", w); printf("[%s]\\n", w); }');
+  let out = ''; let h; const ev = [];
+  h = rt.run(c.wasm, { mode: 'sab', onOutput: (fd, t) => { out += t; ev.push(t); }, onStdinRequest: () => { ev.push('STDIN?'); setTimeout(() => h.provideInput('hello\n'), 200); } });
+  const res = await h.done; delete res.files;
+  return { coi: crossOriginIsolated, controlled: !!navigator.serviceWorker.controller, res, out, ev };
+});
+console.log(JSON.stringify(r));
+await ctx.close();

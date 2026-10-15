@@ -1,0 +1,17 @@
+{
+  "name": "vitetest",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@bjorn3/browser_wasi_shim": "^0.4.2",
+    "@yowasp/clang": "^22.0.0-git20542-10",
+    "vite": "^7.3.7"
+  }
+}

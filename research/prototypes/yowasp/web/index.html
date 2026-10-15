@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><title>yowasp test</title>
+<script type="module">
+const worker = new Worker('./worker.js', { type: 'module' });
+window.results = [];
+window.compileRun = (src, flags = ['-std=c17','-Wall','-Wextra','-pedantic','-O0'], stdin = '') => new Promise((resolve) => {
+  worker.onmessage = ({ data }) => { if (data.progress) { window.results.push(data); return; } resolve(data); };
+  worker.postMessage({ src, flags, stdin });
+});
+window.info = { crossOriginIsolated: self.crossOriginIsolated, SAB: typeof SharedArrayBuffer };
+// main-thread test: import + run on main thread too (async API)
+window.mainThread = async (src) => {
+  const m = await import('./clang/bundle.js');
+  const t = performance.now();
+  const files = await m.runClang(['clang', '-O0', 'm.c', '-o', 'm.wasm'], { 'm.c': src }, { stdout: null, stderr: null, fetchProgress: () => {} });
+  return { ms: performance.now() - t, size: files['m.wasm'].length };
+};
+</script>

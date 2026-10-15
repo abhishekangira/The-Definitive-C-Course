@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+import { compile } from './lib.mjs';
+import { WASI, File, OpenFile, ConsoleStdout, PreopenDirectory, Directory } from '@bjorn3/browser_wasi_shim';
+const c = await compile({ 'f.c': fs.readFileSync('c/fileio.c', 'utf8') }, ['-std=c17', '-O0', 'f.c', '-o', 'a.wasm']);
+const dec = new TextDecoder(); let out = '';
+const root = new PreopenDirectory('.', new Map([['input.txt', new File(new TextEncoder().encode('a\nb\nc\n'))], ['out', new Directory(new Map())]]));
+const wasi = new WASI(['f'], [], [new OpenFile(new File([])), new ConsoleStdout(b => out += dec.decode(b)), new ConsoleStdout(b => out += dec.decode(b)), root], { debug: false });
+const inst = await WebAssembly.instantiate(await WebAssembly.compile(c.files['a.wasm']), { wasi_snapshot_preview1: wasi.wasiImport });
+console.log('exit', wasi.start(inst), JSON.stringify(out));
+const res = root.dir.contents.get('out').contents.get('result.bin');
+console.log('result.bin bytes:', Buffer.from(res.data).toString('hex'));

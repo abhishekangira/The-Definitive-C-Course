@@ -1,0 +1,13 @@
+```c id=spin run timeout=500
+int main(void) { for (;;) {} }
+```
+
+```c id=leaky run sanitize=address expect=success compilers=gcc
+#include <stdlib.h>
+int main(void) { void *p = malloc(10); (void)p; return 0; }
+```
+
+```c id=say-args run args="one 'two words' \"three\"" compilers=gcc
+#include <stdio.h>
+int main(int argc, char *argv[]) { for (int i = 1; i < argc; i++) printf("[%s]\n", argv[i]); return 0; }
+```

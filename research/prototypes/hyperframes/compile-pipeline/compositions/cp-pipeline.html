@@ -1,0 +1,157 @@
+<template id="cp-pipeline-template">
+  <style>
+    #root {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 96px;
+      padding: 120px 160px;
+      font-family: "Montserrat", sans-serif;
+      color: #e8edf4;
+    }
+    #cp-kicker {
+      font-size: 44px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #9aa7b8;
+    }
+    #cp-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+    }
+    .cp-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+    .cp-box {
+      width: 300px;
+      height: 180px;
+      display: grid;
+      place-items: center;
+      background: #161c26;
+      border: 4px solid #2d3a4d;
+      border-radius: 20px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 56px;
+      font-weight: 700;
+    }
+    .cp-box.cp-final {
+      border-color: #f5a524;
+    }
+    .cp-caption {
+      font-size: 32px;
+      font-weight: 400;
+      color: #9aa7b8;
+    }
+    .cp-link {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      width: 200px;
+      height: 180px; /* same height as a box so the arrow sits on the box centre line */
+    }
+    .cp-link svg {
+      display: block;
+      width: 170px;
+      height: 40px;
+      overflow: visible;
+    }
+    .cp-link path {
+      fill: none;
+      stroke: #f5a524;
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .cp-verb {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 30px;
+      color: #f5a524;
+    }
+  </style>
+  <div data-hf-id="hf-k16m"
+    id="root"
+    data-composition-id="cp-pipeline"
+    data-width="1920"
+    data-height="1080"
+    data-duration="8"
+    data-steps='{"source":0.3,"compile":1.5,"object":2.3,"link":3.9,"exe":4.7}'
+  >
+    <h1 data-hf-id="hf-3xud" id="cp-kicker">compile &rarr; link</h1>
+    <div data-hf-id="hf-pnhn" id="cp-row">
+      <div data-hf-id="hf-sgl4" class="cp-node" id="cp-src">
+        <div data-hf-id="hf-x9rn" class="cp-box">main.c</div>
+        <div data-hf-id="hf-sxyh" class="cp-caption">source</div>
+      </div>
+      <div data-hf-id="hf-nh12" class="cp-link" id="cp-l-compile">
+        <svg data-hf-id="hf-oc64" viewBox="0 0 170 40" aria-hidden="true"><path data-hf-id="hf-fvmu" d="M 6 20 L 158 20 M 140 6 L 160 20 L 140 34" /></svg>
+        <div data-hf-id="hf-zohl" class="cp-verb">cc -c</div>
+      </div>
+      <div data-hf-id="hf-fwp1" class="cp-node" id="cp-obj">
+        <div data-hf-id="hf-si3b" class="cp-box">main.o</div>
+        <div data-hf-id="hf-pnh3" class="cp-caption">object file</div>
+      </div>
+      <div data-hf-id="hf-bipr" class="cp-link" id="cp-l-link">
+        <svg data-hf-id="hf-nz4k" viewBox="0 0 170 40" aria-hidden="true"><path data-hf-id="hf-pb3e" d="M 6 20 L 158 20 M 140 6 L 160 20 L 140 34" /></svg>
+        <div data-hf-id="hf-dx4v" class="cp-verb">cc</div>
+      </div>
+      <div data-hf-id="hf-q9w2" class="cp-node" id="cp-exe">
+        <div data-hf-id="hf-001y" class="cp-box cp-final">a.out</div>
+        <div data-hf-id="hf-kyhw" class="cp-caption">executable</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      // Step times live in data-steps so the host page can read them too.
+      const S = { source: 0.3, compile: 1.5, object: 2.3, link: 3.9, exe: 4.7 };
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+
+      // Measure arrow paths once at setup (single-scene composition).
+      document.querySelectorAll(".cp-link path").forEach((p) => {
+        const len = Math.ceil(p.getTotalLength() * 1.05);
+        p.style.strokeDasharray = String(len);
+        p.dataset.len = String(len);
+      });
+      const dashFrom = { strokeDashoffset: (i, el) => Number(el.dataset.len) };
+
+      tl.fromTo("#cp-kicker", { opacity: 0, y: -24 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+
+      tl.addLabel("source", S.source);
+      tl.fromTo("#cp-src", { opacity: 0, x: -60 }, { opacity: 1, x: 0, duration: 0.7 }, "source");
+
+      tl.addLabel("compile", S.compile);
+      tl.fromTo("#cp-l-compile path", dashFrom, { strokeDashoffset: 0, duration: 0.7, ease: "power2.out" }, "compile");
+      tl.fromTo("#cp-l-compile .cp-verb", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: "power1.out" }, "compile+=0.2");
+
+      tl.addLabel("object", S.object);
+      tl.fromTo("#cp-obj", { opacity: 0, scale: 0.85 }, { opacity: 1, scale: 1, duration: 0.6 }, "object");
+
+      tl.addLabel("link", S.link);
+      tl.fromTo("#cp-l-link path", dashFrom, { strokeDashoffset: 0, duration: 0.7, ease: "power2.out" }, "link");
+      tl.fromTo("#cp-l-link .cp-verb", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: "power1.out" }, "link+=0.2");
+
+      tl.addLabel("exe", S.exe);
+      tl.fromTo("#cp-exe", { opacity: 0, x: 60 }, { opacity: 1, x: 0, duration: 0.7, ease: "expo.out" }, "exe");
+      // Emphasis: finite yoyo pulse on the final box (never repeat:-1 here).
+      tl.fromTo(
+        "#cp-exe .cp-box",
+        { scale: 1 },
+        { scale: 1.06, duration: 0.45, ease: "sine.inOut", yoyo: true, repeat: 3 },
+        "exe+=0.9",
+      );
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["cp-pipeline"] = tl;
+    })();
+  </script>
+</template>

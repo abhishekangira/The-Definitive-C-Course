@@ -1,0 +1,82 @@
+{
+  "name": "caesar",
+  "title": "Caesar cipher",
+  "sources": [
+    "caesar.c"
+  ],
+  "binary": "caesar",
+  "timeoutMs": 2000,
+  "tests": [
+    {
+      "name": "compiles",
+      "type": "compile"
+    },
+    {
+      "name": "compiles without warnings",
+      "type": "compile",
+      "warnings": false,
+      "hint": "Fix every warning: the course builds with -Wall -Wextra -pedantic."
+    },
+    {
+      "name": "encrypts \"a\" with key 1 as \"b\"",
+      "args": [
+        "1"
+      ],
+      "stdin": "a\n",
+      "stdout": "ciphertext: b\n"
+    },
+    {
+      "name": "encrypts \"barfoo\" with key 23 as \"yxocll\"",
+      "args": [
+        "23"
+      ],
+      "stdin": "barfoo\n",
+      "stdout": "ciphertext: yxocll\n",
+      "hint": "Letters past 'z' must wrap back to 'a' (think %)."
+    },
+    {
+      "name": "keeps case and punctuation",
+      "args": [
+        "13"
+      ],
+      "stdin": "Hello, World!\n",
+      "stdout": {
+        "matches": "^ciphertext: Uryyb, Jbeyq!\\n$"
+      }
+    },
+    {
+      "name": "rejects a missing key",
+      "args": [],
+      "exit": 1,
+      "stderr": {
+        "contains": "Usage"
+      },
+      "hint": "Check argc before you touch argv[1]."
+    },
+    {
+      "name": "rejects a non-numeric key",
+      "args": [
+        "2x"
+      ],
+      "exit": 1,
+      "stdin": "abc\n",
+      "stderr": {
+        "contains": "Usage"
+      },
+      "stdout": ""
+    },
+    {
+      "name": "rotate() unit tests",
+      "type": "unit",
+      "harness": "tests/test_rotate.c"
+    },
+    {
+      "name": "no memory errors or leaks",
+      "type": "memory",
+      "args": [
+        "5"
+      ],
+      "stdin": "memory\n"
+    }
+  ]
+}

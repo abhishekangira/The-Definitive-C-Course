@@ -1,0 +1,173 @@
+{
+  "generatedAt": "2026-10-15T10:13:08.069Z",
+  "host": "linux-x64",
+  "versions": {
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)"
+  },
+  "samples": {
+    "spin": {
+      "id": "spin",
+      "file": "neg/neg.mdx",
+      "line": 1,
+      "hash": "01ee519df8acf883",
+      "meta": {
+        "id": "spin",
+        "run": true,
+        "timeout": "500"
+      },
+      "expect": "success",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror spin.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": null,
+            "signal": "SIGKILL",
+            "timedOut": true,
+            "durationMs": 503,
+            "stdoutRaw": "",
+            "stdout": "",
+            "stderr": ""
+          }
+        },
+        "clang": {
+          "version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "command": "clang -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror spin.c -o <tmp>/prog-clang",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": null,
+            "signal": "SIGKILL",
+            "timedOut": true,
+            "durationMs": 502,
+            "stdoutRaw": "",
+            "stdout": "",
+            "stderr": ""
+          }
+        }
+      },
+      "issues": [
+        {
+          "level": "error",
+          "toolchain": "gcc",
+          "msg": "timed out after 500 ms"
+        },
+        {
+          "level": "error",
+          "toolchain": "clang",
+          "msg": "timed out after 500 ms"
+        }
+      ],
+      "canonical": {
+        "stdout": "",
+        "exitCode": null
+      }
+    },
+    "leaky": {
+      "id": "leaky",
+      "file": "neg/neg.mdx",
+      "line": 5,
+      "hash": "1a5656e80f5a6f69",
+      "meta": {
+        "id": "leaky",
+        "run": true,
+        "sanitize": "address",
+        "expect": "success",
+        "compilers": "gcc"
+      },
+      "expect": "success",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror -fsanitize=address -fno-omit-frame-pointer -fno-sanitize-recover=all leaky.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": 86,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 119,
+            "stdoutRaw": "",
+            "stdout": "",
+            "stderr": "\n=================================================================\n==PID==ERROR: LeakSanitizer: detected memory leaks\n\nDirect leak of 10 byte(s) in 1 object(s) allocated from:\n    #0 <addr1> in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69\n    #1 <addr2> in main <tmp>/leaky.c:2\n    #2 <addr3> in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 <addr4> in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 <addr5> in _start (<tmp>/prog-gcc+0x10c4) (BuildId: 6beb4e31ca0e562cb795463aa9b919afc0f1b8cd)\n\nSUMMARY: AddressSanitizer: 10 byte(s) leaked in 1 allocation(s).\n",
+            "sanitizer": {
+              "tool": "LeakSanitizer",
+              "kind": "detected",
+              "access": null,
+              "where": null,
+              "frames": [
+                "main <tmp>/leaky.c:2"
+              ],
+              "summary": "SUMMARY: AddressSanitizer: 10 byte(s) leaked in 1 allocation(s)."
+            }
+          }
+        }
+      },
+      "issues": [
+        {
+          "level": "error",
+          "toolchain": "gcc",
+          "msg": "exit code 86, expected 0\n\n=================================================================\n==PID==ERROR: LeakSanitizer: detected memory leaks\n\nDirect leak of 10 byte(s) in 1 object(s) allocated from:\n    #0 <addr1> in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69\n    #1 <addr2> in main <tmp>/leaky.c:2\n    #2 <addr3> in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 <addr4> in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 <addr5> in _start (<tmp>/prog-gcc+0x10c4) (BuildId: 6beb4e31ca0e562cb795463aa9b919afc0f1b8cd)\n\nSUMMARY: AddressSanitizer: 10 byte(s) leaked in 1 allocation(s).\n"
+        }
+      ],
+      "canonical": {
+        "stdout": "",
+        "exitCode": 86
+      }
+    },
+    "say-args": {
+      "id": "say-args",
+      "file": "neg/neg.mdx",
+      "line": 10,
+      "hash": "dd58df6ffea7c02b",
+      "meta": {
+        "id": "say-args",
+        "run": true,
+        "args": "one 'two words' \"three\"",
+        "compilers": "gcc"
+      },
+      "expect": "success",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror say-args.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 3,
+            "stdoutRaw": "[one]\n[two words]\n[three]\n",
+            "stdout": "[one]\n[two words]\n[three]\n",
+            "stderr": ""
+          }
+        }
+      },
+      "issues": [],
+      "canonical": {
+        "stdout": "[one]\n[two words]\n[three]\n",
+        "exitCode": 0
+      }
+    }
+  }
+}

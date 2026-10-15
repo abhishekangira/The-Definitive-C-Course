@@ -1,0 +1,11 @@
+{
+  "duration": 8,
+  "assertions": [
+    { "kind": "appearsBy", "selector": "#cp-src", "bySec": 1.0 },
+    { "kind": "appearsBy", "selector": "#cp-obj", "bySec": 2.8 },
+    { "kind": "appearsBy", "selector": "#cp-exe", "bySec": 5.2 },
+    { "kind": "before", "a": "#cp-src", "b": "#cp-obj" },
+    { "kind": "before", "a": "#cp-obj", "b": "#cp-exe" },
+    { "kind": "staysInFrame", "selector": "#cp-row" }
+  ]
+}

@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import { compile } from './lib.mjs';
+import { WASI, File, OpenFile, ConsoleStdout } from '@bjorn3/browser_wasi_shim';
+const c = await compile({ 'order.c': fs.readFileSync('c/order.c', 'utf8') }, ['-O0', 'order.c', '-o', 'a.wasm']);
+let combined = '';
+const dec = new TextDecoder();
+const wasi = new WASI(['a'], [], [new OpenFile(new File([])), new ConsoleStdout(b => combined += '[1]' + dec.decode(b)), new ConsoleStdout(b => combined += '[2]' + dec.decode(b))], { debug: false });
+const inst = await WebAssembly.instantiate(await WebAssembly.compile(c.files['a.wasm']), { wasi_snapshot_preview1: wasi.wasiImport });
+wasi.start(inst);
+console.log(JSON.stringify(combined));

@@ -1,0 +1,70 @@
+# Pointers are addresses
+
+```c id=pointer-addresses run
+#include <stdio.h>
+
+int main(void) {
+    int a = 1, b = 2;
+    int *p = &a;
+    int *q = NULL;
+    printf("&a = %p\n", (void *)&a);
+    printf("&b = %p\n", (void *)&b);
+    printf("p  = %p (same as &a? %s)\n", (void *)p, p == &a ? "yes" : "no");
+    printf("q  = %p\n", (void *)q);
+    printf("hex literal stays: %#x\n", 255u);
+    return 0;
+}
+```
+
+```c id=missing-semicolon expect=compile-error
+#include <stdio.h>
+
+int main(void) {
+    printf("hi\n")
+    return 0;
+}
+```
+
+```c id=format-warning expect=warning warn=-Wformat
+#include <stdio.h>
+
+int main(void) {
+    double d = 3.5;
+    printf("%d\n", d);
+    return 0;
+}
+```
+
+```c id=heap-overflow run sanitize=address,undefined expect=runtime-error
+#include <stdlib.h>
+
+int main(void) {
+    int *a = malloc(4 * sizeof *a);
+    if (a == NULL) {
+        return 1;
+    }
+    a[4] = 7;
+    free(a);
+    return 0;
+}
+```
+
+```c id=unused-var-oops run
+#include <stdio.h>
+
+int main(void) {
+    int unused = 3;
+    printf("ok\n");
+    return 0;
+}
+```
+
+```c id=uninit-ub run expect=ub
+#include <stdio.h>
+
+int main(void) {
+    int x;
+    printf("%d\n", x);
+    return 0;
+}
+```

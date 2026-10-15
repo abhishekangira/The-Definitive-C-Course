@@ -1,0 +1,512 @@
+{
+  "generatedAt": "2026-10-15T10:19:19.585Z",
+  "host": "linux-x64",
+  "versions": {
+    "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+    "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)"
+  },
+  "samples": {
+    "sizeof-basics": {
+      "id": "sizeof-basics",
+      "file": "lessons/01-types.mdx",
+      "line": 9,
+      "hash": "9f715835a6106144",
+      "meta": {
+        "id": "sizeof-basics",
+        "predict": true,
+        "platform": true
+      },
+      "expect": "success",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror sizeof-basics.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 6,
+            "stdoutDisplay": "char:      1\nint:       4\nlong:      8\nlong long: 8\nvoid *:    8\n",
+            "stdout": "char:      1\nint:       4\nlong:      8\nlong long: 8\nvoid *:    8\n",
+            "stderr": ""
+          }
+        },
+        "clang": {
+          "version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "command": "clang -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror sizeof-basics.c -o <tmp>/prog-clang",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 3,
+            "stdoutDisplay": "char:      1\nint:       4\nlong:      8\nlong long: 8\nvoid *:    8\n",
+            "stdout": "char:      1\nint:       4\nlong:      8\nlong long: 8\nvoid *:    8\n",
+            "stderr": ""
+          }
+        }
+      },
+      "issues": [],
+      "canonical": {
+        "stdout": "char:      1\nint:       4\nlong:      8\nlong long: 8\nvoid *:    8\n",
+        "exitCode": 0
+      }
+    },
+    "sum-stdin": {
+      "id": "sum-stdin",
+      "file": "lessons/01-types.mdx",
+      "line": 24,
+      "hash": "4ba5a9c72eb926ae",
+      "meta": {
+        "id": "sum-stdin",
+        "predict": true,
+        "stdin": "3 4\n"
+      },
+      "expect": "success",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror sum-stdin.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 3,
+            "stdoutDisplay": "3 + 4 = 7\n",
+            "stdout": "3 + 4 = 7\n",
+            "stderr": ""
+          }
+        },
+        "clang": {
+          "version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "command": "clang -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror sum-stdin.c -o <tmp>/prog-clang",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 3,
+            "stdoutDisplay": "3 + 4 = 7\n",
+            "stdout": "3 + 4 = 7\n",
+            "stderr": ""
+          }
+        }
+      },
+      "issues": [],
+      "canonical": {
+        "stdout": "3 + 4 = 7\n",
+        "exitCode": 0
+      }
+    },
+    "pointer-addresses": {
+      "id": "pointer-addresses",
+      "file": "lessons/02-pointers.mdx",
+      "line": 3,
+      "hash": "45838598137c87a2",
+      "meta": {
+        "id": "pointer-addresses",
+        "run": true
+      },
+      "expect": "success",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror pointer-addresses.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 3,
+            "stdoutDisplay": "&a = 0x7ffd4a3c1bc0\n&b = 0x7ffd4a3c1bc4\np  = 0x7ffd4a3c1bc0 (same as &a? yes)\nq  = (nil)\nhex literal stays: 0xff\n",
+            "stdout": "&a = <addr1>\n&b = <addr2>\np  = <addr1> (same as &a? yes)\nq  = <NULL>\nhex literal stays: 0xff\n",
+            "stderr": ""
+          }
+        },
+        "clang": {
+          "version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "command": "clang -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror pointer-addresses.c -o <tmp>/prog-clang",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 2,
+            "stdoutDisplay": "&a = 0x7ffd4a3c1bc8\n&b = 0x7ffd4a3c1bc4\np  = 0x7ffd4a3c1bc8 (same as &a? yes)\nq  = (nil)\nhex literal stays: 0xff\n",
+            "stdout": "&a = <addr1>\n&b = <addr2>\np  = <addr1> (same as &a? yes)\nq  = <NULL>\nhex literal stays: 0xff\n",
+            "stderr": ""
+          }
+        }
+      },
+      "issues": [],
+      "canonical": {
+        "stdout": "&a = <addr1>\n&b = <addr2>\np  = <addr1> (same as &a? yes)\nq  = <NULL>\nhex literal stays: 0xff\n",
+        "exitCode": 0
+      }
+    },
+    "missing-semicolon": {
+      "id": "missing-semicolon",
+      "file": "lessons/02-pointers.mdx",
+      "line": 19,
+      "hash": "ecff500972e787c5",
+      "meta": {
+        "id": "missing-semicolon",
+        "expect": "compile-error"
+      },
+      "expect": "compile-error",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never missing-semicolon.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": false,
+            "exitCode": 1,
+            "diagnostics": [
+              {
+                "file": "missing-semicolon.c",
+                "line": 4,
+                "col": 19,
+                "severity": "error",
+                "message": "expected ';' before 'return'",
+                "flag": null
+              }
+            ],
+            "stderr": "missing-semicolon.c: In function 'main':\nmissing-semicolon.c:4:19: error: expected ';' before 'return'\n    4 |     printf(\"hi\\n\")\n      |                   ^\n      |                   ;\n    5 |     return 0;\n      |     ~~~~~~         \n"
+          }
+        },
+        "clang": {
+          "version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "command": "clang -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never missing-semicolon.c -o <tmp>/prog-clang",
+          "compile": {
+            "ok": false,
+            "exitCode": 1,
+            "diagnostics": [
+              {
+                "file": "missing-semicolon.c",
+                "line": 4,
+                "col": 19,
+                "severity": "error",
+                "message": "expected ';' after expression",
+                "flag": null
+              }
+            ],
+            "stderr": "missing-semicolon.c:4:19: error: expected ';' after expression\n    4 |     printf(\"hi\\n\")\n      |                   ^\n      |                   ;\n1 error generated.\n"
+          }
+        }
+      },
+      "issues": []
+    },
+    "format-warning": {
+      "id": "format-warning",
+      "file": "lessons/02-pointers.mdx",
+      "line": 28,
+      "hash": "cc9b2047413947a1",
+      "meta": {
+        "id": "format-warning",
+        "expect": "warning",
+        "warn": "-Wformat"
+      },
+      "expect": "warning",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never format-warning.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [
+              {
+                "file": "format-warning.c",
+                "line": 5,
+                "col": 14,
+                "severity": "warning",
+                "message": "format '%d' expects argument of type 'int', but argument 2 has type 'double'",
+                "flag": "-Wformat"
+              }
+            ],
+            "stderr": "format-warning.c: In function 'main':\nformat-warning.c:5:14: warning: format '%d' expects argument of type 'int', but argument 2 has type 'double' [-Wformat=]\n    5 |     printf(\"%d\\n\", d);\n      |             ~^     ~\n      |              |     |\n      |              int   double\n      |             %f\n"
+          }
+        },
+        "clang": {
+          "version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "command": "clang -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never format-warning.c -o <tmp>/prog-clang",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [
+              {
+                "file": "format-warning.c",
+                "line": 5,
+                "col": 20,
+                "severity": "warning",
+                "message": "format specifies type 'int' but the argument has type 'double'",
+                "flag": "-Wformat"
+              }
+            ],
+            "stderr": "format-warning.c:5:20: warning: format specifies type 'int' but the argument has type 'double' [-Wformat]\n    5 |     printf(\"%d\\n\", d);\n      |             ~~     ^\n      |             %f\n1 warning generated.\n"
+          }
+        }
+      },
+      "issues": []
+    },
+    "heap-overflow": {
+      "id": "heap-overflow",
+      "file": "lessons/02-pointers.mdx",
+      "line": 38,
+      "hash": "bbda8a998d74e654",
+      "meta": {
+        "id": "heap-overflow",
+        "run": true,
+        "sanitize": "address,undefined",
+        "expect": "runtime-error"
+      },
+      "expect": "runtime-error",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all heap-overflow.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [],
+            "stderr": ""
+          },
+          "run": {
+            "exitCode": 86,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 121,
+            "stdoutDisplay": "",
+            "stdout": "",
+            "stderr": "=================================================================\n==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address <addr1> at pc <addr2> bp <addr3> sp <addr4>\nWRITE of size 4 at <addr1> thread T<n>\n    #0 <addr5> in main <tmp>/heap-overflow.c:8\n    #1 <addr6> in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 <addr7> in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 <addr8> in _start (<tmp>/prog-gcc+0x1184) (BuildId: 8dfbad6acfd1e56a1def41acb1647dde8ed10d8b)\n\n<addr1> is located 0 bytes after 16-byte region [<addr9>,<addr1>)\nallocated by thread T<n> here:\n    #0 <addr10> in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69\n    #1 <addr11> in main <tmp>/heap-overflow.c:4\n    #2 <addr6> in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #3 <addr7> in __libc_start_main_impl ../csu/libc-start.c:360\n    #4 <addr8> in _start (<tmp>/prog-gcc+0x1184) (BuildId: 8dfbad6acfd1e56a1def41acb1647dde8ed10d8b)\n\nSUMMARY: AddressSanitizer: heap-buffer-overflow <tmp>/heap-overflow.c:8 in main\nShadow bytes around the buggy address:\n  <addr12>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr13>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr14>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr15>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr16>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=><addr17>: fa fa 00 00[fa]fa fa fa fa fa fa fa fa fa fa fa\n  <addr18>: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  <addr19>: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  <addr20>: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  <addr21>: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  <addr22>: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==PID==ABORTING\n",
+            "sanitizer": {
+              "tool": "AddressSanitizer",
+              "kind": "heap-buffer-overflow",
+              "access": "WRITE of size 4",
+              "where": "is located 0 bytes after 16-byte region [<addr9>,<addr1>)",
+              "frames": [
+                "main <tmp>/heap-overflow.c:8",
+                "main <tmp>/heap-overflow.c:4"
+              ],
+              "summary": "SUMMARY: AddressSanitizer: heap-buffer-overflow <tmp>/heap-overflow.c:8 in main"
+            }
+          }
+        },
+        "clang": {
+          "version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "command": "clang -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all heap-overflow.c -o <tmp>/prog-clang",
+          "compile": {
+            "ok": false,
+            "exitCode": 1,
+            "diagnostics": [],
+            "stderr": "/usr/bin/ld: cannot find /usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.asan_static-x86_64.a: No such file or directory\n/usr/bin/ld: cannot find /usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.asan-x86_64.a: No such file or directory\nclang: error: linker command failed with exit code 1 (use -v to see invocation)\n"
+          },
+          "skipped": "sanitizer runtime not installed for clang"
+        }
+      },
+      "issues": [
+        {
+          "level": "warn",
+          "toolchain": "clang",
+          "msg": "sanitizer runtime not installed for clang"
+        }
+      ],
+      "canonical": {
+        "stdout": "",
+        "exitCode": 86
+      }
+    },
+    "unused-var-oops": {
+      "id": "unused-var-oops",
+      "file": "lessons/02-pointers.mdx",
+      "line": 52,
+      "hash": "a324226803a123fb",
+      "meta": {
+        "id": "unused-var-oops",
+        "run": true
+      },
+      "expect": "success",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror unused-var-oops.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": false,
+            "exitCode": 1,
+            "diagnostics": [
+              {
+                "file": "unused-var-oops.c",
+                "line": 4,
+                "col": 9,
+                "severity": "error",
+                "message": "unused variable 'unused'",
+                "flag": "-Wunused-variable"
+              }
+            ],
+            "stderr": "unused-var-oops.c: In function 'main':\nunused-var-oops.c:4:9: error: unused variable 'unused' [-Werror=unused-variable]\n    4 |     int unused = 3;\n      |         ^~~~~~\ncc1: all warnings being treated as errors\n"
+          }
+        },
+        "clang": {
+          "version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "command": "clang -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never -Werror unused-var-oops.c -o <tmp>/prog-clang",
+          "compile": {
+            "ok": false,
+            "exitCode": 1,
+            "diagnostics": [
+              {
+                "file": "unused-var-oops.c",
+                "line": 4,
+                "col": 9,
+                "severity": "error",
+                "message": "unused variable 'unused'",
+                "flag": "-Wunused-variable"
+              }
+            ],
+            "stderr": "unused-var-oops.c:4:9: error: unused variable 'unused' [-Werror,-Wunused-variable]\n    4 |     int unused = 3;\n      |         ^~~~~~\n1 error generated.\n"
+          }
+        }
+      },
+      "issues": [
+        {
+          "level": "error",
+          "toolchain": "gcc",
+          "msg": "unexpected compile failure:\nunused-var-oops.c: In function 'main':\nunused-var-oops.c:4:9: error: unused variable 'unused' [-Werror=unused-variable]\n    4 |     int unused = 3;\n      |         ^~~~~~\ncc1: all warnings being treated as errors\n"
+        },
+        {
+          "level": "error",
+          "toolchain": "clang",
+          "msg": "unexpected compile failure:\nunused-var-oops.c:4:9: error: unused variable 'unused' [-Werror,-Wunused-variable]\n    4 |     int unused = 3;\n      |         ^~~~~~\n1 error generated.\n"
+        }
+      ]
+    },
+    "uninit-ub": {
+      "id": "uninit-ub",
+      "file": "lessons/02-pointers.mdx",
+      "line": 62,
+      "hash": "50a53d518943bca0",
+      "meta": {
+        "id": "uninit-ub",
+        "run": true,
+        "expect": "ub"
+      },
+      "expect": "ub",
+      "toolchains": {
+        "gcc": {
+          "version": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "command": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never uninit-ub.c -o <tmp>/prog-gcc",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [
+              {
+                "file": "uninit-ub.c",
+                "line": 5,
+                "col": 5,
+                "severity": "warning",
+                "message": "'x' is used uninitialized",
+                "flag": "-Wuninitialized"
+              },
+              {
+                "file": "uninit-ub.c",
+                "line": 4,
+                "col": 9,
+                "severity": "note",
+                "message": "'x' was declared here",
+                "flag": null
+              }
+            ],
+            "stderr": "uninit-ub.c: In function 'main':\nuninit-ub.c:5:5: warning: 'x' is used uninitialized [-Wuninitialized]\n    5 |     printf(\"%d\\n\", x);\n      |     ^~~~~~~~~~~~~~~~~\nuninit-ub.c:4:9: note: 'x' was declared here\n    4 |     int x;\n      |         ^\n"
+          },
+          "run": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 2,
+            "stdoutDisplay": "32767\n",
+            "stdout": "32767\n",
+            "stderr": ""
+          }
+        },
+        "clang": {
+          "version": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+          "command": "clang -std=c17 -Wall -Wextra -pedantic -g -O0 -fdiagnostics-color=never uninit-ub.c -o <tmp>/prog-clang",
+          "compile": {
+            "ok": true,
+            "exitCode": 0,
+            "diagnostics": [
+              {
+                "file": "uninit-ub.c",
+                "line": 5,
+                "col": 20,
+                "severity": "warning",
+                "message": "variable 'x' is uninitialized when used here",
+                "flag": "-Wuninitialized"
+              },
+              {
+                "file": "uninit-ub.c",
+                "line": 4,
+                "col": 10,
+                "severity": "note",
+                "message": "initialize the variable 'x' to silence this warning",
+                "flag": null
+              }
+            ],
+            "stderr": "uninit-ub.c:5:20: warning: variable 'x' is uninitialized when used here [-Wuninitialized]\n    5 |     printf(\"%d\\n\", x);\n      |                    ^\nuninit-ub.c:4:10: note: initialize the variable 'x' to silence this warning\n    4 |     int x;\n      |          ^\n      |           = 0\n1 warning generated.\n"
+          },
+          "run": {
+            "exitCode": 0,
+            "signal": null,
+            "timedOut": false,
+            "durationMs": 2,
+            "stdoutDisplay": "2076506920\n",
+            "stdout": "2076506920\n",
+            "stderr": ""
+          }
+        }
+      },
+      "issues": [
+        {
+          "level": "info",
+          "msg": "gcc vs clang output differs",
+          "diff": "- 32767\n+ 2076506920\n  "
+        }
+      ],
+      "canonical": {
+        "stdout": "32767\n",
+        "exitCode": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+import { compile, runShim } from './lib.mjs';
+const [file, ...args] = process.argv.slice(2);
+const name = file.split('/').pop();
+const c = await compile({ [name]: fs.readFileSync(file, 'utf8') }, [...args, name, '-o', 'a.wasm']);
+if (c.diag) console.log(c.diag.trimEnd());
+if (!c.ok) process.exit(1);
+const r = await runShim(c.files['a.wasm'], { stdin: process.env.STDIN || '' });
+console.log(r.stdout.trimEnd()); if (r.stderr) console.log('[stderr]', r.stderr.trimEnd());
+console.log(`[exit=${r.exitCode} trap=${r.trap} memPages=${r.memPages} size=${c.files['a.wasm'].length} compile=${c.ms.toFixed(0)}ms run=${r.ms.toFixed(0)}ms]`);
