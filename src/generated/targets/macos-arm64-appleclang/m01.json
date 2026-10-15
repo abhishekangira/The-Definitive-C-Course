@@ -463,7 +463,7 @@
           "exit": 0,
           "signal": null,
           "stderr": "",
-          "stdout": ""
+          "stdout": "read 0 item(s), n = 0\n"
         },
         "target": "macos-arm64-appleclang"
       }
@@ -481,7 +481,7 @@
           "exit": 0,
           "signal": null,
           "stderr": "",
-          "stdout": ""
+          "stdout": "char 1, int 4, double 8, bool 1\n"
         },
         "target": "macos-arm64-appleclang"
       }
@@ -517,7 +517,7 @@
           "exit": 0,
           "signal": null,
           "stderr": "",
-          "stdout": ""
+          "stdout": "Tue\nWed\n"
         },
         "target": "macos-arm64-appleclang"
       }
@@ -615,26 +615,26 @@
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "10197974\n"
+            "stdout": "46455766\n"
           },
           {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "80780246\n"
+            "stdout": "40754134\n"
           },
           {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "72784854\n"
+            "stdout": "84663254\n"
           }
         ],
         "run": {
           "exit": 0,
           "signal": null,
           "stderr": "",
-          "stdout": "10197974\n"
+          "stdout": "46455766\n"
         },
         "target": "macos-arm64-appleclang"
       }
