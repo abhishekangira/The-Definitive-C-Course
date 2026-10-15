@@ -17,6 +17,9 @@ a { color: var(--accent); text-underline-offset: 2px; }
 a:hover { text-decoration-thickness: 2px; }
 
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+/* Headings and <main> are focused by script after navigation so screen readers announce the new page;
+   they are not interactive, so they get no visible ring. */
+[tabindex="-1"]:focus-visible { outline: none; }
 
 h1, h2, h3, h4 { line-height: 1.25; margin: 1.4em 0 0.5em; font-weight: 700; letter-spacing: -0.01em; }
 h1 { font-size: 2rem; margin-top: 0; }

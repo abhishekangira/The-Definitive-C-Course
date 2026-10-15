@@ -7,6 +7,7 @@ import remarkFrontmatter from 'remark-frontmatter';
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { parse as parseYaml } from 'yaml';
 import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import remarkCourse from './tools/mdx/remark-course';
 
 /** `import x from './file.yaml'` → parsed object. */
@@ -20,17 +21,32 @@ function yamlPlugin(): Plugin {
   };
 }
 
-/** `import fm from './lesson.mdx?frontmatter'` → just the YAML frontmatter, without compiling the lesson. */
+/**
+ * `import fm from './lesson.mdx?frontmatter'` → just the YAML frontmatter, without compiling the lesson.
+ * The module gets a virtual id ("\0" prefix) so the MDX plugin, which also matches *.mdx files by their
+ * path, never sees it and cannot replace the data with the compiled lesson component.
+ */
 function frontmatterPlugin(): Plugin {
+  const PREFIX = '\0course-frontmatter:';
+  let root = process.cwd();
   return {
     name: 'course-mdx-frontmatter',
     enforce: 'pre',
+    configResolved(config) { root = config.root; },
+    resolveId(source, importer) {
+      const m = /^(.*\.mdx)\?frontmatter$/.exec(source);
+      if (!m) return null;
+      // import.meta.glob hands over importer-relative paths; plain imports may be absolute or root-relative.
+      const file = m[1].startsWith('.') && importer ? path.resolve(path.dirname(importer), m[1])
+        : m[1].startsWith(root) ? m[1] : path.join(root, m[1]);
+      return PREFIX + file;
+    },
     async load(id) {
-      if (!id.endsWith('.mdx?frontmatter')) return null;
-      const file = id.slice(0, -'?frontmatter'.length);
+      if (!id.startsWith(PREFIX)) return null;
+      const file = id.slice(PREFIX.length);
       this.addWatchFile(file);
-      const text = await readFile(file, 'utf8');
-      const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+      const text = (await readFile(file, 'utf8')).replace(/\r\n/g, '\n');
+      const m = /^---\n([\s\S]*?)\n---/.exec(text);
       return `export default ${JSON.stringify(m ? parseYaml(m[1]) : {})};`;
     },
   };
