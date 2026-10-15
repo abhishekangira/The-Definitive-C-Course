@@ -2,6 +2,17 @@
 
 An interactive, static (no backend) React + TypeScript web app that teaches C17 and low-level fundamentals to front-end engineers. **Read `PLAN.md` first.** It is the source of truth for architecture, the content format (§2.4), the verification pipeline (§3), the course outline (§6) and the per-module definition of done (§3.6). This file is the working summary for any coding agent (Claude Code, Codex, Cursor, Copilot, …). `CLAUDE.md` only imports this file.
 
+## Start here: when you are handed a ticket
+You were told to read this file and given a ticket. Do this, in order:
+1. Read this whole file, then the PLAN.md sections your ticket cites. The non-negotiables and "Pitfalls we already hit" apply to every change.
+2. Branch from the latest `main` (`ticket/<short-name>`). **One ticket = one pull request.** Never push to `main` and never force-push.
+3. Stay in scope. Don't start Module 2, change the licence, edit PLAN.md decisions, or add a dependency without saying why (pin exact versions).
+4. Don't hand-edit `src/generated/` (regenerate it with `npm run verify`) and don't hand-type expected outputs.
+5. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium` (`playwright.config.ts` falls back to Playwright's own Chromium; set `CHROMIUM_PATH` to use another).
+6. In the PR description say what changed and why, which commands you ran and their results, and anything you could not verify. Say so plainly; never claim a pass you didn't see.
+7. If the ticket is wrong, ambiguous or blocked, stop and say so (in the PR, or to the person who gave it to you) instead of working around it.
+8. No repository access, or can't run commands (for example a plain chat window)? Say so, return your change as a unified diff plus the exact commands a human should run to check it, and label everything unverified.
+
 ## Status
 - Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12 (public repo → GitHub Pages; MP4s committed; allocator-only capstone; dark-only animation renders).
 - Stage 2 (app shell + Module 1) is **built and awaiting client review**. Open items are listed in the review hand-off; do not start Module 2 before the client signs off.
@@ -102,14 +113,6 @@ content/modules/m01-c-in-your-browser/
 - **Chromium** is at `/opt/pw-browsers`. Don't run `playwright install` there. Open-source Chromium can't play H.264, so e2e tests use a WebM fixture.
 - **GitHub.** Web and API access is limited to repos attached to the session. `gh repo create` and GraphQL are blocked; use repo-scoped REST.
 
-## Working from a ticket (contributors other than the lead session)
-- Branch from the latest `main` (`ticket/<short-name>`), do **one ticket per pull request**, and never push to `main`. Never force-push.
-- Stay in scope. Don't start Module 2, change the licence, edit `PLAN.md` decisions, or add a dependency without saying why (pin exact versions).
-- Don't hand-edit `src/generated/`; regenerate it. Don't hand-type expected outputs.
-- Before opening the PR run the gates that touch your change (see Commands). For anything that changes the app, also run `npm run build && npm run e2e`.
-- The PR description says what changed and why, which commands you ran with their result, and anything you could not verify (say so plainly; don't claim a pass you didn't see).
-- If the ticket is wrong or blocked, stop and say so in the PR instead of working around it.
-
 ## Git
-- The lead session works on `main`; everyone else uses a branch and a pull request (above). Commit messages are descriptive; add the attribution lines your harness supplies.
-- Pull with rebase before you push (the Targets bot commits to `main`).
+- The lead session works on `main`; everyone else uses a branch and a pull request (see **Start here**). Commit messages are descriptive; add the attribution lines your harness supplies.
+- Pull with rebase before you push (the Targets bot commits to `main`). Never force-push.
