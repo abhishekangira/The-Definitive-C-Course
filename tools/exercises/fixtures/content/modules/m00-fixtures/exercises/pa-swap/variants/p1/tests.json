@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "sources": ["main.c"],
+  "tests": [
+    { "name": "counts down and says Go!", "run": { "stdin": "" }, "expect": { "stdout": "3\n2\n1\nGo!\n" } }
+  ]
+}

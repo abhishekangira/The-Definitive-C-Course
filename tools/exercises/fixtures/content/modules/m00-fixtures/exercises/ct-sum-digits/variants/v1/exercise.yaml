@@ -1,0 +1,16 @@
+id: ct-sum-digits/variants/v1
+kind: ct
+title: Count the digits
+prompt: |
+  Write `int count_digits(int n)`, which returns how many decimal digits `n` has (0 has one), and a
+  `main` that reads one integer and prints `digits: N`.
+runsIn: browser
+file: main.c
+hints:
+  - "How many times can you divide by 10 before nothing is left?"
+  - "Start the count at 1 and loop while the number is at least 10, dividing by 10 each time."
+  - |
+    long long m = n < 0 ? -(long long)n : n;
+    int count = 1;
+    while (m >= 10) { count++; m /= 10; }
+variants: []

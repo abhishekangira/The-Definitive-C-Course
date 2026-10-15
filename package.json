@@ -9,7 +9,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "npm run toolchain:prepare && vite",
+    "dev": "npm run toolchain:prepare && node tools/check/build.mjs --into public && vite",
     "build": "npm run toolchain:prepare && tsc --noEmit && vite build && node tools/check/build.mjs --into dist",
     "preview": "vite preview",
     "toolchain:prepare": "node tools/toolchain/prepare.mjs",

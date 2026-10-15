@@ -57,7 +57,7 @@ function readmeTitle(text: string | undefined): string | undefined {
   return text ? /^#\s+(.+)$/m.exec(text)?.[1].trim() : undefined;
 }
 
-/** A folder with check.json and a starter/ directory (the layout of content/modules/*/project/<id>/). */
+/** A folder with check.json and a starter/ directory (the layout of a module's project/<id>/ folder). */
 export function isProjectFolder(dir: string): boolean {
   return existsSync(path.join(dir, 'check.json')) && existsSync(path.join(dir, 'starter'));
 }

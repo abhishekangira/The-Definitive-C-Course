@@ -79,7 +79,8 @@ export interface ExerciseMeta {
   /** Variant folder names under variants/. Empty for variants themselves. */
   variants: string[];
   /** Parsons only: lines are taken from solution.c; distractors are extra wrong lines. */
-  parsons?: { distractors: string[]; indent: boolean };
+  /** distractors: extra lines that do not belong; accepted: other complete orderings (as source text) that also pass. */
+  parsons?: { distractors: string[]; indent: boolean; accepted?: string[] };
   /** Stdin shown pre-filled in the run panel. */
   sampleStdin?: string;
 }
@@ -99,6 +100,8 @@ export interface IoTest {
   run: TestRun;
   expect: { stdout?: TextExpect; stderr?: TextExpect; exit?: number | 'nonzero' };
   hint?: string;
+  /** Tiered hints for this test, when one message is not enough (the checkpoint shows none). */
+  hints?: string[];
 }
 
 export interface UnitTest {
@@ -106,6 +109,8 @@ export interface UnitTest {
   /** Harness C file (relative to the exercise/project folder) that #includes the learner's file. */
   unit: { harness: string };
   hint?: string;
+  /** Tiered hints for this test, when one message is not enough (the checkpoint shows none). */
+  hints?: string[];
 }
 
 export interface MakeTest {
@@ -113,10 +118,15 @@ export interface MakeTest {
   /** Native only: make target to run; non-zero exit fails. */
   make: { target: string; expectRebuild?: string[] };
   hint?: string;
+  /** Tiered hints for this test, when one message is not enough (the checkpoint shows none). */
+  hints?: string[];
 }
 
 export interface TestsSpec {
   version: 1;
+  title?: string;
+  /** Name of the built executable, shown as "ran: ./name" and used by the Makefile; defaults to sources[0] without ".c". */
+  binary?: string;
   /** Files the learner submits (first one defines main for single-file exercises). */
   sources: string[];
   /** "error": the build must be warning-free (the default). */

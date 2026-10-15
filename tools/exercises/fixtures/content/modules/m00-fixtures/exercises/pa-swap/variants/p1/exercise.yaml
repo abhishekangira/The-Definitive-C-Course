@@ -1,0 +1,18 @@
+id: pa-swap/variants/p1
+kind: pa
+title: Put the countdown together
+prompt: Arrange the lines into a program that prints `3`, `2`, `1` and then `Go!`, one per line.
+runsIn: browser
+file: main.c
+hints:
+  - "The loop should stop before 0 is printed."
+  - "Count down with i--, and print Go! once, after the loop."
+  - |
+    for (int i = 3; i > 0; i--) {
+        printf("%d\n", i);
+    }
+variants: []
+parsons:
+  distractors:
+    - "for (int i = 3; i >= 0; i--) {"
+  indent: false

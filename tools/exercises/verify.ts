@@ -1,9 +1,17 @@
 // npm run verify:exercises (PLAN §3.3): every reference solution passes, every starter fails at
 // least one test, and every variant is checked the same way.
-//   - browser exercises (CT/FB): the browser toolchain in Node (WasmNodeBackend) + src/testing/runner.ts;
+//   - browser exercises (CT/FB): the browser toolchain in Node (WasmNodeBackend) + src/testing/runner.ts,
+//     fed exactly the files the app gives the browser runner (see browserSupportFiles);
 //   - Parsons (PA): every accepted ordering compiles and passes; the scrambled starter is not accepted;
 //   - native exercises (LT) and projects: the bundled check.mjs, run natively on the unzipped project
 //     layout (gcc + ASan here and in CI); the completion token / progress code must verify.
+//
+// Folder model, the same as the app's (src/content-runtime/course.ts):
+//   exercises/<id>/                 exercise.yaml, starter.c, solution.c, tests.json, tests/…
+//   exercises/<id>/variants/<n>/    a folder of its own: its own exercise.yaml, tests.json, files. It does
+//                                   NOT inherit anything from its parent (the app loads it alone).
+//   project/<id>/                   exercise.yaml, check.json, Makefile, README.md, tests/, starter/, solution/
+// Their ids are "<id>", "<id>/variants/<n>" and "project/<id>"; exercise.yaml must declare exactly that.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +20,7 @@ import { parse as parseYaml } from 'yaml';
 import type { TestsSpec } from '../../src/content-model/types';
 import type { ExecBackend } from '../../src/testing/exec';
 import { describeResult } from '../../src/testing/format';
-import { projectZipEntries } from '../../src/testing/project-zip';
+import { projectZipEntries, zipFolderName } from '../../src/testing/project-zip';
 import { runTests, type TestReport, type TestResult } from '../../src/testing/runner';
 import { validateTestsSpec } from '../../src/testing/spec';
 import { isExerciseId, verifyCode } from '../../src/testing/token';
@@ -28,7 +36,7 @@ export const VERIFY_SEED = '0123456789abcdef';
 
 export interface ItemReport {
   module: string;
-  /** "ct-sum-digits", "ct-sum-digits/v1" (a variant) or "caesar" (a project). */
+  /** The exercise id the app uses: "cash", "cash/variants/1", "project/mario-more". */
   id: string;
   kind: 'ct' | 'fb' | 'pa' | 'lt' | 'project';
   runsIn: string;
@@ -60,12 +68,11 @@ export interface VerifySummary {
   ms: number;
 }
 
-const AUTHORING_FILES = ['exercise.yaml', 'tests.json', 'starter.c', 'solution.c', 'variants'];
-
 const failing = (r: TestReport) => r.results.filter(x => x.status !== 'pass' && !(x.kind === 'make' && x.status === 'skip'));
 const allPass = (r: TestReport) => failing(r).length === 0;
 const passedCount = (r: TestReport) => r.results.filter(x => x.status === 'pass' || (x.kind === 'make' && x.status === 'skip')).length;
 const names = (rs: TestResult[]) => (rs.length > 3 ? [...rs.slice(0, 3).map(r => r.name), `+${rs.length - 3} more`] : rs.map(r => r.name)).join('; ');
+const text = (p: string) => readFileSync(p, 'utf8');
 
 function explain(label: string, r: TestReport): string[] {
   const out: string[] = [];
@@ -76,21 +83,30 @@ function explain(label: string, r: TestReport): string[] {
   return out;
 }
 
-/** Reads and validates tests.json/check.json; harness paths are looked up in `dirs` (variant first). */
+/** Reads and validates tests.json/check.json; harness paths are looked up in `dirs`. */
 function readSpec(file: string, runsIn: 'browser' | 'native', dirs: string[], item: ItemReport): TestsSpec | undefined {
   if (!existsSync(file)) { item.problems.push(`${path.basename(file)} is missing`); return undefined; }
   let raw: unknown;
-  try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { item.problems.push(`${path.basename(file)} is not valid JSON: ${(e as Error).message}`); return undefined; }
+  try { raw = JSON.parse(text(file)); } catch (e) { item.problems.push(`${path.basename(file)} is not valid JSON: ${(e as Error).message}`); return undefined; }
   const p = validateTestsSpec(raw, { runsIn, exists: f => dirs.some(d => existsSync(path.join(d, f))) });
   item.problems.push(...p.errors.map(e => `${path.basename(file)}: ${e}`));
   item.warnings.push(...p.warnings.map(w => `${path.basename(file)}: ${w}`));
   return p.errors.length ? undefined : (raw as TestsSpec);
 }
 
-/** Text files of an exercise folder that tests may need (harnesses, data), minus authoring files. */
-function exerciseFiles(dir: string): Record<string, string> {
+/**
+ * The files the app hands the browser runner besides the learner's file (src/interactions/Exercise.tsx:
+ * isSupportFile(k) || k.startsWith('tests/'), where isSupportFile = a .c/.h that is not starter/solution
+ * and not under tests/). Mirrored here so "the solution passes" means it passes in the app: a helper
+ * the author forgot to put where the app looks for it fails here too. variants/ is never included:
+ * the app loads a variant's folder on its own.
+ */
+export function browserSupportFiles(dir: string): Record<string, string> {
   const files: Record<string, string> = {};
-  for (const f of listFiles(dir, AUTHORING_FILES)) files[f] = readFileSync(path.join(dir, f), 'utf8');
+  for (const f of listFiles(dir, ['variants'])) {
+    const support = (/\.(c|h)$/.test(f) && !/^(starter|solution)(\.c$|\/)/.test(f)) || f.startsWith('tests/');
+    if (support) files[f] = text(path.join(dir, f));
+  }
   return files;
 }
 
@@ -112,11 +128,13 @@ async function verifyBrowserPair(
   if (allPass(st)) item.problems.push('the starter passes every test (it must fail at least one: are the tests strong enough?)');
 }
 
-async function verifyParsons(item: ItemReport, exec: ExecBackend<unknown>, spec: TestsSpec, meta: VerifiedMeta, dir: string, files: Record<string, string>, verbose: boolean) {
-  const learnerFile = meta.file ?? spec.sources[0];
-  const solution = readFileSync(path.join(dir, 'solution.c'), 'utf8');
+async function verifyParsons(
+  item: ItemReport, exec: ExecBackend<unknown>, spec: TestsSpec, meta: VerifiedMeta, learnerFile: string, dir: string,
+  files: Record<string, string>, verbose: boolean,
+) {
+  const solution = text(path.join(dir, 'solution.c'));
   const starterPath = path.join(dir, 'starter.c');
-  const starter = existsSync(starterPath) ? readFileSync(starterPath, 'utf8') : undefined;
+  const starter = existsSync(starterPath) ? text(starterPath) : undefined;
   const plan = planParsons(solution, meta.parsons?.accepted, meta.parsons?.distractors, starter);
   item.problems.push(...plan.errors);
   for (const p of plan.programs) {
@@ -132,7 +150,7 @@ async function verifyParsons(item: ItemReport, exec: ExecBackend<unknown>, spec:
     const pool = solution.split('\n').filter(l => l.trim() !== '');
     const code = plan.starterOrder.map(l => pool.splice(pool.findIndex(o => o.trim() === l), 1)[0]).join('\n') + '\n';
     const r = await runTests(spec, { [learnerFile]: code }, files, exec);
-    if (allPass(r)) item.problems.push('the scrambled starter.c order passes every test: add it to parsons.accepted, or make the tests stricter');
+    if (allPass(r)) item.problems.push('the scrambled starter.c order passes every test: it is already a valid program, so scramble it into a failing order (list valid alternatives in parsons.accepted) or make the tests stricter');
     else item.summary.push('starter scramble is rejected');
   } else if (starter === undefined) item.summary.push('no starter.c (the app scrambles)');
 }
@@ -150,17 +168,18 @@ function runCheckMjs(dir: string, cc: string | undefined): NativeRun | string {
   }
 }
 
-async function verifyNative(item: ItemReport, dir: string, o: { exerciseVariant?: string; cc?: string; checkMjs: string; verbose: boolean }) {
-  const checkText = readFileSync(o.checkMjs, 'utf8');
-  const learncH = readFileSync(LEARNC_H, 'utf8');
+/** Zips `dir` the way the app does (starter, then reference solution), runs check.mjs on each, verifies the codes. */
+async function verifyNative(item: ItemReport, dir: string, o: { cc?: string; checkMjs: string; verbose: boolean }) {
+  const checkText = text(o.checkMjs);
+  const learncH = text(LEARNC_H);
   for (const variant of ['solution', 'starter'] as const) {
     let src;
-    try { src = readProjectSource(dir, { variant, exerciseVariant: o.exerciseVariant }); } catch (e) { item.problems.push((e as Error).message); return; }
-    if (!isExerciseId(src.id)) { item.problems.push(`id "${src.id}" cannot appear in progress codes (use lowercase letters, digits, "-", "_", ".")`); return; }
-    const work = mkdtempSync(path.join(tmpdir(), `verify-${src.id}-`));
+    try { src = readProjectSource(dir, { variant }); } catch (e) { item.problems.push((e as Error).message); return; }
+    if (!isExerciseId(src.id)) { item.problems.push(`id "${src.id}" cannot appear in progress codes (use lowercase letters, digits, "-", "_", "." and "/")`); return; }
+    const work = mkdtempSync(path.join(tmpdir(), `verify-${zipFolderName(src.id)}-`));
     try {
       writeFiles(work, projectZipEntries({
-        id: src.id, title: src.title, spec: src.spec, files: src.files, checkMjs: checkText, learncH,
+        id: zipFolderName(src.id), title: src.title, prompt: src.prompt, spec: src.spec, files: src.files, checkMjs: checkText, learncH,
         learner: { version: 1, seed: VERIFY_SEED, exercise: src.id },
       }));
       const r = runCheckMjs(work, o.cc);
@@ -185,98 +204,122 @@ async function verifyNative(item: ItemReport, dir: string, o: { exerciseVariant?
   }
 }
 
-// ---------------------------------------------------------------- per item
+// ---------------------------------------------------------------- one folder: exercise, variant or project
 
 function newItem(module: string, id: string, kind: ItemReport['kind'], runsIn: string): ItemReport {
   return { module, id, kind, runsIn, ok: false, summary: [], problems: [], warnings: [], details: [], ms: 0 };
+}
+
+interface Unit {
+  dir: string;
+  /** The id exercise.yaml must declare. */
+  id: string;
+  /** For a variant: its parent's meta (a variant must run in the same place). */
+  parent?: VerifiedMeta;
+  /** "tests.json" for exercises and variants, "check.json" for projects. */
+  specFile: 'tests.json' | 'check.json';
+}
+
+interface Loaded { meta: VerifiedMeta; spec: TestsSpec; learnerFile: string }
+
+/** exercise.yaml + tests file of one folder, validated; problems go to `item`. */
+function loadUnit(item: ItemReport, u: Unit): Loaded | undefined {
+  const yamlPath = path.join(u.dir, 'exercise.yaml');
+  if (!existsSync(yamlPath)) { item.problems.push(`exercise.yaml is missing (the app reads the prompt and the hints from it)`); return undefined; }
+  let raw: unknown;
+  try { raw = parseYaml(text(yamlPath)); } catch (e) { item.problems.push(`exercise.yaml: ${(e as Error).message}`); return undefined; }
+  const v = validateExerciseMeta(raw, u.id, { variant: !!u.parent });
+  item.problems.push(...v.errors.map(e => `exercise.yaml: ${e}`));
+  item.warnings.push(...v.warnings.map(w => `exercise.yaml: ${w}`));
+  if (!v.meta) return undefined;
+  const meta = v.meta;
+  item.kind = u.specFile === 'check.json' ? 'project' : meta.kind;
+  item.runsIn = meta.runsIn;
+  if (!isExerciseId(meta.id)) item.problems.push(`exercise.yaml: id "${meta.id}" cannot appear in progress codes (use lowercase letters, digits, "-", "_", "." and "/")`);
+  if (u.parent) {
+    if (meta.runsIn !== u.parent.runsIn) item.problems.push(`exercise.yaml: a variant must run where its exercise runs (${u.parent.runsIn}), not ${meta.runsIn}`);
+    if (meta.kind !== u.parent.kind) item.warnings.push(`exercise.yaml: kind "${meta.kind}" differs from the exercise's "${u.parent.kind}"`);
+  }
+  const spec = readSpec(path.join(u.dir, u.specFile), meta.runsIn, [u.dir], item);
+  if (!spec) return undefined;
+  // The app edits the first source and tests against it; everything else must agree.
+  const learnerFile = spec.sources[0];
+  if (meta.file !== undefined && meta.file !== learnerFile) {
+    item.problems.push(`exercise.yaml: "file" is ${meta.file} but ${u.specFile}'s first source (the file the learner edits) is ${learnerFile}`);
+  }
+  return { meta, spec, learnerFile };
+}
+
+/** Solution passes, starter fails, in the place the exercise runs. */
+async function checkUnit(item: ItemReport, dir: string, l: Loaded, ctx: Ctx) {
+  const need = (f: string) => { if (!existsSync(path.join(dir, f))) item.problems.push(`${f} is missing`); };
+  need('solution.c');
+  if (l.meta.kind !== 'pa') need('starter.c');
+  if (item.problems.length) return;
+  if (l.meta.runsIn === 'native') {
+    await verifyNative(item, dir, { cc: ctx.cc, checkMjs: await ctx.checkMjs(), verbose: ctx.verbose });
+  } else if (l.meta.kind === 'pa') {
+    await verifyParsons(item, ctx.wasm(), l.spec, l.meta, l.learnerFile, dir, browserSupportFiles(dir), ctx.verbose);
+  } else {
+    await verifyBrowserPair(item, ctx.wasm(), l.spec, l.learnerFile, browserSupportFiles(dir), text(path.join(dir, 'solution.c')), text(path.join(dir, 'starter.c')), ctx.verbose);
+  }
 }
 
 async function verifyExercise(ex: ExerciseDir, ctx: Ctx): Promise<ItemReport[]> {
   const t0 = performance.now();
   const item = newItem(ex.module.id, ex.id, 'ct', '?');
   const reports = [item];
-  const finish = () => {
-    for (const r of reports) r.ok = r.problems.length === 0;
-    if (!item.ms) item.ms = performance.now() - t0;
-    return reports;
-  };
-
-  let raw: unknown;
-  try { raw = parseYaml(readFileSync(path.join(ex.dir, 'exercise.yaml'), 'utf8')); } catch (e) { item.problems.push(`exercise.yaml: ${(e as Error).message}`); return finish(); }
-  const v = validateExerciseMeta(raw, ex.id);
-  item.problems.push(...v.errors.map(e => `exercise.yaml: ${e}`));
-  item.warnings.push(...v.warnings.map(w => `exercise.yaml: ${w}`));
-  if (!v.meta) return finish();
-  const meta = v.meta;
-  item.kind = meta.kind;
-  item.runsIn = meta.runsIn;
-  if (!isExerciseId(meta.id)) item.problems.push(`exercise.yaml: id "${meta.id}" must be lowercase letters, digits, "-", "_" or "."`);
-
-  const existing = variantDirs(ex.dir);
-  for (const name of meta.variants) if (!existing.includes(name)) item.problems.push(`variant "${name}" is listed but variants/${name}/ does not exist`);
-  for (const name of existing) if (!meta.variants.includes(name)) item.warnings.push(`variants/${name}/ exists but is not listed in exercise.yaml`);
-
-  const spec = readSpec(path.join(ex.dir, 'tests.json'), meta.runsIn, [ex.dir], item);
-  if (!spec) return finish();
-  const learnerFile = meta.file ?? (meta.runsIn === 'browser' ? 'main.c' : spec.sources[0]);
-  if (!spec.sources.includes(learnerFile)) item.problems.push(`tests.json "sources" must include the learner's file ${learnerFile}`);
-  const need = (f: string) => { if (!existsSync(path.join(ex.dir, f))) item.problems.push(`${f} is missing`); };
-  need('solution.c');
-  if (meta.kind !== 'pa') need('starter.c');
-  if (item.problems.length) return finish();
-
-  if (meta.runsIn === 'native') {
-    await verifyNative(item, ex.dir, { cc: ctx.cc, checkMjs: await ctx.checkMjs(), verbose: ctx.verbose });
-  } else if (meta.kind === 'pa') {
-    await verifyParsons(item, ctx.wasm(), spec, meta, ex.dir, exerciseFiles(ex.dir), ctx.verbose);
-  } else {
-    await verifyBrowserPair(item, ctx.wasm(), spec, learnerFile, exerciseFiles(ex.dir), readFileSync(path.join(ex.dir, 'solution.c'), 'utf8'),
-      readFileSync(path.join(ex.dir, 'starter.c'), 'utf8'), ctx.verbose);
+  const loaded = loadUnit(item, { dir: ex.dir, id: ex.id, specFile: 'tests.json' });
+  if (loaded) {
+    const existing = variantDirs(ex.dir);
+    for (const name of loaded.meta.variants) if (!existing.includes(name)) item.problems.push(`variant "${name}" is listed but variants/${name}/ does not exist`);
+    for (const name of existing) if (!loaded.meta.variants.includes(name)) item.warnings.push(`variants/${name}/ exists but is not listed in exercise.yaml`);
+    await checkUnit(item, ex.dir, loaded, ctx);
   }
   item.ms = performance.now() - t0;
 
-  // Variants: same checks; a variant may override starter.c, solution.c and tests.json.
-  for (const name of meta.variants.filter(n => existing.includes(n))) {
+  // Variants: the same checks, each on its own folder (own exercise.yaml, tests.json and files).
+  for (const name of (loaded?.meta.variants ?? []).filter(n => variantDirs(ex.dir).includes(n))) {
     const t1 = performance.now();
     const vdir = path.join(ex.dir, 'variants', name);
-    const vi = newItem(ex.module.id, `${ex.id}/${name}`, meta.kind, meta.runsIn);
+    const vi = newItem(ex.module.id, `${ex.id}/variants/${name}`, loaded!.meta.kind, loaded!.meta.runsIn);
     reports.push(vi);
-    const vspec = existsSync(path.join(vdir, 'tests.json')) ? readSpec(path.join(vdir, 'tests.json'), meta.runsIn, [vdir, ex.dir], vi) : spec;
-    if (!vspec) continue;
-    if (!existsSync(path.join(vdir, 'solution.c'))) { vi.problems.push(`variants/${name}/solution.c is missing`); continue; }
-    if (meta.kind !== 'pa' && !existsSync(path.join(vdir, 'starter.c'))) { vi.problems.push(`variants/${name}/starter.c is missing`); continue; }
-    if (meta.runsIn === 'native') {
-      await verifyNative(vi, ex.dir, { exerciseVariant: name, cc: ctx.cc, checkMjs: await ctx.checkMjs(), verbose: ctx.verbose });
-    } else {
-      const files = { ...exerciseFiles(ex.dir), ...exerciseFiles(vdir) };
-      const vstarter = existsSync(path.join(vdir, 'starter.c')) ? readFileSync(path.join(vdir, 'starter.c'), 'utf8') : undefined;
-      await verifyBrowserPair(vi, ctx.wasm(), vspec, learnerFile, files, readFileSync(path.join(vdir, 'solution.c'), 'utf8'), vstarter, ctx.verbose);
-    }
+    const vl = loadUnit(vi, { dir: vdir, id: vi.id, parent: loaded!.meta, specFile: 'tests.json' });
+    if (vl) await checkUnit(vi, vdir, vl, ctx);
     vi.ms = performance.now() - t1;
   }
-  return finish();
+  for (const r of reports) r.ok = r.problems.length === 0;
+  return reports;
 }
 
 async function verifyProject(pr: ProjectDir, ctx: Ctx): Promise<ItemReport> {
   const t0 = performance.now();
-  const runsIn = pr.module.projectRunsIn ?? 'native';
-  const item = newItem(pr.module.id, pr.id, 'project', runsIn === 'both' ? 'browser+native' : runsIn);
-  const spec = readSpec(path.join(pr.dir, 'check.json'), runsIn === 'browser' ? 'browser' : 'native', [pr.dir, path.join(pr.dir, 'solution')], item);
+  const id = `project/${pr.id}`;
+  const item = newItem(pr.module.id, id, 'project', '?');
+  const loaded = loadUnit(item, { dir: pr.dir, id, specFile: 'check.json' });
   for (const d of ['starter', 'solution']) if (!existsSync(path.join(pr.dir, d))) item.problems.push(`${d}/ is missing`);
-  if (spec && !item.problems.length) {
+  if (loaded && !item.problems.length) {
+    const { meta, spec, learnerFile } = loaded;
+    const inModule = pr.module.projectRunsIn;
+    if (inModule && inModule !== 'both' && inModule !== meta.runsIn) item.warnings.push(`module.yaml says the project runs in the ${inModule}, exercise.yaml says ${meta.runsIn}`);
+    const browser = meta.runsIn === 'browser' || inModule === 'both';
+    item.runsIn = browser && meta.runsIn !== 'browser' ? 'browser+native' : meta.runsIn;
     // Projects always ship as zips with check.mjs, so they are always verified natively.
     await verifyNative(item, pr.dir, { cc: ctx.cc, checkMjs: await ctx.checkMjs(), verbose: ctx.verbose });
-    if (runsIn === 'browser' || runsIn === 'both') {
-      const sol = readProjectSource(pr.dir, { variant: 'solution' });
-      const st = readProjectSource(pr.dir, { variant: 'starter' });
-      const others = (src: typeof sol) => Object.fromEntries(Object.entries(src.files).filter(([f]) => !src.learnerFiles.includes(f)));
-      const pick = (src: typeof sol) => Object.fromEntries(src.learnerFiles.map(f => [f, src.files[f]]));
-      const before = item.summary.length;
-      const r1 = await runTests(spec, pick(sol), others(sol), ctx.wasm());
-      const r2 = await runTests(spec, pick(st), others(st), ctx.wasm());
-      item.summary.splice(before, 0, `browser: solution ${passedCount(r1)}/${r1.total}, starter ${passedCount(r2)}/${r2.total}`);
-      if (!allPass(r1)) { item.problems.push(`the reference solution fails in the browser toolchain: ${names(failing(r1))}`); if (ctx.verbose) item.details.push(...explain('browser solution', r1)); }
-      if (allPass(r2)) item.problems.push('the starter passes every test in the browser toolchain');
+    if (browser) {
+      // The app gives the browser runner the learner's first source plus support files, nothing from starter/.
+      const code = (d: 'starter' | 'solution') => ({ [learnerFile]: text(path.join(pr.dir, d, learnerFile)) });
+      if (!existsSync(path.join(pr.dir, 'starter', learnerFile)) || !existsSync(path.join(pr.dir, 'solution', learnerFile))) {
+        item.problems.push(`starter/ and solution/ must both contain ${learnerFile}`);
+      } else {
+        const files = browserSupportFiles(pr.dir);
+        const before = item.summary.length;
+        const r1 = await runTests(spec, code('solution'), files, ctx.wasm());
+        const r2 = await runTests(spec, code('starter'), files, ctx.wasm());
+        item.summary.splice(before, 0, `browser: solution ${passedCount(r1)}/${r1.total}, starter ${passedCount(r2)}/${r2.total}`);
+        if (!allPass(r1)) { item.problems.push(`the reference solution fails in the browser toolchain: ${names(failing(r1))}`); if (ctx.verbose) item.details.push(...explain('browser solution', r1)); }
+        if (allPass(r2)) item.problems.push('the starter passes every test in the browser toolchain');
+      }
     }
   }
   item.ok = item.problems.length === 0;

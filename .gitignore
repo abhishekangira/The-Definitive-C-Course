@@ -12,3 +12,6 @@ playwright-report/
 animations/**/.hyperframes/
 animations/**/renders/
 animations/**/node_modules/
+
+# local copy of the check.mjs runner served by the dev server (built by tools/check/build.mjs)
+public/downloads/

@@ -1,0 +1,15 @@
+id: project/p0-greet
+kind: lt
+title: Greeter
+prompt: |
+  Write `greet.c` so `format_greeting()` builds "Hello, NAME!" in heap memory, free everything you
+  allocate, and make `make` rebuild when `greet.h` changes. Run `make test` and paste the code it prints.
+runsIn: native
+file: main.c
+hints:
+  - "Read the first failing check: it says what is wrong and where."
+  - "A change to greet.h must rebuild every .o file that includes it: list the header after the colon."
+  - |
+    main.o: main.c greet.h
+    greet.o: greet.c greet.h
+variants: []

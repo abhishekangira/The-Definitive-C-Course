@@ -167,7 +167,10 @@ async function main(): Promise<void> {
   const MARK = { pass: c.green(unicode ? '✓' : '+'), fail: c.red(unicode ? '✗' : 'x'), skip: c.yellow(unicode ? '–' : '-') };
   const tone: Record<Tone, (s: string) => string> = { plain: s => s, dim: c.dim, bad: c.red, good: c.green, hint: c.cyan };
   const state = readState(dir);
-  state.runs += 1;
+  // Only a full run counts as a run and earns a code: with --only, unselected checks are skipped,
+  // so a code made from it would claim that everything else fails.
+  const full = args.only === undefined;
+  if (full) state.runs += 1;
   const title = (spec as { title?: string }).title ?? learner?.title ?? path.basename(dir);
   const out = (s = '') => { if (!args.json) console.log(s); };
 
@@ -215,7 +218,7 @@ async function main(): Promise<void> {
 
   let progressCode: string | undefined;
   let completionToken: string | undefined;
-  if (learner) {
+  if (learner && full) {
     if (report.allPassed) completionToken = await encodeCompletionToken({ exercise: learner.exercise }, learner.seed);
     progressCode = await encodeProgressCode({ exercise: learner.exercise, bits: report.bits, run: state.runs, src: await sourceHash(learnerFiles) }, learner.seed);
   }
@@ -225,7 +228,7 @@ async function main(): Promise<void> {
     console.log(JSON.stringify({
       runner: RUNNER_VERSION, exercise: learner?.exercise, title, compiler: compiler.version, platform: `${platform}-${arch()}`,
       passed: report.passed, total: report.total, allPassed: report.allPassed, bits: report.bits, run: state.runs,
-      progressCode, completionToken, learnerProblem, results: report.results,
+      only: args.only, progressCode, completionToken, learnerProblem, results: report.results,
     }, null, 2));
   } else {
     out();
@@ -243,6 +246,7 @@ async function main(): Promise<void> {
     out();
     if (completionToken) out(`Completion token (paste it into the course):  ${c.bold(completionToken)}`);
     else if (progressCode) out(`Progress code (paste it into the course):  ${c.bold(progressCode)}`);
+    else if (!full) out(c.dim('No progress code for a single check: run make test (all checks) to get one.'));
     else out(c.yellow(`No progress code: ${learnerProblem}.`));
     out();
   }

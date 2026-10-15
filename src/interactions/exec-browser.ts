@@ -3,6 +3,9 @@ import { getRuntime } from '../runtime/CRuntime';
 import type { ExecBackend } from '../testing/runner';
 
 export const browserExec: ExecBackend = {
+  name: 'browser (wasm32, clang 22)',
+  /** One build carries both the guardrail (UBSan) and the leak checker, so a memory check builds and runs once. */
+  combinedMemoryBuild: true,
   async compile(files, sources, opts = {}) {
     const r = await getRuntime().compile({ files, sources, guardrail: opts.guardrail, leakcheck: opts.leakcheck, extraFlags: opts.extraFlags });
     return { ok: r.ok, diagnostics: r.diagnostics, raw: r.raw, artifact: r.wasm };

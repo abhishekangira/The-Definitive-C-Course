@@ -1,5 +1,6 @@
 // exercise.yaml validation (ExerciseMeta in src/content-model/types.ts, plus the optional
-// parsons.accepted documented in tools/exercises/README.md).
+// parsons.accepted documented in tools/exercises/README.md). The same schema covers exercises,
+// variants (exercises/<id>/variants/<n>/exercise.yaml) and projects (project/<id>/exercise.yaml).
 import type { ExerciseKind, ExerciseMeta } from '../../src/content-model/types';
 
 export interface MetaProblems {
@@ -17,14 +18,22 @@ const SUGGEST: Record<string, string> = { 'runs-in': 'runsIn', runs_in: 'runsIn'
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const nonEmpty = (v: unknown): v is string => typeof v === 'string' && v.trim() !== '';
 
-export function validateExerciseMeta(raw: unknown, folderName: string): MetaProblems & { meta?: VerifiedMeta } {
+export interface MetaOptions {
+  /** A variant folder: it cannot have variants of its own. */
+  variant?: boolean;
+}
+
+/**
+ * @param expectedId the id the app derives from the folder: "cash", "cash/variants/1", "project/mario-more"
+ */
+export function validateExerciseMeta(raw: unknown, expectedId: string, opts: MetaOptions = {}): MetaProblems & { meta?: VerifiedMeta } {
   const p: MetaProblems = { errors: [], warnings: [] };
   if (!isObj(raw)) return { ...p, errors: ['exercise.yaml must be a mapping'] };
   for (const k of Object.keys(raw)) {
     if (!KNOWN.includes(k)) p.warnings.push(`unknown key "${k}"${SUGGEST[k] ? ` (did you mean "${SUGGEST[k]}"?)` : ''}`);
   }
   if (!nonEmpty(raw.id)) p.errors.push('"id" is required');
-  else if (raw.id !== folderName) p.errors.push(`"id" is "${raw.id}" but the folder is "${folderName}"`);
+  else if (raw.id !== expectedId) p.errors.push(`"id" is "${raw.id}" but the id of this folder is "${expectedId}"`);
   if (!KINDS.includes(raw.kind as ExerciseKind)) p.errors.push(`"kind" must be one of ${KINDS.join(', ')}`);
   if (!nonEmpty(raw.title)) p.errors.push('"title" is required');
   if (!nonEmpty(raw.prompt)) p.errors.push('"prompt" is required');
@@ -37,8 +46,11 @@ export function validateExerciseMeta(raw: unknown, folderName: string): MetaProb
     if (raw.hints.length !== 3) p.errors.push(`"hints" must have exactly 3 tiers, found ${raw.hints.length}`);
     raw.hints.forEach((h, i) => { if (!nonEmpty(h)) p.errors.push(`hint ${i + 1} is empty`); });
   }
-  if (!Array.isArray(raw.variants) || !raw.variants.every(nonEmpty)) p.errors.push('"variants" must be a list of variant folder names ([] for none)');
+  if (Array.isArray(raw.variants) && raw.variants.some(v => typeof v === 'number')) {
+    p.errors.push('"variants" has a number: quote variant folder names in YAML (\'1\', not 1)');
+  } else if (!Array.isArray(raw.variants) || !raw.variants.every(nonEmpty)) p.errors.push('"variants" must be a list of variant folder names ([] for none)');
   else if (new Set(raw.variants).size !== raw.variants.length) p.errors.push('"variants" lists a folder twice');
+  else if (opts.variant && raw.variants.length) p.errors.push('a variant cannot have variants of its own ("variants" must be [])');
   if (raw.file !== undefined && !(nonEmpty(raw.file) && /\.c$/.test(raw.file))) p.errors.push('"file" must be a .c file name');
   if (raw.sampleStdin !== undefined && typeof raw.sampleStdin !== 'string') p.errors.push('"sampleStdin" must be a string');
 

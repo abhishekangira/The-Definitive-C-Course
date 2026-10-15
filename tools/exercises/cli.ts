@@ -43,7 +43,7 @@ async function main() {
     onItem: i => {
       if (o.json) return;
       if (i.module !== module) { module = i.module; console.log(bold(module)); }
-      printItem(i, o.verbose, 26);
+      printItem(i, o.verbose, 32);
     },
   });
   const bad = summary.items.filter(i => !i.ok);

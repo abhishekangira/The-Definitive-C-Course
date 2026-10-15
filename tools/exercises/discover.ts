@@ -28,7 +28,10 @@ export interface Discovery {
 
 const subdirs = (dir: string) => (existsSync(dir) ? readdirSync(dir).filter(n => !n.startsWith('.') && statSync(path.join(dir, n)).isDirectory()).sort() : []);
 
-/** `filter` matches a module id ("m01") or directory name; `only` matches an exercise/project id. */
+/**
+ * `module` matches a module id ("m01") or directory name; `only` matches an exercise id ("cash", which
+ * includes its variants) or a project id ("mario-more" or "project/mario-more").
+ */
 export function discover(contentRoot: string, opts: { module?: string; only?: string } = {}): Discovery {
   const out: Discovery = { modules: [], exercises: [], projects: [] };
   const modulesDir = path.join(contentRoot, 'modules');
@@ -45,7 +48,7 @@ export function discover(contentRoot: string, opts: { module?: string; only?: st
       if (existsSync(path.join(dir, 'exercises', id, 'exercise.yaml'))) out.exercises.push({ module: mod, id, dir: path.join(dir, 'exercises', id) });
     }
     for (const id of subdirs(path.join(dir, 'project'))) {
-      if (opts.only && opts.only !== id) continue;
+      if (opts.only && opts.only !== id && opts.only !== `project/${id}`) continue;
       out.projects.push({ module: mod, id, dir: path.join(dir, 'project', id) });
     }
   }

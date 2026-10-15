@@ -1,11 +1,23 @@
 // Pieces shared by exercise kinds: test results, tiered hints, the solution gate.
 import { useState } from 'react';
+import { describeResult } from '../testing/format';
 import type { TestResult } from '../testing/runner';
 import type { ExerciseProgress } from '../progress/store';
 import { solutionGate } from '../progress/gating';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { CodeEditor } from '../components/CodeEditor';
 import styles from './Interaction.module.css';
+
+/** The failure explanation: output is shown escaped ("a\\tb\\n"), so invisible differences are visible. */
+function TestDetail({ r }: { r: TestResult }) {
+  const lines = describeResult(r, 0);
+  if (!lines.length) return null;
+  return (
+    <pre className={styles.testDetail}>
+      {lines.map(l => `${'    '.repeat(l.indent ?? 0)}${l.mark ? (l.mark === 'pass' ? '✓ ' : '✗ ') : ''}${l.text}`).join('\n')}
+    </pre>
+  );
+}
 
 export function TestResults({ results, hideHints }: { results: TestResult[]; hideHints?: boolean }) {
   if (!results.length) return null;
@@ -17,16 +29,7 @@ export function TestResults({ results, hideHints }: { results: TestResult[]; hid
         {results.map((r, i) => (
           <li key={i} className={`${styles.test} ${r.status === 'pass' ? styles.testPass : r.status === 'fail' ? styles.testFail : styles.testSkip}`}>
             <span className={styles.testName}>{r.status === 'pass' ? '✓' : r.status === 'fail' ? '✗' : '–'} {r.name}</span>
-            {r.status !== 'pass' && (r.message || r.expected !== undefined) && (
-              <pre className={styles.testDetail}>
-                {[
-                  r.message,
-                  r.expected !== undefined ? `expected: ${r.expected}` : null,
-                  r.actual !== undefined ? `actual:   ${r.actual}` : null,
-                  r.firstDiff ? `first difference: ${typeof r.firstDiff === 'string' ? r.firstDiff : JSON.stringify(r.firstDiff)}` : null,
-                ].filter(Boolean).join('\n')}
-              </pre>
-            )}
+            {r.status !== 'pass' && <TestDetail r={r} />}
             {r.status === 'fail' && r.hint && !hideHints && <div className={styles.muted}>Hint: {r.hint}</div>}
           </li>
         ))}

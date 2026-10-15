@@ -41,12 +41,11 @@ export function Parsons({ entry, files, spec, fileName, isVariant, parentId, onP
 
   const check = async () => {
     setChecking(true);
-    const res = await runTests(spec, { [fileName]: program }, {}, browserExec);
+    const report = await runTests(spec, { [fileName]: program }, {}, browserExec);
     setChecking(false);
-    setResults(res);
-    const compileFail = res.find(r => r.status === 'fail' && /compile/i.test(r.name));
-    setDiag(compileFail?.message ? { raw: compileFail.message } : null);
-    const passed = res.length > 0 && res.every(r => r.status === 'pass');
+    setResults(report.results);
+    setDiag(report.compile.ok ? null : { raw: report.compile.raw });
+    const passed = report.allPassed;
     recordAttempt(program, passed);
     if (passed) { setPassedNow(true); onPassed(); }
   };

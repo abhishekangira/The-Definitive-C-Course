@@ -83,10 +83,10 @@ function BrowserExercise({ entry, parentId, onPassed, assessment, onGiveUp }: { 
   const supportFiles = Object.fromEntries(Object.entries(files).filter(([k]) => isSupportFile(k) || k.startsWith('tests/')));
   const check = async () => {
     setChecking(true);
-    const res = await runTests(spec, { [fileName]: code }, supportFiles, browserExec);
+    const report = await runTests(spec, { [fileName]: code }, supportFiles, browserExec);
     setChecking(false);
-    setResults(res);
-    const passed = res.length > 0 && res.every(r => r.status === 'pass');
+    setResults(report.results);
+    const passed = report.allPassed;
     recordAttempt(code, passed);
     if (passed) { setPassedNow(true); markDone(); onPassed?.(); }
   };

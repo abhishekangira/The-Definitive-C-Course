@@ -9,7 +9,7 @@ hints:
   - |
     int tmp = *a;
     *a = *b;
-variants: []
+variants: [p1]
 parsons:
   distractors:
     - "int tmp = a;"

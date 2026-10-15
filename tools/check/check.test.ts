@@ -7,11 +7,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { unzipSync } from 'fflate';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { projectZipEntries } from '../../src/testing/project-zip';
+import { buildZipFromFolder, projectZipEntries } from '../../src/testing/project-zip';
 import type { TestResult } from '../../src/testing/runner';
-import { verifyCode } from '../../src/testing/token';
+import { parseLearnerFile, verifyCode } from '../../src/testing/token';
 import { buildCheck, LEARNC_H, ROOT } from './build.mjs';
-import { readProjectSource, writeFiles } from './src/project-files';
+import { listFiles, readProjectSource, writeFiles } from './src/project-files';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(HERE, 'fixtures/caesar');
@@ -114,16 +114,25 @@ describe('check.mjs on the caesar fixture (gcc + ASan/UBSan/LSan)', () => {
     expect(check(dir, [], { NO_COLOR: '', FORCE_COLOR: '1' }).stdout).toContain('\x1b[32m✓\x1b[0m');
   }, 60_000);
 
-  it('counts runs and reveals hint tiers one at a time with --hint', () => {
+  it('reveals hint tiers one at a time with --hint; only full runs count and earn a code', async () => {
     const dir = project('starter');
-    const only = ['--only', 'encrypts "barfoo" with key 23 as "yxocll"'];
-    const tiers = [1, 2, 3].map(() => check(dir, [...only, '--hint']).stdout);
+    const name = 'encrypts "barfoo" with key 23 as "yxocll"';
+    const tiers = [1, 2, 3].map(() => check(dir, ['--only', name, '--hint']).stdout);
     expect(tiers[0]).toContain('hint 2: Work with');
     expect(tiers[0]).not.toContain('hint 3:');
     expect(tiers[1]).toContain('hint 3: For lowercase');
     expect(tiers[2]).toContain('No more hints');
-    expect(JSON.parse(readFileSync(path.join(dir, '.check-state'), 'utf8'))).toEqual({ runs: 3, hints: { 'encrypts "barfoo" with key 23 as "yxocll"': 3 } });
-    expect(checkJson(dir).run).toBe(4);
+    // --only runs print no code (the unselected checks would read as failures) and are not counted.
+    expect(tiers[0]).toContain('No progress code for a single check');
+    expect(tiers[0]).not.toContain('Progress code (paste');
+    const only = checkJson(dir, ['--only', name]);
+    expect(only.progressCode).toBeUndefined();
+    expect(JSON.parse(readFileSync(path.join(dir, '.check-state'), 'utf8'))).toEqual({ runs: 0, hints: { [name]: 3 } });
+    // Full runs count; a full run is also where `make hint` (--hint without --only) reveals the next tier.
+    const full = checkJson(dir);
+    expect(full.run).toBe(1);
+    expect(await verifyCode(full.progressCode!, SEED, { exercise: 'project/caesar' })).toMatchObject({ ok: true, passed: 1, total: 8 });
+    expect(checkJson(dir).run).toBe(2);
   }, 60_000);
 
   it('runs without .learner, but says why there is no code', () => {
@@ -198,6 +207,48 @@ describe('make checks', () => {
   }, 60_000);
 });
 
+describe('the zip the app builds in the browser (buildZipFromFolder), used the way a learner would', () => {
+  /** The files the app loads for a project folder (src/content-runtime/course.ts folderFiles): no solution/, no yaml/mdx. */
+  function appFolder(): Record<string, string> {
+    const folder: Record<string, string> = {};
+    for (const f of listFiles(FIXTURE, ['solution'])) {
+      if (/\.(c|h|json|txt|md|mk)$|(^|\/)Makefile$/.test(f)) folder[f] = readFileSync(path.join(FIXTURE, f), 'utf8');
+    }
+    return folder;
+  }
+  function unzipped(name: string, folder: Record<string, string>): string {
+    const zip = buildZipFromFolder({ exerciseId: 'project/caesar', title: 'Caesar cipher', folder, seed: SEED, checkMjs: readFileSync(checkMjs, 'utf8'), learncH: readFileSync(LEARNC_H, 'utf8') });
+    const dir = path.join(tmp, name);
+    for (const [p, data] of Object.entries(unzipSync(zip))) {
+      const dest = path.join(dir, p.replace(/^caesar\//, ''));
+      mkdirSync(path.dirname(dest), { recursive: true });
+      writeFileSync(dest, data);
+    }
+    return dir;
+  }
+  const make = (dir: string, args: string[]) => spawnSync('make', args, { cwd: dir, encoding: 'utf8', env: { ...process.env, CC: 'gcc', NO_COLOR: '1' } });
+
+  it('`make` builds the starter, `make test` prints a progress code that the app accepts, `make hint` shows the next hint', async () => {
+    const dir = unzipped('app-zip-starter', appFolder());
+    const built = make(dir, []);
+    expect(built.status, built.stderr).toBe(0);
+    expect(spawnSync('./caesar', ['1'], { cwd: dir, input: 'abc\n', encoding: 'utf8' }).stdout).toBe('ciphertext: bcd\n');
+    const t = make(dir, ['test']);
+    expect(t.status).toBe(2); // make reports the failing check.mjs run (exit status 1) as its own status 2
+    const code = /Progress code \(paste it into the course\):\s+(\S+)/.exec(t.stdout)?.[1];
+    expect(await verifyCode(code!, SEED, { exercise: 'project/caesar' })).toMatchObject({ ok: true, passed: 1, total: 8 });
+    expect(make(dir, ['hint']).stdout).toContain('hint ');
+  }, 60_000);
+
+  it('with the reference solution in place, `make test` prints the completion token', async () => {
+    const dir = unzipped('app-zip-solution', appFolder());
+    copyFileSync(path.join(FIXTURE, 'solution/caesar.c'), path.join(dir, 'caesar.c'));
+    const t = make(dir, ['test']);
+    expect(t.status, t.stdout).toBe(0);
+    expect(t.stdout).toContain('Completion token (paste it into the course):  TDCC1-R1-project.caesar-DONE-2eeb4b39');
+  }, 60_000);
+});
+
 describe('build.mjs --zip', () => {
   it('writes the reference zip with the documented layout', () => {
     const out = path.join(tmp, 'caesar.zip');
@@ -207,7 +258,10 @@ describe('build.mjs --zip', () => {
     expect(Object.keys(files).sort()).toEqual([
       'caesar/.learner', 'caesar/Makefile', 'caesar/README.md', 'caesar/caesar.c', 'caesar/check.json', 'caesar/check.mjs', 'caesar/learnc.h', 'caesar/tests/test_rotate.c',
     ]);
-    expect(JSON.parse(new TextDecoder().decode(files['caesar/.learner']))).toMatchObject({ seed: SEED, exercise: 'project.caesar' });
+    // .learner keeps the id as the app spells it; reading it normalises "/" to ".".
+    const learnerText = new TextDecoder().decode(files['caesar/.learner']);
+    expect(JSON.parse(learnerText)).toMatchObject({ seed: SEED, exercise: 'project/caesar' });
+    expect(parseLearnerFile(learnerText)).toMatchObject({ seed: SEED, exercise: 'project.caesar' });
     // Starter code ships, the solution never does.
     expect(new TextDecoder().decode(files['caesar/caesar.c'])).toContain('TODO: wrap around');
   }, 60_000);

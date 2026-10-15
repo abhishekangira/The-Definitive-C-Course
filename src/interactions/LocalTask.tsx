@@ -5,7 +5,7 @@ import type { ExerciseEntry } from '../content-runtime/course';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { useCardDone } from '../lesson/LessonContext';
 import { update, useProgress } from '../progress/store';
-import { parseCode, verifyCode } from '../testing/token';
+import { verifyCode } from '../testing/token';
 import { useFolder } from './Exercise';
 import { useExerciseProgress } from './useExerciseProgress';
 import { Hints } from './ExerciseParts';
@@ -23,27 +23,27 @@ export function LocalTask({ entry, onPassed, projectId }: { entry: ExerciseEntry
 
   const download = async () => {
     if (!files) return;
-    downloadBlob(await buildZip({ name, files, exerciseId: entry.id, seed: progress.seed }), `${name}.zip`);
+    downloadBlob(await buildZip({ exerciseId: entry.id, title: entry.meta.title, prompt: entry.meta.prompt, files, seed: progress.seed }), `${name}.zip`);
   };
 
   const submit = async () => {
-    const parsed = parseCode(code);
-    if (!parsed) { setMsg({ ok: false, text: 'That doesn’t look like a code from check.mjs (it starts with TDCC).' }); return; }
-    const v = await verifyCode(parsed, { seed: progress.seed, exercise: entry.id });
-    if (!v.valid) { setMsg({ ok: false, text: v.reason ?? 'This code doesn’t match your progress file (was the project downloaded from this browser?).' }); return; }
+    const v = await verifyCode(code, progress.seed, { exercise: entry.id });
+    if (!v.ok) { setMsg({ ok: false, text: v.message }); return; }
+    const complete = v.code.type === 'completion';
+    const run = v.code.type === 'progress' ? v.code.run : undefined;
     patch(e => {
       e.codes = [...new Set([...(e.codes ?? []), code.trim()])];
-      e.attempts = Math.max(e.attempts, v.run ?? e.attempts + 1);
+      e.attempts = Math.max(e.attempts, run ?? e.attempts + 1);
       e.substantive = Math.max(e.substantive, e.codes.length);
-      if (v.complete) { e.passed = true; if (!e.solutionViewed) e.mastered = true; }
+      if (complete) { e.passed = true; if (!e.solutionViewed) e.mastered = true; }
     });
-    if (v.complete) {
+    if (complete) {
       if (projectId) update(p => { p.projects[projectId] = { passed: true, at: new Date().toISOString(), token: code.trim() }; });
       setMsg({ ok: true, text: 'Completion token accepted: all checks passed on your machine.' });
       markDone();
       onPassed?.();
     } else {
-      setMsg({ ok: false, text: `Progress code accepted (${v.passedCount ?? '?'} of ${v.total ?? '?'} checks passing). Keep going and paste the final token.` });
+      setMsg({ ok: false, text: `Progress code accepted (${v.passed ?? '?'} of ${v.total ?? '?'} checks passing). Keep going and paste the final token.` });
     }
   };
 
