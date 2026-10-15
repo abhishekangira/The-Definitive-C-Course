@@ -56,8 +56,9 @@ def main():
     t0 = time.monotonic()
     proc = subprocess.Popen(cmd, stdin=sys.stdin.fileno(), stdout=out_target, stderr=subprocess.PIPE,
                             cwd=a.cwd, env=env, start_new_session=True, close_fds=True)
-    if slave is not None:
-        os.close(slave)  # only the child holds the slave now, so EOF/EIO arrives when it exits
+    # Keep our copy of the slave open until the output has been drained. macOS discards output the master
+    # has not read yet when the last slave descriptor closes, which loses the output of fast programs
+    # (Linux keeps it). So the end of the program is detected with poll(), not by EOF/EIO on the master.
     out_fd = master if master is not None else proc.stdout.fileno()
     err_fd = proc.stderr.fileno()
     bufs = {out_fd: bytearray(), err_fd: bytearray()}
@@ -83,7 +84,7 @@ def main():
             try:
                 chunk = os.read(fd, 65536)
             except OSError as e:
-                if e.errno == errno.EIO:  # pty: the slave side was closed
+                if e.errno == errno.EIO:  # pty: every slave descriptor was closed
                     chunk = b""
                 else:
                     raise
@@ -96,9 +97,10 @@ def main():
         if output_limit:
             kill()
             break
-        if not ready and proc.poll() is not None and master is not None:
-            # The child exited but a grandchild may still hold the pty; stop waiting for it.
-            open_fds.discard(out_fd)
+        if not ready and proc.poll() is not None:
+            # The child exited and everything it wrote has been read. A grandchild may still hold the pty or
+            # the stderr pipe open; stop waiting for it.
+            break
 
     try:
         proc.wait(timeout=max(0.1, deadline - time.monotonic()) if not timed_out else 1)
@@ -120,6 +122,8 @@ def main():
         except OSError:
             pass
     ms = int((time.monotonic() - t0) * 1000)
+    if slave is not None:
+        os.close(slave)
     if master is not None:
         os.close(master)
 
