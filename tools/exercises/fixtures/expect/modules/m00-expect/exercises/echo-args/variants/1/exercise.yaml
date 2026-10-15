@@ -1,0 +1,8 @@
+id: echo-args/variants/1
+kind: ct
+title: Count arguments
+prompt: Print the number of arguments.
+runsIn: browser
+hints: [one, two, three]
+file: count.c
+variants: []

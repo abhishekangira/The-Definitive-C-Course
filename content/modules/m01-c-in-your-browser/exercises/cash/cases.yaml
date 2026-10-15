@@ -1,0 +1,17 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "41 cents"
+    stdin: "41\n"
+  - name: "1 cent"
+    stdin: "1\n"
+  - name: "15 cents"
+    stdin: "15\n"
+  - name: "160 cents"
+    stdin: "160\n"
+  - name: "2300 cents"
+    stdin: "2300\n"
+  - name: "rejects 0 and -5"
+    stdin: "0\n-5\n70\n"
+    hint: "Keep asking while the amount is not greater than 0."
+  - name: "rejects text"
+    stdin: "foo\n25\n"

@@ -1,4 +1,4 @@
-# tools/exercises: `npm run verify:exercises`
+# tools/exercises: `npm run verify:exercises` and `npm run exercises:expect`
 
 PLAN §3.3: every reference solution passes, every starter fails at least one test, every variant is
 checked the same way. A single command, no flags needed:
@@ -68,14 +68,49 @@ failing order and list the valid order in `accepted` (documented and compiled), 
 any program that passes the tests, so `accepted` is documentation plus a CI guarantee, not a runtime allow-list.
 (`ExerciseMeta.parsons` in `src/content-model/types.ts` does not declare `accepted` yet.)
 
+## Generating expectations: `npm run exercises:expect`
+
+AGENTS.md: every expected output is produced by running code, never typed. `tests.json` (projects: `check.json`) is
+therefore **generated** from the reference solution and a hand-written case list:
+
+```
+npm run exercises:expect [-- --module m01] [--only cash] [--content-root dir] [--cc gcc] [--check]
+```
+
+Next to each `tests.json` (and each variant's, and each project's `check.json`) keep a `cases.yaml`:
+
+```yaml
+sources: [cash.c]          # optional; default: `file` in exercise.yaml
+warnings: error            # optional; default: error
+cases:
+  - name: "41 cents"
+    stdin: "41\n"          # optional, default ""; use double quotes for escapes
+    args: ["--flag"]       # optional
+    hint: "Keep asking while the amount is not greater than 0."   # optional
+    timeoutMs: 2000        # optional, copied to tests.json
+```
+
+For every folder the tool builds the reference (`solution.c`; projects: `solution/<source>`) with
+`gcc -std=c17 -Wall -Wextra -pedantic -Werror -I src/runtime/c` and again with `-fsanitize=address,undefined`
+(LeakSanitizer on), runs every case on both builds and writes `{version: 1, sources, warnings, tests[{name, run, expect: {stdout, exit}, hint?}]}`
+with the real stdout and exit code. It **rejects** a solution that does not build warning-free, reports an ASan, UBSan or leak error,
+behaves differently under the sanitizers, or times out; nothing is written for a rejected folder.
+`--check` writes nothing and exits 1 when a file would change (use it to prove the committed files are current).
+Output is deterministic: run it twice and `git status` stays clean.
+
+Scope: single-file, stdin/args/stdout/exit cases (what Module 1 uses). Unit-harness and `make` tests, stderr expectations and
+multi-file sources are still written by hand; `exercises:expect` does not touch a folder without `cases.yaml` (it reports it).
+Tests: `expect.test.ts`, fixtures in `fixtures/expect/`.
+
 ## Files
 
 | File | Role |
 |---|---|
 | `cli.ts` | the command line |
+| `expect.ts`, `expect-cli.ts` | `npm run exercises:expect`: `cases.yaml` + reference solution → `tests.json` |
 | `discover.ts` | finds modules, exercises, variants and projects |
 | `validate.ts` | `exercise.yaml` schema |
 | `parsons.ts` | accepted orderings and the scramble check |
 | `verify.ts` | the checks above (`verifyAll()`) |
 | `wasm-backend.ts`, `wasm-run-worker.ts` | `ExecBackend` for the browser toolchain in Node; programs run in a worker thread so a timeout can kill them |
-| `fixtures/` | one CT with a variant, an FB, a PA with a variant, an LT, a project (`npx vitest run tools/exercises`) |
+| `fixtures/` | one CT with a variant, an FB, a PA with a variant, an LT, a project (`npx vitest run tools/exercises`); `fixtures/expect/` has the `exercises:expect` fixtures |

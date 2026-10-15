@@ -1,0 +1,4 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "prints hello, world"
+    hint: "Check capitalisation, punctuation and the trailing newline."

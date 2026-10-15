@@ -1,0 +1,18 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "height 1"
+    stdin: "1\n"
+  - name: "height 2"
+    stdin: "2\n"
+  - name: "height 4"
+    stdin: "4\n"
+  - name: "height 8"
+    stdin: "8\n"
+    hint: "Row 1 of height 8 has seven spaces before the #."
+  - name: "rejects 0 and asks again"
+    stdin: "0\n2\n"
+    hint: "Use a do-while loop: ask, then repeat while the height is less than 1 or greater than 8."
+  - name: "rejects 9 and -1"
+    stdin: "9\n-1\n3\n"
+  - name: "rejects text"
+    stdin: "cat\n2\n"

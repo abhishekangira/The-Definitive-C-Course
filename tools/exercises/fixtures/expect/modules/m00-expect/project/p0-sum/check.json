@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "sources": [
+    "sum.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "adds",
+      "run": {
+        "stdin": "2 3\n"
+      },
+      "expect": {
+        "stdout": "5\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "bad input exits 1",
+      "run": {
+        "stdin": "x\n"
+      },
+      "expect": {
+        "stdout": "",
+        "exit": 1
+      }
+    }
+  ]
+}
