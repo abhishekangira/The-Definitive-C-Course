@@ -5,3 +5,17 @@
   background: var(--bg-code);
 }
 .editor:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* Shown while CodeMirror loads: same font, size, line height and vertical padding as the editor, so nothing moves. */
+.placeholder {
+  margin: 0;
+  padding: 10px 0 10px 1rem;
+  overflow: hidden;
+  white-space: pre;
+  font-family: var(--font-mono);
+  font-size: 14.5px;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--bg-code);
+  outline: none;
+}
