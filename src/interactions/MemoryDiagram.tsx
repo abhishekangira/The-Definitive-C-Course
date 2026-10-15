@@ -1,31 +1,15 @@
 // MD: fill in a memory diagram at one moment of a program (stack frames, values, pointer arrows).
 // The answers come from the gdb trace of the sample (x86-64 Linux), so they are real.
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { TraceFile, TraceStep, TraceVar } from '../content-model/types';
+import type { TraceFile, TraceVar } from '../content-model/types';
 import { traceFor } from '../content-runtime/course';
 import { CodeListing } from '../components/CodeListing';
 import { useCardDone } from '../lesson/LessonContext';
 import { nestedSample } from './nested';
 import { formatValue, findVar } from '../visualizers/trace-format';
+import { correctAnswer, pickStep } from './memory-answers';
 import styles from './Interaction.module.css';
 import ms from './MemoryDiagram.module.css';
-
-function pickStep(trace: TraceFile, line?: number, occurrence = 1, step?: number): TraceStep | undefined {
-  if (step !== undefined) return trace.steps[step];
-  if (line === undefined) return trace.steps[trace.steps.length - 1];
-  return trace.steps.filter(s => s.line === line)[occurrence - 1];
-}
-
-function correctAnswer(v: TraceVar): string {
-  if (v.value.t === 'ptr') {
-    if (v.value.v === '0x0' || v.value.v === '0') return 'NULL';
-    const r = v.value.ref;
-    if (!r) return '?';
-    return r.kind === 'heap' || r.kind === 'freed' ? `heap #${r.id}` : `${r.name}`;
-  }
-  if (v.value.t === 'char' && typeof v.value.v === 'number') return String(v.value.v);
-  return formatValue(v.value);
-}
 
 function matches(v: TraceVar, given: string): boolean {
   const g = given.trim().replace(/\s+/g, ' ');
@@ -77,7 +61,7 @@ export function MemoryDiagram({ sample, children, line, occurrence, step: stepIn
   const reveal = checked >= 2 && !allRight;
 
   return (
-    <div className={styles.box} data-interaction="memory-diagram" data-sample={id}>
+    <div className={styles.box} data-interaction="memory-diagram" data-sample={id} data-step={trace.steps.indexOf(step)}>
       <div className={styles.kicker}>Fill in the memory diagram</div>
       <p className={styles.prompt}>{prompt ?? <>Line <strong>{step.line}</strong> is about to run. Fill in the missing cells.</>}</p>
       <div className={ms.layout}>

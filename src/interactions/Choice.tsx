@@ -27,7 +27,7 @@ export function Choice({ question, options, answer, explain, why }: {
           {options.map((o, i) => {
             const state = submitted === null ? '' : i === answer ? styles.choiceRight : i === submitted ? styles.choiceWrong : '';
             return (
-              <label key={i} className={`${styles.choice} ${state}`}>
+              <label key={i} className={`${styles.choice} ${state}`} data-correct={submitted === null ? undefined : String(i === answer)}>
                 <input type="radio" name={name} checked={picked === i} onChange={() => setPicked(i)} />
                 <span><MiniMarkdown text={o} />{submitted !== null && why?.[i] && (i === submitted || i === answer) && <span className={styles.muted}> {why[i]}</span>}</span>
               </label>

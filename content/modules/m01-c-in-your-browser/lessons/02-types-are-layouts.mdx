@@ -88,7 +88,7 @@ Format specifiers must match the argument's type: `%d` for `int`, `%f` for `doub
   explain="`-Wformat` checks each `%` directive against its argument. `%d` reads an `int` from where an `int` would be, but a `double` was passed (and on most platforms it travels in a different register entirely). The output would be garbage. The fix is `%f` (or `%.1f`), or passing an `int`."
 >
 
-```c id=format-mismatch expect=ub predict=none
+```c id=format-mismatch expect=ub predict=none warn=-Wformat
 #include <stdio.h>
 
 int main(void) {

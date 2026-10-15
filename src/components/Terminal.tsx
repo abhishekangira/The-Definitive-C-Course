@@ -46,7 +46,7 @@ export function Terminal({ segments, phase, result, onInput, onEOF, onStop, labe
       {phase === 'compiling' && <ToolchainProgress />}
       <div className={styles.screen} ref={boxRef} role="log" aria-live="polite" aria-label={label} tabIndex={0}>
         {segments.length === 0 && phase === 'done' && !status && <span className={styles.muted}>(no output)</span>}
-        {segments.map((s, i) => <span key={i} className={styles[s.kind]}>{s.text}</span>)}
+        {segments.map((s, i) => <span key={i} className={styles[s.kind]} data-kind={s.kind}>{s.text}</span>)}
         {phase === 'done' && segments.length === 0 && status && <span className={styles.muted}>(no output)</span>}
         {phase === 'waiting-input' && onInput && (
           <form className={styles.inputRow} onSubmit={e => { e.preventDefault(); onInput(line); setLine(''); }}>

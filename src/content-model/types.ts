@@ -157,7 +157,7 @@ export interface RunOutcome {
   stdoutDisplay?: string;
   stderr: string;
   exit: number | null;
-  signal?: string | null; // native: "SIGSEGV"; wasm: trap message
+  signal?: string | null; // native: "SIGSEGV" (or "output-limit"); wasm: trap message
   trap?: string | null;
   timedOut?: boolean;
 }
@@ -169,7 +169,9 @@ export interface TargetResult {
   run?: RunOutcome;
   /** For expect=ub: outcomes observed across repeated runs (deduplicated). */
   observed?: RunOutcome[];
-  sanitizer?: { ok: boolean; report?: string; kind?: string; line?: number };
+  sanitizer?: { ok: boolean; report?: string; kind?: string; file?: string; line?: number };
+  /** stdout=both samples: the run with stdout on a pipe (run is the tty run). */
+  runPipe?: RunOutcome;
   guardrail?: RunOutcome;
 }
 
@@ -240,8 +242,8 @@ export interface SamplesFile {
 
 export type TraceValue =
   | { t: 'int' | 'uint' | 'float' | 'char' | 'bool'; v: number | string | boolean }
-  | { t: 'ptr'; v: string; ref?: { kind: 'local' | 'global' | 'heap' | 'freed'; frame?: number; name?: string; id?: number; offset: number } | null; dangling?: boolean }
-  | { t: 'array'; elems: TraceValue[]; str?: string }
+  | { t: 'ptr'; v: string; ref?: { kind: 'local' | 'global' | 'heap' | 'freed'; frame?: number; name?: string; id?: number; offset: number } | null; dangling?: boolean; /** function pointers */ fn?: string }
+  | { t: 'array'; elems: TraceValue[]; str?: string; /** full length when elems was cut at 64 */ len?: number }
   | { t: 'struct'; fields: Array<{ name: string; type: string; offset: number; value: TraceValue }> }
   | { t: 'raw'; hex: string };
 
@@ -255,6 +257,8 @@ export interface TraceVar {
   static?: boolean;
   declared?: boolean;
   init?: boolean;
+  /** valgrind: per-byte definedness bits (hex), when TRACE_VALGRIND was used. */
+  vbits?: string;
 }
 
 export interface TraceStep {
@@ -264,10 +268,12 @@ export interface TraceStep {
   event: 'step' | 'call' | 'return' | 'signal';
   stack: Array<{ func: string; line: number; vars: TraceVar[] }>;
   globals: TraceVar[];
-  heap: Array<{ id: number; addr: string; size: number; type?: string; value?: TraceValue; init?: boolean; freed?: boolean; unreferenced?: boolean }>;
+  heap: Array<{ id: number; addr: string; size: number; type?: string; value?: TraceValue; init?: boolean; freed?: boolean; unreferenced?: boolean; vbits?: string }>;
   stdout: string;
   return_value?: TraceValue;
   signal?: string;
+  /** valgrind errors reported at this step. */
+  errors?: string[];
 }
 
 export interface TraceFile {

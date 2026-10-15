@@ -1,0 +1,1208 @@
+{
+  "generatedBy": "tools/verify; gcc: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0; clang22: Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80); wasm: yowasp-clang 22.0.0-git20542-10",
+  "module": "m99",
+  "samples": {
+    "fx-args": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "2 argument(s)\n[one]\n[two words]\n"
+        },
+        "outcome": "runs",
+        "stdout": "2 argument(s)\n[one]\n[two words]\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(int argc, char *argv[]) {\n    printf(\"%d argument(s)\\n\", argc - 1);\n    for (int i = 1; i < argc; i++) printf(\"[%s]\\n\", argv[i]);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "9c3c4e1d2172848a",
+      "id": "fx-args",
+      "lesson": "01-fixture",
+      "meta": {
+        "args": [
+          "one",
+          "two words"
+        ],
+        "id": "fx-args",
+        "predict": "output"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "2 argument(s)\n[one]\n[two words]\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "2 argument(s)\n[one]\n[two words]\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "2 argument(s)\n[one]\n[two words]\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-buffering": {
+      "answer": {
+        "native": {
+          "outcome": "runtime-error",
+          "stdout": "this line was printed\n"
+        },
+        "outcome": "runtime-error",
+        "stdout": "this line was printed\n"
+      },
+      "code": "#include <stdio.h>\n#include <stdlib.h>\n\nint main(void) {\n    printf(\"this line was printed\\n\");\n    abort();\n}\n",
+      "flagged": false,
+      "hash": "07d6863b36bc3213",
+      "id": "fx-buffering",
+      "lesson": "01-fixture",
+      "meta": {
+        "expect": "runtime-error",
+        "id": "fx-buffering",
+        "predict": "outcome",
+        "stdoutMode": "both"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": null,
+            "signal": "SIGABRT",
+            "stderr": "",
+            "stdout": "this line was printed\n"
+          },
+          "runPipe": {
+            "exit": null,
+            "signal": "SIGABRT",
+            "stderr": "",
+            "stdout": ""
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": null,
+            "signal": "SIGABRT",
+            "stderr": "",
+            "stdout": "this line was printed\n"
+          },
+          "runPipe": {
+            "exit": null,
+            "signal": "SIGABRT",
+            "stderr": "",
+            "stdout": ""
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": null,
+            "signal": null,
+            "stderr": "",
+            "stdout": "this line was printed\n",
+            "trap": "unreachable"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-choice": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "3\n"
+        },
+        "outcome": "runs",
+        "stdout": "3\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"%d\\n\", 7 / 2);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "1290b958f167bcb8",
+      "id": "fx-choice",
+      "lesson": "quiz:checkpoint",
+      "meta": {
+        "choices": [
+          "3",
+          "3.5",
+          "4"
+        ],
+        "id": "fx-choice",
+        "predict": "choice"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "3\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "3\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "3\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-compile-error": {
+      "answer": {
+        "native": {
+          "outcome": "compile-error",
+          "stdout": ""
+        },
+        "outcome": "compile-error",
+        "stdout": ""
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"%d\\n\", count);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "b233102594be46ff",
+      "id": "fx-compile-error",
+      "lesson": "01-fixture",
+      "meta": {
+        "expect": "compile-error",
+        "id": "fx-compile-error",
+        "predict": "outcome"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 20,
+                "file": "main.c",
+                "line": 4,
+                "message": "use of undeclared identifier 'count'",
+                "severity": "error"
+              }
+            ],
+            "ok": false,
+            "raw": "main.c:4:20: error: use of undeclared identifier 'count'\n    4 |     printf(\"%d\\n\", count);\n      |                    ^~~~~\n1 error generated.\n"
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 20,
+                "file": "main.c",
+                "line": 4,
+                "message": "'count' undeclared (first use in this function)",
+                "severity": "error"
+              },
+              {
+                "col": 20,
+                "file": "main.c",
+                "line": 4,
+                "message": "each undeclared identifier is reported only once for each function it appears in",
+                "severity": "note"
+              }
+            ],
+            "ok": false,
+            "raw": "main.c: In function 'main':\nmain.c:4:20: error: 'count' undeclared (first use in this function)\n    4 |     printf(\"%d\\n\", count);\n      |                    ^~~~~\nmain.c:4:20: note: each undeclared identifier is reported only once for each function it appears in\n"
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 20,
+                "file": "main.c",
+                "line": 4,
+                "message": "use of undeclared identifier 'count'",
+                "severity": "error"
+              }
+            ],
+            "ok": false,
+            "raw": "main.c:4:20: error: use of undeclared identifier 'count'\n    4 |     printf(\"%d\\n\", count);\n      |                    ^~~~~\n1 error generated.\n"
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-fork": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "child\nchild exited with 3\n"
+        },
+        "outcome": "runs",
+        "stdout": "child\nchild exited with 3\n"
+      },
+      "code": "#define _POSIX_C_SOURCE 200809L\n#include <stdio.h>\n#include <sys/wait.h>\n#include <unistd.h>\n\nint main(void) {\n    fflush(stdout);\n    pid_t pid = fork();\n    if (pid == 0) {\n        printf(\"child\\n\");\n        return 3;\n    }\n    int status = 0;\n    waitpid(pid, &status, 0);\n    printf(\"child exited with %d\\n\", WEXITSTATUS(status));\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "44a087c0576f9017",
+      "id": "fx-fork",
+      "lesson": "01-fixture",
+      "meta": {
+        "id": "fx-fork",
+        "posix": true,
+        "predict": "output",
+        "target": "native"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "child\nchild exited with 3\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "child\nchild exited with 3\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        }
+      }
+    },
+    "fx-hello": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "Hello, C!\n"
+        },
+        "outcome": "runs",
+        "stdout": "Hello, C!\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"Hello, C!\\n\");\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "38413b02a0697ddb",
+      "id": "fx-hello",
+      "lesson": "01-fixture",
+      "meta": {
+        "id": "fx-hello",
+        "predict": "output"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "Hello, C!\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "Hello, C!\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "Hello, C!\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-learnc": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "n? 42\n"
+        },
+        "outcome": "runs",
+        "stdout": "n? 42\n"
+      },
+      "code": "#include <stdio.h>\n#include \"learnc.h\"\n\nint main(void) {\n    int n = get_int(\"n? \");\n    printf(\"%d\\n\", n * 2);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "31f4fe0947715ef5",
+      "id": "fx-learnc",
+      "lesson": "01-fixture",
+      "meta": {
+        "id": "fx-learnc",
+        "predict": "output",
+        "stdin": "21\n"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "n? 42\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "n? 42\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "n? 42\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-null-deref": {
+      "answer": {
+        "native": {
+          "outcome": "runtime-error",
+          "stdout": "about to read *p\n"
+        },
+        "outcome": "runs",
+        "stdout": "about to read *p\n0\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int *p = NULL;\n    printf(\"about to read *p\\n\");\n    printf(\"%d\\n\", *p);\n    return 0;\n}\n",
+      "diffs": [
+        {
+          "diff": "- outcome: runs\n+ outcome: runtime-error",
+          "target": "linux-x86_64-gcc13"
+        }
+      ],
+      "flagged": true,
+      "hash": "0ce0b0d4030dd76f",
+      "id": "fx-null-deref",
+      "lesson": "01-fixture",
+      "meta": {
+        "expect": "runtime-error",
+        "expectBy": {
+          "wasm": "success"
+        },
+        "guardrail": true,
+        "id": "fx-null-deref",
+        "platform": true,
+        "predict": "outcome",
+        "predict64": "none",
+        "predict64Reason": "the crash itself is the lesson; the 64-bit panel shows it"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": null,
+            "signal": "SIGSEGV",
+            "stderr": "",
+            "stdout": "about to read *p\n"
+          },
+          "sanitizer": {
+            "file": "main.c",
+            "kind": "null-pointer-use",
+            "line": 6,
+            "ok": false,
+            "report": "runtime error: load of null pointer of type 'int'"
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": null,
+            "signal": "SIGSEGV",
+            "stderr": "",
+            "stdout": "about to read *p\n"
+          },
+          "sanitizer": {
+            "file": "main.c",
+            "kind": "null-pointer-use",
+            "line": 6,
+            "ok": false,
+            "report": "runtime error: load of null pointer of type 'int'"
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "guardrail": {
+            "exit": 1,
+            "signal": null,
+            "stderr": "main.c:6:20: runtime error: load of null pointer of type 'int'\nSUMMARY: UndefinedBehaviorSanitizer: undefined-behavior main.c:6:20\n",
+            "stdout": "about to read *p\n"
+          },
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "about to read *p\n0\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-pointers": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "&x      = <addr1>\n&y      = <addr2>\np       = <addr1> (same as &x? yes)\nnothing = <NULL>\nmagic   = 0xdeadbeef\n"
+        },
+        "outcome": "runs",
+        "stdout": "&x      = <addr1>\n&y      = <addr2>\np       = <addr1> (same as &x? yes)\nnothing = <NULL>\nmagic   = 0xdeadbeef\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int x = 42;\n    int y = 7;\n    int *p = &x;\n    int *nothing = NULL;\n    printf(\"&x      = %p\\n\", (void *)&x);\n    printf(\"&y      = %p\\n\", (void *)&y);\n    printf(\"p       = %p (same as &x? %s)\\n\", (void *)p, p == &x ? \"yes\" : \"no\");\n    printf(\"nothing = %p\\n\", (void *)nothing);\n    printf(\"magic   = %#x\\n\", 0xdeadbeefu);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "1c44f828af4e27e5",
+      "id": "fx-pointers",
+      "lesson": "01-fixture",
+      "meta": {
+        "id": "fx-pointers",
+        "predict": "output"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "&x      = <addr1>\n&y      = <addr2>\np       = <addr1> (same as &x? yes)\nnothing = <NULL>\nmagic   = 0xdeadbeef\n",
+            "stdoutDisplay": "&x      = 0x7ffd4a3c1bc8\n&y      = 0x7ffd4a3c1bc4\np       = 0x7ffd4a3c1bc8 (same as &x? yes)\nnothing = (nil)\nmagic   = 0xdeadbeef\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "&x      = <addr1>\n&y      = <addr2>\np       = <addr1> (same as &x? yes)\nnothing = <NULL>\nmagic   = 0xdeadbeef\n",
+            "stdoutDisplay": "&x      = 0x7ffd4a3c1bc0\n&y      = 0x7ffd4a3c1bc4\np       = 0x7ffd4a3c1bc0 (same as &x? yes)\nnothing = (nil)\nmagic   = 0xdeadbeef\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "&x      = <addr1>\n&y      = <addr2>\np       = <addr1> (same as &x? yes)\nnothing = <NULL>\nmagic   = 0xdeadbeef\n",
+            "stdoutDisplay": "&x      = 0xffff8\n&y      = 0xffff4\np       = 0xffff8 (same as &x? yes)\nnothing = 0\nmagic   = 0xdeadbeef\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-sizeof-long": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "sizeof(long) = 8\n"
+        },
+        "outcome": "runs",
+        "stdout": "sizeof(long) = 4\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"sizeof(long) = %zu\\n\", sizeof(long));\n    return 0;\n}\n",
+      "diffs": [
+        {
+          "diff": "  outcome: runs\n- sizeof(long) = 4\n+ sizeof(long) = 8\n  ",
+          "target": "linux-x86_64-gcc13"
+        }
+      ],
+      "flagged": true,
+      "hash": "dfd96ff09d8dc43d",
+      "id": "fx-sizeof-long",
+      "lesson": "01-fixture",
+      "meta": {
+        "id": "fx-sizeof-long",
+        "platform": true,
+        "predict": "output",
+        "predict64": "What does this print on 64-bit Linux or macOS?"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "sizeof(long) = 8\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "sizeof(long) = 8\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "sizeof(long) = 4\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-sum-stdin": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "3 + 4 = 7\n"
+        },
+        "outcome": "runs",
+        "stdout": "3 + 4 = 7\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int a, b;\n    if (scanf(\"%d %d\", &a, &b) != 2) return 1;\n    printf(\"%d + %d = %d\\n\", a, b, a + b);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "6464c3cd3eb49c83",
+      "id": "fx-sum-stdin",
+      "lesson": "01-fixture",
+      "meta": {
+        "id": "fx-sum-stdin",
+        "predict": "output",
+        "stdin": "3 4\n"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "3 + 4 = 7\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "3 + 4 = 7\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "3 + 4 = 7\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-swap": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "x=2 y=1\n"
+        },
+        "outcome": "runs",
+        "stdout": "x=2 y=1\n"
+      },
+      "code": "#include <stdio.h>\n\nvoid swap(int *a, int *b) {\n    int tmp = *a;\n    *a = *b;\n    *b = tmp;\n}\n\nint main(void) {\n    int x = 1;\n    int y = 2;\n    swap(&x, &y);\n    printf(\"x=%d y=%d\\n\", x, y);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "5fd9e2f4653b8f26",
+      "id": "fx-swap",
+      "lesson": "01-fixture",
+      "meta": {
+        "id": "fx-swap",
+        "predict": "output",
+        "trace": true
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "x=2 y=1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "x=2 y=1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "x=2 y=1\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-uninit": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "32765\n"
+        },
+        "outcome": "runs",
+        "stdout": "0\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int x;\n    printf(\"%d\\n\", x);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "2c0926e88cd053fb",
+      "id": "fx-uninit",
+      "lesson": "01-fixture",
+      "meta": {
+        "expect": "ub",
+        "id": "fx-uninit",
+        "predict": "outcome"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 20,
+                "file": "main.c",
+                "flag": "-Wuninitialized",
+                "line": 5,
+                "message": "variable 'x' is uninitialized when used here",
+                "severity": "warning"
+              },
+              {
+                "col": 10,
+                "file": "main.c",
+                "line": 4,
+                "message": "initialize the variable 'x' to silence this warning",
+                "severity": "note"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:5:20: warning: variable 'x' is uninitialized when used here [-Wuninitialized]\n    5 |     printf(\"%d\\n\", x);\n      |                    ^\nmain.c:4:10: note: initialize the variable 'x' to silence this warning\n    4 |     int x;\n      |          ^\n      |           = 0\n1 warning generated.\n"
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "observed": [
+            {
+              "exit": 0,
+              "signal": null,
+              "stderr": "",
+              "stdout": "-1646680776\n"
+            },
+            {
+              "exit": 0,
+              "signal": null,
+              "stderr": "",
+              "stdout": "-1068984488\n"
+            },
+            {
+              "exit": 0,
+              "signal": null,
+              "stderr": "",
+              "stdout": "916714360\n"
+            }
+          ],
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "-1646680776\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 5,
+                "file": "main.c",
+                "flag": "-Wuninitialized",
+                "line": 5,
+                "message": "'x' is used uninitialized",
+                "severity": "warning"
+              },
+              {
+                "col": 9,
+                "file": "main.c",
+                "line": 4,
+                "message": "'x' was declared here",
+                "severity": "note"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c: In function 'main':\nmain.c:5:5: warning: 'x' is used uninitialized [-Wuninitialized]\n    5 |     printf(\"%d\\n\", x);\n      |     ^~~~~~~~~~~~~~~~~\nmain.c:4:9: note: 'x' was declared here\n    4 |     int x;\n      |         ^\n"
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "observed": [
+            {
+              "exit": 0,
+              "signal": null,
+              "stderr": "",
+              "stdout": "32765\n"
+            },
+            {
+              "exit": 0,
+              "signal": null,
+              "stderr": "",
+              "stdout": "32767\n"
+            }
+          ],
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "32765\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 20,
+                "file": "main.c",
+                "flag": "-Wuninitialized",
+                "line": 5,
+                "message": "variable 'x' is uninitialized when used here",
+                "severity": "warning"
+              },
+              {
+                "col": 10,
+                "file": "main.c",
+                "line": 4,
+                "message": "initialize the variable 'x' to silence this warning",
+                "severity": "note"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:5:20: warning: variable 'x' is uninitialized when used here [-Wuninitialized]\n    5 |     printf(\"%d\\n\", x);\n      |                    ^\nmain.c:4:10: note: initialize the variable 'x' to silence this warning\n    4 |     int x;\n      |          ^\n      |           = 0\n1 warning generated.\n"
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "observed": [
+            {
+              "exit": 0,
+              "signal": null,
+              "stderr": "",
+              "stdout": "0\n"
+            }
+          ],
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "0\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fx-warning": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "still runs\n"
+        },
+        "outcome": "runs",
+        "stdout": "still runs\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int unused = 5;\n    printf(\"still runs\\n\");\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "3305dc9d8e75ad31",
+      "id": "fx-warning",
+      "lesson": "01-fixture",
+      "meta": {
+        "expect": "warning",
+        "id": "fx-warning",
+        "predict": "output"
+      },
+      "module": "m99",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 9,
+                "file": "main.c",
+                "flag": "-Wunused-variable",
+                "line": 4,
+                "message": "unused variable 'unused'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:4:9: warning: unused variable 'unused' [-Wunused-variable]\n    4 |     int unused = 5;\n      |         ^~~~~~\n1 warning generated.\n"
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "still runs\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 9,
+                "file": "main.c",
+                "flag": "-Wunused-variable",
+                "line": 4,
+                "message": "unused variable 'unused'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c: In function 'main':\nmain.c:4:9: warning: unused variable 'unused' [-Wunused-variable]\n    4 |     int unused = 5;\n      |         ^~~~~~\n"
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "still runs\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 9,
+                "file": "main.c",
+                "flag": "-Wunused-variable",
+                "line": 4,
+                "message": "unused variable 'unused'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:4:9: warning: unused variable 'unused' [-Wunused-variable]\n    4 |     int unused = 5;\n      |         ^~~~~~\n1 warning generated.\n"
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "still runs\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    }
+  }
+}

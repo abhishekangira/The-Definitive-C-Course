@@ -41,6 +41,13 @@ export function toSampleMeta(raw: RawMeta): SampleMeta | null {
   const expectBy: Partial<Record<CompilerKey, Expect>> = {};
   for (const k of Object.keys(raw)) {
     const m = /^expect\.(\w+)$/.exec(k);
+    // warn= / warn.<compiler>= (required warning flags) are checked by tools/verify, not the app.
+    const w = /^warn(?:\.(\w+))?$/.exec(k);
+    if (w) {
+      if (w[1] && !COMPILER_KEYS.has(w[1])) throw new FenceMetaError(`unknown compiler in "${k}" (use gcc, clang, wasm, apple or msvc)`);
+      if (typeof raw[k] !== 'string') throw new FenceMetaError(`${k} needs a value, e.g. ${k}=-Wformat`);
+      continue;
+    }
     if (m) {
       if (!COMPILER_KEYS.has(m[1])) throw new FenceMetaError(`unknown compiler in "${k}" (use gcc, clang, wasm, apple or msvc)`);
       const v = raw[k];
@@ -52,7 +59,7 @@ export function toSampleMeta(raw: RawMeta): SampleMeta | null {
   }
   const str = (k: string) => (typeof raw[k] === 'string' ? (raw[k] as string) : undefined);
   const flag = (k: string) => raw[k] === true || raw[k] === 'true';
-  if (flag('fragment')) return { id: str('id') ?? '', fragment: true };
+  if (flag('fragment') || raw.fragment === 'partial') return { id: str('id') ?? '', fragment: true };
   const id = str('id');
   if (!id) return null;
   const expect = str('expect') as Expect | undefined;

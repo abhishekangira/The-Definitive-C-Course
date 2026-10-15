@@ -37,7 +37,7 @@ export function NumberDrill({ value, from = 'dec', to = 'bin', width = 8, signed
     markDone();
   };
   return (
-    <div className={styles.box} data-interaction="number-drill">
+    <div className={styles.box} data-interaction="number-drill" data-value={String(value)} data-from={from} data-to={to} data-width={width} data-signed={String(signed)}>
       <div className={styles.kicker}>Convert</div>
       <p className={styles.prompt}>{prompt ?? <>Write <code>{question}</code> ({NAME[from]}, as a {width}-bit <code>{ctype(width, signed)}</code>) in {NAME[to]}.</>}</p>
       <form className={styles.actions} onSubmit={e => { e.preventDefault(); check(); }}>

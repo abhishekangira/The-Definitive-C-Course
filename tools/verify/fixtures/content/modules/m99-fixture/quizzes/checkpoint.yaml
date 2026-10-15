@@ -1,0 +1,15 @@
+items:
+  - id: fx-choice
+    type: choice
+    prompt: What does this program print?
+    code: |
+      #include <stdio.h>
+
+      int main(void) {
+          printf("%d\n", 7 / 2);
+          return 0;
+      }
+    choices: ["3", "3.5", "4"]
+  - id: fx-quiz-text
+    type: mcq
+    prompt: Items without code are not samples.

@@ -73,7 +73,7 @@ Now draw it yourself. The program is paused just before `return sum;` runs insid
   explain="`total += i` means `total = total + i`, which reads `total`. Locals start with garbage, not 0. Initialise at the declaration: `int total = 0;`. Look at the gcc tab: gcc at `-O0` says nothing here. Compilers catch different mistakes, which is one reason this course checks every program with more than one."
 >
 
-```c id=uninit-total expect=ub predict=none
+```c id=uninit-total expect=ub predict=none warn.clang=-Wuninitialized warn.wasm=-Wuninitialized
 #include <stdio.h>
 
 int main(void) {

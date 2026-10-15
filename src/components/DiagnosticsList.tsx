@@ -7,7 +7,7 @@ export function DiagnosticsList({ diagnostics, raw, title = 'Compiler messages' 
   const errors = diagnostics.filter(d => d.severity === 'error' || d.severity === 'fatal error').length;
   const warnings = diagnostics.filter(d => d.severity === 'warning').length;
   return (
-    <details className={styles.box} open>
+    <details className={styles.box} open data-diagnostics>
       <summary>
         <span className={styles.title}>{title}</span>
         {errors > 0 && <span className="badge badge-err">{errors} error{errors > 1 ? 's' : ''}</span>}

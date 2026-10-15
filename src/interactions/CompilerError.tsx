@@ -39,6 +39,8 @@ export function CompilerError({ children, question, options, answer, explain, fi
   const [source, setSource] = useState(sampleRef?.code ?? '');
   const runner = useCRun();
   const [fixState, setFixState] = useState<'idle' | 'ok' | 'bad'>('idle');
+  const [fixAttempts, setFixAttempts] = useState(0);
+  const [shownFix, setShownFix] = useState(false);
 
   const diags: Diagnostic[] = useMemo(() => sample?.results[tab]?.compile.diagnostics ?? [], [sample, tab]);
   const raw = sample?.results[tab]?.compile.raw ?? '';
@@ -55,7 +57,9 @@ export function CompilerError({ children, question, options, answer, explain, fi
     const r = await runner.run({ files: { 'main.c': source }, stdin: sampleRef.meta.stdin ?? '' });
     const clean = r.compile.ok && r.compile.diagnostics.every(d => d.severity === 'note');
     const outputOk = fixedOutput === undefined || normOutput(r.stdout) === normOutput(fixedOutput);
-    setFixState(clean && outputOk && r.result?.kind === 'exit' ? 'ok' : 'bad');
+    const ok = clean && outputOk && r.result?.kind === 'exit';
+    setFixState(ok ? 'ok' : 'bad');
+    if (!ok) setFixAttempts(n => n + 1);
   };
 
   return (
@@ -73,7 +77,7 @@ export function CompilerError({ children, question, options, answer, explain, fi
         <ol className={styles.codeLines}>
           {lines.map((l, i) => (
             <li key={i}>
-              <label className={`${styles.codeLine} ${lineGuess === i + 1 ? (lineRight ? styles.choiceRight : styles.choiceWrong) : ''}`}>
+              <label className={`${styles.codeLine} ${lineGuess === i + 1 ? (lineRight ? styles.choiceRight : styles.choiceWrong) : ''}`} data-line={i + 1}>
                 <input type="radio" name={`${name}-line`} className="visually-hidden" checked={lineGuess === i + 1} onChange={() => setLineGuess(i + 1)} />
                 <span className={styles.lineNo} aria-hidden="true">{i + 1}</span>
                 <code>{l || ' '}</code>
@@ -88,7 +92,7 @@ export function CompilerError({ children, question, options, answer, explain, fi
         <fieldset className={styles.choices}>
           <legend><MiniMarkdown text={`2. ${question}`} /></legend>
           {options.map((o, i) => (
-            <label key={i} className={`${styles.choice} ${submitted ? (i === answer ? styles.choiceRight : i === picked ? styles.choiceWrong : '') : ''}`}>
+            <label key={i} className={`${styles.choice} ${submitted ? (i === answer ? styles.choiceRight : i === picked ? styles.choiceWrong : '') : ''}`} data-correct={submitted ? String(i === answer) : undefined}>
               <input type="radio" name={`${name}-q`} checked={picked === i} onChange={() => setPicked(i)} />
               <MiniMarkdown text={o} />
             </label>
@@ -116,6 +120,10 @@ export function CompilerError({ children, question, options, answer, explain, fi
           {fixState === 'ok' && <div className={styles.good} role="status"><strong>✓ Fixed: it compiles cleanly{fixedOutput !== undefined ? ' and prints the right output' : ''}.</strong></div>}
           {fixState === 'ok' && <button type="button" className="btn" onClick={markDone}>Continue</button>}
           {fixState === 'bad' && <div className={styles.bad} role="status">{runner.diagnostics.length ? 'Still not clean: read the new message, which may point somewhere else.' : 'It compiles, but the output isn\'t right yet.'}</div>}
+          {fixedRef && fixAttempts >= 2 && fixState !== 'ok' && !shownFix && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setShownFix(true); setSource(fixedRef.code); setFixState('idle'); }}>Show a fixed version</button>
+          )}
+          {shownFix && fixState !== 'ok' && <p className={styles.muted}>The editor now holds a fixed version. Compare it with the original, then press <em>Compile and check</em>.</p>}
         </div>
       )}
     </div>

@@ -55,7 +55,7 @@ function QuizItemView({ item, samples, index, onResult, result, assessment }: { 
   }
   if (item.type === 'np') {
     const [value, from, to, width] = (item.items ?? []) as [string, 'dec' | 'bin' | 'hex', 'dec' | 'bin' | 'hex', string];
-    return <div className={styles.quizItem}>{head}<NumberDrill value={value} from={from} to={to} width={Number(width) as 8} prompt={item.prompt} onResult={c => onResult({ correct: c })} /></div>;
+    return <div className={styles.quizItem} data-quiz-item={item.id}>{head}<NumberDrill value={value} from={from} to={to} width={Number(width) as 8} prompt={item.prompt} onResult={c => onResult({ correct: c })} /></div>;
   }
 
   // Code-based items need verified output.
