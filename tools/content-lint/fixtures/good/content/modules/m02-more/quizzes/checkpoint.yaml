@@ -1,0 +1,71 @@
+- id: fx2-cp-predict
+  type: predict
+  prompt: "What does this print?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        printf("%d\n", 6 * 7);
+        return 0;
+    }
+  explain: "6 * 7 is 42."
+- id: fx2-cp-write
+  type: exercise
+  exercise: m2-write
+  prompt: "Write it."
+- id: fx2-cp-fix
+  type: exercise
+  exercise: m2-fix
+  prompt: "Fix it."
+- id: fx2-cp-outcome
+  type: outcome
+  prompt: "What happens?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        return 0;
+    }
+  explain: "It runs and exits with status 0."
+- id: fx2-cp-ce
+  type: ce
+  prompt: "What does the message mean?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        int x = ;
+        return 0;
+    }
+  meta: expect=compile-error
+  choices: ["An expression is missing after `=`", "`int` is not a type"]
+  answer: 0
+  explain: "The initialiser is empty."
+- id: fx2-cp-sp
+  type: sp
+  sample: fx2-cp-sp
+  prompt: "Step through the program."
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        int a = 1;
+        a = a + 1;
+        printf("%d\n", a);
+        return 0;
+    }
+  meta: trace predict=none
+  explain: "`a` becomes 2."
+- id: fx2-cp-choice
+  type: choice
+  prompt: "Which is an integer type?"
+  choices: ["int", "float"]
+  answer: 0
+  explain: "`float` is floating point."
+- id: fx2-cp-transfer
+  type: choice
+  transfer: true
+  prompt: "In an unfamiliar setting, which value means success?"
+  choices: ["0", "1"]
+  answer: 0
+  explain: "Exit status 0."

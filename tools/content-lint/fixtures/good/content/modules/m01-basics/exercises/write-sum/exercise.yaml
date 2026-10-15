@@ -1,0 +1,7 @@
+id: write-sum
+kind: ct
+title: Write a sum
+prompt: "Do the thing."
+runsIn: browser
+hints: ["one", "two", "three"]
+variants: ['1']

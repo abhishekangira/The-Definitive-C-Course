@@ -1,0 +1,402 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE
+Excerpt of "CS50x - Lecture 1 - C" (CS50, https://www.youtube.com/watch?v=SlqjA04_dpk),
+cues from 02:21:11.000 to 02:25:59.000 (segment 02:22:11.000 to 02:24:59.000 plus 60 s either side).
+Captions (c) CS50, Harvard University, CC BY-NC-SA 4.0 (https://cs50.harvard.edu/x/license/).
+Kept only so that tools/videos/check.ts can verify the anchor quotes offline.
+
+02:21:12.883 --> 02:21:13.274
+well,
+
+02:21:13.404 --> 02:21:14.723
+let's just kick the can down the road.
+
+02:21:14.763 --> 02:21:15.534
+Let's use a long,
+
+02:21:15.603 --> 02:21:16.824
+which is 64 bits.
+
+02:21:16.923 --> 02:21:19.433
+So at least we can give away even more money in this scenario.
+
+02:21:19.643 --> 02:21:23.593
+I can't use percent I I need to use LI now for a long integer,
+
+02:21:23.923 --> 02:21:25.553
+but I think at this point,
+
+02:21:25.763 --> 02:21:28.553
+if I go back to VS Code's terminal window here,
+
+02:21:28.933 --> 02:21:31.404
+or when I quit that program by hitting control C quickly.
+
+02:21:31.799 --> 02:21:32.070
+Uh,
+
+02:21:32.120 --> 02:21:36.009
+now I'm going to go ahead and do make calculator again calculator,
+
+02:21:36.320 --> 02:21:37.839
+and I'm just going to keep hitting Y.
+
+02:21:38.160 --> 02:21:42.259
+But because I'm using a long in now and thus 64 bits,
+
+02:21:42.360 --> 02:21:43.629
+if I do this long enough,
+
+02:21:43.679 --> 02:21:45.549
+it's going to get crazy high
+
+02:21:45.879 --> 02:21:46.309
+and much,
+
+02:21:46.360 --> 02:21:47.559
+much higher than before,
+
+02:21:47.599 --> 02:21:49.280
+high enough that I'm not going to keep clicking Y
+
+02:21:49.280 --> 02:21:50.839
+enter because we're never going to hit the boundary,
+
+02:21:50.879 --> 02:21:51.610
+but eventually,
+
+02:21:51.879 --> 02:21:54.110
+especially if I did this in a loop automatically,
+
+02:21:54.280 --> 02:21:55.070
+it would certainly,
+
+02:21:55.160 --> 02:21:56.440
+00.
+
+02:21:56.900 --> 02:21:57.169
+OK,
+
+02:21:57.250 --> 02:21:58.719
+I guess exponentiation works fast.
+
+02:21:58.889 --> 02:21:59.049
+OK,
+
+02:21:59.169 --> 02:21:59.650
+so it did work.
+
+02:21:59.730 --> 02:22:01.000
+I didn't think I was going to hit it enough times,
+
+02:22:01.209 --> 02:22:02.519
+but the same problem happened again.
+
+02:22:02.570 --> 02:22:04.080
+We overflowed this
+
+02:22:04.410 --> 02:22:05.250
+long integer,
+
+02:22:05.330 --> 02:22:08.330
+even using that many bits because I was talking so long I
+
+02:22:08.330 --> 02:22:11.620
+kept hitting Y enough times to overflow even that long integer.
+
+02:22:11.690 --> 02:22:13.000
+So that too was a problem,
+
+02:22:13.009 --> 02:22:14.799
+and this happens truly in the real world.
+
+02:22:14.860 --> 02:22:17.889
+So picture here is a Boeing 787 from a few years back,
+
+02:22:18.009 --> 02:22:19.889
+long before there were all the more recent problems with.
+
+02:22:20.309 --> 02:22:22.360
+planes whereby after
+
+02:22:22.790 --> 02:22:26.309
+248 days of continuous power,
+
+02:22:26.469 --> 02:22:29.299
+which is kind of a thing in the aviation industry like time is money,
+
+02:22:29.429 --> 02:22:31.769
+and generally they want the planes in the air as much as possible,
+
+02:22:31.830 --> 02:22:33.900
+which means they want them powered on as much as possible,
+
+02:22:34.030 --> 02:22:35.589
+which means they don't like turn them off at night.
+
+02:22:35.669 --> 02:22:37.219
+They keep them going and flying.
+
+02:22:37.469 --> 02:22:39.379
+After 248 days,
+
+02:22:39.509 --> 02:22:43.110
+the New York Times reported a few years back that a Model 787 airplane.
+
+02:22:43.660 --> 02:22:48.820
+That has been powered continuously for 248 days can lose all alternating current
+
+02:22:48.820 --> 02:22:50.860
+electrical power due to the generator control
+
+02:22:50.860 --> 02:22:53.049
+unit simultaneously going into fail-safe mode.
+
+02:22:53.280 --> 02:22:55.830
+This condition is caused by a software counter internal to the
+
+02:22:55.830 --> 02:22:59.290
+GCUs that will overflow after 248 days of continuous power.
+
+02:22:59.540 --> 02:23:03.259
+Boeing is in the process at the time of developing a GCU software upgrade.
+
+02:23:03.360 --> 02:23:03.980
+Will remedy
+
+02:23:04.150 --> 02:23:05.259
+the unsafe condition.
+
+02:23:05.429 --> 02:23:09.429
+So literally what this means is that the power to these planes would just shut
+
+02:23:09.429 --> 02:23:13.519
+off if the planes were on for more than 248 days at a time,
+
+02:23:13.549 --> 02:23:17.339
+and this was a common thing for lanes to be maximal power.
+
+02:23:17.870 --> 02:23:20.469
+Why was this actually happening or what was the solution?
+
+02:23:20.549 --> 02:23:20.589
+Well,
+
+02:23:20.629 --> 02:23:21.429
+the short term fix,
+
+02:23:21.509 --> 02:23:23.219
+because it took a while for Boeing to fix this,
+
+02:23:23.750 --> 02:23:24.549
+was what?
+
+02:23:24.669 --> 02:23:27.179
+What would you do if the symptom is that the plane
+
+02:23:27.709 --> 02:23:30.219
+shuts off midflight after 248 days,
+
+02:23:30.309 --> 02:23:30.780
+yeah.
+
+02:23:32.419 --> 02:23:34.820
+Literally turn it off and back on again,
+
+02:23:34.980 --> 02:23:37.559
+much like you've probably been taught with your phones and computers
+
+02:23:37.559 --> 02:23:40.570
+and any other electronic devices that somehow freak out on occasion.
+
+02:23:40.820 --> 02:23:41.620
+Reboot the plane.
+
+02:23:41.740 --> 02:23:42.580
+Now why is that?
+
+02:23:42.700 --> 02:23:42.740
+Well,
+
+02:23:42.820 --> 02:23:45.900
+any time you reboot a phone or a laptop or a plane,
+
+02:23:46.219 --> 02:23:49.620
+all of those variables get reset to their default values,
+
+02:23:49.700 --> 02:23:49.809
+which,
+
+02:23:49.820 --> 02:23:50.980
+if it's the first line of code,
+
+02:23:51.059 --> 02:23:52.059
+like in some of my examples,
+
+02:23:52.139 --> 02:23:53.900
+get set back to zero again.
+
+02:23:53.980 --> 02:23:54.620
+For instance,
+
+02:23:54.660 --> 02:23:57.530
+the first line of code is executed from top to bottom.
+
+02:23:57.759 --> 02:23:59.139
+So this effectively solved the.
+
+02:23:59.224 --> 02:23:59.455
+Problem.
+
+02:23:59.535 --> 02:24:00.974
+But when they finally rolled out a fix,
+
+02:24:01.054 --> 02:24:02.294
+then you didn't have to do that anymore.
+
+02:24:02.334 --> 02:24:04.655
+But the source of the problem is essentially
+
+02:24:04.655 --> 02:24:07.365
+that they were probably using 32 bit integers,
+
+02:24:07.375 --> 02:24:08.415
+but also negative value,
+
+02:24:08.495 --> 02:24:12.415
+so they had 31 bits at their disposal to count to positive numbers,
+
+02:24:12.445 --> 02:24:18.285
+and 248 days is roughly how many tens of a second there are,
+
+02:24:18.535 --> 02:24:22.565
+which means once you count in tens of a second for 248 days
+
+02:24:22.565 --> 02:24:26.254
+you would overflow an integer and the power would shut off effectively because.
+
+02:24:26.389 --> 02:24:28.309
+Something ended up going to zero,
+
+02:24:28.450 --> 02:24:29.719
+so there was a lot of sort of
+
+02:24:30.250 --> 02:24:31.730
+marketing speak or technical speak in that,
+
+02:24:31.769 --> 02:24:34.639
+but it boiled down to just a simple integer overflow.
+
+02:24:34.809 --> 02:24:37.290
+There's a historical bug in Pac-Man if you've
+
+02:24:37.290 --> 02:24:40.269
+ever played this in any of its forms whereby
+
+02:24:40.490 --> 02:24:43.240
+you can play up to level 255,
+
+02:24:43.330 --> 02:24:46.599
+but because there was a missing if condition that checked what level you were on,
+
+02:24:46.730 --> 02:24:50.400
+you could accidentally garble the screen if you were amazing at Pac-Man
+
+02:24:50.400 --> 02:24:53.410
+because they too would overflow an integer and just random character.
+
+02:24:53.655 --> 02:24:54.995
+would end up appearing on the screen,
+
+02:24:55.165 --> 02:24:57.125
+so it's sort of like a badge of honor to actually
+
+02:24:57.125 --> 02:25:00.674
+hit level 256 in this way because of this bug.
+
+02:25:01.004 --> 02:25:02.855
+But there's yet other issues we can see here,
+
+02:25:02.875 --> 02:25:03.445
+and if you don't mind,
+
+02:25:03.455 --> 02:25:04.955
+we might go a couple minutes over,
+
+02:25:05.044 --> 02:25:06.384
+but let me just demonstrate
+
+02:25:06.684 --> 02:25:08.875
+what these examples can do for us here.
+
+02:25:09.044 --> 02:25:12.365
+If I were to revamp my calculator here as follows by
+
+02:25:12.365 --> 02:25:15.315
+clearing my terminal window after hitting control C to kill that,
+
+02:25:15.525 --> 02:25:18.334
+let me go ahead and get rid of all of this meme code here,
+
+02:25:18.605 --> 02:25:20.525
+scrolling down to the inside of main.
+
+02:25:20.969 --> 02:25:23.080
+And let's just do a couple of things like this
+
+02:25:23.080 --> 02:25:29.110
+in X equals quote unquote uh what's X question mark.
+
+02:25:29.360 --> 02:25:34.549
+Then let's go ahead and do in Y equals get in quote unquote what'sy question mark.
+
+02:25:34.719 --> 02:25:37.330
+Then let's go ahead and print out just X divided by Y.
+
+02:25:37.480 --> 02:25:41.110
+So here's a percent I backslash N X divided by Y.
+
+02:25:41.599 --> 02:25:43.750
+This would seem to be a calculator now for division,
+
+02:25:43.839 --> 02:25:45.370
+which I can make as before.
+
+02:25:45.790 --> 02:25:47.230
+And actually,
+
+02:25:47.480 --> 02:25:47.969
+sorry,
+
+02:25:48.070 --> 02:25:51.110
+I don't want to do the missing terminating,
+
+02:25:51.309 --> 02:25:51.440
+oh,
+
+02:25:51.559 --> 02:25:51.950
+sorry,
+
+02:25:52.280 --> 02:25:54.559
+missing a double quote there was an unintended bug.
+
+02:25:54.639 --> 02:25:54.750
+So,
+
+02:25:54.759 --> 02:25:55.910
+if I make this here calculator,
+
+02:25:55.959 --> 02:25:57.110
+do slash calculator,
+
+02:25:57.200 --> 02:25:57.759
+type in 1,
+
+02:25:57.839 --> 02:25:58.589
+type in 3.
+
+02:25:59.000 --> 02:25:59.990
+I get 0,

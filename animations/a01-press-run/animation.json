@@ -1,0 +1,7 @@
+{
+  "id": "a01-press-run",
+  "title": "What happens when you press Run",
+  "lesson": "1.1",
+  "platform": "In the browser (wasm32). The native lane contrasts x86-64 and arm64, where a pointer is 8 bytes.",
+  "description": "Pressing Run sends the source text of main.c to a Web Worker that runs clang, itself compiled to WebAssembly and cached after the first download. clang preprocesses and compiles the C, and its warnings and errors come back to the editor. The linker joins the object code with the C library into main.wasm. The page starts a fresh worker for main.wasm; every printf becomes a WASI fd_write call that the browser answers, and its bytes appear in the output panel, while scanf asks the page for input. Natively, the same C compiles to x86-64 or arm64 machine code that the operating system runs directly, and a pointer is 8 bytes instead of 4."
+}

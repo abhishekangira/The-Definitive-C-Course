@@ -1,0 +1,7 @@
+id: fix-bug/variants/1
+kind: fb
+title: Fix the bug (variant)
+prompt: "Do the other thing."
+runsIn: browser
+hints: ["one", "two", "three"]
+variants: []

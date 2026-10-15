@@ -1,0 +1,7 @@
+id: project/p1-greet
+kind: ct
+title: Greeter
+prompt: x
+runs-in: browser
+hints: [a, b, c]
+variants: []

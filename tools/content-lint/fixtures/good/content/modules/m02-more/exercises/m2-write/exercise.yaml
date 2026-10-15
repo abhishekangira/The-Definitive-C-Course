@@ -1,0 +1,7 @@
+id: m2-write
+kind: ct
+title: Write
+prompt: "Write it."
+runsIn: browser
+hints: ["one", "two", "three"]
+variants: ['1']

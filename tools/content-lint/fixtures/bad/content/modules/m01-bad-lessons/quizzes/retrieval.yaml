@@ -1,0 +1,43 @@
+    # Module 1 warm-up: a JavaScript diagnostic.
+- id: fx-js-1
+  type: choice
+  from: js
+  prompt: "JS question 1?"
+  choices: ["a", "b", "c"]
+  answer: 1
+  explain: "Because 1."
+- id: fx-js-2
+  type: choice
+  from: js
+  prompt: "JS question 2?"
+  choices: ["a", "b", "c"]
+  answer: 2
+  explain: "Because 2."
+- id: fx-js-3
+  type: choice
+  from: js
+  prompt: "JS question 3?"
+  choices: ["a", "b", "c"]
+  answer: 0
+  explain: "Because 3."
+- id: fx-js-4
+  type: choice
+  from: js
+  prompt: "JS question 4?"
+  choices: ["a", "b", "c"]
+  answer: 1
+  explain: "Because 4."
+- id: fx-js-5
+  type: choice
+  from: js
+  prompt: "JS question 5?"
+  choices: ["a", "b", "c"]
+  answer: 2
+  explain: "Because 5."
+- id: fx-js-6
+  type: choice
+  from: js
+  prompt: "JS question 6?"
+  choices: ["a", "b", "c"]
+  answer: 0
+  explain: "Because 6."

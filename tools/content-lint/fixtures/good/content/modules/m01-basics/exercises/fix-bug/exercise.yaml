@@ -1,0 +1,7 @@
+id: fix-bug
+kind: fb
+title: Fix the bug
+prompt: "Do the thing."
+runsIn: browser
+hints: ["one", "two", "three"]
+variants: ['1']

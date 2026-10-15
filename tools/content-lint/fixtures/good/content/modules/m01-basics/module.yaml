@@ -1,0 +1,30 @@
+id: m01
+number: 1
+title: Basics
+why: >-
+  A fixture module that satisfies every rule, so each test can break exactly one of them.
+hours: 10
+weeks: 2
+time: { lessons: 1, problemSet: 5, project: 2, variants: 1, quizCheckpoint: 1 }
+lessonsRunIn: browser
+projectRunsIn: browser
+successCriteria:
+  - { sc: SC1, level: I }
+  - { sc: SC2, level: D }
+resources:
+  - title: "Beej's Guide to C Programming"
+    detail: 'Chapter 2 "Hello, World!"'
+    url: https://beej.us/guide/bgc/html/split/
+  - title: "K&R, The C Programming Language"
+    detail: "Chapter 1, sections 1.1-1.3"
+lessons:
+  - 01-hello
+  - 02-frames
+problemSet:
+  - write-sum
+project: p1-greet
+coreExercises:
+  - write-sum
+  - fix-bug
+retrieval:
+  sources: [js]

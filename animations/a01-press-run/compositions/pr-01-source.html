@@ -1,0 +1,109 @@
+<template id="pr-01-source-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    /* Editor card: x 192-936, y 372-884. */
+    #pr01-editor { left: 192px; top: 372px; width: 744px; height: 548px; overflow: hidden; border-color: var(--page); }
+    #pr01-bar { position: absolute; left: 0; top: 0; width: 100%; height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; background: var(--bg-sunken); border-bottom: 3px solid var(--border-strong); }
+    #pr01-file { font: 700 30px/1 var(--font-mono); color: var(--text); }
+    #pr01-run { display: flex; align-items: center; gap: 12px; width: 150px; height: 50px; padding: 0 18px; border-radius: 12px; background: var(--page); color: var(--on-accent); font: 700 28px/1 var(--font-mono); }
+    #pr01-run svg { width: 20px; height: 22px; flex: none; }
+    #pr01-code { position: absolute; left: 24px; top: 96px; --code-size: 38px; --code-lh: 56px; }
+    #pr01-ripple { position: absolute; left: 794px; top: 370px; width: 80px; height: 80px; opacity: 0; border: 5px solid var(--page); border-radius: 50%; }
+    #pr01-cursor { position: absolute; left: 0; top: 0; width: 48px; height: 48px; }
+    /* Worker card (the destination): x 1152-1728, y 372-672. */
+    #pr01-worker { left: 1152px; top: 372px; width: 576px; height: 232px; padding: 28px; border-style: dashed; border-color: var(--border-strong); background: rgba(36, 26, 61, 0); }
+    #pr01-worker .pr-h { color: var(--compiler); }
+    #pr01-worker .pr-p { margin-top: 14px; }
+    #pr01-packet { left: 956px; top: 388px; width: 132px; padding: 0; }
+    #pr01-msg { position: absolute; left: 948px; top: 440px; width: 200px; text-align: center; font: 400 26px/1.2 var(--font-mono); color: var(--page); }
+    #pr01-link { left: 948px; top: 398px; width: 204px; height: 24px; }
+  </style>
+  <div id="root" data-composition-id="pr-01-source" data-width="1920" data-height="1080" data-duration="6"
+       data-steps='{"source":{"label":"Source","start":0,"end":5.45}}'>
+    <div class="pr-stage" id="pr01-stage">
+      <div class="pr-head" id="pr01-head">
+        <h1 class="pr-title" id="pr01-title">You press Run.</h1>
+        <p class="pr-sub" id="pr01-sub">Your program is only text in the editor so far.</p>
+      </div>
+
+      <div class="pr-card" id="pr01-editor">
+        <div id="pr01-bar">
+          <span id="pr01-file">main.c</span>
+          <span id="pr01-run"><svg viewBox="0 0 20 22" aria-hidden="true"><path d="M2 1.5 L18 11 L2 20.5 Z" fill="#0b1220" /></svg>Run</span>
+        </div>
+        <div class="pr-code" id="pr01-code">
+          <div class="pr-line pr01-l"><span class="pr-ln">1</span><span><span class="pr-kw">#include</span> <span class="pr-str">&lt;stdio.h&gt;</span></span></div>
+          <div class="pr-line pr01-l"><span class="pr-ln">2</span><span> </span></div>
+          <div class="pr-line pr01-l"><span class="pr-ln">3</span><span><span class="pr-kw">int</span> main(<span class="pr-kw">void</span>) {</span></div>
+          <div class="pr-line pr01-l"><span class="pr-ln">4</span><span>    <span class="pr-kw">int</span> unused;</span></div>
+          <div class="pr-line pr01-l"><span class="pr-ln">5</span><span>    printf(<span class="pr-str">"Hello, C!\n"</span>);</span></div>
+          <div class="pr-line pr01-l"><span class="pr-ln">6</span><span>    <span class="pr-kw">return</span> <span class="pr-num">0</span>;</span></div>
+          <div class="pr-line pr01-l"><span class="pr-ln">7</span><span>}</span></div>
+        </div>
+      </div>
+      <div id="pr01-ripple"></div>
+
+      <svg class="pr-arrow pr-page" id="pr01-link" viewBox="0 0 204 24" aria-hidden="true">
+        <path class="pr-draw pr01-line" d="M 4 12 H 188" pathLength="1" />
+        <path class="pr01-head" d="M 172 -2 L 192 12 L 172 26" />
+      </svg>
+      <div id="pr01-msg">postMessage</div>
+      <div class="pr-packet pr-page" id="pr01-packet">main.c</div>
+
+      <div class="pr-card" id="pr01-worker">
+        <div class="pr-h pr-mono" id="pr01-worker-h">Web Worker</div>
+        <div class="pr-p" id="pr01-worker-p">A separate thread, so the page stays responsive while it works.</div>
+      </div>
+
+      <svg id="pr01-cursor" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 2 L4 26 L10 20 L15 30 L19 28 L14 18 L22 18 Z" fill="#ffffff" stroke="#0b0d10" stroke-width="2" stroke-linejoin="round" /></svg>
+    </div>
+  </div>
+  <script>
+    (function () {
+      // The runtime mounts this template into the host element (which carries data-composition-id) and moves the
+      // authored root's attributes onto an inner div, so look for the attribute on the host or inside it.
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("pr-01-source", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 6;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+
+      tl.addLabel("source", S.source.start);
+      tl.fromTo("#pr01-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#pr01-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#pr01-editor", { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.7 }, 0.5);
+      tl.fromTo(".pr01-l", { opacity: 0, x: -18 }, { opacity: 1, x: 0, duration: 0.4, stagger: 0.11 }, 1.0);
+      tl.fromTo("#pr01-worker", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.7, ease: "power2.out" }, 1.9);
+
+      // The cursor travels to the Run button (tip is at 6,3 in the 48px icon) and clicks.
+      tl.fromTo("#pr01-cursor", { opacity: 0, x: 1010, y: 700 }, { opacity: 1, x: 840, y: 411, duration: 1.0, ease: "power2.inOut" }, 2.0);
+      tl.fromTo("#pr01-run", { scale: 1 }, { scale: 0.92, duration: 0.09, ease: "power1.in" }, 3.0);
+      tl.fromTo("#pr01-run", { scale: 0.92 }, { scale: 1, duration: 0.3, ease: "back.out(2.5)", immediateRender: false }, 3.09);
+      tl.fromTo("#pr01-ripple", { opacity: 0.9, scale: 0.35 }, { opacity: 0, scale: 2.2, duration: 0.7, ease: "power2.out", immediateRender: false }, 3.0);
+
+      // Run sends the source text to a Web Worker as a message.
+      tl.fromTo("#pr01-link .pr01-line", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.7, ease: "power2.inOut" }, 3.15);
+      tl.fromTo("#pr01-link .pr01-head", { opacity: 0 }, { opacity: 1, duration: 0.15, ease: "none" }, 3.8);
+      tl.fromTo("#pr01-msg", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4 }, 3.3);
+      tl.fromTo("#pr01-packet", { opacity: 0 }, { opacity: 1, duration: 0.2, ease: "none" }, 3.15);
+      tl.fromTo("#pr01-packet", { x: 0 }, { x: 56, duration: 0.7, ease: "power2.inOut", immediateRender: false }, 3.2);
+      tl.fromTo("#pr01-packet", { opacity: 1 }, { opacity: 0, duration: 0.2, ease: "none", immediateRender: false }, 3.95);
+
+      // The destination wakes up (colour tweens only).
+      tl.fromTo("#pr01-worker", { borderColor: "#3d4552", backgroundColor: "rgba(36,26,61,0)" }, { borderColor: "#c4a7ff", backgroundColor: "rgba(36,26,61,1)", duration: 0.5, ease: "power1.out" }, 4.0);
+      tl.fromTo("#pr01-cursor", { opacity: 1 }, { opacity: 0, duration: 0.4, ease: "power1.in", immediateRender: false }, 3.8);
+
+      // Exit: only the stage fades; the rail and background persist.
+      tl.fromTo("#pr01-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["pr-01-source"] = tl;
+    })();
+  </script>
+</template>

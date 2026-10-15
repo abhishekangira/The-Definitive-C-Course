@@ -1,0 +1,7 @@
+id: project/p1-greet
+kind: ct
+title: Greeter
+prompt: "Write a greeter."
+runsIn: browser
+hints: ["one", "two", "three"]
+variants: []

@@ -1,0 +1,7 @@
+id: m3-lt
+kind: lt
+title: x
+prompt: x
+runsIn: native
+hints: [a, b, c]
+variants: []

@@ -1,0 +1,94 @@
+<template id="pr-06-native-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    .pr06-chip i { font-size: 24px; }
+    .pr06-badge { gap: 12px; font: 400 30px/1 var(--font-sans); color: var(--text); }
+    .pr06-badge b { font: 700 32px/1 var(--font-mono); color: var(--c); }
+    #pr06-1label { position: absolute; left: 192px; top: 372px; font: 700 30px/1.2 var(--font-sans); color: var(--text); }
+    #pr06-1a { left: 192px; top: 418px; width: 260px; height: 120px; }
+    #pr06-1x1 { left: 454px; top: 466px; width: 52px; height: 24px; }
+    #pr06-1b { left: 508px; top: 418px; width: 360px; height: 120px; }
+    #pr06-1x2 { left: 870px; top: 466px; width: 52px; height: 24px; }
+    #pr06-1c { left: 924px; top: 418px; width: 280px; height: 120px; }
+    #pr06-1x3 { left: 1206px; top: 466px; width: 52px; height: 24px; }
+    #pr06-1d { left: 1260px; top: 418px; width: 468px; height: 120px; }
+    #pr06-1badge { left: 1260px; top: 556px; width: 468px; height: 56px; flex-direction: row; padding: 0 16px; }
+    #pr06-2label { position: absolute; left: 192px; top: 664px; font: 700 30px/1.2 var(--font-sans); color: var(--text); }
+    #pr06-2a { left: 192px; top: 710px; width: 260px; height: 120px; }
+    #pr06-2x1 { left: 454px; top: 758px; width: 52px; height: 24px; }
+    #pr06-2b { left: 508px; top: 710px; width: 360px; height: 120px; }
+    #pr06-2x2 { left: 870px; top: 758px; width: 52px; height: 24px; }
+    #pr06-2c { left: 924px; top: 710px; width: 280px; height: 120px; }
+    #pr06-2x3 { left: 1206px; top: 758px; width: 52px; height: 24px; }
+    #pr06-2d { left: 1260px; top: 710px; width: 468px; height: 120px; }
+    #pr06-2badge { left: 1260px; top: 848px; width: 468px; height: 56px; flex-direction: row; padding: 0 16px; }
+  </style>
+  <div id="root" data-composition-id="pr-06-native" data-width="1920" data-height="1080" data-duration="8"
+       data-steps='{"native":{"label":"Native","start":0,"end":7.45}}'>
+    <div class="pr-stage" id="pr06-stage">
+      <div class="pr-head" id="pr06-head">
+        <h1 class="pr-title" id="pr06-title">Run it natively instead.</h1>
+        <p class="pr-sub" id="pr06-sub">Same C. A different target, so some sizes change.</p>
+      </div>
+
+      <div id="pr06-1label" class="pr06-lbl">In your browser</div>
+      <div class="pr-box pr06-chip pr06-L1" id="pr06-1a" style="--c: var(--text); --c-soft: var(--bg-elev); border-color: var(--border-strong)"><b>main.c</b><i>your C source</i></div>
+      <svg class="pr-arrow pr-comp pr06-x pr06-L1x" id="pr06-1x1" viewBox="0 0 52 24" aria-hidden="true"><path class="pr-draw pr06-d" d="M 4 12 H 34" pathLength="1" /><path class="pr06-h" d="M 22 2 L 38 12 L 22 22" /></svg>
+      <div class="pr-box pr-comp pr06-chip pr06-L1" id="pr06-1b"><b>clang</b><i>target: wasm32</i></div>
+      <svg class="pr-arrow pr-comp pr06-x pr06-L1x" id="pr06-1x2" viewBox="0 0 52 24" aria-hidden="true"><path class="pr-draw pr06-d" d="M 4 12 H 34" pathLength="1" /><path class="pr06-h" d="M 22 2 L 38 12 L 22 22" /></svg>
+      <div class="pr-box pr-prog pr06-chip pr06-L1" id="pr06-1c"><b>main.wasm</b><i>WebAssembly</i></div>
+      <svg class="pr-arrow pr-prog pr06-x pr06-L1x" id="pr06-1x3" viewBox="0 0 52 24" aria-hidden="true"><path class="pr-draw pr06-d" d="M 4 12 H 34" pathLength="1" /><path class="pr06-h" d="M 22 2 L 38 12 L 22 22" /></svg>
+      <div class="pr-box pr-prog pr06-chip pr06-L1" id="pr06-1d"><b>engine + WASI</b><i>runs it inside the browser</i></div>
+      <div class="pr-box pr-prog pr06-badge" id="pr06-1badge">a pointer is <b>4 bytes</b></div>
+      <div id="pr06-2label" class="pr06-lbl">On your machine</div>
+      <div class="pr-box pr06-chip pr06-L2" id="pr06-2a" style="--c: var(--text); --c-soft: var(--bg-elev); border-color: var(--border-strong)"><b>main.c</b><i>the same C source</i></div>
+      <svg class="pr-arrow pr-nat pr06-x pr06-L2x" id="pr06-2x1" viewBox="0 0 52 24" aria-hidden="true"><path class="pr-draw pr06-d" d="M 4 12 H 34" pathLength="1" /><path class="pr06-h" d="M 22 2 L 38 12 L 22 22" /></svg>
+      <div class="pr-box pr-nat pr06-chip pr06-L2" id="pr06-2b"><b>gcc or clang</b><i>target: x86-64 or arm64</i></div>
+      <svg class="pr-arrow pr-nat pr06-x pr06-L2x" id="pr06-2x2" viewBox="0 0 52 24" aria-hidden="true"><path class="pr-draw pr06-d" d="M 4 12 H 34" pathLength="1" /><path class="pr06-h" d="M 22 2 L 38 12 L 22 22" /></svg>
+      <div class="pr-box pr-nat pr06-chip pr06-L2" id="pr06-2c"><b>a.out</b><i>machine code</i></div>
+      <svg class="pr-arrow pr-nat pr06-x pr06-L2x" id="pr06-2x3" viewBox="0 0 52 24" aria-hidden="true"><path class="pr-draw pr06-d" d="M 4 12 H 34" pathLength="1" /><path class="pr06-h" d="M 22 2 L 38 12 L 22 22" /></svg>
+      <div class="pr-box pr-nat pr06-chip pr06-L2" id="pr06-2d"><b>your OS</b><i>runs it directly</i></div>
+      <div class="pr-box pr-nat pr06-badge" id="pr06-2badge">a pointer is <b>8 bytes</b></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("pr-06-native", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+
+      // Lane n starts at t0. Chips enter from different directions; arrows draw between them.
+      function lane(n, t0) {
+        tl.fromTo("#pr06-" + n + "label", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.5 }, t0);
+        var dirs = [{ x: -50, y: 0 }, { x: 0, y: 40 }, { x: 0, y: -40 }, { x: 50, y: 0 }];
+        "abcd".split("").forEach(function (k, i) {
+          var at = t0 + 0.3 + i * 0.5;
+          tl.fromTo("#pr06-" + n + k, { opacity: 0, x: dirs[i].x, y: dirs[i].y }, { opacity: 1, x: 0, y: 0, duration: 0.55, ease: i === 1 ? "back.out(1.4)" : "power3.out" }, at);
+          if (i < 3) {
+            tl.fromTo("#pr06-" + n + "x" + (i + 1) + " .pr06-d", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.35, ease: "power2.inOut" }, at + 0.3);
+            tl.fromTo("#pr06-" + n + "x" + (i + 1) + " .pr06-h", { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, at + 0.55);
+          }
+        });
+        tl.fromTo("#pr06-" + n + "badge", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, t0 + 2.4);
+      }
+
+      tl.addLabel("native", S.native.start);
+      tl.fromTo("#pr06-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#pr06-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      lane(1, 0.6);
+      lane(2, 3.4);
+      // Both badges pulse a finite number of times so the comparison is noticed (peak size stays inside the lane).
+      tl.fromTo(".pr06-badge", { scale: 1 }, { scale: 1.04, duration: 0.5, ease: "sine.inOut", yoyo: true, repeat: 1, immediateRender: false }, 6.3);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["pr-06-native"] = tl;
+    })();
+  </script>
+</template>

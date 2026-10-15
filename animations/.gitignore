@@ -1,0 +1,4 @@
+# Synced copies of animations/_shared (tools/anim/sync-shared.mjs recreates them; check.mjs and
+# render.mjs run it first). The canonical copies live in animations/_shared.
+a*/vendor/
+a*/assets/fonts/

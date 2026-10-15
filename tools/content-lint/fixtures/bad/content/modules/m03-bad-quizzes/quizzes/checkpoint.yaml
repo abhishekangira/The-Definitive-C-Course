@@ -1,0 +1,77 @@
+- id: bq-dup
+  type: predict
+  prompt: "Predict, but with choices?"
+  choices: ["a", "b"]
+  answer: 0
+  code: |
+    int main(void) { return 0; }
+  explain: "x"
+- id: bq-dup
+  type: predict
+  prompt: "Duplicate id and no explain."
+  code: |
+    int main(void) { return 0; }
+- id: bq-weird-type
+  type: riddle
+  prompt: "Unknown type."
+- id: bq-choice-code-answer
+  type: choice
+  prompt: "A choice with code must not carry an answer."
+  code: |
+    int main(void) { return 0; }
+  choices: ["a", "b"]
+  answer: 0
+  explain: "x"
+- id: bq-choice-no-answer
+  type: choice
+  prompt: "Conceptual choice without an answer."
+  choices: ["a", "b"]
+  explain: "x"
+- id: bq-choice-range
+  type: choice
+  prompt: "Answer out of range, dup choices."
+  choices: ["a", "a"]
+  answer: 7
+  explain: "x"
+- id: bq-ce-no-answer
+  type: ce
+  prompt: "ce without an answer."
+  code: |
+    int main(void) { return }
+  choices: ["a", "b"]
+  explain: "x"
+- id: bq-md-bad
+  type: md
+  sample: no-such-sample
+  prompt: "md missing line and items."
+  explain: "x"
+- id: bq-md-no-trace
+  type: md
+  sample: bq-md-no-trace
+  line: 40
+  items: ["main.x"]
+  prompt: "md whose sample has no trace flag and a line past the end."
+  code: |
+    int main(void) { return 0; }
+  explain: "x"
+- id: bq-ex-missing
+  type: exercise
+  exercise: not-an-exercise
+  prompt: "Missing exercise."
+- id: bq-np-bad
+  type: np
+  prompt: "Bad np."
+  items: ["thirteen", "dec", "dec", "12"]
+- id: bq-order-dup
+  type: order
+  prompt: "Order with duplicates."
+  items: ["one", "one"]
+  explain: "x"
+- id: bq-extra
+  type: predict
+  prompt: "Unknown field, UB asked for output."
+  code: |
+    int main(void) { return 0; }
+  meta: expect=ub
+  colour: red
+  explain: "x"

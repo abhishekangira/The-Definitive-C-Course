@@ -1,0 +1,27 @@
+id: m01
+number: 1
+title: Bad lessons
+why: Each lesson breaks a different rule.
+hours: 10
+weeks: 2
+time: { lessons: 1, problemSet: 5, project: 2, variants: 1, quizCheckpoint: 1 }
+lessonsRunIn: browser
+projectRunsIn: browser
+successCriteria:
+  - { sc: SC1, level: I }
+resources:
+  - { title: "Beej", detail: "Chapter 2" }
+lessons:
+  - 01-wordy
+  - 02-media
+  - 03-fences
+  - 04-analogy
+  - 05-frontmatter
+  - 06-refs
+  - 07-syntax
+  - 08-no-frontmatter
+problemSet: []
+project: p1-greet
+coreExercises: []
+retrieval:
+  sources: [js]

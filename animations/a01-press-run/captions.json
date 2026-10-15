@@ -1,0 +1,38 @@
+[
+  {
+    "step": "source",
+    "start": 0.4,
+    "end": 5.4,
+    "text": "You write C in the editor and press Run. The page sends your source text to a Web Worker."
+  },
+  {
+    "step": "compile",
+    "start": 6.3,
+    "end": 16.3,
+    "text": "Inside the worker, clang preprocesses and compiles your C. clang is itself a WebAssembly program, downloaded once and cached. Its warnings and errors come back to the editor."
+  },
+  {
+    "step": "link",
+    "start": 17.3,
+    "end": 22.3,
+    "text": "The linker joins your object code with the C library and produces main.wasm, a WebAssembly program."
+  },
+  {
+    "step": "run",
+    "start": 23.3,
+    "end": 30.3,
+    "text": "The page starts a fresh worker to run main.wasm. Each printf becomes a WASI fd_write call that the browser answers."
+  },
+  {
+    "step": "output",
+    "start": 31.3,
+    "end": 36.4,
+    "text": "The bytes appear in the output panel. scanf works the other way: the page asks you for input."
+  },
+  {
+    "step": "native",
+    "start": 37.3,
+    "end": 44.8,
+    "text": "Natively, the same C becomes x86-64 or arm64 machine code that your OS runs directly. A pointer is 8 bytes there, not 4."
+  }
+]

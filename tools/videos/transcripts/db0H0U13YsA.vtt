@@ -1,0 +1,498 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE
+Excerpt of "CS50x - Lecture 4 - Memory" (CS50, https://www.youtube.com/watch?v=db0H0U13YsA),
+cues from 01:26:40.000 to 01:31:24.000 (segment 01:27:40.000 to 01:30:24.000 plus 60 s either side).
+Captions (c) CS50, Harvard University, CC BY-NC-SA 4.0 (https://cs50.harvard.edu/x/license/).
+Kept only so that tools/videos/check.ts can verify the anchor quotes offline.
+
+01:26:42.089 --> 01:26:45.569
+Unlucky quite literally because what is Y pointing to at this moment?
+
+01:26:47.629 --> 01:26:49.589
+It's just the garbage address.
+
+01:26:49.700 --> 01:26:49.859
+Why?
+
+01:26:50.029 --> 01:26:51.640
+Because if you don't initialize why,
+
+01:26:51.819 --> 01:26:53.419
+who knows what it's going to be pointing to.
+
+01:26:53.459 --> 01:26:54.020
+Maybe it's 0,
+
+01:26:54.060 --> 01:26:54.740
+maybe it's 25,
+
+01:26:54.839 --> 01:26:55.819
+maybe it's 32,000,
+
+01:26:55.859 --> 01:26:56.459
+a negative number,
+
+01:26:56.479 --> 01:26:58.049
+just like we saw in the previous example.
+
+01:26:58.220 --> 01:27:01.490
+You have no idea what values are going to be in
+
+01:27:01.490 --> 01:27:04.330
+X and Y unless you yourself put those values there.
+
+01:27:04.549 --> 01:27:07.129
+So this is highlighted in red because bad things are going
+
+01:27:07.129 --> 01:27:11.220
+to happen if you try to de-reference an invalid or a bogus
+
+01:27:11.600 --> 01:27:12.080
+pointer,
+
+01:27:12.100 --> 01:27:13.649
+even worse than just touching
+
+01:27:13.939 --> 01:27:15.500
+uh variables that might not have value.
+
+01:27:15.879 --> 01:27:18.700
+If you de-reference an address and try going to some random place,
+
+01:27:18.830 --> 01:27:21.459
+the computer is generally not going to like that.
+
+01:27:21.589 --> 01:27:22.020
+And in fact,
+
+01:27:22.069 --> 01:27:24.229
+our friends at Stanford wonderfully brought this
+
+01:27:24.229 --> 01:27:26.529
+particular scenario to life whereby even though this
+
+01:27:26.529 --> 01:27:29.580
+example is a bit contrived just to fit it all on the screen at once,
+
+01:27:29.830 --> 01:27:31.419
+it is going to be the case
+
+01:27:31.870 --> 01:27:33.470
+that bad things happen if
+
+01:27:33.750 --> 01:27:38.709
+we don't check for these values and actually assign valid values in the form of,
+
+01:27:38.750 --> 01:27:39.740
+as we'll see now,
+
+01:27:40.060 --> 01:27:41.109
+some claymation.
+
+01:27:41.270 --> 01:27:43.549
+So here I give you a binky.
+
+01:27:45.080 --> 01:27:45.720
+Uh,
+
+01:27:45.859 --> 01:27:47.649
+which is a bit of claymation from our friend
+
+01:27:47.649 --> 01:27:50.180
+Nick Parlante at Stanford if we could dim the lights
+
+01:27:50.419 --> 01:27:51.799
+unnecessarily dramatically.
+
+01:27:54.810 --> 01:27:55.509
+Hey Binky,
+
+01:27:55.750 --> 01:27:56.379
+wake up.
+
+01:27:56.509 --> 01:27:58.410
+It's time for pointer fun.
+
+01:27:59.029 --> 01:27:59.899
+What's that?
+
+01:28:00.270 --> 01:28:01.560
+Learn about pointers.
+
+01:28:01.830 --> 01:28:02.240
+Oh,
+
+01:28:02.290 --> 01:28:03.049
+goody.
+
+01:28:03.629 --> 01:28:03.709
+Well,
+
+01:28:03.790 --> 01:28:04.500
+to get started,
+
+01:28:04.669 --> 01:28:06.379
+I guess we're gonna need a couple pointers.
+
+01:28:06.629 --> 01:28:07.259
+OK,
+
+01:28:07.430 --> 01:28:10.589
+this code allocates two pointers which can point to integers.
+
+01:28:11.060 --> 01:28:11.370
+OK,
+
+01:28:11.490 --> 01:28:11.609
+well,
+
+01:28:11.770 --> 01:28:12.950
+I see the two pointers,
+
+01:28:13.290 --> 01:28:15.040
+but they don't seem to be pointing to anything.
+
+01:28:15.169 --> 01:28:15.799
+That's right.
+
+01:28:15.970 --> 01:28:16.410
+Initially,
+
+01:28:16.569 --> 01:28:17.959
+pointers don't point to anything.
+
+01:28:18.129 --> 01:28:20.330
+The things they point to are called pointees,
+
+01:28:20.350 --> 01:28:22.040
+and setting them up's a separate step.
+
+01:28:22.370 --> 01:28:22.600
+Oh,
+
+01:28:22.689 --> 01:28:22.850
+right,
+
+01:28:22.970 --> 01:28:23.129
+right,
+
+01:28:23.270 --> 01:28:25.240
+I knew that the pointees are separate.
+
+01:28:25.910 --> 01:28:27.709
+So how do you allocate a pointee?
+
+01:28:28.049 --> 01:28:28.839
+OK,
+
+01:28:29.009 --> 01:28:29.279
+well,
+
+01:28:29.410 --> 01:28:31.839
+this code allocates a new integer pointee,
+
+01:28:32.040 --> 01:28:34.129
+and this part sets X to point to it.
+
+01:28:35.100 --> 01:28:35.259
+Hey,
+
+01:28:35.299 --> 01:28:36.129
+that looks better.
+
+01:28:36.339 --> 01:28:37.529
+So make it do something.
+
+01:28:37.939 --> 01:28:38.569
+OK,
+
+01:28:38.779 --> 01:28:43.259
+I'll dereference the pointer X to store the number 42 into its pointee.
+
+01:28:43.660 --> 01:28:44.290
+For this trick,
+
+01:28:44.339 --> 01:28:46.689
+I'll need my magic wand of dereferencing.
+
+01:28:47.220 --> 01:28:50.009
+Your magic wand of dereferencing,
+
+01:28:50.259 --> 01:28:50.379
+uh,
+
+01:28:50.540 --> 01:28:50.700
+that,
+
+01:28:50.779 --> 01:28:51.299
+that's great.
+
+01:28:52.299 --> 01:28:53.950
+This is what the code looks like.
+
+01:28:54.100 --> 01:28:56.069
+I'll just set up the number and
+
+01:28:57.089 --> 01:28:57.330
+Hey,
+
+01:28:57.370 --> 01:28:57.620
+look,
+
+01:28:57.750 --> 01:28:58.720
+there it goes.
+
+01:28:59.290 --> 01:29:03.109
+So doing a D-reference on X follows the arrow to access
+
+01:29:03.109 --> 01:29:05.919
+its pointee in this case to store 42 in there.
+
+01:29:06.209 --> 01:29:06.419
+Hey,
+
+01:29:06.729 --> 01:29:09.399
+try using it to store the number 13 through the other pointer.
+
+01:29:09.609 --> 01:29:10.089
+Why?
+
+01:29:10.689 --> 01:29:11.379
+OK,
+
+01:29:11.810 --> 01:29:13.640
+I'll just go over here to Y
+
+01:29:13.930 --> 01:29:16.040
+and get the number 13 set up
+
+01:29:16.330 --> 01:29:20.209
+and then take the wand of D referencing and just.
+
+01:29:21.729 --> 01:29:22.419
+Oh hey,
+
+01:29:22.549 --> 01:29:23.740
+that didn't work.
+
+01:29:24.229 --> 01:29:24.430
+Say,
+
+01:29:24.520 --> 01:29:24.899
+uh,
+
+01:29:24.910 --> 01:29:25.270
+Binky,
+
+01:29:25.370 --> 01:29:28.109
+I don't think dereferencing Y is a good idea because,
+
+01:29:28.149 --> 01:29:28.540
+uh,
+
+01:29:28.750 --> 01:29:28.870
+you know,
+
+01:29:29.069 --> 01:29:32.700
+setting up the pointee is a separate step and uh I don't think we ever did it.
+
+01:29:33.450 --> 01:29:33.459
+Hm,
+
+01:29:33.470 --> 01:29:34.290
+good point.
+
+01:29:34.669 --> 01:29:34.830
+Yeah,
+
+01:29:35.109 --> 01:29:35.270
+we,
+
+01:29:35.350 --> 01:29:39.069
+we allocated the pointer Y but we never set it to point to a pointee.
+
+01:29:40.189 --> 01:29:41.259
+Very observant.
+
+01:29:41.740 --> 01:29:41.759
+Eh,
+
+01:29:41.870 --> 01:29:42.470
+you're looking good there,
+
+01:29:42.549 --> 01:29:43.220
+Binkie.
+
+01:29:43.470 --> 01:29:46.299
+Can you fix it so that Y points to the same pointee as X?
+
+01:29:46.549 --> 01:29:46.830
+Sure,
+
+01:29:46.990 --> 01:29:49.459
+I'll use my magic wand of pointer assignment.
+
+01:29:49.790 --> 01:29:51.740
+Is that gonna be a problem like before?
+
+01:29:52.029 --> 01:29:52.149
+No,
+
+01:29:52.270 --> 01:29:53.700
+this doesn't touch the pointees.
+
+01:29:53.830 --> 01:29:56.580
+It just changes one pointer to point to the same thing as another.
+
+01:29:57.290 --> 01:29:57.629
+Oh,
+
+01:29:57.720 --> 01:29:58.390
+I see.
+
+01:29:58.520 --> 01:30:00.819
+Now Y points to the same place as X.
+
+01:30:01.279 --> 01:30:01.439
+So,
+
+01:30:01.600 --> 01:30:01.839
+so wait,
+
+01:30:01.959 --> 01:30:02.890
+now Y is fixed,
+
+01:30:02.959 --> 01:30:03.870
+it has a pointee.
+
+01:30:04.200 --> 01:30:07.229
+So you can try the wand of dereferencing again to send the 13 over.
+
+01:30:08.600 --> 01:30:09.270
+OK,
+
+01:30:09.359 --> 01:30:10.109
+here goes.
+
+01:30:11.149 --> 01:30:11.359
+Hey,
+
+01:30:11.470 --> 01:30:12.109
+look at that.
+
+01:30:12.390 --> 01:30:13.930
+Now dereferencing works on Y,
+
+01:30:14.069 --> 01:30:16.180
+and because the pointers are sharing that one pointee,
+
+01:30:16.390 --> 01:30:17.720
+they both see the 13.
+
+01:30:18.189 --> 01:30:18.379
+Yeah,
+
+01:30:18.509 --> 01:30:18.910
+sharing,
+
+01:30:19.029 --> 01:30:19.149
+uh,
+
+01:30:19.229 --> 01:30:19.700
+whatever.
+
+01:30:19.950 --> 01:30:21.660
+So are we gonna switch places now?
+
+01:30:21.830 --> 01:30:22.350
+Oh look,
+
+01:30:22.470 --> 01:30:23.629
+we're out of time.
+
+01:30:24.729 --> 01:30:26.680
+I can only imagine how long that took Nick,
+
+01:30:26.839 --> 01:30:31.359
+but the key detail was that bad things happened to Binki when we did this line of code,
+
+01:30:31.390 --> 01:30:34.470
+de-referencing an invalid pointer that had no
+
+01:30:34.799 --> 01:30:35.799
+true value assigned.
+
+01:30:35.839 --> 01:30:36.919
+It was just some garbage value.
+
+01:30:37.000 --> 01:30:37.910
+Now what's the solution?
+
+01:30:38.040 --> 01:30:38.120
+Well,
+
+01:30:38.200 --> 01:30:38.919
+as Nick proposed,
+
+01:30:39.120 --> 01:30:40.109
+just don't do that
+
+01:30:40.319 --> 01:30:44.160
+and instead at least do something sensible like assign X equal toy,
+
+01:30:44.399 --> 01:30:46.240
+not to make a copy of anything per se,
+
+01:30:46.279 --> 01:30:49.680
+but to literally point X at the same location in memory.
+
+01:30:50.082 --> 01:30:52.321
+To pointy at the same location in memory as X,
+
+01:30:52.461 --> 01:30:54.972
+then a line like this is perfectly valid.
+
+01:30:54.981 --> 01:30:56.412
+You can go to that address,
+
+01:30:56.582 --> 01:30:58.651
+which happens to be the same as the 42,
+
+01:30:58.821 --> 01:31:00.932
+and that's why in the claymation form
+
+01:31:01.262 --> 01:31:03.812
+we saw that the 42 became a 13 instead.
+
+01:31:03.901 --> 01:31:04.182
+So again,
+
+01:31:04.262 --> 01:31:05.051
+at the end of the day,
+
+01:31:05.182 --> 01:31:08.062
+this is only demonstrative of these basic building
+
+01:31:08.062 --> 01:31:09.771
+blocks that we now have at our disposal,
+
+01:31:09.981 --> 01:31:13.662
+but also how easy it is to do things incorrectly.
+
+01:31:13.782 --> 01:31:14.742
+So this is one of those with great.
+
+01:31:15.043 --> 01:31:16.744
+Power comes great responsibility.
+
+01:31:16.883 --> 01:31:20.724
+C is one of the languages that is incredibly high performing.
+
+01:31:20.804 --> 01:31:23.403
+It's so close to the hardware that you have so much control
+
+01:31:23.403 --> 01:31:26.003
+over the memory and operation that you can write really good,

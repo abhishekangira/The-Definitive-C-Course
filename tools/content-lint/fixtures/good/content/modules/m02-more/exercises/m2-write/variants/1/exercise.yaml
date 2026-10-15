@@ -1,0 +1,7 @@
+id: m2-write/variants/1
+kind: ct
+title: Write (variant)
+prompt: "Write it differently."
+runsIn: browser
+hints: ["one", "two", "three"]
+variants: []

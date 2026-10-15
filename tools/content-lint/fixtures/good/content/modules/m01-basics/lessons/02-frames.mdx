@@ -1,0 +1,64 @@
+---
+id: m01-l2
+title: Frames and numbers
+minutes: 30
+summary: Stack frames, number bases and your first exercise.
+---
+
+Every call gets a stack frame holding its parameters and locals. Step through this program.
+
+<Stepper>
+
+```c id=fx-frames trace predict=none
+#include <stdio.h>
+
+int add(int a, int b) {
+    int sum = a + b;
+    return sum;
+}
+
+int main(void) {
+    int x = 3;
+    int result = add(x, 4);
+    printf("%d\n", result);
+    return 0;
+}
+```
+
+</Stepper>
+
+Now fill in the frame yourself, just before `return sum;`.
+
+<MemoryDiagram sample="fx-frames" line={5} ask={['add.a', 'add.b', 'add.sum']} />
+
+An illustration only, never run:
+
+```c fragment
+int add(int a, int b);
+```
+
+Convert a number between bases.
+
+<NumberDrill value={42} from="dec" to="bin" width={8} />
+
+Reading an uninitialised variable is undefined behaviour. What does this program do?
+
+```c id=fx-uninit expect=ub predict=outcome sanitize=off
+#include <stdio.h>
+
+int main(void) {
+    int x;
+    printf("%d\n", x);
+    return 0;
+}
+```
+
+Now write one yourself.
+
+<Exercise id="write-sum" />
+
+Fix this one.
+
+<Exercise id="fix-bug" />
+
+**Next:** the module project.

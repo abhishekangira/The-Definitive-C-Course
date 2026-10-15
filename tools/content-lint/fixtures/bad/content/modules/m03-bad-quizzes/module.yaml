@@ -1,0 +1,20 @@
+id: m03
+number: 3
+title: Bad quizzes
+why: The quizzes break the rules.
+hours: 5
+weeks: 1
+time: { lessons: 1, project: 2, variants: 1, quizCheckpoint: 1 }
+lessonsRunIn: browser
+projectRunsIn: browser
+successCriteria:
+  - { sc: SC1, level: I }
+resources:
+  - { title: "A", detail: "Chapter 1" }
+lessons:
+  - 01-fine
+problemSet: []
+project: p3
+coreExercises: []
+retrieval:
+  sources: [m01]

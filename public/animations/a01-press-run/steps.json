@@ -1,0 +1,61 @@
+{
+  "id": "a01-press-run",
+  "title": "What happens when you press Run",
+  "lesson": "1.1",
+  "platform": "In the browser (wasm32). The native lane contrasts x86-64 and arm64, where a pointer is 8 bytes.",
+  "description": "Pressing Run sends the source text of main.c to a Web Worker that runs clang, itself compiled to WebAssembly and cached after the first download. clang preprocesses and compiles the C, and its warnings and errors come back to the editor. The linker joins the object code with the C library into main.wasm. The page starts a fresh worker for main.wasm; every printf becomes a WASI fd_write call that the browser answers, and its bytes appear in the output panel, while scanf asks the page for input. Natively, the same C compiles to x86-64 or arm64 machine code that the operating system runs directly, and a pointer is 8 bytes instead of 4.",
+  "duration": 45,
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "video": "a01-press-run.mp4",
+  "poster": "poster.webp",
+  "captions": "a01-press-run.vtt",
+  "transcript": "transcript.txt",
+  "steps": [
+    {
+      "key": "source",
+      "label": "Source",
+      "time": 0,
+      "end": 5.45
+    },
+    {
+      "key": "compile",
+      "label": "Compile",
+      "time": 6,
+      "end": 16.45
+    },
+    {
+      "key": "link",
+      "label": "Link",
+      "time": 17,
+      "end": 22.45
+    },
+    {
+      "key": "run",
+      "label": "Run",
+      "time": 23,
+      "end": 30.45
+    },
+    {
+      "key": "output",
+      "label": "Output",
+      "time": 31,
+      "end": 36.45
+    },
+    {
+      "key": "native",
+      "label": "Native",
+      "time": 37,
+      "end": 44.45
+    }
+  ],
+  "stills": {
+    "source": "stills/source.webp",
+    "compile": "stills/compile.webp",
+    "link": "stills/link.webp",
+    "run": "stills/run.webp",
+    "output": "stills/output.webp",
+    "native": "stills/native.webp"
+  }
+}

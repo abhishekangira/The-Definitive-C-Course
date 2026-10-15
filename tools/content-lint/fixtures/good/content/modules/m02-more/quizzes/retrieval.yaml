@@ -1,0 +1,42 @@
+- id: fx-r2-1
+  type: choice
+  from: m01
+  prompt: "Earlier question 1?"
+  choices: ["a", "b"]
+  answer: 1
+  explain: "Because 1."
+- id: fx-r2-2
+  type: choice
+  from: m01
+  prompt: "Earlier question 2?"
+  choices: ["a", "b"]
+  answer: 0
+  explain: "Because 2."
+- id: fx-r2-3
+  type: choice
+  from: m01
+  prompt: "Earlier question 3?"
+  choices: ["a", "b"]
+  answer: 1
+  explain: "Because 3."
+- id: fx-r2-4
+  type: choice
+  from: m01
+  prompt: "Earlier question 4?"
+  choices: ["a", "b"]
+  answer: 0
+  explain: "Because 4."
+- id: fx-r2-5
+  type: choice
+  from: m01
+  prompt: "Earlier question 5?"
+  choices: ["a", "b"]
+  answer: 1
+  explain: "Because 5."
+- id: fx-r2-6
+  type: choice
+  from: m01
+  prompt: "Earlier question 6?"
+  choices: ["a", "b"]
+  answer: 0
+  explain: "Because 6."

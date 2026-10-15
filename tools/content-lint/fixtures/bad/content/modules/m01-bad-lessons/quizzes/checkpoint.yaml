@@ -1,0 +1,87 @@
+- id: fx-cp-total
+  type: predict
+  prompt: "What exactly does this program print?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        printf("%d\n", 2 + 3);
+        return 0;
+    }
+  explain: "2 + 3 is 5."
+- id: fx-cp-write
+  type: exercise
+  exercise: write-sum
+  prompt: "Write the program."
+- id: fx-cp-fix
+  type: exercise
+  exercise: fix-bug
+  prompt: "Fix the bug."
+- id: fx-cp-scope
+  type: outcome
+  prompt: "What happens when you press Run?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        printf("%d\n", missing);
+        return 0;
+    }
+  meta: expect=compile-error
+  explain: "`missing` was never declared."
+- id: fx-cp-half
+  type: choice
+  prompt: "What does this print?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        printf("%d\n", 5 / 2);
+        return 0;
+    }
+  choices: ["2", "2.5", "3"]
+  explain: "Integer division truncates."
+- id: fx-cp-brace
+  type: ce
+  prompt: "What is actually wrong?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        printf("hi\n");
+        return 0;
+  meta: expect=compile-error
+  choices: ["A closing brace is missing", "printf is misspelled"]
+  answer: 0
+  explain: "The `{` of `main` is never closed."
+- id: fx-cp-frames
+  type: md
+  sample: fx-cp-frames
+  line: 5
+  items: ["triple.n", "triple.result"]
+  prompt: "The program is paused before `return result;`. Fill in the values."
+  code: |
+    #include <stdio.h>
+
+    int triple(int n) {
+        int result = n * 3;
+        return result;
+    }
+
+    int main(void) {
+        printf("%d\n", triple(5));
+        return 0;
+    }
+  meta: trace predict=none
+  explain: "`triple` receives a copy of 5, so `result` is 15."
+- id: fx-cp-binary
+  type: np
+  prompt: "Write 13 as an 8-bit binary number."
+  items: ["13", "dec", "bin", "8"]
+- id: fx-cp-transfer
+  type: choice
+  transfer: true
+  prompt: "A new situation: which statement about exit status is true?"
+  choices: ["0 means success", "0 means failure"]
+  answer: 0
+  explain: "By convention 0 is success."

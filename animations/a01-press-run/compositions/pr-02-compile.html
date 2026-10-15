@@ -1,0 +1,164 @@
+<template id="pr-02-compile-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    /* Editor (the page), left: x 192-740, y 372-760. Code at 28px on a 40px grid. */
+    #pr02-editor { left: 192px; top: 372px; width: 548px; height: 388px; overflow: hidden; border-color: var(--page); }
+    #pr02-bar { position: absolute; left: 0; top: 0; width: 100%; height: 56px; display: flex; align-items: center; padding: 0 24px; background: var(--bg-sunken); border-bottom: 3px solid var(--border-strong); font: 700 28px/1 var(--font-mono); color: var(--text); }
+    #pr02-code { position: absolute; left: 0; top: 76px; width: 100%; --code-size: 28px; --code-lh: 40px; }
+    #pr02-code .pr-line { padding: 0 24px; background: rgba(240, 192, 96, 0); }
+    .pr-sq { position: relative; display: inline-block; }
+    .pr-sq svg { position: absolute; left: 0; bottom: -4px; width: 101px; height: 8px; overflow: visible; }
+    .pr-sq path { fill: none; stroke: var(--warn); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    /* Compiler worker, right: x 860-1728, y 372-760. */
+    #pr02-worker { left: 860px; top: 372px; width: 868px; height: 388px; border-color: var(--compiler); }
+    #pr02-tag { position: absolute; left: 24px; top: 18px; font: 700 28px/1 var(--font-mono); color: var(--compiler); }
+    #pr02-wasm { position: absolute; left: 24px; top: 62px; display: flex; align-items: center; gap: 24px; width: 814px; }
+    #pr02-pill { flex: none; padding: 10px 22px; border: 3px solid var(--compiler); border-radius: 14px; background: var(--compiler-soft); font: 700 38px/1.1 var(--font-mono); color: var(--compiler); }
+    #pr02-note { font: 400 28px/1.25 var(--font-sans); color: var(--text-muted); }
+    .pr02-stage { top: 200px; width: 232px; height: 140px; }
+    .pr02-stage i { font-size: 24px; }
+    #pr02-box-pre { left: 24px; }
+    #pr02-box-cc { left: 315px; }
+    #pr02-box-obj { left: 606px; }
+    /* Arrows. */
+    #pr02-in { left: 748px; top: 633px; width: 140px; height: 24px; }
+    #pr02-a1 { left: 1123px; top: 633px; width: 56px; height: 24px; }
+    #pr02-a2 { left: 1414px; top: 633px; width: 56px; height: 24px; }
+    #pr02-packet { left: 756px; top: 623px; width: 112px; padding: 0; }
+    #pr02-down { left: 1282px; top: 722px; width: 24px; height: 100px; }
+    #pr02-up { left: 454px; top: 766px; width: 24px; height: 56px; }
+    #pr02-down-l { position: absolute; left: 1318px; top: 772px; font: 400 26px/1.2 var(--font-sans); color: var(--text-muted); }
+    #pr02-up-l { position: absolute; left: 490px; top: 772px; font: 400 26px/1.2 var(--font-sans); color: var(--text-muted); }
+    /* Diagnostic card: x 192-1728, y 828-952. */
+    #pr02-diag { left: 192px; top: 828px; width: 1536px; height: 124px; padding: 18px 28px 0 100px; border-color: var(--warn); background: var(--warn-soft); }
+    #pr02-diag-icon { position: absolute; left: 28px; top: 28px; width: 56px; height: 56px; overflow: visible; }
+    #pr02-diag-icon path { fill: none; stroke: var(--warn); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+    #pr02-diag-msg { font: 700 30px/1.25 var(--font-mono); color: var(--warn); white-space: pre; }
+    #pr02-diag-sub { margin-top: 8px; font: 400 26px/1.25 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="pr-02-compile" data-width="1920" data-height="1080" data-duration="11"
+       data-steps='{"compile":{"label":"Compile","start":0,"end":10.45}}'>
+    <div class="pr-stage" id="pr02-stage">
+      <div class="pr-head" id="pr02-head">
+        <h1 class="pr-title" id="pr02-title">A Web Worker runs clang.</h1>
+        <p class="pr-sub" id="pr02-sub">The compiler is a program too, and it was compiled to WebAssembly.</p>
+      </div>
+
+      <div class="pr-card" id="pr02-editor">
+        <div id="pr02-bar">main.c</div>
+        <div class="pr-code" id="pr02-code">
+          <div class="pr-line"><span class="pr-ln">1</span><span><span class="pr-kw">#include</span> <span class="pr-str">&lt;stdio.h&gt;</span></span></div>
+          <div class="pr-line"><span class="pr-ln">2</span><span> </span></div>
+          <div class="pr-line"><span class="pr-ln">3</span><span><span class="pr-kw">int</span> main(<span class="pr-kw">void</span>) {</span></div>
+          <div class="pr-line" id="pr02-l4"><span class="pr-ln" id="pr02-n4">4</span><span>    <span class="pr-kw">int</span> <span class="pr-sq" id="pr02-sq">unused<svg viewBox="0 0 101 8" aria-hidden="true"><path class="pr-draw" pathLength="1" style="stroke-dasharray: 1 1.5" d="M 0 5 Q 4 0 8 5 T 16 5 T 24 5 T 32 5 T 40 5 T 48 5 T 56 5 T 64 5 T 72 5 T 80 5 T 88 5 T 96 5 T 101 5" /></svg></span>;</span></div>
+          <div class="pr-line"><span class="pr-ln">5</span><span>    printf(<span class="pr-str">"Hello, C!\n"</span>);</span></div>
+          <div class="pr-line"><span class="pr-ln">6</span><span>    <span class="pr-kw">return</span> <span class="pr-num">0</span>;</span></div>
+          <div class="pr-line"><span class="pr-ln">7</span><span>}</span></div>
+        </div>
+      </div>
+
+      <div class="pr-card pr-comp" id="pr02-worker">
+        <div id="pr02-tag">Web Worker</div>
+        <div id="pr02-wasm">
+          <div id="pr02-pill">clang.wasm</div>
+          <div id="pr02-note">A WebAssembly program, downloaded once and then cached.</div>
+        </div>
+        <div class="pr-box pr-comp pr02-stage" id="pr02-box-pre"><b>preprocess</b><i>expand #include</i></div>
+        <div class="pr-box pr-comp pr02-stage" id="pr02-box-cc"><b>compile</b><i>C to wasm32</i></div>
+        <div class="pr-box pr-comp pr02-stage" id="pr02-box-obj"><b>main.o</b><i>object file</i></div>
+      </div>
+
+      <svg class="pr-arrow pr-page" id="pr02-in" viewBox="0 0 140 24" aria-hidden="true">
+        <path class="pr-draw pr02-d" d="M 4 12 H 124" pathLength="1" />
+        <path class="pr02-h" d="M 108 -2 L 128 12 L 108 26" />
+      </svg>
+      <div class="pr-packet pr-page" id="pr02-packet">main.c</div>
+      <svg class="pr-arrow pr-comp" id="pr02-a1" viewBox="0 0 56 24" aria-hidden="true">
+        <path class="pr-draw pr02-d" d="M 4 12 H 38" pathLength="1" />
+        <path class="pr02-h" d="M 26 2 L 42 12 L 26 22" />
+      </svg>
+      <svg class="pr-arrow pr-comp" id="pr02-a2" viewBox="0 0 56 24" aria-hidden="true">
+        <path class="pr-draw pr02-d" d="M 4 12 H 38" pathLength="1" />
+        <path class="pr02-h" d="M 26 2 L 42 12 L 26 22" />
+      </svg>
+
+      <svg class="pr-arrow pr-warn" id="pr02-down" viewBox="0 0 24 100" aria-hidden="true">
+        <path class="pr-draw pr02-d" d="M 12 4 V 84" pathLength="1" />
+        <path class="pr02-h" d="M -2 68 L 12 86 L 26 68" />
+      </svg>
+      <div id="pr02-down-l">clang prints it</div>
+      <div class="pr-card pr-warn" id="pr02-diag">
+        <svg id="pr02-diag-icon" viewBox="0 0 56 56" aria-hidden="true"><path d="M 28 6 L 52 50 H 4 Z M 28 22 V 36 M 28 43 V 44" /></svg>
+        <div id="pr02-diag-msg">main.c:4:9: warning: unused variable 'unused' [-Wunused-variable]</div>
+        <div id="pr02-diag-sub">Compiler messages. A warning still builds; an error stops the build.</div>
+      </div>
+      <svg class="pr-arrow pr-warn" id="pr02-up" viewBox="0 0 24 56" aria-hidden="true">
+        <path class="pr-draw pr02-d" d="M 12 54 V 8" pathLength="1" />
+        <path class="pr02-h" d="M -2 22 L 12 4 L 26 22" />
+      </svg>
+      <div id="pr02-up-l">the page marks the line</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("pr-02-compile", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 11;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+
+      // Draws an arrow's line, then pops its head.
+      function draw(sel, at, dur) {
+        tl.fromTo(sel + " .pr02-d", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: dur, ease: "power2.inOut" }, at);
+        tl.fromTo(sel + " .pr02-h", { opacity: 0 }, { opacity: 1, duration: 0.15, ease: "none" }, at + dur - 0.1);
+      }
+
+      tl.addLabel("compile", S.compile.start);
+      tl.fromTo("#pr02-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#pr02-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#pr02-editor", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.7 }, 0.5);
+
+      // The compiler worker appears, and clang.wasm drops in: the compiler is itself a wasm file.
+      tl.fromTo("#pr02-worker", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.7 }, 1.0);
+      tl.fromTo("#pr02-tag", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 1.4);
+      tl.fromTo("#pr02-pill", { opacity: 0, y: -40 }, { opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.6)" }, 1.5);
+      tl.fromTo("#pr02-note", { opacity: 0, x: 24 }, { opacity: 1, x: 0, duration: 0.6 }, 2.0);
+
+      // Run sends main.c in.
+      draw("#pr02-in", 3.0, 0.6);
+      tl.fromTo("#pr02-packet", { opacity: 0 }, { opacity: 1, duration: 0.15, ease: "none" }, 3.0);
+      tl.fromTo("#pr02-packet", { x: 0 }, { x: 24, duration: 0.55, ease: "power2.inOut", immediateRender: false }, 3.1);
+      tl.fromTo("#pr02-packet", { opacity: 1 }, { opacity: 0, duration: 0.15, ease: "none", immediateRender: false }, 3.6);
+
+      // preprocess -> compile -> main.o
+      tl.fromTo("#pr02-box-pre", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.5)" }, 3.85);
+      draw("#pr02-a1", 4.3, 0.45);
+      tl.fromTo("#pr02-box-cc", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.5)" }, 4.7);
+      draw("#pr02-a2", 5.2, 0.45);
+      tl.fromTo("#pr02-box-obj", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.5)" }, 5.6);
+
+      // Messages: clang prints them, the page shows them in the editor.
+      draw("#pr02-down", 6.5, 0.5);
+      tl.fromTo("#pr02-down-l", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.4 }, 6.7);
+      tl.fromTo("#pr02-diag", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6 }, 6.9);
+      draw("#pr02-up", 7.8, 0.45);
+      tl.fromTo("#pr02-up-l", { opacity: 0, x: 10 }, { opacity: 1, x: 0, duration: 0.4 }, 8.0);
+      tl.fromTo("#pr02-sq .pr-draw", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.5, ease: "power1.inOut" }, 8.3);
+      tl.fromTo("#pr02-l4", { backgroundColor: "rgba(240,192,96,0)" }, { backgroundColor: "rgba(240,192,96,0.2)", duration: 0.5, ease: "power1.out" }, 8.3);
+      tl.fromTo("#pr02-n4", { color: "#8a929e" }, { color: "#f0c060", duration: 0.5, ease: "power1.out" }, 8.3);
+      // Gentle, finite emphasis while the viewer reads the message.
+      tl.fromTo("#pr02-diag", { borderColor: "#f0c060" }, { borderColor: "#8a6b24", duration: 0.7, ease: "sine.inOut", yoyo: true, repeat: 1, immediateRender: false }, 8.9);
+
+      tl.fromTo("#pr02-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["pr-02-compile"] = tl;
+    })();
+  </script>
+</template>

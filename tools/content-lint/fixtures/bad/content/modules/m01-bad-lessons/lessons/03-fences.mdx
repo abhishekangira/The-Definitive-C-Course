@@ -1,0 +1,107 @@
+---
+id: m01-l3
+title: Bad lesson 3
+minutes: 30
+summary: A deliberately bad lesson.
+---
+
+A fence with neither an id nor fragment:
+
+```c
+int main(void) { return 0; }
+```
+
+An id that is not kebab-case:
+
+```c id=Bad_Id
+int main(void) { return 0; }
+```
+
+A duplicate pair:
+
+```c id=dup-one
+int main(void) { return 0; }
+```
+
+```c id=dup-one
+int main(void) { return 1; }
+```
+
+An unknown key, and a bad quoted value:
+
+```c id=bad-key frobnicate=3
+int main(void) { return 0; }
+```
+
+```c id=bad-quote stdin="\q"
+int main(void) { return 0; }
+```
+
+Run without a prediction, at the top level:
+
+```c id=run-no-predict predict=none
+int main(void) { return 0; }
+```
+
+Undefined behaviour whose exact output is asked for:
+
+```c id=ub-output expect=ub
+int main(void) { int x; return x; }
+```
+
+A platform sample with no predict64, and a predict64 without platform:
+
+```c id=plat-no-p64 platform
+int main(void) { return 0; }
+```
+
+```c id=p64-no-plat predict64="what is sizeof(long)?"
+int main(void) { return 0; }
+```
+
+```c id=p64-none-no-reason platform predict64=none
+int main(void) { return 0; }
+```
+
+POSIX in module 1, and a POSIX define without the flag:
+
+```c id=posix-in-m01 posix
+#define _POSIX_C_SOURCE 200809L
+int main(void) { return 0; }
+```
+
+```c id=posix-no-flag
+#define _POSIX_C_SOURCE 200809L
+int main(void) { return 0; }
+```
+
+An upper-case language:
+
+```C
+int x;
+```
+
+A fence inside a list:
+
+- an item
+
+  ```c id=in-list
+  int main(void) { return 0; }
+  ```
+
+An untagged fence that looks like C:
+
+```
+#include <stdio.h>
+int main(void) { return 0; }
+```
+
+A good fence nested in CompilerError may be run-only, but must produce a message:
+
+<CompilerError question="Q" options={["a", "b"]} answer={0} explain="x">
+
+```c id=quiet-compiler-error predict=none
+int main(void) { return 0; }
+```
+
+</CompilerError>

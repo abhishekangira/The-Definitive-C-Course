@@ -1,0 +1,119 @@
+<template id="pr-04-run-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    /* Page (right): x 1288-1728, y 372-702. */
+    #pr04-page { left: 1288px; top: 372px; width: 440px; height: 330px; gap: 10px; }
+    #pr04-term { width: 100%; height: 130px; margin-top: 8px; padding: 12px 16px; text-align: left; border: 3px solid var(--border-strong); border-radius: 12px; background: #07090b; font: 400 24px/1 var(--font-mono); color: var(--text-muted); }
+    /* Fresh worker (left): x 192-1088, y 372-702. Children are positioned inside the border box. */
+    #pr04-worker { left: 192px; top: 372px; width: 896px; height: 330px; border-color: var(--program); }
+    #pr04-tag { position: absolute; left: 28px; top: 18px; font: 700 28px/1 var(--font-mono); color: var(--program); }
+    #pr04-main { left: 28px; top: 76px; width: 400px; height: 220px; }
+    #pr04-main code { font: 400 26px/1.2 var(--font-mono); color: var(--text); margin-top: 6px; }
+    #pr04-shim { left: 600px; top: 76px; width: 270px; height: 220px; }
+    #pr04-shim i + i { font-size: 24px; }
+    /* Arrows between the boxes. */
+    #pr04-fd { left: 622px; top: 549px; width: 164px; height: 24px; }
+    #pr04-fd-l { position: absolute; left: 622px; top: 506px; width: 164px; text-align: center; font: 700 26px/1.2 var(--font-mono); color: var(--program); }
+    #pr04-a { left: 1096px; top: 428px; width: 184px; height: 24px; }
+    #pr04-a-l { position: absolute; left: 1096px; top: 476px; width: 184px; text-align: center; font: 400 26px/1.2 var(--font-mono); color: var(--page); }
+    #pr04-b { left: 1073px; top: 600px; width: 207px; height: 24px; }
+    #pr04-b-l { position: absolute; left: 1096px; top: 556px; width: 184px; text-align: center; font: 400 26px/1.2 var(--font-sans); color: var(--program); }
+    #pr04-chip-m { left: 1104px; top: 418px; width: 172px; padding: 0; }
+    #pr04-chip-b { left: 1076px; top: 590px; width: 150px; padding: 0; }
+    #pr04-note { position: absolute; left: 192px; top: 760px; width: 1536px; font: 400 32px/1.35 var(--font-sans); color: var(--text); }
+    #pr04-note strong { font-weight: 700; color: var(--program); }
+  </style>
+  <div id="root" data-composition-id="pr-04-run" data-width="1920" data-height="1080" data-duration="8"
+       data-steps='{"run":{"label":"Run","start":0,"end":7.45}}'>
+    <div class="pr-stage" id="pr04-stage">
+      <div class="pr-head" id="pr04-head">
+        <h1 class="pr-title" id="pr04-title">A fresh worker runs main.wasm.</h1>
+        <p class="pr-sub" id="pr04-sub">main.wasm can't touch the page. It can only call functions it is given.</p>
+      </div>
+
+      <div class="pr-box pr-page" id="pr04-page"><b>Page</b><i>output panel</i><div id="pr04-term">output</div></div>
+
+      <div class="pr-card pr-prog" id="pr04-worker">
+        <div id="pr04-tag">fresh Web Worker</div>
+        <div class="pr-box pr-prog" id="pr04-main"><b>main.wasm</b><code>printf("Hello, C!\n");</code></div>
+        <div class="pr-box pr-prog" id="pr04-shim"><b>WASI shim</b><i>JavaScript</i><i>answers the system calls</i></div>
+      </div>
+
+      <svg class="pr-arrow pr-page" id="pr04-a" viewBox="0 0 184 24" aria-hidden="true">
+        <path class="pr-draw pr04-d" d="M 180 12 H 20" pathLength="1" />
+        <path class="pr04-h" d="M 36 -2 L 16 12 L 36 26" />
+      </svg>
+      <div id="pr04-a-l">new Worker</div>
+      <div class="pr-packet pr-page" id="pr04-chip-m">main.wasm</div>
+
+      <svg class="pr-arrow pr-prog" id="pr04-fd" viewBox="0 0 164 24" aria-hidden="true">
+        <path class="pr-draw pr04-d" d="M 4 12 H 148" pathLength="1" />
+        <path class="pr04-h" d="M 132 -2 L 152 12 L 132 26" />
+      </svg>
+      <div id="pr04-fd-l">fd_write</div>
+
+      <svg class="pr-arrow pr-prog" id="pr04-b" viewBox="0 0 207 24" aria-hidden="true">
+        <path class="pr-draw pr04-d" d="M 4 12 H 188" pathLength="1" />
+        <path class="pr04-h" d="M 172 -2 L 192 12 L 172 26" />
+      </svg>
+      <div id="pr04-b-l">to the page</div>
+      <div class="pr-packet pr-prog" id="pr04-chip-b">10 bytes</div>
+
+      <p id="pr04-note"><strong>A new worker for every Run.</strong> Stop simply terminates it, so a runaway loop can never freeze the page.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("pr-04-run", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 8;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+
+      function draw(sel, at, dur) {
+        tl.fromTo(sel + " .pr04-d", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: dur, ease: "power2.inOut" }, at);
+        tl.fromTo(sel + " .pr04-h", { opacity: 0 }, { opacity: 1, duration: 0.15, ease: "none" }, at + dur - 0.1);
+      }
+      // A packet fades in, travels dx along x, then fades out at the end of its trip.
+      function fly(sel, at, dx, dur) {
+        tl.fromTo(sel, { opacity: 0 }, { opacity: 1, duration: 0.15, ease: "none" }, at);
+        tl.fromTo(sel, { x: 0 }, { x: dx, duration: dur, ease: "power2.inOut", immediateRender: false }, at + 0.05);
+        tl.fromTo(sel, { opacity: 1 }, { opacity: 0, duration: 0.2, ease: "none", immediateRender: false }, at + 0.05 + dur - 0.1);
+      }
+
+      tl.addLabel("run", S.run.start);
+      tl.fromTo("#pr04-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#pr04-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#pr04-page", { opacity: 0, x: 50 }, { opacity: 1, x: 0, duration: 0.6 }, 0.6);
+
+      // The page starts a worker and hands it main.wasm.
+      draw("#pr04-a", 1.1, 0.6);
+      tl.fromTo("#pr04-a-l", { opacity: 0, y: -8 }, { opacity: 1, y: 0, duration: 0.4 }, 1.3);
+      fly("#pr04-chip-m", 1.1, -150, 0.8);
+      tl.fromTo("#pr04-worker", { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.6 }, 1.7);
+      tl.fromTo("#pr04-tag", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 2.0);
+      tl.fromTo("#pr04-main", { opacity: 0, x: -36 }, { opacity: 1, x: 0, duration: 0.6 }, 2.2);
+      tl.fromTo("#pr04-main code", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 2.9);
+
+      // printf -> fd_write -> the WASI shim -> bytes to the page.
+      tl.fromTo("#pr04-shim", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.55, ease: "back.out(1.5)" }, 3.4);
+      draw("#pr04-fd", 4.0, 0.5);
+      tl.fromTo("#pr04-fd-l", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.4 }, 4.1);
+      draw("#pr04-b", 5.0, 0.6);
+      tl.fromTo("#pr04-b-l", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.4 }, 5.2);
+      fly("#pr04-chip-b", 5.3, 100, 0.8);
+      tl.fromTo("#pr04-note", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 6.0);
+
+      tl.fromTo("#pr04-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["pr-04-run"] = tl;
+    })();
+  </script>
+</template>

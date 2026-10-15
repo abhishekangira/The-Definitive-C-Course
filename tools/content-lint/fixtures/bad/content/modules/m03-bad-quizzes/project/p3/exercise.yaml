@@ -1,0 +1,7 @@
+id: project/p3
+kind: ct
+title: x
+prompt: x
+runsIn: browser
+hints: [a, b, c]
+variants: []

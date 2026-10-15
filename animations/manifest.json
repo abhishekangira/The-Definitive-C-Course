@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "renderer": {
+    "hyperframes": "0.8.162",
+    "pipeline": 1,
+    "flags": [
+      "--crf",
+      "30",
+      "--fps",
+      "30",
+      "--quality",
+      "looks",
+      "--format",
+      "mp4"
+    ]
+  },
+  "animations": {
+    "a01-press-run": {
+      "sourceHash": "1407092b7a7b926dad5255d3ab1170874b529f70bcf769a877a76129664e5f37",
+      "browser": "Chromium 141.0.7390.37",
+      "outputs": {
+        "a01-press-run.mp4": "f8df961ac4489b239fdadce69d04e6eabdab82e3484ac938e46db6ebdcd67d43",
+        "a01-press-run.vtt": "e72010d08d1bbd8b6ba47c278445e1a7a2df89eaed02720bc64ca99bb01736c1",
+        "poster.webp": "e65df14c49b1714a735db584b4d35aae6a9af2a69d39f3ce6251c9dbb94305a7",
+        "steps.json": "b3780f00ee285f48cabc7047392c3fdbda802d569aa977dee5e26e0a599be1ca",
+        "stills/compile.webp": "8428dcde047555e5c1d07443fe1373e73379db154c0beafbe1ae5c99f1be4fdb",
+        "stills/link.webp": "92e73e4b6feb6bd3eeff87f0048ac94ff90f9542483555802f417703f857fef7",
+        "stills/native.webp": "e757df478fb978ca8e594acbbb244427f72fad6d9d75a07826fc3f57767af85b",
+        "stills/output.webp": "aa6aa9c4e1d4d23b2e9a96bae18bf6dd48cedc192744f128eec8a5c9a98ff06e",
+        "stills/run.webp": "4cec7e23b92a2427b725517d64d58780ff7b32bbae9c51f4ea3954f8e0b69ff6",
+        "stills/source.webp": "5805a6a2755313a3366a0e5de277a60d21992a45b335010bf5df114f3acd4014",
+        "transcript.txt": "d82a38bed78b86274ba8d725e5e0b87f730da3b604cb5b662b2712ad890b69ee"
+      }
+    }
+  }
+}

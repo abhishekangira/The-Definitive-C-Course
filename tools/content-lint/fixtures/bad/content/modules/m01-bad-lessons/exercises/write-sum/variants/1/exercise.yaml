@@ -1,0 +1,7 @@
+id: write-sum/variants/1
+kind: ct
+title: Write a sum (variant)
+prompt: "Do the other thing."
+runsIn: browser
+hints: ["one", "two", "three"]
+variants: []

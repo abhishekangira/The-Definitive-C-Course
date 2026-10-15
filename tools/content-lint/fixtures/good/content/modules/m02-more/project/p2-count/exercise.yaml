@@ -1,0 +1,7 @@
+id: project/p2-count
+kind: lt
+title: Count
+prompt: "Count."
+runsIn: native
+hints: ["one", "two", "three"]
+variants: []

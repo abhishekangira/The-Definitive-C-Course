@@ -1,0 +1,72 @@
+---
+id: m01-l1
+title: Hello, compiled world
+minutes: 30
+summary: Your first program and what Run does.
+---
+
+A C program is compiled before it runs. Predict what this one prints.
+
+```c id=fx-hello
+#include <stdio.h>
+
+int main(void) {
+    printf("Hello\n");
+    return 0;
+}
+```
+
+<Analogy js="console.log(`${a}`)" c={'printf("%d", a)'} breaksDown="`printf` trusts the format string: a `%d` that meets a `double` is undefined behaviour, where `console.log` just converts the value." />
+
+<Choice
+  question="What does `return 0;` in `main` do?"
+  options={[
+    "It prints 0",
+    "It reports success (exit status 0) to whatever started the program",
+    "It is ignored",
+  ]}
+  answer={1}
+  explain="The return value of `main` is the exit status; 0 means success."
+/>
+
+Here is how Run works, step by step.
+
+<Animation id="a01-demo" />
+
+<Choice
+  question="Which message comes from the compiler?"
+  options={["Hello", "main.c:4:5: error: expected ';'", "Program exited with status 0"]}
+  answer={1}
+  explain="Messages of the form file:line:column come from the compiler, before the program exists."
+/>
+
+Read the compiler message and say what it means.
+
+<CompilerError
+  question="What is the compiler telling you?"
+  options={["A semicolon is missing", "The string needs single quotes"]}
+  answer={0}
+  explain="Statements end with a semicolon; the caret shows where it was expected."
+>
+
+```c id=fx-missing-semicolon expect=compile-error
+#include <stdio.h>
+
+int main(void) {
+    printf("Hi\n")
+    return 0;
+}
+```
+
+```c id=fx-missing-semicolon-fixed predict=none
+#include <stdio.h>
+
+int main(void) {
+    printf("Hi\n");
+    return 0;
+}
+```
+
+</CompilerError>
+
+**What you know now:** programs are compiled first, and `main` returns the exit status.

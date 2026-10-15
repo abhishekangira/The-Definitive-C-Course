@@ -1,0 +1,7 @@
+id: m2-fix
+kind: fb
+title: Fix
+prompt: "Fix it."
+runsIn: browser
+hints: ["one", "two", "three"]
+variants: []

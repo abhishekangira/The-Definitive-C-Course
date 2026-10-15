@@ -1,0 +1,24 @@
+id: m02
+number: 2
+title: More
+why: >-
+  A second fixture module: it draws its retrieval quiz from m01 and shows a video.
+hours: 5
+weeks: 1
+time: { lessons: 1, project: 2, variants: 1, quizCheckpoint: 1 }
+lessonsRunIn: browser
+projectRunsIn: native
+successCriteria:
+  - { sc: SC3, level: I }
+resources:
+  - title: "OSTEP"
+    detail: "Chapter 4, The Abstraction: The Process"
+lessons:
+  - 01-video
+  - 02-posix-free
+problemSet: []
+project: p2-count
+coreExercises:
+  - m2-write
+retrieval:
+  sources: [m01]

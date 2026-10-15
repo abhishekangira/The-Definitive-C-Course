@@ -1,0 +1,7 @@
+id: project/half
+kind: ct
+title: x
+prompt: x
+runsIn: browser
+hints: [a, b, c]
+variants: []

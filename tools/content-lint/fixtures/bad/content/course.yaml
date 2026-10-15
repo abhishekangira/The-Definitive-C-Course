@@ -1,0 +1,7 @@
+title: Bad Course
+hoursPerWeek: 5
+modules:
+  - { id: m01, dir: m01-bad-lessons, number: 1, title: "Bad lessons", hours: 10, available: true }
+  - { id: m02, dir: m02-bad-module, number: 2, title: "Bad module", hours: 6, available: true }
+  - { id: m03, dir: m03-bad-quizzes, number: 3, title: "Bad quizzes", hours: 5, available: true }
+  - { id: m04, dir: m04-ghost, number: 4, title: "Ghost", hours: 5, available: true }

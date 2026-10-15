@@ -1,0 +1,27 @@
+id: m09
+number: 3
+title: ""
+why: Each field breaks a rule.
+hours: 5
+weeks: 3
+time: { lessons: 1, project: 1, variants: 1, quizCheckpoint: 0.5, coffee: 1 }
+lessonsRunIn: cloud
+projectRunsIn: native
+successCriteria:
+  - { sc: SC1, level: X }
+  - { sc: nope, level: I }
+  - { sc: SC1, level: D }
+resources:
+  - { title: "A", detail: "Chapter 1" }
+  - { title: "B", detail: "" }
+  - { title: "C", detail: "Chapter 3", url: "ftp://example.com" }
+lessons:
+  - 01-fine
+  - 99-missing
+  - 01-fine
+problemSet: [ghost]
+project: nowhere
+coreExercises: [no-variants, no-variants]
+retrieval:
+  sources: [m02, js]
+extra: 1

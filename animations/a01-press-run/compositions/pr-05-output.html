@@ -1,0 +1,106 @@
+<template id="pr-05-output-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #pr05-bl { position: absolute; left: 192px; top: 372px; font: 400 28px/1.2 var(--font-sans); color: var(--text-muted); }
+    #pr05-bytes { position: absolute; left: 192px; top: 420px; display: flex; gap: 8px; }
+    .pr05-b { display: grid; place-items: center; width: 64px; height: 52px; border: 3px solid var(--border-strong); border-radius: 10px; background: var(--bg-elev); font: 700 28px/1 var(--font-mono); color: var(--text-muted); }
+    /* Terminal (the page): x 192-1000, y 520-770. */
+    #pr05-term { left: 192px; top: 520px; width: 808px; height: 250px; overflow: hidden; border-color: var(--page); background: #07090b; }
+    #pr05-tbar { position: absolute; left: 0; top: 0; width: 100%; height: 56px; display: flex; align-items: center; padding: 0 24px; background: var(--bg-sunken); border-bottom: 3px solid var(--border-strong); font: 700 26px/1 var(--font-mono); color: var(--text-muted); }
+    #pr05-body { position: absolute; left: 28px; top: 78px; font: 700 64px/84px var(--font-mono); color: var(--text); white-space: pre; }
+    .pr05-ch { display: inline-block; }
+    #pr05-caret { display: inline-block; width: 34px; height: 56px; margin-bottom: -8px; background: var(--page); }
+    /* scanf card: x 1080-1728, y 372-732. */
+    #pr05-scan { left: 1080px; top: 372px; width: 648px; height: 332px; border-color: var(--program); }
+    #pr05-sc-h { position: absolute; left: 28px; top: 24px; font: 700 30px/1.2 var(--font-mono); color: var(--program); }
+    #pr05-sc-p { position: absolute; left: 28px; top: 78px; width: 584px; font: 400 28px/1.3 var(--font-sans); color: var(--text-muted); }
+    #pr05-in { left: 28px; top: 218px; width: 200px; height: 72px; flex-direction: row; justify-content: flex-start; gap: 4px; padding: 0 20px; text-align: left; }
+    #pr05-in b { font-size: 36px; color: var(--text); }
+    .pr05-typed { display: inline-block; }
+    #pr05-in-caret { display: inline-block; width: 4px; height: 38px; background: var(--page); }
+    #pr05-arrow { left: 244px; top: 242px; width: 90px; height: 24px; }
+    #pr05-n { left: 350px; top: 218px; width: 250px; height: 72px; padding: 0 16px; }
+    #pr05-n b { font-size: 32px; color: var(--program); }
+  </style>
+  <div id="root" data-composition-id="pr-05-output" data-width="1920" data-height="1080" data-duration="6"
+       data-steps='{"output":{"label":"Output","start":0,"end":5.45}}'>
+    <div class="pr-stage" id="pr05-stage">
+      <div class="pr-head" id="pr05-head">
+        <h1 class="pr-title" id="pr05-title">Bytes arrive in the output panel.</h1>
+        <p class="pr-sub" id="pr05-sub">scanf works the other way: the page supplies the input.</p>
+      </div>
+
+      <div id="pr05-bl">10 bytes arrive on file descriptor 1, which is stdout.</div>
+      <div id="pr05-bytes">
+        <div class="pr05-b">48</div><div class="pr05-b">65</div><div class="pr05-b">6C</div><div class="pr05-b">6C</div><div class="pr05-b">6F</div>
+        <div class="pr05-b">2C</div><div class="pr05-b">20</div><div class="pr05-b">43</div><div class="pr05-b">21</div><div class="pr05-b">0A</div>
+      </div>
+
+      <div class="pr-card pr-page" id="pr05-term">
+        <div id="pr05-tbar">output</div>
+        <div id="pr05-body"><div id="pr05-l1"><span class="pr05-ch">H</span><span class="pr05-ch">e</span><span class="pr05-ch">l</span><span class="pr05-ch">l</span><span class="pr05-ch">o</span><span class="pr05-ch">,</span><span class="pr05-ch"> </span><span class="pr05-ch">C</span><span class="pr05-ch">!</span></div><div id="pr05-l2"><span id="pr05-caret"></span></div></div>
+      </div>
+
+      <div class="pr-card pr-prog" id="pr05-scan">
+        <div id="pr05-sc-h">scanf("%d", &amp;n);</div>
+        <div id="pr05-sc-p">asks for input on fd 0. The page shows an input box, and the program waits for you.</div>
+        <div class="pr-box pr-page" id="pr05-in"><b class="pr05-typed">4</b><b class="pr05-typed">2</b><span id="pr05-in-caret"></span></div>
+        <svg class="pr-arrow pr-page" id="pr05-arrow" viewBox="0 0 90 24" aria-hidden="true">
+          <path class="pr-draw pr05-d" d="M 4 12 H 72" pathLength="1" />
+          <path class="pr05-h" d="M 58 -2 L 78 12 L 58 26" />
+        </svg>
+        <div class="pr-box pr-prog" id="pr05-n"><b>n = 42</b></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("pr-05-output", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 6;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+
+      tl.addLabel("output", S.output.start);
+      tl.fromTo("#pr05-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#pr05-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#pr05-bl", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 0.5);
+      tl.fromTo(".pr05-b", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.3, stagger: 0.04 }, 0.6);
+      tl.fromTo("#pr05-term", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6 }, 0.9);
+
+      // Each byte lights up and the matching character appears in the panel. The last byte, 0A, is the newline.
+      var chars = document.querySelectorAll("#pr05-l1 .pr05-ch");
+      var cells = document.querySelectorAll(".pr05-b");
+      for (var i = 0; i < cells.length; i++) {
+        var t = 1.3 + i * 0.12;
+        tl.fromTo(cells[i], { borderColor: "#3d4552", backgroundColor: "#171b21", color: "#a4abb6" },
+                            { borderColor: "#5fd08a", backgroundColor: "#13291c", color: "#e7e9ec", duration: 0.2, ease: "power1.out", immediateRender: false }, t);
+        if (i < chars.length) tl.fromTo(chars[i], { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, t + 0.05);
+      }
+      // The caret moves to the next line after the newline, then blinks (finite).
+      tl.fromTo("#pr05-caret", { opacity: 0 }, { opacity: 1, duration: 0.01, ease: "none" }, 2.6);
+      tl.fromTo("#pr05-caret", { opacity: 1 }, { opacity: 0.15, duration: 0.45, ease: "sine.inOut", yoyo: true, repeat: 4, immediateRender: false }, 2.65);
+
+      // scanf: the program waits while the page asks you for a line of input.
+      tl.fromTo("#pr05-scan", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.6 }, 2.4);
+      tl.fromTo("#pr05-sc-h", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 2.8);
+      tl.fromTo("#pr05-sc-p", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5 }, 3.0);
+      tl.fromTo("#pr05-in", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.5)" }, 3.6);
+      tl.fromTo(".pr05-typed", { opacity: 0 }, { opacity: 1, duration: 0.1, ease: "none", stagger: 0.25 }, 4.0);
+      tl.fromTo("#pr05-arrow .pr05-d", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.4, ease: "power2.inOut" }, 4.5);
+      tl.fromTo("#pr05-arrow .pr05-h", { opacity: 0 }, { opacity: 1, duration: 0.15, ease: "none" }, 4.8);
+      tl.fromTo("#pr05-n", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.6)" }, 4.7);
+
+      tl.fromTo("#pr05-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["pr-05-output"] = tl;
+    })();
+  </script>
+</template>

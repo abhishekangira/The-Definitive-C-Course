@@ -1,0 +1,19 @@
+WEBVTT
+
+00:00:00.400 --> 00:00:05.400
+You write C in the editor and press Run. The page sends your source text to a Web Worker.
+
+00:00:06.300 --> 00:00:16.300
+Inside the worker, clang preprocesses and compiles your C. clang is itself a WebAssembly program, downloaded once and cached. Its warnings and errors come back to the editor.
+
+00:00:17.300 --> 00:00:22.300
+The linker joins your object code with the C library and produces main.wasm, a WebAssembly program.
+
+00:00:23.300 --> 00:00:30.300
+The page starts a fresh worker to run main.wasm. Each printf becomes a WASI fd_write call that the browser answers.
+
+00:00:31.300 --> 00:00:36.400
+The bytes appear in the output panel. scanf works the other way: the page asks you for input.
+
+00:00:37.300 --> 00:00:44.800
+Natively, the same C becomes x86-64 or arm64 machine code that your OS runs directly. A pointer is 8 bytes there, not 4.
