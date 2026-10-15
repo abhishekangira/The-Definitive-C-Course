@@ -13,7 +13,7 @@ The four types you'll use most:
 |---|---|---|
 | `char` | 1 byte | a small integer, used for characters |
 | `int` | 4 bytes | a whole number, about ±2.1 billion |
-| `double` | 8 bytes | a floating-point number (exactly JavaScript's `number`) |
+| `double` | 8 bytes | a floating-point number (on virtually all platforms the same 64-bit format as JavaScript's `number`) |
 | `bool` | 1 byte | `true` or `false` (needs `#include <stdbool.h>` in C17) |
 
 `sizeof` tells you how many bytes something takes. `%zu` is the format for its result.
@@ -85,7 +85,7 @@ Format specifiers must match the argument's type: `%d` for `int`, `%f` for `doub
     "The program will print `3`, which is a rounding warning",
   ]}
   answer={1}
-  explain="`-Wformat` checks each `%` directive against its argument. `%d` reads an `int` from where an `int` would be, but a `double` was passed (and on most platforms it travels in a different register entirely). The output would be garbage. The fix is `%f` (or `%.1f`), or passing an `int`."
+  explain="`-Wformat` checks each `%` directive against its argument. `%d` reads an `int` from where an `int` would be, but a `double` was passed (on some platforms, such as x86-64 Linux and macOS, it travels in a different register entirely). The behaviour is undefined, so the output can't be relied on. The fix is `%f` (or `%.1f`), or passing an `int`."
 >
 
 ```c id=format-mismatch expect=ub predict=none warn=-Wformat
@@ -114,4 +114,4 @@ Underneath, every type is just bits. Try it: type a number and watch its bits, t
 
 <NumberDrill value={42} from="dec" to="bin" width={8} />
 
-**What you know now:** C types are sizes plus interpretations; `sizeof` reports the size, which varies by platform (`long` is 4 bytes here but 8 on your 64-bit machine); `int / int` truncates even when you store the result in a `double`; and every `printf` format must match its argument's type, which `-Wall` checks for you.
+**What you know now:** C types are sizes plus interpretations; `sizeof` reports the size, which varies by platform (`long` is 4 bytes here but 8 on 64-bit Mac and Linux); `int / int` truncates even when you store the result in a `double`; and every `printf` format must match its argument's type, which `-Wall` checks for you.

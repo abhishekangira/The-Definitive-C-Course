@@ -11,7 +11,7 @@ runsIn: browser
 hints:
 - '`get_line` takes the prompt as its argument and returns what the user typed. Store it in a variable
   of type `const char *`.'
-- '`printf` prints a string argument with `%s`: `printf("hello, %s\n", name);`.'
+- '`printf` prints a string argument with the `%s` directive. Put it where the name should appear.'
 - '```
 
   const char *name = get_line("What''s your name? ");

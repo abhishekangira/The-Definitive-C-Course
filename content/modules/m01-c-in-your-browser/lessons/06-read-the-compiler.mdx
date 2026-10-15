@@ -101,7 +101,7 @@ int main(void) {
 }
 ```
 
-It runs: warnings are advice, and the compiler still produces a program. Professional teams compile with `-Werror` so warnings fail the build, because each one is a likely bug. This course's checks do the same.
+It runs: warnings are advice, and the compiler still produces a program. Many teams compile with `-Werror` so warnings fail the build, because each one is a likely bug. This course's checks do the same.
 
 "Compiling" is really four stages, and knowing which stage complains tells you what kind of mistake you made:
 
@@ -121,7 +121,7 @@ Now decide which stage an error comes from:
     "The assembler, because `prinft` isn't a CPU instruction",
   ]}
   answer={1}
-  explain="Type checking happens in the compiler, which requires a declaration first. If the code *had* declared `int prinft(const char *, ...);` but nothing defined it, compilation would succeed and the **linker** would fail with `undefined reference to 'prinft'`. Module 11 is all about that stage."
+  explain="Type checking happens in the compiler, which requires a declaration first. If the code *had* declared `int prinft(const char *, ...);` but nothing defined it, compilation would succeed and the **linker** would fail (with GNU ld the message is `undefined reference to 'prinft'`; other linkers word it differently). Module 11 is all about that stage."
 />
 
 **What you know now:** read `file:line:col`, fix the first error first, treat warnings as bugs, and use the stage that complains (compiler or linker) to know what kind of mistake you made. That's Module 1. Next, the problem set and the Mario project put it all together, then the checkpoint.
