@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": false,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["vite/client", "node"]
+  },
+  "include": ["src", "tools", "e2e", "vite.config.ts", "playwright.config.ts"],
+  "exclude": ["node_modules", "dist", "research", "animations"]
+}

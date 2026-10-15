@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+public/toolchain/
+src/generated/toolchain-version.json
+.cache/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+animations/**/.hyperframes/
+animations/**/renders/
+animations/**/node_modules/
