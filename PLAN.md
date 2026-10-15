@@ -118,7 +118,7 @@ Steps are timeline labels (`data-steps`), exported to `steps.json`. Our player *
 
 ### 2.1 Repository layout
 ```
-PLAN.md  CLAUDE.md  README.md  videos.json
+PLAN.md  AGENTS.md  CLAUDE.md (imports AGENTS.md)  README.md  videos.json
 package.json  vite.config.ts  tsconfig.json  playwright.config.ts
 content/                          # ← all course text; editable without touching components
   course.yaml                     # module order, ids, hours, success-criteria map
@@ -1171,8 +1171,8 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 
 | ID | Video | Start–end (s) | Length | Topic | Lesson | Why it earns its place |
 |---|---|---|---|---|---|---|
-| YT-1 | CS50x Lecture 1 – C `SlqjA04_dpk` | 8531–8699 (02:22:11–02:24:59) | 2:48 | Integer overflow in the real world: the Boeing 787 "248 days" power-off bug and Pac-Man's level 256 | 2.6 | Real incidents give the stakes behind a 32-bit counter, which no visualizer can. It's followed by working out the 248-day figure with V1 |
-| YT-2 | CS50x Lecture 4 – Memory `db0H0U13YsA` | 5260–5424 (01:27:40–01:30:24) | 2:44 | Binky Pointer Fun (Stanford claymation): pointer vs pointee, dereferencing an unassigned pointer | 6.2 | A memorable, widely loved mental model of pointee allocation that our diagrams can't make as sticky. It's followed by an MD of an original Binky-style program up to `y = x`; the unassigned-pointer write is a categorical PR [both] (§3.4) |
+| YT-1 | CS50x Lecture 1 – C `SlqjA04_dpk` | 8531–8701 (02:22:11–02:25:01) | 2:50 | Integer overflow in the real world: the Boeing 787 "248 days" power-off bug and Pac-Man's level 256 | 2.6 | Real incidents give the stakes behind a 32-bit counter, which no visualizer can. It's followed by working out the 248-day figure with V1 |
+| YT-2 | CS50x Lecture 4 – Memory `db0H0U13YsA` | 5260–5427 (01:27:40–01:30:27) | 2:47 | Binky Pointer Fun (Stanford claymation): pointer vs pointee, dereferencing an unassigned pointer | 6.2 | A memorable, widely loved mental model of pointee allocation that our diagrams can't make as sticky. It's followed by an MD of an original Binky-style program up to `y = x`; the unassigned-pointer write is a categorical PR [both] (§3.4) |
 
 **Anchor lines from the transcripts**
 - YT-1 begins "So that too was a problem, and this happens truly in the real world. So picture here is a Boeing 787…" and ends "…hit level 256 in this way because of this bug."
@@ -1205,8 +1205,8 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 
 | Stage | Session(s) | Output | Stop for review |
 |---|---|---|---|
-| **1** | this one | Research; prototypes saved in `research/`; **PLAN.md**; initial CLAUDE.md | **yes (now)** |
-| **2** | 2–3 | App shell (HashRouter, theme, namespaced progress store with export/import and reminders, gating, card engine, MDX pipeline); in-browser runtime (compiler + run workers, JSPI stdin, `sleep` override, full guardrail UBSan runtime, `leakcheck.c`, caching); `tools/verify` (native + browser-in-Node + targets workflow), `tools/trace`, `tools/check` with the shared token module, content lint, e2e harness; CI workflows; **Module 1 end to end** (every spec-named interaction type plus PR and SP; V1 basic, V3, V7 basic; animation **A1**; P1 Mario-more); `videos.json` (YT-1, YT-2) for review. **Exit criteria:** CLAUDE.md updated with the content format, schemas and real npm scripts; the §3.6 checklist green for M1 | **yes** |
+| **1** | this one | Research; prototypes saved in `research/`; **PLAN.md**; initial AGENTS.md | **yes (now)** |
+| **2** | 2–3 | App shell (HashRouter, theme, namespaced progress store with export/import and reminders, gating, card engine, MDX pipeline); in-browser runtime (compiler + run workers, JSPI stdin, `sleep` override, full guardrail UBSan runtime, `leakcheck.c`, caching); `tools/verify` (native + browser-in-Node + targets workflow), `tools/trace`, `tools/check` with the shared token module, content lint, e2e harness; CI workflows; **Module 1 end to end** (every spec-named interaction type plus PR and SP; V1 basic, V3, V7 basic; animation **A1**; P1 Mario-more); `videos.json` (YT-1, YT-2) for review. **Exit criteria:** AGENTS.md updated with the content format, schemas and real npm scripts; the §3.6 checklist green for M1 | **yes** |
 | 3.n | one per module | M2 … M13, then the capstone, each passing §3.6 and adding its visualizers and animations as listed | **yes, after each** |
 
 ### Risks and mitigations

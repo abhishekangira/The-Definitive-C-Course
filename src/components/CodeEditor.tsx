@@ -38,7 +38,7 @@ const theme = EditorView.theme({
   '.cm-content': { fontFamily: 'var(--font-mono)', padding: '10px 0', caretColor: 'var(--text)' },
   '.cm-gutters': { backgroundColor: 'var(--bg-sunken)', color: 'var(--text-faint)', border: 'none', borderRight: '1px solid var(--border)' },
   '.cm-activeLine': { backgroundColor: 'color-mix(in srgb, var(--accent) 7%, transparent)' },
-  '.cm-activeLineGutter': { backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)' },
+  '.cm-activeLineGutter': { backgroundColor: 'color-mix(in srgb, var(--accent) 12%, transparent)', color: 'var(--text)' },
   '&.cm-focused': { outline: 'none' },
   '.cm-cursor': { borderLeftColor: 'var(--text)' },
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': { backgroundColor: 'color-mix(in srgb, var(--accent) 28%, transparent) !important' },
@@ -72,6 +72,19 @@ export interface CodeEditorProps {
   highlightLine?: number | null;
 }
 
+/**
+ * The editor content is always an explicit tab stop. A read-only editor is not contenteditable, so it needs one,
+ * and axe does not count contenteditable as focusable, so a scrolling editor would otherwise fail
+ * "scrollable-region-focusable" even though it is fully keyboard-usable.
+ */
+function editableExtensions(readOnly?: boolean) {
+  return [
+    EditorView.editable.of(!readOnly),
+    EditorState.readOnly.of(Boolean(readOnly)),
+    EditorView.contentAttributes.of({ tabindex: '0' }),
+  ];
+}
+
 export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileName = 'main.c', label, minLines = 4 }: CodeEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -94,7 +107,7 @@ export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileNa
           keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
           linter(null), lintGutter(),
           theme,
-          editable.current.of([EditorView.editable.of(!readOnly), EditorState.readOnly.of(Boolean(readOnly))]),
+          editable.current.of(editableExtensions(readOnly)),
           EditorView.contentAttributes.of({ 'aria-label': label, 'aria-multiline': 'true' }),
           EditorView.updateListener.of(u => { if (u.docChanged) onChangeRef.current?.(u.state.doc.toString()); }),
         ],
@@ -116,7 +129,7 @@ export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileNa
   }, [value]);
 
   useEffect(() => {
-    view.current?.dispatch({ effects: editable.current.reconfigure([EditorView.editable.of(!readOnly), EditorState.readOnly.of(Boolean(readOnly))]) });
+    view.current?.dispatch({ effects: editable.current.reconfigure(editableExtensions(readOnly)) });
   }, [readOnly]);
 
   useEffect(() => {

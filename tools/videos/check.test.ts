@@ -413,16 +413,18 @@ describe('checkVideoFiles', () => {
     expect(() => parseArgs(['--videos'])).toThrow(/needs a value/);
   });
 
-  // The committed data: exactly the two PLAN §9 segments, every rule satisfied (warnings are allowed).
+  // The committed data: exactly the two PLAN §9 segments, every rule satisfied. Both segments end just after the last
+  // anchor sentence finishes, so there are no "cut mid-sentence" warnings either.
   it('accepts the committed videos.json and transcript excerpts', async () => {
     const { entries, messages } = await checkVideoFiles({
       videosFile: path.join(ROOT, 'videos.json'),
       transcriptsDir: path.join(ROOT, 'tools', 'videos', 'transcripts'),
     });
     expect(errors(messages)).toEqual([]);
+    expect(messages.filter(m => m.severity === 'warning')).toEqual([]);
     expect(entries.map(e => [e.key, e.id, e.module, e.lesson, e.start, e.end])).toEqual([
-      ['yt-1', 'SlqjA04_dpk', 'm02', '2.6', 8531, 8699],
-      ['yt-2', 'db0H0U13YsA', 'm06', '6.2', 5260, 5424],
+      ['yt-1', 'SlqjA04_dpk', 'm02', '2.6', 8531, 8701],
+      ['yt-2', 'db0H0U13YsA', 'm06', '6.2', 5260, 5427],
     ]);
     for (const e of entries) {
       expect(e.verifiedAt).toBe('2026-10-15');

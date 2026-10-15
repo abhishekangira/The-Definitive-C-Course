@@ -80,7 +80,7 @@ export function renderProject(id, { force = false, dryRun = false } = {}) {
   if (v.errors.length) throw new Error(`${id}: static validation failed:\n  - ${v.errors.join('\n  - ')}`);
 
   const browser = browserVersion();
-  if (!browser) throw new Error(`Chromium not found at ${browserPath()}. Set HYPERFRAMES_BROWSER_PATH (see CLAUDE.md).`);
+  if (!browser) throw new Error(`Chromium not found at ${browserPath()}. Set HYPERFRAMES_BROWSER_PATH (see AGENTS.md).`);
   const hash = sourceHash(dir);
   const manifest = readManifest();
   const entry = manifest.animations[id];

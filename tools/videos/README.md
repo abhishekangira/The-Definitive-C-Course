@@ -44,7 +44,7 @@ padding; two segments of one video overlap.
 
 `transcripts/<id>.vtt` holds the WebVTT header, one `NOTE` block that attributes the captions (CS50, Harvard, CC BY-NC-SA 4.0),
 and only the cues that begin between `start - 60 s` and `end + 60 s`. To refresh one by hand (the only time yt-dlp runs),
-with the recipe in `CLAUDE.md`, then:
+with the recipe in `AGENTS.md`, then:
 
 ```
 tsx tools/videos/excerpt.ts yt-1 /path/to/SlqjA04_dpk.en.vtt     # rewrites tools/videos/transcripts/SlqjA04_dpk.vtt
@@ -68,6 +68,6 @@ Keep `referrerpolicy="strict-origin-when-cross-origin"` on the iframe (YouTube r
 ## Adding a segment
 
 1. Find the video and the exact second range; check it with oEmbed (`curl "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=<ID>&format=json"`).
-2. Download the transcript with the `CLAUDE.md` recipe, add the entry to `videos.json` (anchors quoted from the transcript).
+2. Download the transcript with the `AGENTS.md` recipe, add the entry to `videos.json` (anchors quoted from the transcript).
 3. `tsx tools/videos/excerpt.ts <key> <transcript.vtt>`, then `npm run videos:check -- --online`.
 4. No more than 2 segments per module, and only when the clip clearly beats the app's own visualizers.

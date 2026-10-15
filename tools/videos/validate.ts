@@ -3,7 +3,7 @@
 //
 // Offline rules (errors unless noted):
 //   - the file is an array of VideoEntry with exactly the documented fields and sane values;
-//   - keys and ids are unique; at most 2 segments per module (CLAUDE.md "YouTube" rule);
+//   - keys and ids are unique; at most 2 segments per module (AGENTS.md "YouTube" rule);
 //   - start < end and the segment is 30-480 s long (warning above 360 s: PLAN says about 2-6 min);
 //   - a committed transcript excerpt exists for each video and covers the segment;
 //   - anchorStart is found in the excerpt and its cue begins within 3 s of `start`;
@@ -168,7 +168,7 @@ export function validateVideos(data: unknown, transcript: (id: string) => string
 
 export interface OnlineOptions {
   fetchImpl?: typeof fetch;
-  /** Milliseconds to wait after HTTP 429 before retrying (default 60 000, as CLAUDE.md advises). */
+  /** Milliseconds to wait after HTTP 429 before retrying (default 60 000, as AGENTS.md advises). */
   retryDelayMs?: number;
   retries?: number;
   sleep?: (ms: number) => Promise<void>;
