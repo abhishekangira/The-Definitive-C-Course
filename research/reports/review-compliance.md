@@ -1,0 +1,288 @@
+PLAN.md requirements-compliance review (lens: client spec, item by item)
+
+Method: I read all of PLAN.md (1048 lines), CLAUDE.md, skills-lock.json, .agents/skills/, and the relevant parts of research/reports/{judged,hyperframes,runtime-browser,toolchain-yowasp,outline-*}.md. I ran checks in /tmp/claude-0/-home-user-the-definitive-c-course/7798c440-801e-5a1a-9390-b579b459dbdf/scratchpad/review/ with gcc 13.3 (glibc 2.39), clang 18.1.3, the research copy of @yowasp/clang 22.0.0-git20542-10, curl to the oEmbed endpoint and yt-dlp. Items tagged [RAN] were executed. Items tagged [KNOWLEDGE] were not.
+
+=== A. COMPLIANCE MATRIX ===
+
+AUDIENCE
+- Assumes front-end experience; no re-teaching of general programming: MET (§6 "Why" lines, M1 JS diagnostic, analogies).
+
+SUCCESS CRITERIA
+- SC1–SC11 mapped and each reaches A (assessed): MET (§6.1).
+- Exception, SC4 "Valgrind" for macOS learners: PARTIAL (finding 13).
+
+NEVER PASSIVE
+- No more than ~250 words or one clip before an interaction: PARTIAL. Prose is linted (§2.2, §2.5), but video "clips" run 3–23 minutes (finding 2).
+- Predict before run: PARTIAL. A `run` fence key skips the prediction, and some prediction answers are UB or nondeterministic (findings 3 and 8).
+- Five interaction types (CT, FB, MD, PA, CE): MET (§5).
+- Hint tiers nudge / concept / partial code: MET (§2.5).
+- Solution only after genuine attempts: PARTIAL (finding 5).
+- Variant solved alone: PARTIAL (finding 5).
+- Checkpoint gating: MET (§2.5; stricter than the spec because the project must also pass).
+- Retrieval quiz opens each module: MET (§2.5, per-module "Retrieval"). The M1 JS diagnostic is a reasonable exception.
+- JS analogies with where they break down: PARTIAL (finding 16).
+
+VISUALS
+- Named visualizers: MET. Stack/heap stepper with predict-next-state (V3 + SP), pointer diagrams (V4), number playground (V1), byte viewer for endianness and padding (V2), hash-collision visualizer (V5), cache simulator (V6).
+- HyperFrames skills installed with `npx skills add`: MET [RAN: skills-lock.json source heygen-com/hyperframes; 21 skills in .agents/skills].
+- Skills read: PARTIAL. §1.3 lists 9 of the 21 (finding 18).
+- Node 22+ and FFmpeg listed as prerequisites: MISSING (finding 18).
+- Player vs MP4 chosen from the docs: MET (§1.3).
+- HTML sources kept in the repo: MET (§4.6).
+- Every animation followed by an interaction: MET (§8 and the lint in §2.5).
+- Spec's example animations: compile→link→load MET (A2); recursion frames MET (A5); "malloc carving up the heap" PARTIAL (finding 14).
+- A3's follow-up question is factually wrong (finding 15).
+
+YOUTUBE
+- youtube-nocookie.com with start/end in seconds: MET (§4.5).
+- At most two per module: MET (§9).
+- Existence via oEmbed: MET [RAN: all 5 IDs return "CS50x - Lecture N … | CS50"].
+- Timestamps taken from the transcript: PARTIAL (finding 2).
+- videos.json with ID/start/end/why, for client review: PARTIAL (finding 2).
+- Embed only when the segment beats the app: PARTIAL (finding 2).
+
+RUNNING C
+- Options researched; stdio and real diagnostics: MET (§1.1, §1.2).
+- Automatic native vs browser comparison with normalized addresses: MET in design (§3.1, §3.2), with gaps in findings 8 and 9.
+- Stored native output shown next to the browser result: PARTIAL (finding 6).
+- 64-bit prediction where derivable: MET (§3.2).
+- Notice when a flagged example is edited: MET (§3.2).
+- Local toolchain module (macOS CLT, WSL + gcc): PARTIAL. It exists (M6, §4.1), but it is not "early" (finding 1) and the WSL setup cannot run the test runner (finding 12).
+- Downloadable starter code + check50-like runner: MET for M6+ (§4.2). Token/seed design gaps in finding 11. P1–P5 downloads are implied only by §3.5 item 7.
+- Platform differences flagged: PARTIAL (findings 6 and 7).
+
+COURSE STRUCTURE
+- 8–14 modules: MET (13 + capstone).
+- Lessons, exercises, project, checkpoint and time estimate per module at 5 h/week: MET. Hours sum to 195 and the weeks column is consistent.
+- Checkpoint composition contradicts §2.5's own rule (finding 10).
+- Capstone at least as hard as Speller: MET.
+- C17 + standard library: MET.
+- POSIX only in OS modules: PARTIAL (finding 7).
+- At most one or two outside resources per module, exact chapter named: MET. Every module cites at most 2 sources, assuming the embedded CS50 clips count against the separate YouTube budget. Chapter titles cross-check against judged.md §0.
+- Further study list: MET (§10).
+
+TECHNICAL
+- React + TypeScript: MET.
+- Content separate from app code: MET. Content is MDX plus YAML, all under content/.
+- Static, no backend: MET.
+- "Works locally": PARTIAL (finding 20).
+- localStorage plus export/import file: MET (§2.5). Namespacing caveat in finding 20.
+- Responsive, keyboard accessible, light/dark: MET (§2.2).
+- CLAUDE.md with conventions, content format and verification commands: PARTIAL (finding 17).
+
+VERIFICATION, PER MODULE
+1. Compile every sample with strict flags (+ASan): PARTIAL (finding 8).
+2. Outputs generated by running; no UB in predictions: PARTIAL (finding 3).
+3. Flagged examples show both results + 64-bit step: MET in design; gaps in findings 6 and 9.
+4. Reference solutions pass, starters fail: MET for exercise folders, variants and projects; PARTIAL for checkpoint and retrieval pool items (finding 8).
+5. Playwright click-through of every lesson: MET (§3.4).
+
+PROCESS
+- Step 1 (research, PLAN.md, stop for review): MET.
+- Step 2 (M1 with every interaction type + one HyperFrames animation): MET for the spec's types plus A1. Internal wording contradiction in finding 19.
+- Step 3 (one module at a time, verify, stop): MET (§11).
+
+=== B. FINDINGS (most severe first) ===
+
+1. [§4.1, §6 table M6, §2.5 Gate, §12] The toolchain setup is not "early", and the plan does not ask the client about it.
+- What is wrong: the spec says "An early module sets up a local toolchain… From then on, debugger, sanitizer and project work happens locally." In the plan, Going Native is M6. It starts at week 12.5, after 62.5 h. Projects P1–P5 (including Tideman and libstr) run only in the browser. All of M5 (pointers and malloc) is taught without a debugger, ASan or Valgrind; it has only the home-made leakcheck.h, which judged.md:73 admits misses OOB reads, use-after-free and stack errors.
+- Why it matters: this is a structural deviation from the spec. §12 lists 7 decisions for the client and this is not one of them.
+- Fix: move a compact setup module to right after M2 or M3, before pointers, so M5 bugs are hunted with ASan and lldb/gdb. Browser runs stay for lesson snippets. If M6 placement is kept, add it to §12 as an explicit deviation with its rationale.
+
+2. [§9, §4.5, §2.4, §2.5 "Word budget", §6 lesson rows] The YouTube plan breaks several video rules.
+- (a) Length:
+  - Segments are long lecture spans: Y13 23:00, Y11 21:30, Y3 17:15, Y10 16:25, Y12 16:00. The total is about 2 h 55 min.
+  - "Embed only that segment" implies a specific short segment. The fix of pausing every ~6 min still allows about 900 spoken words of passive viewing per chunk, against a 250-word budget.
+  - Pausing inside a video needs the YouTube IFrame Player API (enablejsapi plus a third-party script). §4.5 does not design this, and it conflicts with the privacy facade.
+- (b) Lesson minutes ignore video length:
+  - 1.6 (35m) holds Y3 (17m) plus 5 CE and a PR.
+  - 9.2 (45m) holds Y13 (23m), A14, a CT and an SP.
+  - 6.5 (30m) holds Y9 (12.7m).
+  - 8.3 (60m) holds Y11 (21.5m) plus four interactions.
+- (c) Video duplicates the app: four lessons cover the same topic with both a HyperFrames animation and a video (4.4 A6+Y5, 5.5 A8+Y7, 8.3 A12+Y11, 9.2 A14+Y13). The spec allows a video only when it beats the app.
+- (d) "Why" is missing: it is "—" for Y4, Y7, Y8, Y9, Y12 and Y13, and Y10 says "boundaries to be confirmed". Y2's rule ("skip only if V1 covers it better") inverts the spec's default.
+- (e) Timestamps are not transcript-based:
+  - The times come from CS50 CDN captions.
+  - §1.4 confirms only the L3 and L4 YouTube transcripts.
+  - L1 and L2 times (Y1, Y3, Y4, Y8) are unconfirmed.
+  - L5 times are rounded estimates.
+  - My yt-dlp transcript fetch for L2 got HTTP 429 [RAN], so I could not confirm them either.
+- (f) No delivery point: videos.json, which the spec says is "for my review", does not exist and no stage delivers it.
+- Fix:
+  - Cap segments at about 3–5 minutes on the single best demo.
+  - Drop any segment that has no "why" or that duplicates an animation.
+  - Add the video time to lesson minutes.
+  - Take every start/end from the YouTube transcript before it enters PLAN.
+  - Ship a verified videos.json for all remaining segments in Stage 2, for review.
+
+3. [§5 Rules, §6 1.4/1.6/5.2/5.5/5.7/13.3, A9; CLAUDE.md "Non-negotiables"] Prediction answers include UB and nondeterministic output, and PLAN contradicts CLAUDE.md.
+- What is wrong:
+  - PLAN §5 says "UB is never a prediction answer". CLAUDE.md says "…unless UB is the lesson".
+  - The outline asks predictions on UB anyway: uninitialised locals (1.4), a missing printf argument with "PR [both]" (1.6), NULL deref (5.2, A9), returning a local's address with "PR [both]" (5.5), and writing to a literal (5.7).
+  - Fork output order (13.3, the checkpoint, the graduation check) depends on the scheduler unless the program forces it.
+- [RAN] Results:
+  - `printf("%d %d\n", 5)` printed a different garbage number on each of 3 runs, for both gcc and clang.
+  - Returning `&x` from a function: gcc -O0 rewrites it to NULL and the program SIGSEGVs (exit 139). clang prints a stack address and 32727 (not 42) and exits 0.
+- Why it matters: a single CI run stores one random outcome as "the answer". The "64-bit Linux/macOS" panel would show gcc's crash, which Mac (clang) learners will not see.
+- Fix:
+  - Pick one rule and use it in both files: UB allowed only when it is the lesson.
+  - For `ub` samples, ask categorical questions ("crash / garbage / same value?", "what does the compiler warn?") whose answer comes from multiple runs on gcc, clang and wasm, accepting the set of observed outcomes.
+  - Make fork samples deterministic (wait/pipe), or answer them from the observed set.
+
+4. [§5 CT "in the browser", §2.5 Solution unlock, §6 11.3/11.5/13.4/13.7, M13 checkpoint] Exercises that can only run locally have no defined flow.
+- What is wrong: CodeExercise runs only in the browser, but several listed CTs cannot run in WASI or the browser:
+  - 11.3: ar/-shared/dlopen
+  - 11.5: Make
+  - 13.4: pipe/dup2/fork
+  - 13.7: stat permissions/readdir
+  - M13 checkpoint: 2 CT
+- Why it matters: hint tiers, the "2 substantive attempts (compiled and tested)" unlock and variants all depend on attempts the app can observe. Static checkpoint pools also cannot serve "fresh variants" for local items.
+- Fix: define a local-exercise kind:
+  - starter download + check.mjs subset
+  - attempt count reported via token
+  - hints unlocked by elapsed time plus a pasted failing-run token
+  - variant selected by seed
+
+5. [§2.5 Hints / Solution unlock; §2.1 project/] Solution and variant rules are weaker than the spec.
+- (a) Solution unlock: "H3 viewed and … 20 minutes of active time" unlocks the full solution with zero attempts. The spec says "only after genuine attempts".
+- (b) Variant not enforced: "must pass a variant" only feeds a mastery flag, and nothing is gated on it. Whether hints or a solution are available on the variant, and what happens if the learner fails it, is undefined. The spec says "must solve alone".
+- (c) Projects have no hints: project folders have no hint tiers, yet these are the hardest tasks (Tideman, malloc).
+- Fix:
+  - Require at least 1 substantive attempt in the time path.
+  - Variants get H1–H2 only and no solution, drawn from a pool; failing one serves another.
+  - Count unmastered variants against the module gate, or show them as blocking.
+  - Add hints[3] per project check.
+
+6. [§3.2 bullets 2 and 5; §5 CE] Native results are labelled for platforms that never produced them, and Windows values would come from memory.
+- (a) One panel for two platforms: the stored panel is "64-bit Linux/macOS (stored)" but holds gcc x86-64 output. macOS arm64 differs in several places: long double is 8, clang vs gcc UB behaviour (finding 3), NULL `%p` formatting, int64_t format warnings.
+- (b) Windows and aarch64 Linux values: the macOS job reruns only `platform` samples. No job produces Windows values (long = 4, which the spec names) or aarch64 Linux values (unsigned char; WSL on ARM laptops). Those values would be written from memory, against "never from memory".
+- (c) Apple arm64 ABI: it passes variadic arguments on the stack, unlike AAPCS64, and 10.6 does not flag this. Every printf call listing shows it [KNOWLEDGE].
+- (d) CE labels "Apple clang" output, but non-`platform` CE samples never run on macOS.
+- Fix:
+  - Store results per target (linux-x86_64-gcc, macos-arm64-clang) and show the learner's platform, or both when they differ.
+  - Add windows-latest (MSVC or clang-cl) and ubuntu-24.04-arm CI jobs for platform-tagged samples.
+  - Run all CE samples on macOS.
+  - Add the Apple variadic note to 10.6.
+
+7. [§3.1, §6 9.5/9.6/13.7/Capstone; spec "C17 + stdlib, POSIX in OS modules"] POSIX code will not compile cleanly under `-std=c17 -pedantic` on glibc.
+- [RAN] With gcc 13 / glibc 2.39 and `-std=c17 -Wall -Wextra -pedantic`:
+  - clock_gettime: implicit declaration; CLOCK_MONOTONIC: error.
+  - strdup: implicit declaration plus int-conversion warning.
+  - DT_DIR: error.
+  - With `-D_POSIX_C_SOURCE=200809L`, DT_DIR still errors. It needs `_DEFAULT_SOURCE`.
+- Why it matters: macOS headers expose these by default, so learner code works on Mac and breaks on WSL. PLAN and CLAUDE.md never mention feature-test macros. POSIX is also used outside OS modules: M9.5 clock_gettime/getrusage, M11 dlopen, capstone mmap.
+- Fix:
+  - Add a CLAUDE.md convention: POSIX samples begin with `#define _POSIX_C_SOURCE 200809L` (plus `_DEFAULT_SOURCE` for d_type).
+  - Teach feature-test macros in M13.1, or the first module that uses POSIX.
+  - Use C11 `timespec_get` in M9, or justify POSIX there.
+
+8. [§3.1 steps 1/2/4/6, §3.3, fence-key table] Verification does not cover every code sample.
+- (a) Fences without `id` are never compiled ("id= required for anything that runs"). The spec says "compile every code sample".
+- (b) Code in quiz/checkpoint YAML, Parsons accepted orderings, and code shown inside animations is not compiled at build time.
+- (c) Browser warnings are not gated. `-Werror` applies only to the native build, and nothing requires the wasm32 compile to be clean or to match.
+  - [RAN] `int64_t big; printf("%ld", big)` is clean on native gcc x86-64.
+  - The same code gives "-Wformat … 'int64_t' (aka 'long long')" from yowasp clang 22.
+  - Learners would see warnings in lessons that claim to be clean. macOS behaves the same way.
+- (d) ASan is opt-in per fence (`sanitize=`), so "where relevant" depends on authors remembering.
+- (e) Checkpoint and retrieval CT/FB pool items are not covered by verify:exercises.
+- Fix:
+  - Content-lint fails on any C fence without `id` or an explicit `fragment` mark; fragments get a `-fsyntax-only` harness.
+  - Compile YAML code, all Parsons orderings and animation code from sample ids.
+  - Require wasm32 diagnostics to equal the expected set.
+  - Default ASan+UBSan on for every native-runnable sample from M5 (opt-out for deliberate UB).
+  - Store checkpoint CT/FB items as exercise folders.
+
+9. [§3.1 step 3, §3.2, fence-key table; §6 11.4 "PR [native]", 13.1, 13.3] Native-only samples and piped output have no representation.
+- (a) No native-only key: there is no `native`/`target=` key. Fork/pipe/dlopen samples fail the wasm compile, so §3.2's diff fails the build unless they are mis-tagged `platform`. The lesson would then render a meaningless "Your browser (wasm32)" panel.
+- (b) Piped output cannot be produced: native runs happen only under a pty. "Duplicated output after fork when piped" (13.3) and "tty vs pipe" write counts (13.1) need non-tty stdout.
+- Fix: add `target=native` (skip wasm, no Run button, predict then reveal) and `stdout=pipe|tty|both` keys to the table and the verifier.
+
+10. [§2.5 Checkpoint vs §6 module checkpoints] Module checkpoints break §2.5's own composition rule.
+- The rule: 8–12 items, always including write-code, fix-bug, memory/stepper, compiler-message and transfer items.
+- Violations:
+  - M2: no FB, no CE.
+  - M4, M5, M8: no CE.
+  - M6: no CT, no FB.
+  - M9: only 5 items, no MD/SP, no transfer.
+  - M10: no FB, no CE.
+  - M11: no CT, no FB.
+  - M12: no CE.
+  - M13: no FB.
+- Fix: correct the item lists, or relax the rule, and have content-lint enforce whichever is chosen.
+
+11. [§2.5 Gate token, §4.2, §2.1 public/downloads, P10] The token design does not work on a static site.
+- (a) Seed delivery: the token is SHA-256(module, learner seed, …), but the zips are prebuilt static files. Nothing says how check.mjs or doctor.sh learns the seed from localStorage. The check.mjs prototype has no token code [RAN grep].
+- (b) P10's object files: a "per-learner seeded phases.o (x86-64 ELF, arm64 Mach-O, aarch64 ELF)" cannot be generated in a static site. The browser compiler has no native backend (§1.2).
+- Fix:
+  - Build zips client-side (e.g. JSZip) with seed.txt injected, or have the app show `make test SEED=…`.
+  - For P10, pre-build a pool of N seeded variants per target in CI and select one by seed.
+
+12. [§4.1, §4.2] The documented WSL setup cannot run `make test`.
+- What is wrong: `make test` runs `node check.mjs` (Node 18+), but the WSL setup is `apt install build-essential gdb valgrind`, with no Node. Node installed on the Windows side is not on WSL's PATH as `node`.
+- Version drift: Ubuntu 22.04's apt nodejs is v12; 24.04's is 18.19 [KNOWLEDGE; apt lists unavailable here]. CE items are labelled "gcc 13 (WSL)", but `wsl --install` may install a newer Ubuntu LTS.
+- Fix:
+  - Install nodejs (or nvm) in the setup step.
+  - doctor.sh checks the node version.
+  - Use `wsl --install -d Ubuntu-24.04` to match CI's gcc 13 and valgrind 3.22.
+
+13. [§4.1, M6 6.3/6.5, SC4] Mac learners never use Valgrind or gdb, which SC4 names.
+- What is wrong: SC4 is "find memory bugs with … (AddressSanitizer, Valgrind)". §4.1 correctly says there is no Valgrind or gdb on Apple Silicon, so Mac learners skip 6.5 and use `leaks`.
+- Fix: offer a Linux container path for Mac learners (Docker, OrbStack or Lima running aarch64 Ubuntu, where valgrind and gdb work) for 6.3, 6.5 and P6. Otherwise state the SC4 gap explicitly.
+
+14. [§8, §6 5.6] The spec's "malloc carving up the heap" animation exists only in the capstone.
+- What is wrong: it appears only as A23 (capstone week 2), which Track B learners never see. The malloc lesson (5.6) has no animation.
+- Fix: add an animation to 5.6 showing malloc and free carving the heap, and keep A23 as the deeper capstone version.
+
+15. [§8 A3] The follow-up question does not test wrapping.
+- [RAN] `printf("%d\n", (unsigned char)250+10)` prints 260. The cast binds to 250, then integer promotion applies, so it does not wrap.
+- Fix: use `(unsigned char)(250+10)` or the §2.4 `c += 10` sample, or turn it deliberately into a promotion question.
+
+16. [§6 analogy tables] Four analogy rows give no breakdown.
+- "Event loop | P8 | Rebuilt from your own queues" (M8)
+- "TypedArray vs array of objects | … | Same lesson: contiguous data is fast" (M12)
+- "fs.openSync fd | kernel fd | Exactly the same numbers" (M13)
+- "WASI in our runtime | syscalls | Literally a syscall interface" (M13). WASI has no fork, signals or traps, and is capability-based.
+- Why it matters: the spec says to state where each analogy breaks down, and §2.5's required `breaksDown` prop would pass with these non-answers.
+- Fix: write real breakdowns, and have lint reject phrases like "exactly" or "same".
+
+17. [CLAUDE.md; §1.3, §11 Stage 2] CLAUDE.md is missing what the spec requires.
+- Content format: absent (frontmatter, fence keys, component props, exercise.yaml and tests.json schemas). It only points to PLAN.
+- Verification commands: placeholders ("defined in Stage 2").
+- Flag mismatch: its browser flags omit `-fno-color-diagnostics`, which §2.3 includes.
+- UB rule: it contradicts PLAN §5 (finding 3).
+- Fix: make "update CLAUDE.md with content format, schemas and real npm scripts" a Stage 2 exit criterion in §11, and sync the flags and the UB rule now.
+
+18. [§1.3, §3 CI list, §4.7] HyperFrames prerequisites and reading are incomplete.
+- Prerequisites: the spec notes HyperFrames needs Node 22+ and FFmpeg. Neither is listed in the CI/dev prerequisites (§3 lists gcc, clang, gdb, valgrind and libclang-rt only). The render pipeline in §4.6 needs both. The container has both [RAN].
+- Skills read: §1.3 lists 9 of 21. Unread: hyperframes-registry (code/terminal-window blocks; hyperframes.md:124 says they need offline rewrites), general-video (the skill for multi-scene pieces), media-use and hyperframes-audio.
+- Fix: add Node ≥22, FFmpeg and the pinned Chromium to the CI and CLAUDE.md prerequisites. Read the remaining relevant skills before the first animation, and name the owning workflow skill.
+
+19. [§6 M1 build note, §11 Stage 2] Stage 2 promises "every interaction type" but delivers 7 of 12.
+- What is wrong: §5 defines 12 types, and M1 delivers 7 (PR, CT, FB, MD, PA, CE, SP). TT, AS, BENCH and LT are absent, and NP is only a teaser. The 1.4 row does not list SP even though the build note relies on it.
+- Fix: say "every interaction type named in the spec (CT, FB, MD, PA, CE) plus PR and SP", and add SP to the 1.4 row.
+
+20. [§0 Hosting, §2.2, §2.5] Offline and local-running claims are unsupported.
+- (a) Offline: "the whole site works offline after the first visit" has no service worker behind it. Only the toolchain is in Cache Storage.
+- (b) Local use: there are no instructions for running the built site locally. file:// will not work with module workers or Cache Storage.
+- (c) Shared origin: on github.io, all of a user's project sites share one origin, so localStorage and Cache keys need a prefix.
+- Fix: add a service worker (or drop the claim), document `npm run preview` or any static server, and namespace the storage keys.
+
+21. [§6 P2] Credit's "identical output on wasm32 and native" check cannot run in the browser.
+- What is wrong: P2 is graded by the in-browser runner, which cannot execute native code.
+- Fix: rely on 16-digit cases overflowing 32-bit `long` on wasm32, or move that check to the local runner.
+
+22. [§6 12.5] The profilers named in 12.5 are not available with the setup M6 installs [KNOWLEDGE].
+- What is wrong: "perf stat / Instruments" does not work with the supported setups. Instruments needs full Xcode, not the Command Line Tools. perf on WSL2 needs a kernel-matched build and hardware counters are mostly unavailable.
+- Fix: use the learner's own cachesim plus timing, and mark perf and Instruments as optional.
+
+23. [§5 Rules vs spec MD] The plan forbids asking addresses, but the spec includes them.
+- What is wrong: "Address values are never asked for" conflicts with the spec's "filling in memory diagrams (stack frames, addresses, …)".
+- Fix: allow derived addresses (a display base plus an offset or sizeof) using §3.1's rebased display addresses.
+
+24. [§6 6.1, §8 A9] A9 comes too late and in the wrong lesson (minor ordering).
+- What is wrong: A9 ("why the browser didn't crash") sits in the install lesson 6.1, a module after NULL is taught in 5.2. Its follow-up PR is missing from the 6.1 interaction column.
+- Fix: move A9 to 5.2.
+
+25. [§2.4 MDX example] The example would fail the plan's own lint.
+- What is wrong: it puts an `<Animation>` directly before a `<YouTube>` with no interaction between them. It also places Y1 in 2.3 although §9 assigns it to 2.5.
+- Fix: correct the example so later sessions do not copy a lint-failing pattern.
