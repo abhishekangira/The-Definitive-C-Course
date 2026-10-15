@@ -134,7 +134,7 @@ export function discover(o: DiscoverOptions): Discovery {
         const file = path.join(lessonsDir, f);
         const lesson = f.replace(/\.mdx$/, '');
         let fences;
-        try { fences = extractMdxFences(readFileSync(file, 'utf8')); } catch (err) {
+        try { fences = extractMdxFences(readFileSync(file, 'utf8').replace(/\r\n/g, '\n')); } catch (err) {
           error(`${rel(file)}: MDX parse error: ${(err as Error).message}`);
           continue;
         }
@@ -156,7 +156,7 @@ export function discover(o: DiscoverOptions): Discovery {
     if (existsSync(quizDir)) {
       for (const f of readdirSync(quizDir).filter(f => /\.ya?ml$/.test(f)).sort()) {
         const file = path.join(quizDir, f);
-        const text = readFileSync(file, 'utf8');
+        const text = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
         let doc: unknown;
         try { doc = parseYaml(text); } catch (err) { error(`${rel(file)}: YAML parse error: ${(err as Error).message}`); continue; }
         const lesson = `quiz:${f.replace(/\.ya?ml$/, '')}`;

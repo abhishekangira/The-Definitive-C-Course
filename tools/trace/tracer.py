@@ -304,8 +304,14 @@ class Snapshot:
         size = val.type.sizeof
         if addr is not None:
             self.objects.append((addr, addr + size, ref))
+        declared = flags.pop("declared", None)
+        # A variable whose declaration has not run yet holds stack garbage: different on every run and never
+        # shown to the learner. Record "declared": false and a fixed placeholder instead of the bytes.
+        value = {"t": "raw", "hex": ""} if declared is False else self.render(val)
         d = {"name": name, "type": str(val.type), "addr": fake(addr) if addr else "",
-             "size": size, "value": self.render(val)}
+             "size": size, "value": value}
+        if declared is not None:
+            d["declared"] = bool(declared)
         for k, v in flags.items():
             if v:
                 d[k] = True

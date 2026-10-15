@@ -175,9 +175,13 @@ export async function verify(o: VerifyOptions): Promise<VerifyReport> {
         else stored.push({ target, result: entry.result });
       }
       const c = checkSample({ id: s.id, code: s.code, meta: s.meta, ext: s.ext, results: runs.results, stored });
+      // Flagged samples carry the stored macOS / Linux arm / Windows results too, so the app can show the
+      // learner's own platform next to the browser result (other samples never show a native panel).
+      const results = { ...runs.results };
+      if (c.flagged) for (const st of stored) results[st.target] = st.result;
       const result: VerifiedSample = {
         id: s.id, module: s.module, lesson: s.lesson, code: s.code, meta: s.meta, hash,
-        results: runs.results, flagged: c.flagged, answer: c.answer,
+        results, flagged: c.flagged, answer: c.answer,
       };
       if (c.diffs.length) result.diffs = c.diffs;
       return { sample: s, result, problems: [...runs.errors, ...c.problems], notes: [...notes, ...c.notes], cached };

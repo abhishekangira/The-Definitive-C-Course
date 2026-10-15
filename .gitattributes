@@ -1,0 +1,13 @@
+# Content, code and generated files are always LF, on every platform. Sample hashes and test expectations depend
+# on exact bytes, and Windows checkouts would otherwise convert to CRLF.
+* text=auto eol=lf
+
+# Binary files: never touched.
+*.mp4 binary
+*.webm binary
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.zip binary
+*.tgz binary
+*.wasm binary

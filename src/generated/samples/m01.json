@@ -860,7 +860,7 @@
       "answer": {
         "native": {
           "outcome": "runs",
-          "stdout": "974947400\n"
+          "stdout": "-1456811080\n"
         },
         "outcome": "runs",
         "stdout": "0\n"
@@ -898,26 +898,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-815057736\n"
+              "stdout": "-1406951784\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-1909827432\n"
+              "stdout": "-103923432\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "638657048\n"
+              "stdout": "-735609656\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "-815057736\n"
+            "stdout": "-1406951784\n"
           },
           "sanitizer": {
             "ok": true
@@ -945,26 +945,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "974947400\n"
+              "stdout": "-1456811080\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "1541251608\n"
+              "stdout": "44945400\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "807059880\n"
+              "stdout": "-933698344\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "974947400\n"
+            "stdout": "-1456811080\n"
           },
           "sanitizer": {
             "ok": true
@@ -1926,6 +1926,14 @@
         {
           "diff": "  outcome: runs\n- long 4\n+ long 8\n  ",
           "target": "linux-x86_64-gcc13"
+        },
+        {
+          "diff": "  outcome: runs\n- long 4\n+ long 8\n  ",
+          "target": "macos-arm64-appleclang"
+        },
+        {
+          "diff": "  outcome: runs\n- long 4\n+ long 8\n  ",
+          "target": "linux-aarch64-gcc"
         }
       ],
       "flagged": true,
@@ -1940,6 +1948,21 @@
       },
       "module": "m01",
       "results": {
+        "linux-aarch64-gcc": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "long 8\n"
+          },
+          "target": "linux-aarch64-gcc"
+        },
         "linux-x86_64-clang22": {
           "compile": {
             "diagnostics": [],
@@ -1975,6 +1998,21 @@
             "ok": true
           },
           "target": "linux-x86_64-gcc13"
+        },
+        "macos-arm64-appleclang": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "long 8\n"
+          },
+          "target": "macos-arm64-appleclang"
         },
         "wasm32-clang22": {
           "compile": {
@@ -2346,7 +2384,7 @@
       "answer": {
         "native": {
           "outcome": "runs",
-          "stdout": "880593982\n"
+          "stdout": "1998439582\n"
         },
         "outcome": "runs",
         "stdout": "6\n"
@@ -2391,26 +2429,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-765445490\n"
+              "stdout": "-1471193890\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-780599602\n"
+              "stdout": "593119342\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "482992078\n"
+              "stdout": "-1240986210\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "-765445490\n"
+            "stdout": "-1471193890\n"
           },
           "sanitizer": {
             "ok": true
@@ -2429,26 +2467,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "880593982\n"
+              "stdout": "1998439582\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "1858763070\n"
+              "stdout": "-483691698\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-211507090\n"
+              "stdout": "563531710\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "880593982\n"
+            "stdout": "1998439582\n"
           },
           "sanitizer": {
             "ok": true
