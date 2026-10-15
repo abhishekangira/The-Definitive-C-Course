@@ -1,0 +1,20 @@
+=================================================================
+==3641==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x502000000016 at pc 0x5565c69b4372 bp 0x7ffcd4258d50 sp 0x7ffcd4258d40
+WRITE of size 1 at 0x502000000016 thread T0
+    #0 0x5565c69b4371 in main /work/overflow.c:6
+    #1 0x7fdb3982a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #2 0x7fdb3982a28a in __libc_start_main_impl ../csu/libc-start.c:360
+    #3 0x5565c69b41e4 in _start (/work/overflow.asan+0x11e4) (BuildId: 548bbd3be3596c438e4dffc2d34e29c45d67115e)
+
+0x502000000016 is located 0 bytes after 6-byte region [0x502000000010,0x502000000016)
+allocated by thread T0 here:
+    #0 0x7fdb3a4fd9c7 in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69
+    #1 0x5565c69b42be in main /work/overflow.c:4
+    #2 0x7fdb3982a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #3 0x7fdb3982a28a in __libc_start_main_impl ../csu/libc-start.c:360
+    #4 0x5565c69b41e4 in _start (/work/overflow.asan+0x11e4) (BuildId: 548bbd3be3596c438e4dffc2d34e29c45d67115e)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow /work/overflow.c:6 in main
+  Partially addressable: 01 02 03 04 05 06 07 
+  ASan internal:           fe
+==3641==ABORTING

@@ -1,0 +1,12 @@
+==3709== 7 bytes in 1 blocks are definitely lost in loss record 1 of 3
+==3709==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3709==    by 0x10917E: main (leak.c:4)
+==3709== 
+==3709== 12 bytes in 1 blocks are indirectly lost in loss record 2 of 3
+==3709==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3709==    by 0x1091A1: main (leak.c:7)
+==3709== 
+==3709== 20 (8 direct, 12 indirect) bytes in 1 blocks are definitely lost in loss record 3 of 3
+==3709==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3709==    by 0x109193: main (leak.c:6)
+==3709== 

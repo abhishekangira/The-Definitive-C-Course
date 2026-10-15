@@ -1,0 +1,19 @@
+=================================================================
+==5412==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7fb3f4400034 at pc 0x560eae2be3c8 bp 0x7fff301e5130 sp 0x7fff301e5120
+WRITE of size 4 at 0x7fb3f4400034 thread T0
+    #0 0x560eae2be3c7 in main /work/stack.c:4
+    #1 0x7fb3f642a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #2 0x7fb3f642a28a in __libc_start_main_impl ../csu/libc-start.c:360
+    #3 0x560eae2be1a4 in _start (/work/stack2+0x11a4) (BuildId: 14a786c27bebb16dc0557e1fdb112a19a8fabcf1)
+
+Address 0x7fb3f4400034 is located in stack of thread T0 at offset 52 in frame
+    #0 0x560eae2be278 in main /work/stack.c:2
+
+  This frame has 1 object(s):
+    [32, 52) 'a' (line 3) <== Memory access at offset 52 overflows this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow /work/stack.c:4 in main
+  Partially addressable: 01 02 03 04 05 06 07 
+  ASan internal:           fe
+==5412==ABORTING

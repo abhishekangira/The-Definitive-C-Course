@@ -1,0 +1,6 @@
+==3703== Invalid write of size 1
+==3703==    at 0x1091C6: main (overflow.c:6)
+==3703==  Address 0x4a7c046 is 0 bytes after a block of size 6 alloc'd
+==3703==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3703==    by 0x10919E: main (overflow.c:4)
+==3703== 

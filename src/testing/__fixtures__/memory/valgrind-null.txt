@@ -1,0 +1,13 @@
+==5467== Invalid read of size 4
+==5467==    at 0x109161: main (null.c:4)
+==5467==  Address 0x0 is not stack'd, malloc'd or (recently) free'd
+==5467== 
+==5467== 
+==5467== Process terminating with default action of signal 11 (SIGSEGV)
+==5467==  Access not within mapped region at address 0x0
+==5467==    at 0x109161: main (null.c:4)
+==5467==  If you believe this happened as a result of a stack
+==5467==  overflow in your program's main thread (unlikely but
+==5467==  possible), you can try to increase the size of the
+==5467==  main thread stack using the --main-stacksize= flag.
+==5467==  The main thread stack size used in this run was 8388608.

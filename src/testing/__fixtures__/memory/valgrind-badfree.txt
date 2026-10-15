@@ -1,0 +1,6 @@
+==3747== Invalid free() / delete / delete[] / realloc()
+==3747==    at 0x484988F: free (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3747==    by 0x10919E: main (badfree.c:5)
+==3747==  Address 0x1ffeffe5dc is on thread 1's stack
+==3747==  in frame #1, created by main (badfree.c:2)
+==3747== 

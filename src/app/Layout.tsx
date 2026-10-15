@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme, type ThemeChoice } from './theme';
-import { useProgress, daysSinceExport } from '../progress/store';
+import { useProgress, daysSinceExport, storageWorks } from '../progress/store';
 import { course } from '../content-runtime/course';
 import styles from './Layout.module.css';
 
@@ -13,6 +13,7 @@ export function Layout({ children }: { children?: ReactNode }) {
   const [theme, setTheme] = useTheme();
   const progress = useProgress();
   const location = useLocation();
+  const [persistent] = useState(storageWorks);
   const days = daysSinceExport(progress);
   const hasProgress = Object.keys(progress.lessons).length > 0;
   const remindExport = hasProgress && (days === null || days >= 7);
@@ -47,7 +48,13 @@ export function Layout({ children }: { children?: ReactNode }) {
           </button>
         </nav>
       </header>
-      {remindExport && location.pathname !== '/settings' && (
+      {!persistent && (
+        <div className={styles.banner} role="status">
+          This browser is blocking site storage (a private window or blocked site data), so your progress will be lost when you close the tab.
+          {' '}Allow storage for this site, or <Link to="/settings">export a backup</Link> before you leave.
+        </div>
+      )}
+      {persistent && remindExport && location.pathname !== '/settings' && (
         <div className={styles.banner} role="note">
           Your progress lives only in this browser. <Link to="/settings">Export a backup</Link>
           {days === null ? '' : ` (last export ${days} days ago)`}.

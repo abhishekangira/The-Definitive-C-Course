@@ -1,0 +1,6 @@
+AddressSanitizer:DEADLYSIGNAL
+=================================================================
+==5427==ERROR: AddressSanitizer: stack-overflow on address 0x7ffe6de9dfdc (pc 0x56217c6cc21f bp 0x7ffe6de9e180 sp 0x7ffe6de9dfd0 T0)
+    #0 0x56217c6cc21f in f /work/rec.c:2
+    #1 0x56217c6cc2c7 in f /work/rec.c:2
+    #2 0x56217c6cc2c7 in f /work/rec.c:2

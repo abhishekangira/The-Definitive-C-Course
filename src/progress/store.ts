@@ -83,6 +83,16 @@ function storageSet(key: string, value: string): boolean {
   try { localStorage.setItem(key, value); return true; } catch { return false; }
 }
 
+/** False when the browser blocks localStorage (private windows, blocked site data): progress then lives in memory only. */
+export function storageWorks(): boolean {
+  try {
+    const probe = `${STORAGE_PREFIX}probe`;
+    localStorage.setItem(probe, '1');
+    localStorage.removeItem(probe);
+    return true;
+  } catch { return false; }
+}
+
 let state: ProgressV1 = load();
 const listeners = new Set<() => void>();
 
@@ -172,7 +182,10 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
       codes: [...new Set([...(cur.codes ?? []), ...(v.codes ?? [])])],
     };
   }
-  for (const [k, v] of Object.entries(b.quizzes)) if (!out.quizzes[k] || (v.passed && !out.quizzes[k].passed) || v.score > out.quizzes[k].score) out.quizzes[k] = v;
+  for (const [k, v] of Object.entries(b.quizzes)) {
+    const cur = out.quizzes[k];
+    if (!cur || (v.passed && !cur.passed) || v.score > cur.score) out.quizzes[k] = { ...v, passed: v.passed || Boolean(cur?.passed) };
+  }
   for (const [k, v] of Object.entries(b.projects)) if (!out.projects[k]?.passed) out.projects[k] = v;
   return out;
 }

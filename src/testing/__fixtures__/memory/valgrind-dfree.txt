@@ -1,0 +1,10 @@
+==3721== Invalid free() / delete / delete[] / realloc()
+==3721==    at 0x484988F: free (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3721==    by 0x10919A: main (dfree.c:5)
+==3721==  Address 0x4a7c040 is 0 bytes inside a block of size 5 free'd
+==3721==    at 0x484988F: free (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3721==    by 0x10918E: main (dfree.c:4)
+==3721==  Block was alloc'd at
+==3721==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3721==    by 0x10917E: main (dfree.c:3)
+==3721== 

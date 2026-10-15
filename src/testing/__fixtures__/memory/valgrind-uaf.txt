@@ -1,0 +1,9 @@
+==3715== Invalid read of size 4
+==3715==    at 0x1091BD: main (uaf.c:7)
+==3715==  Address 0x4a7c040 is 0 bytes inside a block of size 40 free'd
+==3715==    at 0x484988F: free (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3715==    by 0x1091B8: main (uaf.c:6)
+==3715==  Block was alloc'd at
+==3715==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==3715==    by 0x10919E: main (uaf.c:4)
+==3715== 
