@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "sources": [
+    "min3.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "smallest first",
+      "run": {
+        "stdin": "1\n3\n4\n"
+      },
+      "expect": {
+        "stdout": "a: b: c: min: 1\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "smallest middle",
+      "run": {
+        "stdin": "3\n1\n4\n"
+      },
+      "expect": {
+        "stdout": "a: b: c: min: 1\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "smallest last",
+      "run": {
+        "stdin": "3\n4\n1\n"
+      },
+      "expect": {
+        "stdout": "a: b: c: min: 1\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "negatives",
+      "run": {
+        "stdin": "-5\n-2\n-9\n"
+      },
+      "expect": {
+        "stdout": "a: b: c: min: -9\n",
+        "exit": 0
+      }
+    }
+  ]
+}

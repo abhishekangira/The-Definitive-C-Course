@@ -1,0 +1,25 @@
+id: countdown-order
+kind: pa
+title: Countdown
+prompt: 'Build a program that prints `3...`, `2...`, `1...` on separate lines and then `Liftoff!`.
+
+  Use a `for` loop that counts **down**. Three of the lines are distractors: leave them in the bank.
+
+  '
+runsIn: browser
+hints:
+- 'A C program starts with its `#include`, then `int main(void) {`. Where does `Liftoff!` go: inside the
+  loop or after it?'
+- 'The loop variable starts at 3 and the loop runs while it is still greater than 0, decreasing each time:
+  `i--`. A condition like `i >= 0` would also print `0...`.'
+- 'The skeleton is: `#include`, `int main(void) {`, `for (...) {`, `printf("%d...\n", i);`, `}`, then
+  `printf("Liftoff!\n");`, `return 0;`, `}`.'
+file: main.c
+variants:
+- '1'
+parsons:
+  distractors:
+  - '    for (int i = 3; i >= 0; i--) {'
+  - '    printf("Liftoff!\n")'
+  - '    return 1;'
+  indent: false

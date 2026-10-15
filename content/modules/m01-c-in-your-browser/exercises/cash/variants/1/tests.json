@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "sources": [
+    "euro.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "88 cents",
+      "run": {
+        "stdin": "88\n"
+      },
+      "expect": {
+        "stdout": "Change owed: 6\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "3 cents",
+      "run": {
+        "stdin": "3\n"
+      },
+      "expect": {
+        "stdout": "Change owed: 2\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "99 cents",
+      "run": {
+        "stdin": "99\n"
+      },
+      "expect": {
+        "stdout": "Change owed: 6\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "rejects 0",
+      "run": {
+        "stdin": "0\n40\n"
+      },
+      "expect": {
+        "stdout": "Change owed: Change owed: 2\n",
+        "exit": 0
+      }
+    }
+  ]
+}

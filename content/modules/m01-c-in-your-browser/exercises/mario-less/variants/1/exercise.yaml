@@ -1,0 +1,33 @@
+id: mario-less/variants/1
+kind: ct
+title: Upside-down steps
+prompt: 'Ask for a height between 1 and 5 (re-ask otherwise) and print a **left-aligned, upside-down**
+  staircase:
+
+  for height 3:
+
+  ```
+
+  ###
+
+  ##
+
+  #
+
+  ```
+
+  No trailing spaces.
+
+  '
+runsIn: browser
+hints:
+- Re-asking is the same `do … while` pattern; only the range changes.
+- Row *r* (from 1) now has `height - r + 1` hashes. Or let the loop variable count down from `height`
+  to 1.
+- '`for (int row = height; row >= 1; row--) { for (int h = 0; h < row; h++) printf("#"); printf("\n");
+  }`'
+file: steps.c
+variants: []
+sampleStdin: '3
+
+  '

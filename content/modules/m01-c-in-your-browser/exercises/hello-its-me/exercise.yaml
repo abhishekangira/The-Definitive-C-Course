@@ -1,0 +1,27 @@
+id: hello-its-me
+kind: ct
+title: Hello, it's me
+prompt: 'Change the program so it asks `What''s your name? ` and then greets the person by name, for example
+  `hello, Ada`.
+
+  Use `get_line` from `learnc.h`. Print exactly `hello, ` followed by the name and a newline.
+
+  '
+runsIn: browser
+hints:
+- '`get_line` takes the prompt as its argument and returns what the user typed. Store it in a variable
+  of type `const char *`.'
+- '`printf` prints a string argument with `%s`: `printf("hello, %s\n", name);`.'
+- '```
+
+  const char *name = get_line("What''s your name? ");
+
+  printf("hello, %s\n", name);
+
+  ```'
+file: hello.c
+variants:
+- '1'
+sampleStdin: 'Ada
+
+  '

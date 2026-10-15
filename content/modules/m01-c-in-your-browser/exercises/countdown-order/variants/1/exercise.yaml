@@ -1,0 +1,24 @@
+id: countdown-order/variants/1
+kind: pa
+title: Count down by twos
+prompt: 'Build a program that prints `10`, `8`, `6`, `4`, `2` on separate lines and then `Go!`, using
+  a `for` loop that steps down by 2.
+
+  Two of the lines are distractors.
+
+  '
+runsIn: browser
+hints:
+- 'Start at 10 and subtract 2 each time: `i -= 2`. Which values should the loop body see, and when should
+  it stop?'
+- With `i >= 0` the loop would also print `0`. Use a condition that stops after 2. `Go!` is printed once,
+  after the loop.
+- 'Order: `#include`, `int main(void) {`, `for (int i = 10; i > 0; i -= 2) {`, `printf("%d\n", i);`, `}`,
+  `printf("Go!\n");`, `return 0;`, `}`.'
+file: main.c
+variants: []
+parsons:
+  distractors:
+  - '    for (int i = 10; i >= 0; i -= 2) {'
+  - '        printf("%d", i);'
+  indent: false

@@ -1,0 +1,105 @@
+# Checks every change, and deploys main to GitHub Pages when everything is green.
+# Native toolchain per PLAN.md §2–§3: gcc 13 (Ubuntu 24.04), clang 22 from apt.llvm.org, gdb, valgrind, FFmpeg.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install the native toolchain
+        run: |
+          sudo install -d -m 0755 /etc/apt/keyrings
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/keyrings/apt.llvm.org.asc >/dev/null
+          echo "deb [signed-by=/etc/apt/keyrings/apt.llvm.org.asc] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm-22.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-13 clang-22 lld-22 libclang-rt-22-dev gdb valgrind ffmpeg python3
+          gcc --version | head -1; clang-22 --version | head -1; gdb --version | head -1
+
+      - run: npm ci
+
+      - name: Prepare the browser toolchain
+        run: npm run toolchain:prepare
+
+      - name: Cache sample verification
+        uses: actions/cache@v4
+        with:
+          path: .cache/verify
+          key: verify-${{ runner.os }}-${{ hashFiles('content/**', 'src/runtime/c/**', 'tools/verify/**', 'tools/shared/**', 'package-lock.json') }}
+          restore-keys: verify-${{ runner.os }}-
+
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run lint:content
+      - name: Generated sample outputs are up to date
+        run: npm run verify -- --check
+      - name: Generated traces are up to date
+        run: npm run trace -- --check
+      - name: Solutions pass, starters fail
+        run: npm run verify:exercises
+      - name: Videos (offline checks; CI never calls yt-dlp)
+        run: npm run videos:check
+      - name: Animations
+        run: npm run anim:check
+
+      - run: npm run build
+
+      - name: Install Playwright's Chromium
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end click-through
+        run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+      - name: Transcode animations to WebM
+        run: |
+          shopt -s nullglob
+          for f in dist/animations/*/*.mp4; do
+            ffmpeg -loglevel error -y -i "$f" -c:v libvpx-vp9 -b:v 0 -crf 34 -row-mt 1 -an "${f%.mp4}.webm"
+          done
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: dist
+
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

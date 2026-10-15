@@ -1,6 +1,6 @@
 // Environment-neutral compile step: builds the virtual file tree, runs @yowasp/clang, parses diagnostics.
 // The compiler worker (browser) and tools/verify (Node) both call compileC().
-import { clangArgs, type BuildOptions } from './flags';
+import { clangArgs, stageArgs, type BuildOptions, type Stage } from './flags';
 import type { Diagnostic, Severity } from '../content-model/types';
 
 export type RunClang = (
@@ -69,5 +69,27 @@ export async function compileC(runClang: RunClang, support: SupportFiles, input:
     if (typeof (err as { code?: unknown })?.code !== 'number') throw err; // not a yowasp Exit
     raw += dec.decode();
     return { ok: false, diagnostics: parseDiagnostics(raw), raw, ms: performance.now() - t0 };
+  }
+}
+
+export interface StageOutput { ok: boolean; text: string; diagnostics: Diagnostic[]; raw: string; ms: number }
+
+/** Runs a single pipeline stage on one file: the preprocessed source (-E) or WebAssembly assembly (-S). */
+export async function compileStage(runClang: RunClang, support: SupportFiles, files: Record<string, string>, stage: Stage, source = 'main.c', opt?: '-O0' | '-O1' | '-O2'): Promise<StageOutput> {
+  const t0 = performance.now();
+  const { args, output } = stageArgs(stage, source, opt);
+  let raw = '';
+  const dec = new TextDecoder();
+  const sink = (b: Uint8Array | null) => { if (b) raw += dec.decode(b, { stream: true }); };
+  try {
+    const out = await runClang(args, { ...support, ...files }, { stdout: sink, stderr: sink, decodeASCII: false });
+    raw += dec.decode();
+    const bytes = out[output] as Uint8Array | string | undefined;
+    const text = typeof bytes === 'string' ? bytes : bytes ? new TextDecoder().decode(bytes) : '';
+    return { ok: true, text, diagnostics: parseDiagnostics(raw), raw, ms: performance.now() - t0 };
+  } catch (err) {
+    if (typeof (err as { code?: unknown })?.code !== 'number') throw err;
+    raw += dec.decode();
+    return { ok: false, text: '', diagnostics: parseDiagnostics(raw), raw, ms: performance.now() - t0 };
   }
 }

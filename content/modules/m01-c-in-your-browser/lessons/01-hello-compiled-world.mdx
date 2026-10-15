@@ -1,0 +1,123 @@
+---
+id: m01-l1
+title: Hello, compiled world
+minutes: 40
+summary: Your first C program, what each line does, and what actually happens when you press Run.
+---
+
+In JavaScript you hand source code to an engine like V8, which reads it and runs it, compiling hot paths to machine code on the fly. C works differently: a **compiler** turns your source into a program *before* anything runs. The program is then run directly, with no engine underneath.
+
+In this course the compiler is **clang**, the same one that ships with macOS. It runs right here in your browser, so you can start without installing anything.
+
+Here is a complete C program. Before you run it, commit to a prediction: what exactly will it print?
+
+```c id=hello-two-lines
+#include <stdio.h>
+
+int main(void) {
+    printf("Hello, world!\n");
+    printf("%d + %d = %d\n", 2, 2, 2 + 2);
+    return 0;
+}
+```
+
+Line by line:
+
+- `#include <stdio.h>` pastes in the *declarations* of the standard input/output functions, including `printf`. Without it the compiler doesn't know what `printf` is.
+- `int main(void)` is where every C program starts. It takes no arguments (`void`) and returns an `int`.
+- `printf` prints a **format string**. `\n` is a newline (nothing adds one for you), and each `%d` is replaced by the next argument, printed as a decimal integer.
+- `return 0;` ends `main` and hands **exit status** 0 back to whatever started the program. By convention 0 means success and anything else means failure.
+- Every statement ends with `;`. Unlike JavaScript there is no automatic semicolon insertion.
+
+<Analogy js="console.log(`${a} + ${b}`)" c={'printf("%d + %d\\n", a, b)'} breaksDown="`printf` trusts you: each `%` directive must match the type of its argument. Pass a `double` where `%d` expects an `int` and you get undefined behaviour, not a helpful conversion. The compiler warns you; you'll see that in lesson 2." />
+
+<Choice
+  question="Your program ends with `return 1;` instead of `return 0;`. What changes?"
+  options={[
+    "Nothing visible: the return value of `main` is ignored",
+    "The program prints 1",
+    "The program reports failure (exit status 1) to whatever started it, such as a shell, a build script or CI",
+    "The program won't compile",
+  ]}
+  answer={2}
+  explain="`main`'s return value becomes the process's **exit status**. Shells, `make` and CI pipelines read it: 0 means success, anything else failure. It's the same number you'd get from `process.exitCode` in Node."
+/>
+
+So what happened when you pressed Run? Two separate programs did their jobs: clang compiled your code, then your compiled program ran.
+
+<Animation id="a01-press-run" />
+
+<Choice
+  question="When a program fails, it matters *who* is complaining. Which of these messages comes from the **compiler**, not from your running program?"
+  options={[
+    "`Hello, world!`",
+    "`main.c:4:30: error: expected ';' after expression`",
+    "`Program exited with status 0.`",
+    "`2 + 2 = 4`",
+  ]}
+  answer={1}
+  explain="Messages of the form `file:line:column: error:` come from clang, *before* your program exists. If compilation fails, nothing runs at all. Output like `2 + 2 = 4` is printed by your program while it runs, and the exit status is reported afterwards by whatever started the program (here, this page)."
+/>
+
+Compiler messages are precise, even pedantic. Here is a one-character mistake. Read what clang says, find the line it points at, then fix it.
+
+<CompilerError
+  question="What is clang telling you?"
+  options={[
+    "`printf` is spelled wrong",
+    "A statement is missing its terminating `;`, so the compiler can't tell where it ends",
+    "The string needs single quotes",
+    "`main` must return a value before `printf` runs",
+  ]}
+  answer={1}
+  explain="C statements end with `;`. Clang even suggests the fix: the `;` under the caret is a **fix-it hint**. Notice it points at the *end* of the line where it expected the semicolon, not at the line after."
+>
+
+```c id=missing-semicolon expect=compile-error
+#include <stdio.h>
+
+int main(void) {
+    printf("Compiled!\n")
+    return 0;
+}
+```
+
+```c id=missing-semicolon-fixed predict=none
+#include <stdio.h>
+
+int main(void) {
+    printf("Compiled!\n");
+    return 0;
+}
+```
+
+</CompilerError>
+
+`#include` really does paste text. Explore what clang actually sees: open tab 2 to see your program after the preprocessor has pasted in `stdio.h`, then tab 3 for the assembly clang generates for your browser's "CPU".
+
+<PipelineExplorer>
+
+```c id=hello-pipeline predict=none
+#include <stdio.h>
+
+int main(void) {
+    printf("Hello, world!\n");
+    return 0;
+}
+```
+
+</PipelineExplorer>
+
+<Choice
+  question="Your 6-line program turned into hundreds of lines after preprocessing. Why?"
+  options={[
+    "The compiler adds debugging code to every program",
+    "`#include <stdio.h>` is replaced by the entire text of the header (declarations of `printf`, `FILE` and many more), which the compiler then reads as if you had typed it",
+    "The preprocessor translates C into JavaScript first",
+    "Each line of C becomes about 100 lines of machine code",
+  ]}
+  answer={1}
+  explain="The preprocessor is a text-substitution step that runs before compilation proper. `#include` is a literal paste, unlike `import`, which loads a module with its own scope. That's why headers contain *declarations*, and why the order of includes can matter. Lesson 6 shows all four build stages."
+/>
+
+**What you know now:** a C program is compiled ahead of time into a separate executable; `main` is the entry point and its return value is the exit status; `printf` prints a format string whose `%` directives must match their arguments; and `#include` pastes text. Next: in C, a type isn't just a label. It decides how many bytes a value occupies.

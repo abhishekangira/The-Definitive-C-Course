@@ -1,0 +1,26 @@
+id: max3
+kind: ct
+title: The largest of three
+prompt: 'Complete the function `max3` so it returns the largest of its three arguments. `main` is written
+  for you:
+
+  it reads three numbers and prints the result. Don''t change `main`.
+
+  '
+runsIn: browser
+hints:
+- Compare two at a time. What's the largest of `a` and `b`? Then compare that with `c`.
+- 'Keep a running maximum in a local variable: start with `a`, and replace it whenever `b` or `c` is larger.
+  Remember the prototype rule: `max3` is defined above `main`, so no separate prototype is needed.'
+- "```\nint best = a;\nif (b > best) {\n    best = b;\n}\n/* now do the same for c */\nreturn best;\n\
+  ```"
+file: max3.c
+variants:
+- '1'
+sampleStdin: '3
+
+  9
+
+  4
+
+  '

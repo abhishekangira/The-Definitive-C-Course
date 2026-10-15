@@ -1,0 +1,31 @@
+.analogy {
+  margin: var(--space-5) 0; padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius); background: var(--info-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.analogyHead { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+.tag { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.pair { font-weight: 600; }
+.breaks { margin: var(--space-2) 0 0; font-size: 0.95rem; }
+.inlineMd, .inlineMd p { display: inline; margin: 0; }
+
+.callout { margin: var(--space-4) 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-elev); }
+.callout > :last-child { margin-bottom: 0; }
+.calloutTitle { font-weight: 700; margin-bottom: var(--space-1); }
+.note { border-left: 4px solid var(--accent); }
+.tip { border-left: 4px solid var(--ok); }
+.warning { border-left: 4px solid var(--warn); background: var(--warn-soft); }
+.platform { border-left: 4px solid #8b5cf6; }
+
+.codeBlock { margin: var(--space-4) 0; }
+
+.example { margin: var(--space-4) 0; padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: var(--terminal-bg); color: var(--terminal-text); }
+.example figcaption { color: var(--terminal-muted); font-size: 0.85rem; margin-bottom: var(--space-2); }
+.exampleRow { display: grid; grid-template-columns: 7.5rem 1fr; gap: var(--space-3); align-items: start; }
+.exampleRow + .exampleRow { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid color-mix(in srgb, var(--terminal-muted) 30%, transparent); }
+.exampleRow pre { margin: 0; white-space: pre; overflow-x: auto; background: none; color: inherit; }
+.exampleRow:first-of-type pre { color: var(--terminal-in); }
+.exampleRow:last-child pre { color: var(--terminal-text); }
+.exampleLabel { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--terminal-muted); padding-top: 0.2rem; }
+.missing { color: var(--bad, #c0392b); }
+@media (max-width: 480px) { .exampleRow { grid-template-columns: 1fr; gap: var(--space-1); } }

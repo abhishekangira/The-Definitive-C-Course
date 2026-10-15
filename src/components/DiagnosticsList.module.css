@@ -1,0 +1,4 @@
+.box { border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-elev); margin: var(--space-3) 0; }
+.box summary { cursor: pointer; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); font-weight: 600; font-size: 0.9rem; }
+.title { margin-right: var(--space-2); }
+.raw { margin: 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; font-size: 13px; white-space: pre-wrap; background: var(--bg-code); }

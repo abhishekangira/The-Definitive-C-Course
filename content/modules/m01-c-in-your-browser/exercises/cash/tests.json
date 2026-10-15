@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "sources": [
+    "cash.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "41 cents",
+      "run": {
+        "stdin": "41\n"
+      },
+      "expect": {
+        "stdout": "Change owed: 4\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "1 cent",
+      "run": {
+        "stdin": "1\n"
+      },
+      "expect": {
+        "stdout": "Change owed: 1\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "15 cents",
+      "run": {
+        "stdin": "15\n"
+      },
+      "expect": {
+        "stdout": "Change owed: 2\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "160 cents",
+      "run": {
+        "stdin": "160\n"
+      },
+      "expect": {
+        "stdout": "Change owed: 7\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "2300 cents",
+      "run": {
+        "stdin": "2300\n"
+      },
+      "expect": {
+        "stdout": "Change owed: 92\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "rejects 0 and -5",
+      "run": {
+        "stdin": "0\n-5\n70\n"
+      },
+      "expect": {
+        "stdout": "Change owed: Change owed: Change owed: 4\n",
+        "exit": 0
+      },
+      "hint": "Keep asking while the amount is not greater than 0."
+    },
+    {
+      "name": "rejects text",
+      "run": {
+        "stdin": "foo\n25\n"
+      },
+      "expect": {
+        "stdout": "Change owed: Change owed: 1\n",
+        "exit": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "sources": [
+    "guests.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "accepts 4",
+      "run": {
+        "stdin": "4\n"
+      },
+      "expect": {
+        "stdout": "Guests: Table for 4\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "rejects 0",
+      "run": {
+        "stdin": "0\n4\n"
+      },
+      "expect": {
+        "stdout": "Guests: Guests: Table for 4\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "rejects 11",
+      "run": {
+        "stdin": "11\n10\n"
+      },
+      "expect": {
+        "stdout": "Guests: Guests: Table for 10\n",
+        "exit": 0
+      }
+    }
+  ]
+}

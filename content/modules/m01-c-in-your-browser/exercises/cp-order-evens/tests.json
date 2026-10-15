@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "sources": [
+    "evens.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "n = 7",
+      "run": {
+        "stdin": "7\n"
+      },
+      "expect": {
+        "stdout": "n: 3\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "n = 1",
+      "run": {
+        "stdin": "1\n"
+      },
+      "expect": {
+        "stdout": "n: 0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "n = 10",
+      "run": {
+        "stdin": "10\n"
+      },
+      "expect": {
+        "stdout": "n: 5\n",
+        "exit": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+id: cp-order-evens
+kind: pa
+title: Count the evens
+prompt: 'Build a program that asks `n: ` and prints how many even numbers there are from 1 to n (for example,
+  `n: 7` prints `3`). Some lines are distractors.
+
+  '
+runsIn: browser
+hints:
+- You need a counter, a loop, and an `if` that tests evenness with `%`.
+- A number is even when `i % 2 == 0`.
+- Counter starts at 0; loop i from 1 to n; if even, count++; print count.
+file: evens.c
+variants: []
+parsons:
+  distractors:
+  - '        if (i % 2 = 0) {'
+  - '    int count;'
+  indent: false

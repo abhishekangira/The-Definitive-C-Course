@@ -1,0 +1,44 @@
+id: m01
+number: 1
+title: "C in Your Browser: From JS to C"
+why: >-
+  You write real C on day one with nothing to install. Real clang error messages replace TypeScript's
+  "types are labels" habit with C's "types are memory layouts", and you meet the call stack you already
+  know from DevTools, this time as actual memory.
+hours: 10
+weeks: 2
+time: { lessons: 4, problemSet: 2, project: 2, variants: 1, quizCheckpoint: 1 }
+lessonsRunIn: browser
+projectRunsIn: browser
+successCriteria:
+  - { sc: SC1, level: I }
+  - { sc: SC2, level: I }
+  - { sc: SC3, level: I }
+  - { sc: SC7, level: I }
+resources:
+  - title: "Beej's Guide to C Programming (v0.11)"
+    detail: 'Chapter 2 "Hello, World!", chapter 3 "Variables and Statements", chapter 4 "Functions"'
+    url: https://beej.us/guide/bgc/html/split/
+  - title: "Kernighan & Ritchie, The C Programming Language (2nd ed.)"
+    detail: "Chapter 1, sections 1.1–1.10 (A Tutorial Introduction)"
+lessons:
+  - 01-hello-compiled-world
+  - 02-types-are-layouts
+  - 03-control-flow
+  - 04-functions-and-scope
+  - 05-input-without-magic
+  - 06-read-the-compiler
+problemSet:
+  - hello-world
+  - mario-less
+  - cash
+project: mario-more
+coreExercises:
+  - fix-pyramid
+  - countdown-order
+  - max3
+  - hello-its-me
+  - mario-less
+  - cash
+retrieval:
+  sources: [js]

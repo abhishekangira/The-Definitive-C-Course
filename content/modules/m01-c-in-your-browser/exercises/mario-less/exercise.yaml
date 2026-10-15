@@ -1,0 +1,21 @@
+id: mario-less
+kind: ct
+title: Mario (less comfortable)
+prompt: "Toward the end of World 1-1 in Super Mario Bros., Mario must climb a right-aligned pyramid of\
+  \ blocks:\n```\n   #\n  ##\n ###\n####\n```\nAsk for the height with `get_int(\"Height: \")` and **re-ask**\
+  \ until it is between 1 and 8 inclusive.\nThen print the pyramid: row *r* (counting from 1) has `height\
+  \ - r` spaces followed by *r* `#`s. No trailing spaces.\n"
+runsIn: browser
+hints:
+- 'Two separate jobs: get a valid height (a `do … while` loop that repeats while the height is out of
+  range), then print rows (a `for` loop).'
+- 'Each row is two inner loops: one printing spaces, one printing hashes. For height 4, row 1 has 3 spaces
+  and 1 hash; row 4 has 0 spaces and 4 hashes.'
+- "```\nfor (int row = 1; row <= height; row++) {\n    for (int s = 0; s < height - row; s++) printf(\"\
+  \ \");\n    for (int h = 0; h < row; h++) printf(\"#\");\n    printf(\"\\n\");\n}\n```"
+file: mario.c
+variants:
+- '1'
+sampleStdin: '4
+
+  '

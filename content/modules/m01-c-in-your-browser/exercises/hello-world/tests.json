@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "sources": [
+    "hello.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "prints hello, world",
+      "run": {
+        "stdin": ""
+      },
+      "expect": {
+        "stdout": "hello, world\n",
+        "exit": 0
+      },
+      "hint": "Check capitalisation, punctuation and the trailing newline."
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+# Module 1 warm-up: a JavaScript diagnostic (there is no earlier module to retrieve from).
+# Each question is a JS behaviour that C does differently; the lessons refer back to them.
+- id: js-number
+  type: choice
+  from: js
+  prompt: "In JavaScript, how is the value of `n` stored after `let n = 3;`?"
+  choices:
+    - As a 32-bit integer, because 3 has no fractional part
+    - As a 64-bit floating-point number, like every JS `number`
+    - As the string `"3"`, converted when you do arithmetic
+    - It depends on the browser
+  answer: 1
+  explain: "Every JS `number` is a 64-bit float (engines may optimise small integers internally, but the language behaves as if it's a float). In C you choose: `int`, `long`, `double`… and the choice changes how many bytes it takes and how arithmetic behaves (lesson 2)."
+- id: js-object-arg
+  type: choice
+  from: js
+  prompt: "A function receives an object and runs `obj.count = 5;`. What does the caller see afterwards?"
+  choices:
+    - "`count` is 5: the function and the caller share the same object"
+    - "`count` is unchanged: the function got its own copy"
+    - It throws a TypeError, because parameters are read-only
+    - It depends on whether the object was declared with `const`
+  answer: 0
+  explain: "JS passes objects by sharing a reference. C has no hidden references: every argument is copied, and sharing needs an explicit pointer (lesson 4 now, Module 6 in depth)."
+- id: js-unassigned
+  type: choice
+  from: js
+  prompt: "What is the value of a variable after `let total;` and before any assignment?"
+  choices:
+    - "`0`"
+    - "`null`"
+    - "`undefined`"
+    - "Reading it throws a ReferenceError"
+  answer: 2
+  explain: "JS fills in `undefined` for you. A C local variable gets no value at all: it holds whatever bytes were in that memory before, and reading it is undefined behaviour (lesson 4)."
+- id: js-types-runtime
+  type: choice
+  from: js
+  prompt: "You annotate `let n: number = 3;` in TypeScript. What happens to `: number` when the code runs in the browser?"
+  choices:
+    - It's checked again at runtime
+    - It's erased when TypeScript compiles to JavaScript; it only existed for the type checker
+    - It makes the engine store `n` as an integer
+    - It's kept as metadata for DevTools
+  answer: 1
+  explain: "TypeScript types vanish before the code runs. A C type never vanishes in that sense: it is compiled into the program as a size, an encoding and the instructions that operate on it (lesson 2)."
+- id: js-call-stack
+  type: choice
+  from: js
+  prompt: "You're paused at a breakpoint inside `add()`, which was called by `main()`. What does the DevTools **Call Stack** panel show?"
+  choices:
+    - Every function defined in the file
+    - "`add` on top and `main` below it: the chain of calls that are still running"
+    - Only `add`, because `main` already finished
+    - The functions that will run next
+  answer: 1
+  explain: "Each running call has a frame; the newest is on top. C has exactly the same structure, except each frame is real memory holding that call's parameters and locals, which you'll step through in lesson 4."
+- id: js-exit-code
+  type: choice
+  from: js
+  prompt: "A Node script ends with `process.exitCode = 1;`. Who is that number for?"
+  choices:
+    - Nobody; Node ignores it
+    - It's printed to the console
+    - Whatever started the process (a shell, `npm`, a CI job), which treats non-zero as failure
+    - It's the number of errors the script logged
+  answer: 2
+  explain: "The exit status is how a program reports success (0) or failure (non-zero). In C it's the value `main` returns (lesson 1)."

@@ -1,0 +1,17 @@
+title: The Definitive C Course
+hoursPerWeek: 5
+modules:
+  - { id: m01, dir: m01-c-in-your-browser, number: 1, title: "C in Your Browser: From JS to C", hours: 10, available: true }
+  - { id: m02, dir: m02-bits-bytes-numbers, number: 2, title: "Bits, Bytes & Numbers", hours: 10, available: false }
+  - { id: m03, dir: m03-going-native, number: 3, title: "Going Native: Toolchain, Debugger, Sanitizers & Make", hours: 10, available: false }
+  - { id: m04, dir: m04-arrays-strings-cli, number: 4, title: "Arrays, Strings & the Command Line", hours: 10, available: false }
+  - { id: m05, dir: m05-algorithms, number: 5, title: "Algorithms, Recursion, Structs & Big-O", hours: 18, available: false }
+  - { id: m06, dir: m06-pointers-memory, number: 6, title: "Pointers & Dynamic Memory", hours: 15.5, available: false }
+  - { id: m07, dir: m07-structs-files, number: 7, title: "Structs, Files & Binary Formats", hours: 15, available: false }
+  - { id: m08, dir: m08-data-structures-1, number: 8, title: "Data Structures I: Lists, Stacks, Queues, Trees", hours: 15, available: false }
+  - { id: m09, dir: m09-data-structures-2, number: 9, title: "Data Structures II: Hash Tables, Tries & Speller", hours: 15.5, available: false }
+  - { id: m10, dir: m10-cpu-assembly, number: 10, title: "Inside the CPU: Instructions, Registers & Assembly", hours: 17, available: false }
+  - { id: m11, dir: m11-linking-loading, number: 11, title: "Linking, Loading, Libraries & the C ABI", hours: 10, available: false }
+  - { id: m12, dir: m12-memory-hierarchy, number: 12, title: "Memory Hierarchy & Performance", hours: 13.5, available: false }
+  - { id: m13, dir: m13-operating-system, number: 13, title: "The Operating System (POSIX)", hours: 15.5, available: false }
+  - { id: cap, dir: cap-build-malloc, number: cap, title: "Capstone: Build malloc", hours: 25, available: false }

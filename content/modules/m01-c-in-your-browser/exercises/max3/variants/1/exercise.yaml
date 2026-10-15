@@ -1,0 +1,20 @@
+id: max3/variants/1
+kind: ct
+title: The smallest of three
+prompt: 'Complete `min3` so it returns the smallest of its three arguments. Don''t change `main`.
+
+  '
+runsIn: browser
+hints:
+- Same idea as `max3`, flipped. Which comparison changes?
+- Start with the first argument as the best so far, and replace it whenever another argument is *smaller*.
+- Use `if (b < best)` and `if (c < best)`.
+file: min3.c
+variants: []
+sampleStdin: '3
+
+  9
+
+  4
+
+  '

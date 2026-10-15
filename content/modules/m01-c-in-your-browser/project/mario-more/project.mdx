@@ -1,0 +1,29 @@
+---
+id: mario-more
+title: "Mario (more comfortable)"
+minutes: 120
+summary: Two pyramids side by side, with validated input and output that must match byte for byte.
+---
+
+# Mario (more comfortable)
+
+Near the end of World 1-1 in *Super Mario Bros.*, Mario has to hop over two pyramids of blocks that face each other across a gap. Your program draws them in text, using `#` for a block.
+
+Ask for the height with `get_int("Height: ")`. If the height isn't between 1 and 8 inclusive, ask again, as many times as it takes. Then print the pyramids:
+
+- Row *r* (counting from 1) is: `height - r` spaces, then *r* `#`s, then **two** spaces (the gap), then *r* `#`s.
+- No spaces after the last `#` of a row. Every row ends with `\n`.
+
+The tests compare your output with the expected output byte for byte. Here are two of them, taken straight from the test file. The program's output starts with its prompt `Height: `, and the input you type isn't part of the output, so the first row follows the prompt on the same line.
+
+<TestExample exercise="project/mario-more" test="height 4" caption="Height 4" />
+
+<TestExample exercise="project/mario-more" test="rejects 9" caption="An invalid height is asked again" />
+
+<Callout kind="tip" title="How to approach it">
+Solve a smaller problem first. Get the left pyramid right (that's exactly the problem-set exercise *Mario (less comfortable)*), check it against the tests, then add the gap and the right half. A helper function such as `void print_row(int spaces, int bricks)` keeps `main` short. Remember the prototype rule from lesson 4.
+</Callout>
+
+**What the tests check:** heights 1 to 8; that `0`, `9`, `-1`, `abc`, an empty line and `42x` are all rejected with the prompt shown again; and that the build has no warnings with `-Wall -Wextra -pedantic`.
+
+The hints follow the same rules as the exercises: a nudge, then the concept, then partial code. The reference solution unlocks only after real attempts.

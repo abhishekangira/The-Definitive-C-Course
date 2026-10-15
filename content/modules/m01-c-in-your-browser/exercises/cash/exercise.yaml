@@ -1,0 +1,40 @@
+id: cash
+kind: ct
+title: Cash
+prompt: 'A cashier gives change using as few coins as possible: quarters (25¢), dimes (10¢), nickels (5¢)
+  and pennies (1¢).
+
+  Ask `Change owed: ` in **cents** with `get_int`, re-asking until the amount is greater than 0, then
+  print the minimum number of coins.
+
+  For 41¢ that''s a quarter, a dime, a nickel and a penny, so the program prints `4`.
+
+
+  The **greedy** strategy works here: always take the biggest coin that still fits.
+
+  '
+runsIn: browser
+hints:
+- 'Keep subtracting the largest coin that fits and count how many coins you take. Or, faster: how many
+  quarters fit into the amount is `cents / 25`.'
+- 'With integer division and remainder: `quarters = cents / 25; cents = cents % 25;` then the same for
+  10, 5 and 1. Add up the counts.'
+- '```
+
+  int coins = 0;
+
+  coins += cents / 25; cents %= 25;
+
+  coins += cents / 10; cents %= 10;
+
+  /* … nickels and pennies … */
+
+  printf("%d\n", coins);
+
+  ```'
+file: cash.c
+variants:
+- '1'
+sampleStdin: '41
+
+  '

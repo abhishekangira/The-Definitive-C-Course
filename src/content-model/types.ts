@@ -175,9 +175,22 @@ export interface TargetResult {
 
 export type Expect = 'success' | 'warning' | 'compile-error' | 'runtime-error' | 'ub' | `exit:${number}`;
 
+/** Short compiler names used in fence meta, e.g. expect.gcc=warning. */
+export type CompilerKey = 'gcc' | 'clang' | 'wasm' | 'apple' | 'msvc';
+
+export const COMPILER_TARGET: Record<CompilerKey, TargetId> = {
+  gcc: 'linux-x86_64-gcc13',
+  clang: 'linux-x86_64-clang22',
+  wasm: 'wasm32-clang22',
+  apple: 'macos-arm64-appleclang',
+  msvc: 'windows-x64-msvc',
+};
+
 export interface SampleMeta {
   id: string;
   fragment?: boolean;
+  /** Per-compiler overrides of `expect`, e.g. gcc 13 only warns where clang 22 errors. */
+  expectBy?: Partial<Record<CompilerKey, Expect>>;
   predict?: 'output' | 'outcome' | 'choice' | 'none';
   choices?: string[];
   stdin?: string;

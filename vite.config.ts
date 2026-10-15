@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { parse as parseYaml } from 'yaml';
+import { readFile } from 'node:fs/promises';
 import remarkCourse from './tools/mdx/remark-course';
 
 /** `import x from './file.yaml'` → parsed object. */
@@ -19,10 +20,27 @@ function yamlPlugin(): Plugin {
   };
 }
 
+/** `import fm from './lesson.mdx?frontmatter'` → just the YAML frontmatter, without compiling the lesson. */
+function frontmatterPlugin(): Plugin {
+  return {
+    name: 'course-mdx-frontmatter',
+    enforce: 'pre',
+    async load(id) {
+      if (!id.endsWith('.mdx?frontmatter')) return null;
+      const file = id.slice(0, -'?frontmatter'.length);
+      this.addWatchFile(file);
+      const text = await readFile(file, 'utf8');
+      const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+      return `export default ${JSON.stringify(m ? parseYaml(m[1]) : {})};`;
+    },
+  };
+}
+
 export default defineConfig({
   // Relative base + HashRouter: the built site works on GitHub Pages, any subpath, and any static server.
   base: './',
   plugins: [
+    frontmatterPlugin(),
     yamlPlugin(),
     {
       enforce: 'pre',

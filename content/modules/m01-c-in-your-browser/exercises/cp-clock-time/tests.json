@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "sources": [
+    "clock.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "07:05",
+      "run": {
+        "stdin": "7\n5\n"
+      },
+      "expect": {
+        "stdout": "Hour: Minute: 07:05\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "23:59",
+      "run": {
+        "stdin": "23\n59\n"
+      },
+      "expect": {
+        "stdout": "Hour: Minute: 23:59\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "00:00",
+      "run": {
+        "stdin": "0\n0\n"
+      },
+      "expect": {
+        "stdout": "Hour: Minute: 00:00\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "rejects 24 and 60",
+      "run": {
+        "stdin": "24\n12\n60\n30\n"
+      },
+      "expect": {
+        "stdout": "Hour: Hour: Minute: Minute: 12:30\n",
+        "exit": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "sources": [
+    "main.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "prints the countdown then Liftoff!",
+      "run": {
+        "stdin": ""
+      },
+      "expect": {
+        "stdout": "3...\n2...\n1...\nLiftoff!\n",
+        "exit": 0
+      },
+      "hint": "Check the loop condition: should 0 be printed?"
+    }
+  ]
+}

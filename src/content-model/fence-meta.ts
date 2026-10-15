@@ -1,6 +1,6 @@
 // Parses code-fence meta strings like:  id=sum stdin="3 4\n" expect=warning choices="7|8|34"
 // Quoted values use JSON string escapes. Bare words are boolean flags. Shared by app and tools.
-import type { SampleMeta, Expect } from './types';
+import type { SampleMeta, Expect, CompilerKey } from './types';
 
 export type RawMeta = Record<string, string | true>;
 
@@ -34,15 +34,29 @@ export function splitArgs(s: string): string[] {
   return out;
 }
 
+const EXPECT_RE = /^(success|warning|compile-error|runtime-error|ub|exit:\d+)$/;
+const COMPILER_KEYS = new Set(['gcc', 'clang', 'wasm', 'apple', 'msvc']);
+
 export function toSampleMeta(raw: RawMeta): SampleMeta | null {
-  for (const k of Object.keys(raw)) if (!KNOWN.has(k)) throw new FenceMetaError(`unknown fence key "${k}"`);
+  const expectBy: Partial<Record<CompilerKey, Expect>> = {};
+  for (const k of Object.keys(raw)) {
+    const m = /^expect\.(\w+)$/.exec(k);
+    if (m) {
+      if (!COMPILER_KEYS.has(m[1])) throw new FenceMetaError(`unknown compiler in "${k}" (use gcc, clang, wasm, apple or msvc)`);
+      const v = raw[k];
+      if (typeof v !== 'string' || !EXPECT_RE.test(v)) throw new FenceMetaError(`bad ${k}=${String(v)}`);
+      expectBy[m[1] as CompilerKey] = v as Expect;
+      continue;
+    }
+    if (!KNOWN.has(k)) throw new FenceMetaError(`unknown fence key "${k}"`);
+  }
   const str = (k: string) => (typeof raw[k] === 'string' ? (raw[k] as string) : undefined);
   const flag = (k: string) => raw[k] === true || raw[k] === 'true';
   if (flag('fragment')) return { id: str('id') ?? '', fragment: true };
   const id = str('id');
   if (!id) return null;
   const expect = str('expect') as Expect | undefined;
-  if (expect && !/^(success|warning|compile-error|runtime-error|ub|exit:\d+)$/.test(expect)) throw new FenceMetaError(`bad expect=${expect}`);
+  if (expect && !EXPECT_RE.test(expect)) throw new FenceMetaError(`bad expect=${expect}`);
   const predictRaw = str('predict');
   const predict = (predictRaw ?? (flag('run') ? 'none' : raw.choices ? 'choice' : 'output')) as SampleMeta['predict'];
   if (!['output', 'outcome', 'choice', 'none'].includes(predict!)) throw new FenceMetaError(`bad predict=${predictRaw}`);
@@ -56,6 +70,7 @@ export function toSampleMeta(raw: RawMeta): SampleMeta | null {
     stdin: str('stdin'),
     args: str('args') !== undefined ? splitArgs(str('args')!) : undefined,
     expect,
+    expectBy: Object.keys(expectBy).length ? expectBy : undefined,
     platform: flag('platform') || undefined,
     predict64: p64,
     predict64Reason: str('reason'),

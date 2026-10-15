@@ -1,0 +1,19 @@
+id: cash/variants/1
+kind: ct
+title: Euro change
+prompt: 'Same idea with euro coins: 50, 20, 10, 5, 2 and 1 cent. Ask `Change owed: ` in cents (re-ask
+  until > 0) and print the minimum number of coins.
+
+  For 88 cents: 50 + 20 + 10 + 5 + 2 + 1, so `6`.
+
+  '
+runsIn: browser
+hints:
+- The greedy method still works for these coins. Go from the largest coin to the smallest.
+- Six coin values means six "count and take the remainder" steps.
+- '`coins += cents / 50; cents %= 50;` then 20, 10, 5, 2 and finally add the remaining cents.'
+file: euro.c
+variants: []
+sampleStdin: '88
+
+  '

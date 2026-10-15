@@ -12,6 +12,8 @@ export interface CompileResult {
   ms: number;
 }
 
+export interface StageResult { ok: boolean; text: string; diagnostics: Diagnostic[]; raw: string; ms: number }
+
 export function detectStdinMode(): StdinMode {
   const W = WebAssembly as unknown as { Suspending?: unknown; promising?: unknown };
   if (typeof W.Suspending === 'function' && typeof W.promising === 'function') return 'jspi';
@@ -49,6 +51,7 @@ export class CRuntime {
   private compiler: Worker;
   private nextId = 1;
   private pending = new Map<number, (r: CompileResult) => void>();
+  private pendingStage = new Map<number, (r: StageResult) => void>();
   private spare: Worker | null = null;
   private listeners = new Set<(s: ToolchainState) => void>();
   state: ToolchainState = { status: 'idle' };
@@ -65,6 +68,7 @@ export class CRuntime {
         navigator.storage?.persist?.().catch(() => {});
       } else if (m.type === 'load-error') this.setState({ status: 'error', message: m.message });
       else if (m.type === 'compiled') { this.pending.get(m.id)?.(m); this.pending.delete(m.id); }
+      else if (m.type === 'staged') { this.pendingStage.get(m.id)?.(m); this.pendingStage.delete(m.id); }
     };
   }
 
@@ -82,6 +86,13 @@ export class CRuntime {
     this.prefetch();
     const id = this.nextId++;
     return new Promise(res => { this.pending.set(id, res); this.compiler.postMessage({ type: 'compile', id, ...job }); });
+  }
+
+  /** One pipeline stage (-E preprocessed text or -S WebAssembly assembly) for the Pipeline Explorer. */
+  stage(files: Record<string, string>, stage: 'E' | 'S', opt?: '-O0' | '-O1' | '-O2'): Promise<StageResult> {
+    this.prefetch();
+    const id = this.nextId++;
+    return new Promise(res => { this.pendingStage.set(id, res); this.compiler.postMessage({ type: 'stage', id, files, stage, opt }); });
   }
 
   private newRunWorker() { return new Worker(new URL('./run.worker.ts', import.meta.url), { type: 'module', name: 'program' }); }

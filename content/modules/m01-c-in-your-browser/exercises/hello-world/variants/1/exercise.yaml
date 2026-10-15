@@ -1,0 +1,14 @@
+id: hello-world/variants/1
+kind: ct
+title: Two lines
+prompt: 'Print `hello, world` on the first line and `goodbye, world` on the second, using a **single**
+  `printf` call.
+
+  '
+runsIn: browser
+hints:
+- One string can contain several newlines.
+- Put `\n` after each line inside the same string literal.
+- '`printf("hello, world\ngoodbye, world\n");`'
+file: hello.c
+variants: []

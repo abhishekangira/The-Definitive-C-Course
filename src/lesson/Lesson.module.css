@@ -1,0 +1,13 @@
+.card {
+  scroll-margin-top: 72px;
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-5);
+  border-bottom: 1px dashed var(--border);
+  animation: reveal 280ms ease-out;
+}
+.card:last-child { border-bottom: 0; }
+
+@keyframes reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}

@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "sources": [
+    "max3.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "largest first",
+      "run": {
+        "stdin": "9\n3\n4\n"
+      },
+      "expect": {
+        "stdout": "a: b: c: max: 9\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "largest in the middle",
+      "run": {
+        "stdin": "3\n9\n4\n"
+      },
+      "expect": {
+        "stdout": "a: b: c: max: 9\n",
+        "exit": 0
+      },
+      "hint": "Does your function ever look at b?"
+    },
+    {
+      "name": "largest last",
+      "run": {
+        "stdin": "3\n4\n9\n"
+      },
+      "expect": {
+        "stdout": "a: b: c: max: 9\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "negative numbers",
+      "run": {
+        "stdin": "-5\n-2\n-9\n"
+      },
+      "expect": {
+        "stdout": "a: b: c: max: -2\n",
+        "exit": 0
+      },
+      "hint": "Starting your maximum at 0 fails when every number is negative."
+    },
+    {
+      "name": "ties",
+      "run": {
+        "stdin": "7\n7\n7\n"
+      },
+      "expect": {
+        "stdout": "a: b: c: max: 7\n",
+        "exit": 0
+      }
+    }
+  ]
+}

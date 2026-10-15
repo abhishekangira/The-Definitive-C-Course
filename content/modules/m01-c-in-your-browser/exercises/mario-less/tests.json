@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "sources": [
+    "mario.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "height 1",
+      "run": {
+        "stdin": "1\n"
+      },
+      "expect": {
+        "stdout": "Height: #\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "height 2",
+      "run": {
+        "stdin": "2\n"
+      },
+      "expect": {
+        "stdout": "Height:  #\n##\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "height 4",
+      "run": {
+        "stdin": "4\n"
+      },
+      "expect": {
+        "stdout": "Height:    #\n  ##\n ###\n####\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "height 8",
+      "run": {
+        "stdin": "8\n"
+      },
+      "expect": {
+        "stdout": "Height:        #\n      ##\n     ###\n    ####\n   #####\n  ######\n #######\n########\n",
+        "exit": 0
+      },
+      "hint": "Row 1 of height 8 has seven spaces before the #."
+    },
+    {
+      "name": "rejects 0 and asks again",
+      "run": {
+        "stdin": "0\n2\n"
+      },
+      "expect": {
+        "stdout": "Height: Height:  #\n##\n",
+        "exit": 0
+      },
+      "hint": "Use a do-while loop: ask, then repeat while the height is less than 1 or greater than 8."
+    },
+    {
+      "name": "rejects 9 and -1",
+      "run": {
+        "stdin": "9\n-1\n3\n"
+      },
+      "expect": {
+        "stdout": "Height: Height: Height:   #\n ##\n###\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "rejects text",
+      "run": {
+        "stdin": "cat\n2\n"
+      },
+      "expect": {
+        "stdout": "Height: Height:  #\n##\n",
+        "exit": 0
+      }
+    }
+  ]
+}

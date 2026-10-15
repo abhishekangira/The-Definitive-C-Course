@@ -1,0 +1,108 @@
+---
+id: m01-l4
+title: Functions and scope
+minutes: 45
+summary: Prototypes instead of hoisting, pass-by-value, stack frames you can see, block scope and uninitialised locals.
+---
+
+A C function declares its return type and the type of every parameter. Two rules differ from JavaScript:
+
+1. **No hoisting.** The compiler reads top to bottom, so a function must be *declared* before it's called. You either define it above `main`, or write a **prototype** above and the full definition below.
+2. **Arguments are copied.** Every parameter receives a copy of the caller's value. Changing the parameter changes the copy, never the caller's variable.
+
+```c id=pass-by-value
+#include <stdio.h>
+
+void bump(int n);              // prototype: bump exists, takes an int
+
+int main(void) {
+    int x = 41;
+    bump(x);
+    printf("%d\n", x);
+    return 0;
+}
+
+void bump(int n) {
+    n = n + 1;
+    printf("inside bump: %d\n", n);
+}
+```
+
+<Analogy js="function bump(n) { n++ }" c="void bump(int n) { n++; }" breaksDown="For JS primitives it's the same: the caller's variable never changes. But a JS object is passed as a *reference*, so mutations show through. C has no hidden references: everything is a copy, and sharing requires an explicit pointer (Module 6)." />
+
+Each call gets its own **stack frame**: a block of memory holding that call's parameters and local variables. It's the same idea as the call stack in DevTools, except here it's real memory with real sizes. Step through this program. Before each jump, predict which line runs next.
+
+<Stepper>
+
+```c id=add-frames trace predict=none
+#include <stdio.h>
+
+int add(int a, int b) {
+    int sum = a + b;
+    return sum;
+}
+
+int main(void) {
+    int x = 3;
+    int y = 4;
+    int result = add(x, y);
+    printf("%d\n", result);
+    return 0;
+}
+```
+
+</Stepper>
+
+<Analogy js="DevTools ▸ Call Stack" c="stack frames" breaksDown="DevTools shows function names. A C frame is actual bytes at real addresses: when `add` returns, its frame is popped and that memory is reused by the next call, so nothing survives the return except the value it hands back." />
+
+Now draw it yourself. The program is paused just before `return sum;` runs inside `add`. Fill in the missing values.
+
+<MemoryDiagram sample="add-frames" line={5} ask={['add.a', 'add.b', 'add.sum', 'main.x']} />
+
+**Scope** is per block: a variable declared inside `{ … }` exists only until the closing brace, like `let`. Unlike `let`, a local variable is **not initialised** for you. Until you assign it, it holds whatever bytes were already in that memory. There is no `undefined`. Reading it is undefined behaviour, so the compiler warns.
+
+<CompilerError
+  question="Why does clang warn here?"
+  options={[
+    "`total` is declared twice",
+    "`total` is read (by `+=`) before it has ever been given a value, so it starts with garbage",
+    "`+=` doesn't work on `int`",
+    "The loop never runs",
+  ]}
+  answer={1}
+  explain="`total += i` means `total = total + i`, which reads `total`. Locals start with garbage, not 0. Initialise at the declaration: `int total = 0;`. Look at the gcc tab: gcc at `-O0` says nothing here. Compilers catch different mistakes, which is one reason this course checks every program with more than one."
+>
+
+```c id=uninit-total expect=ub predict=none
+#include <stdio.h>
+
+int main(void) {
+    int total;
+    for (int i = 1; i <= 3; i++) {
+        total += i;
+    }
+    printf("%d\n", total);
+    return 0;
+}
+```
+
+```c id=uninit-total-fixed predict=none
+#include <stdio.h>
+
+int main(void) {
+    int total = 0;
+    for (int i = 1; i <= 3; i++) {
+        total += i;
+    }
+    printf("%d\n", total);
+    return 0;
+}
+```
+
+</CompilerError>
+
+Your turn to write a function, tested automatically.
+
+<Exercise id="max3" />
+
+**What you know now:** declare before use (prototypes); arguments are copies; each call gets a stack frame that disappears when it returns; locals are scoped to their block and start uninitialised. For named constants, use `#define MAX 10` or an `enum`, never magic numbers.

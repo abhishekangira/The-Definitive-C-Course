@@ -1,0 +1,59 @@
+---
+id: m01-l5
+title: Input without magic
+minutes: 40
+summary: Reading input with the course helper learnc.h (whose source you can read), and why raw scanf needs care.
+---
+
+Reading input safely in C takes more machinery than you've learned so far, so for now we use a tiny helper header, **`learnc.h`**. It's ordinary C (about 100 lines, MIT licence), not a library hiding magic: you'll write your own version in Module 6.
+
+- `int get_int(const char *prompt)` prints the prompt, reads a line, and **asks again** until the whole line is a valid `int`.
+- `const char *get_line(const char *prompt)` returns the line you typed, without the `\n`. For now, read `const char *` as "a string".
+
+When a program reads input in this course, the input typed by the user is shown above the Run button. Input you type isn't part of the program's output, so it doesn't appear in what the program prints.
+
+```c id=get-int-reprompt stdin="abc\n7\n" choices="You typed 7|Number: You typed 7|Number: Number: You typed 7|You typed 0"
+#include <stdio.h>
+#include "learnc.h"
+
+int main(void) {
+    int n = get_int("Number: ");
+    printf("You typed %d\n", n);
+    return 0;
+}
+```
+
+The first line, `abc`, isn't a number, so `get_int` printed the prompt a second time and read `7`. Note `#include "learnc.h"` with quotes: quotes mean "a header from my project", angle brackets mean "a system header".
+
+<Analogy js="const name = prompt('Name?')" c={'const char *name = get_line("Name? ");'} breaksDown="`prompt` returns `null` if the user cancels. `get_line` has no such value: at end of input it ends the program. More importantly, C's input is a stream of bytes; there is no dialog box and no event loop, and your program simply blocks until a line arrives." />
+
+The standard way to read input is `scanf`. It's powerful but treacherous for beginners: `scanf("%d", &n)` needs that `&`, which you'll understand after Module 6. And when the input doesn't match, it **silently does nothing** and leaves the bad input waiting. Its return value says how many items it actually read, which is why serious code always checks it.
+
+```c id=scanf-returns stdin="hello\n"
+#include <stdio.h>
+
+int main(void) {
+    int n = 0;
+    int got = scanf("%d", &n);
+    printf("read %d item(s), n = %d\n", got, n);
+    return 0;
+}
+```
+
+Your turn. Write the classic first interactive program. Tests feed it names and check exactly what it prints.
+
+<Exercise id="hello-its-me" />
+
+<Choice
+  question={'A teammate\'s program uses `scanf("%d", &age)` and never checks the return value. A user types `twenty`. What happens?'}
+  options={[
+    '`scanf` converts "twenty" to 20',
+    "The program crashes immediately",
+    '`scanf` returns 0, `age` keeps whatever value it had (possibly garbage), and "twenty" stays unread in the input',
+    "`scanf` waits until the user types digits",
+  ]}
+  answer={2}
+  explain="That's why `learnc.h` re-prompts: it reads a whole line, then validates it. When you write your own input code, check `scanf`'s return value, or read a line with `fgets` and parse it."
+/>
+
+**What you know now:** `learnc.h` gives you safe input now (`get_int`, `get_line`); headers in quotes are yours and in angle brackets are the system's; `scanf` returns how many items it converted, and ignoring that return value is a bug.

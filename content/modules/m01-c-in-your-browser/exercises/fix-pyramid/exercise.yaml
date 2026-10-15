@@ -1,0 +1,41 @@
+id: fix-pyramid
+kind: fb
+title: The pyramid has an extra row
+prompt: '**Bug report:** "I asked for a pyramid of height 3. It printed **four** lines, and the first
+  one was empty.
+
+  Height 1 gives two lines. It''s always one too many."
+
+
+  Expected for height 3:
+
+  ```
+
+  Height: #
+
+  ##
+
+  ###
+
+  ```
+
+  (The prompt `Height: ` has no newline, and the input you type isn''t part of the output, so the first
+  `#` follows the prompt.)
+
+  Find the bug and fix it without rewriting the program.
+
+  '
+runsIn: browser
+hints:
+- Run it with height 1 and count the lines. An empty first line means the first time through the loop
+  printed zero `#`s. What is `row` on that first pass?
+- This is an **off-by-one** error in the loop bounds. Either the loop should start at 1, or it should
+  stop one earlier and print `row + 1` hashes. Change one thing only.
+- 'Change `for (int row = 0; row <= height; row++)` to `for (int row = 1; row <= height; row++)`. The
+  inner loop then prints `row` hashes: 1, 2, 3…'
+file: pyramid.c
+variants:
+- '1'
+sampleStdin: '3
+
+  '

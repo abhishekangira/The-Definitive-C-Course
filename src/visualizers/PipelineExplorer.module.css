@@ -1,0 +1,2 @@
+.box { margin: var(--space-5) 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); display: flex; flex-direction: column; gap: var(--space-2); }
+.scroll { max-height: 420px; overflow: auto; border-radius: var(--radius-sm); }

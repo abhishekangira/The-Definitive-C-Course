@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "sources": [
+    "birthday.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "Ada, 36",
+      "run": {
+        "stdin": "Ada\n36\n"
+      },
+      "expect": {
+        "stdout": "Name? Age? 36, next year you'll be 37.\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Bo, 9",
+      "run": {
+        "stdin": "Bo\n9\n"
+      },
+      "expect": {
+        "stdout": "Name? Age? 9, next year you'll be 10.\n",
+        "exit": 0
+      }
+    }
+  ]
+}

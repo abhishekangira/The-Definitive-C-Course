@@ -1,0 +1,84 @@
+# Runs every sample natively on the other targets (PLAN.md §3.2) and commits the outputs to
+# src/generated/targets/<target>/. The Linux x86-64 and browser results come from `npm run verify`.
+#   macOS arm64 (Apple clang):        all samples
+#   Linux aarch64 (gcc):              all samples
+#   Windows x64 (MSVC cl /std:c17):   platform samples only (the verifier filters them)
+name: Targets
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'content/**'
+      - 'src/runtime/c/**'
+      - 'tools/verify/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: targets
+  cancel-in-progress: false
+
+jobs:
+  run:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: macos-arm64-appleclang
+            os: macos-14
+          - target: linux-aarch64-gcc
+            os: ubuntu-24.04-arm
+          - target: windows-x64-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+      - run: npm ci
+      - name: Run samples natively
+        run: npx tsx tools/verify/cli.ts --target-run ${{ matrix.target }} --out targets-out/${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: target-${{ matrix.target }}
+          path: targets-out/${{ matrix.target }}
+          retention-days: 7
+
+  commit:
+    needs: run
+    if: always() && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: targets-out
+          pattern: target-*
+      - name: Commit changed target outputs
+        run: |
+          shopt -s nullglob
+          for dir in targets-out/target-*; do
+            target="${dir#targets-out/target-}"
+            mkdir -p "src/generated/targets/$target"
+            cp "$dir"/*.json "src/generated/targets/$target/"
+          done
+          if [ -n "$(git status --porcelain src/generated/targets)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/generated/targets
+            git commit -m "Update native target outputs"
+            git push
+          else
+            echo "Target outputs unchanged."
+          fi

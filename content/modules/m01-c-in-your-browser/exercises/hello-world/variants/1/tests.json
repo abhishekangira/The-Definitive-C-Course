@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "sources": [
+    "hello.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "prints both lines",
+      "run": {
+        "stdin": ""
+      },
+      "expect": {
+        "stdout": "hello, world\ngoodbye, world\n",
+        "exit": 0
+      }
+    }
+  ]
+}

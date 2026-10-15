@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "sources": [
+    "pyramid.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "height 1 prints one row",
+      "run": {
+        "stdin": "1\n"
+      },
+      "expect": {
+        "stdout": "Height: #\n",
+        "exit": 0
+      },
+      "hint": "Count the lines for height 1. How many times does the outer loop run?"
+    },
+    {
+      "name": "height 3 prints three rows",
+      "run": {
+        "stdin": "3\n"
+      },
+      "expect": {
+        "stdout": "Height: #\n##\n###\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "height 5 prints five rows",
+      "run": {
+        "stdin": "5\n"
+      },
+      "expect": {
+        "stdout": "Height: #\n##\n###\n####\n#####\n",
+        "exit": 0
+      }
+    }
+  ]
+}

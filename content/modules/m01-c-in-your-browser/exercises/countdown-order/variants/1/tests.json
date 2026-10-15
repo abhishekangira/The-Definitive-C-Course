@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "sources": [
+    "main.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "prints 10 down to 2, then Go!",
+      "run": {
+        "stdin": ""
+      },
+      "expect": {
+        "stdout": "10\n8\n6\n4\n2\nGo!\n",
+        "exit": 0
+      },
+      "hint": "Should 0 be printed?"
+    }
+  ]
+}

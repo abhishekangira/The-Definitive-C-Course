@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "sources": [
+    "hello.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "greets Ada",
+      "run": {
+        "stdin": "Ada\n"
+      },
+      "expect": {
+        "stdout": "What's your name? hello, Ada\n",
+        "exit": 0
+      },
+      "hint": "The prompt must be exactly \"What's your name? \" (with the space)."
+    },
+    {
+      "name": "greets Linus",
+      "run": {
+        "stdin": "Linus\n"
+      },
+      "expect": {
+        "stdout": "What's your name? hello, Linus\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "keeps spaces in the name",
+      "run": {
+        "stdin": "Grace Hopper\n"
+      },
+      "expect": {
+        "stdout": "What's your name? hello, Grace Hopper\n",
+        "exit": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+id: project/mario-more
+kind: ct
+title: Mario (more comfortable)
+prompt: 'Write `mario.c` so it prints the double pyramid described above for heights 1–8, re-asking for
+  invalid input.
+
+  Your output must match byte for byte: two spaces between the halves, no trailing spaces.
+
+  '
+runsIn: browser
+hints:
+- Start with the left half only (that is the mario-less problem), then add the gap and the right half.
+- 'Each row is: `height - row` spaces, `row` hashes, two spaces, `row` hashes, newline. A helper function
+  `print_row(spaces, bricks)` keeps `main` readable.'
+- "```\nfor (int row = 1; row <= height; row++) {\n    /* spaces */ /* left #s */ printf(\"  \"); /* right\
+  \ #s */ printf(\"\\n\");\n}\n```"
+file: mario.c
+variants: []
+sampleStdin: '4
+
+  '

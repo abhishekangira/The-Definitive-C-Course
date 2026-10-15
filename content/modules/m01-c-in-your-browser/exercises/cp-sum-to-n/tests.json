@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "sources": [
+    "sum.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "n = 1",
+      "run": {
+        "stdin": "1\n"
+      },
+      "expect": {
+        "stdout": "n: 1\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "n = 4",
+      "run": {
+        "stdin": "4\n"
+      },
+      "expect": {
+        "stdout": "n: 10\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "n = 100",
+      "run": {
+        "stdin": "100\n"
+      },
+      "expect": {
+        "stdout": "n: 5050\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "rejects 0",
+      "run": {
+        "stdin": "0\n3\n"
+      },
+      "expect": {
+        "stdout": "n: n: 6\n",
+        "exit": 0
+      }
+    }
+  ]
+}

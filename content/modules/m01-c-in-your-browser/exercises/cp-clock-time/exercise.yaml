@@ -1,0 +1,24 @@
+id: cp-clock-time
+kind: ct
+title: Clock time
+prompt: 'Ask for an hour with `get_int("Hour: ")`, re-asking until it is 0–23, then a minute with `get_int("Minute:
+  ")`, re-asking until it is 0–59.
+
+  Print the time as `HH:MM` with leading zeros, for example `07:05`.
+
+
+  You haven''t seen zero padding yet: `%02d` prints an int at least 2 digits wide, padding with zeros.
+
+  '
+runsIn: browser
+hints:
+- Two separate validation loops, one after the other.
+- Both use `do … while` with an "out of range" condition.
+- '`printf("%02d:%02d\n", hour, minute);`'
+file: clock.c
+variants: []
+sampleStdin: '7
+
+  5
+
+  '

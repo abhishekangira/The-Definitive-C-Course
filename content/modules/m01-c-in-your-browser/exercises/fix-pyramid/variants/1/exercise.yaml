@@ -1,0 +1,21 @@
+id: fix-pyramid/variants/1
+kind: fb
+title: The countdown never says 1
+prompt: '**Bug report:** "For `n = 3` it should print `3`, `2`, `1` on separate lines and then `done`.
+  It prints `3` and `2`, then `done`. The `1` is always missing."
+
+
+  Find and fix the bug.
+
+  '
+runsIn: browser
+hints:
+- Which values of `i` does the loop body actually run with? Write them down for `n = 3`.
+- 'The loop stops one step early: its condition excludes 1. Off-by-one errors usually live in the condition
+  or the starting value.'
+- Change `i > 1` to `i >= 1` (or `i > 0`).
+file: countdown.c
+variants: []
+sampleStdin: '3
+
+  '

@@ -5,7 +5,7 @@ import ubsanRt from './c/ubsan_rt.c?raw';
 import leakcheckC from './c/leakcheck.c?raw';
 import leakcheckH from './c/leakcheck.h?raw';
 import learncH from './c/learnc.h?raw';
-import { compileC, type RunClang, type SupportFiles } from './compile-core';
+import { compileC, compileStage, type RunClang, type SupportFiles } from './compile-core';
 import type { CompilerIn, CompilerOut } from './protocol';
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -84,7 +84,14 @@ self.onmessage = async (e: MessageEvent<CompilerIn>) => {
   if (msg.type === 'prefetch') { loadClang().catch(() => {}); return; }
   let runClang: RunClang;
   try { runClang = await loadClang(); } catch (err) {
-    post({ type: 'compiled', id: msg.id, ok: false, diagnostics: [], raw: `The compiler could not be loaded: ${String((err as Error)?.message ?? err)}`, ms: 0 });
+    const raw = `The compiler could not be loaded: ${String((err as Error)?.message ?? err)}`;
+    if (msg.type === 'stage') post({ type: 'staged', id: msg.id, ok: false, text: '', diagnostics: [], raw, ms: 0 });
+    else post({ type: 'compiled', id: msg.id, ok: false, diagnostics: [], raw, ms: 0 });
+    return;
+  }
+  if (msg.type === 'stage') {
+    const out = await compileStage(runClang, SUPPORT, msg.files, msg.stage, msg.source, msg.opt);
+    post({ type: 'staged', id: msg.id, ...out });
     return;
   }
   const out = await compileC(runClang, SUPPORT, msg);

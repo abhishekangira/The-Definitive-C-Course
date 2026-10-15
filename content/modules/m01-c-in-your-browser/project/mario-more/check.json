@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "sources": [
+    "mario.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "height 1",
+      "run": {
+        "stdin": "1\n"
+      },
+      "expect": {
+        "stdout": "Height: #  #\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "height 2",
+      "run": {
+        "stdin": "2\n"
+      },
+      "expect": {
+        "stdout": "Height:  #  #\n##  ##\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "height 3",
+      "run": {
+        "stdin": "3\n"
+      },
+      "expect": {
+        "stdout": "Height:   #  #\n ##  ##\n###  ###\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "height 4",
+      "run": {
+        "stdin": "4\n"
+      },
+      "expect": {
+        "stdout": "Height:    #  #\n  ##  ##\n ###  ###\n####  ####\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "height 5",
+      "run": {
+        "stdin": "5\n"
+      },
+      "expect": {
+        "stdout": "Height:     #  #\n   ##  ##\n  ###  ###\n ####  ####\n#####  #####\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "height 6",
+      "run": {
+        "stdin": "6\n"
+      },
+      "expect": {
+        "stdout": "Height:      #  #\n    ##  ##\n   ###  ###\n  ####  ####\n #####  #####\n######  ######\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "height 7",
+      "run": {
+        "stdin": "7\n"
+      },
+      "expect": {
+        "stdout": "Height:       #  #\n     ##  ##\n    ###  ###\n   ####  ####\n  #####  #####\n ######  ######\n#######  #######\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "height 8",
+      "run": {
+        "stdin": "8\n"
+      },
+      "expect": {
+        "stdout": "Height:        #  #\n      ##  ##\n     ###  ###\n    ####  ####\n   #####  #####\n  ######  ######\n #######  #######\n########  ########\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "rejects 0",
+      "run": {
+        "stdin": "0\n1\n"
+      },
+      "expect": {
+        "stdout": "Height: Height: #  #\n",
+        "exit": 0
+      },
+      "hint": "Heights below 1 must be rejected: ask again."
+    },
+    {
+      "name": "rejects 9",
+      "run": {
+        "stdin": "9\n2\n"
+      },
+      "expect": {
+        "stdout": "Height: Height:  #  #\n##  ##\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "rejects -1",
+      "run": {
+        "stdin": "-1\n2\n"
+      },
+      "expect": {
+        "stdout": "Height: Height:  #  #\n##  ##\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "rejects text",
+      "run": {
+        "stdin": "abc\n2\n"
+      },
+      "expect": {
+        "stdout": "Height: Height:  #  #\n##  ##\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "rejects an empty line",
+      "run": {
+        "stdin": "\n2\n"
+      },
+      "expect": {
+        "stdout": "Height: Height:  #  #\n##  ##\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    },
+    {
+      "name": "rejects 42x",
+      "run": {
+        "stdin": "42x\n2\n"
+      },
+      "expect": {
+        "stdout": "Height: Height:  #  #\n##  ##\n",
+        "exit": 0
+      },
+      "hint": "Compare your output character by character: two spaces between the pyramids and no spaces after the last #."
+    }
+  ]
+}

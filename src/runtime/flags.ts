@@ -49,3 +49,13 @@ export function clangArgs(o: BuildOptions): string[] {
   if (o.leakcheck) { compile.push(...LEAKCHECK_COMPILE_FLAGS); link.push(...LEAKCHECK_LINK_FLAGS); sources.push(SUPPORT_SOURCES.leakcheckC); }
   return ['clang', ...compile, ...(o.extraFlags ?? []), ...sources, '-o', out, ...link];
 }
+
+export type Stage = 'E' | 'S';
+
+/** clang argv for one pipeline stage: preprocess only (-E -P, without line markers) or emit assembly (-S). */
+export function stageArgs(stage: Stage, source: string, opt: '-O0' | '-O1' | '-O2' = '-O0'): { args: string[]; output: string } {
+  const base = COMPILE_FLAGS.filter(f => f !== '-g' && f !== '-O0');
+  const output = stage === 'E' ? 'main.i' : 'main.s';
+  const extra = stage === 'E' ? ['-E', '-P'] : ['-S', opt];
+  return { args: ['clang', ...base, ...extra, source, '-o', output], output };
+}

@@ -1,0 +1,21 @@
+id: cp-fix-accept-zero
+kind: fb
+title: It accepts zero
+prompt: '**Bug report:** "The program should only accept a number of guests from 1 to 10 and keep asking
+  otherwise. But when I type `0` it accepts it and prints `Table for 0`."
+
+  Fix the bug.
+
+  '
+runsIn: browser
+hints:
+- Which values make the loop ask again? Is 0 one of them?
+- 'The condition that repeats the question must be true for every *invalid* number: below 1 or above 10.'
+- Change `guests < 0` to `guests < 1`.
+file: guests.c
+variants: []
+sampleStdin: '0
+
+  4
+
+  '

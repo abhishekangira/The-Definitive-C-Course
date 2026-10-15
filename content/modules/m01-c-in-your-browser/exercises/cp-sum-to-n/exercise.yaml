@@ -1,0 +1,17 @@
+id: cp-sum-to-n
+kind: ct
+title: Sum to n
+prompt: 'Ask `n: ` with `get_int` (re-ask until n ≥ 1) and print the sum 1 + 2 + … + n, for example `n:
+  4` prints `10`.
+
+  '
+runsIn: browser
+hints:
+- Use a loop that adds each number to a running total.
+- 'Initialise the total to 0 before the loop: locals start with garbage.'
+- '`int total = 0; for (int i = 1; i <= n; i++) total += i; printf("%d\n", total);`'
+file: sum.c
+variants: []
+sampleStdin: '4
+
+  '

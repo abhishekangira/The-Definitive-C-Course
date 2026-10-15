@@ -1,0 +1,96 @@
+---
+id: m01-l3
+title: Control flow
+minutes: 40
+summary: if, switch and loops look like JavaScript, with three traps (truth is an int, = vs ==, switch fall-through) and a classic off-by-one.
+---
+
+You already know `if`, `while` and `for`; C's look almost the same. What's different is **truth**. C17 has no boolean values at its core: a comparison produces the `int` 1 (true) or 0 (false), and *any* non-zero value counts as true. (`bool` from `<stdbool.h>` is a convenience over this.)
+
+```c id=truth-is-int
+#include <stdio.h>
+
+int main(void) {
+    int a = 3 > 2;
+    int b = 3 < 2;
+    printf("%d %d %d\n", a, b, a + a + b);
+    if (-5) {
+        printf("-5 is true\n");
+    }
+    return 0;
+}
+```
+
+<Analogy js="if (count) { … }" c="if (count) { … }" breaksDown="For numbers it's the same rule: zero is false, everything else true. But C has no `undefined`, `null` or `NaN` checks built into truthiness (and no `===`). And a comparison is a number you can add up, as you just saw." />
+
+A classic C bug: `=` assigns, `==` compares. `if (x = 5)` *assigns* 5 to `x`, then tests the result, 5, which is always true. It compiles, so the compiler warns instead.
+
+<CompilerError
+  question="What does clang suspect?"
+  options={[
+    "`x` was never declared",
+    "You used assignment (`=`) as a condition, which is almost always a typo for `==`",
+    "`5` is not a valid condition",
+    "`if` needs a `bool`",
+  ]}
+  answer={1}
+  explain="`-Wparentheses` flags an assignment used as a condition. Change `=` to `==`. If you really mean to assign and test, write `if ((x = f()) != 0)` to show it's deliberate."
+>
+
+```c id=assign-in-if expect=warning
+#include <stdio.h>
+
+int main(void) {
+    int x = 3;
+    if (x = 5) {
+        printf("x is five\n");
+    }
+    return 0;
+}
+```
+
+```c id=assign-in-if-fixed predict=none
+#include <stdio.h>
+
+int main(void) {
+    int x = 3;
+    if (x == 5) {
+        printf("x is five\n");
+    }
+    return 0;
+}
+```
+
+</CompilerError>
+
+`switch` jumps to the matching `case` label and then keeps running **every following case** until it hits `break`. This "fall-through" is occasionally useful and frequently a bug. What does this print for `day = 2`?
+
+```c id=switch-fallthrough expect.gcc=warning
+#include <stdio.h>
+
+int main(void) {
+    int day = 2;
+    switch (day) {
+        case 1: printf("Mon\n");
+        case 2: printf("Tue\n");
+        case 3: printf("Wed\n"); break;
+        case 4: printf("Thu\n");
+        default: printf("?\n");
+    }
+    return 0;
+}
+```
+
+JavaScript's `switch` falls through the same way, so this one may not surprise you. C adds no protection at runtime either. gcc's `-Wextra` does warn (`this statement may fall through`), but clang, the compiler on this page, stays silent by default. Put `break;` at the end of every case unless you mean otherwise.
+
+Loops: `for (init; condition; step)` and `while (condition)` work as in JavaScript. Declare the loop variable inside the `for` (that's C99 and later). The loop that runs its body **at least once**, `do { … } while (condition);`, is the idiom for re-asking until input is valid.
+
+Put the lines of a countdown program in order. Some lines are distractors.
+
+<Exercise id="countdown-order" />
+
+Now a bug report. The symptom is all you have, the way real bugs arrive.
+
+<Exercise id="fix-pyramid" />
+
+**What you know now:** comparisons produce `int` 0 or 1 and any non-zero value is true; `=` in a condition is almost always a bug, and `-Wall` warns about it; `switch` falls through without `break`; and off-by-one errors live in loop bounds, so check the first and last iteration by hand.

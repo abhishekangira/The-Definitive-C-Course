@@ -14,13 +14,15 @@ export interface CompileJob {
 export type CompilerIn =
   | { type: 'init'; baseUrl: string; version: string }
   | { type: 'prefetch' }
-  | ({ type: 'compile'; id: number } & CompileJob);
+  | ({ type: 'compile'; id: number } & CompileJob)
+  | { type: 'stage'; id: number; files: Record<string, string>; stage: 'E' | 'S'; source?: string; opt?: '-O0' | '-O1' | '-O2' };
 
 export type CompilerOut =
   | { type: 'progress'; done: number; total: number }
   | { type: 'ready'; ms: number; cacheHits: number; networkFetches: number }
   | { type: 'load-error'; message: string }
-  | { type: 'compiled'; id: number; ok: boolean; wasm?: Uint8Array; diagnostics: Diagnostic[]; raw: string; ms: number };
+  | { type: 'compiled'; id: number; ok: boolean; wasm?: Uint8Array; diagnostics: Diagnostic[]; raw: string; ms: number }
+  | { type: 'staged'; id: number; ok: boolean; text: string; diagnostics: Diagnostic[]; raw: string; ms: number };
 
 export interface RunRequest {
   type: 'run';

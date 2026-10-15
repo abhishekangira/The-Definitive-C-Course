@@ -1,0 +1,15 @@
+id: hello-world
+kind: ct
+title: hello, world
+prompt: 'Write a program that prints exactly `hello, world` followed by a newline. Lowercase, one comma,
+  one space.
+
+  '
+runsIn: browser
+hints:
+- You need `#include <stdio.h>` for `printf`.
+- 'Don''t forget `\n` at the end: `printf` doesn''t add a newline for you.'
+- '`printf("hello, world\n");` inside `main`, then `return 0;`.'
+file: hello.c
+variants:
+- '1'
