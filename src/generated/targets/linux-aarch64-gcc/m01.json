@@ -1,0 +1,705 @@
+{
+  "generatedBy": "tools/verify --target-run; gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "module": "m01",
+  "samples": {
+    "add-frames": {
+      "hash": "ccf65d5ade264c2e",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "7\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "assign-in-if": {
+      "hash": "74ffbb50337485f4",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 9,
+              "file": "main.c",
+              "flag": "-Wparentheses",
+              "line": 5,
+              "message": "suggest parentheses around assignment used as truth value",
+              "severity": "warning"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c: In function ‘main’:\nmain.c:5:9: warning: suggest parentheses around assignment used as truth value [-Wparentheses]\n    5 |     if (x = 5) {\n      |         ^\n"
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "x is five\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "assign-in-if-fixed": {
+      "hash": "8238ff70aff46825",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": ""
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "avg-truncates": {
+      "hash": "3b2d9de42794b889",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "3.0\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "cp-frames": {
+      "hash": "fe5f02164f867dc3",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "15\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "cp-half": {
+      "hash": "db3e09bc3c614f86",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "2.0 2.5\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "cp-missing-brace": {
+      "hash": "30c9b61351064bef",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 1,
+              "file": "main.c",
+              "line": 10,
+              "message": "expected declaration or statement at end of input",
+              "severity": "error"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c: In function ‘main’:\nmain.c:10:1: error: expected declaration or statement at end of input\n   10 | }\n      | ^\n"
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "cp-odd-total": {
+      "hash": "644f699c8e46e925",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "9 4\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "cp-reprompt": {
+      "hash": "bd63aa2fe7c885f2",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "n: n: 8\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "cp-scope-outcome": {
+      "hash": "2da19bc99b4f6920",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 13,
+              "file": "main.c",
+              "flag": "-Wunused-variable",
+              "line": 5,
+              "message": "unused variable ‘square’",
+              "severity": "warning"
+            },
+            {
+              "col": 20,
+              "file": "main.c",
+              "line": 7,
+              "message": "‘square’ undeclared (first use in this function)",
+              "severity": "error"
+            },
+            {
+              "col": 20,
+              "file": "main.c",
+              "line": 7,
+              "message": "each undeclared identifier is reported only once for each function it appears in",
+              "severity": "note"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c: In function ‘main’:\nmain.c:5:13: warning: unused variable ‘square’ [-Wunused-variable]\n    5 |         int square = i * i;\n      |             ^~~~~~\nmain.c:7:20: error: ‘square’ undeclared (first use in this function)\n    7 |     printf(\"%d\\n\", square);\n      |                    ^~~~~~\nmain.c:7:20: note: each undeclared identifier is reported only once for each function it appears in\n"
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "format-mismatch": {
+      "hash": "e8b2e7f24e6cdceb",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 14,
+              "file": "main.c",
+              "flag": "-Wformat",
+              "line": 4,
+              "message": "format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘double’",
+              "severity": "warning"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c: In function ‘main’:\nmain.c:4:14: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘double’ [-Wformat=]\n    4 |     printf(\"%d\\n\", 3.5);\n      |             ~^     ~~~\n      |              |     |\n      |              int   double\n      |             %f\n"
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "observed": [
+          {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "-989121032\n"
+          },
+          {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "-272086824\n"
+          },
+          {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "-191079352\n"
+          }
+        ],
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "-989121032\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "format-mismatch-fixed": {
+      "hash": "8f2ad57d7a89b5e9",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "3.5\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "get-int-reprompt": {
+      "hash": "bb565690bd4eccf3",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "Number: Number: You typed 7\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "hello-pipeline": {
+      "hash": "56c4471617039c34",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "Hello, world!\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "hello-two-lines": {
+      "hash": "04ddbac576f1c663",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "Hello, world!\n2 + 2 = 4\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "int-division": {
+      "hash": "b735cc133badeec1",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "3 -3 1\n3.5\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "missing-paren": {
+      "hash": "7f8e30e5cf80acc8",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 14,
+              "file": "main.c",
+              "line": 5,
+              "message": "expected ‘)’ before ‘{’ token",
+              "severity": "error"
+            },
+            {
+              "col": 1,
+              "file": "main.c",
+              "line": 9,
+              "message": "expected expression before ‘}’ token",
+              "severity": "error"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c: In function ‘main’:\nmain.c:5:14: error: expected ‘)’ before ‘{’ token\n    5 |     if (n > 3 {\n      |        ~     ^~\n      |              )\nmain.c:9:1: error: expected expression before ‘}’ token\n    9 | }\n      | ^\n"
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "missing-paren-fixed": {
+      "hash": "acde7736eccbba75",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "big\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "missing-semicolon": {
+      "hash": "f15f687ae7a90ac6",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 26,
+              "file": "main.c",
+              "line": 4,
+              "message": "expected ‘;’ before ‘return’",
+              "severity": "error"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c: In function ‘main’:\nmain.c:4:26: error: expected ‘;’ before ‘return’\n    4 |     printf(\"Compiled!\\n\")\n      |                          ^\n      |                          ;\n    5 |     return 0;\n      |     ~~~~~~                \n"
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "missing-semicolon-fixed": {
+      "hash": "1eb52e916e9b4e83",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "Compiled!\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "pass-by-value": {
+      "hash": "a0a8f59f4c815fbd",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "inside bump: 42\n41\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "scanf-returns": {
+      "hash": "e4774b6a340db9ef",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "read 0 item(s), n = 0\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "sizes-basic": {
+      "hash": "82fd3840c7209b33",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "char 1, int 4, double 8, bool 1\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "sizes-long": {
+      "hash": "787cdfbb92103716",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "long 8\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "switch-fallthrough": {
+      "hash": "66b793b451736929",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 17,
+              "file": "main.c",
+              "flag": "-Wimplicit-fallthrough",
+              "line": 6,
+              "message": "this statement may fall through",
+              "severity": "warning"
+            },
+            {
+              "col": 9,
+              "file": "main.c",
+              "line": 7,
+              "message": "here",
+              "severity": "note"
+            },
+            {
+              "col": 17,
+              "file": "main.c",
+              "flag": "-Wimplicit-fallthrough",
+              "line": 7,
+              "message": "this statement may fall through",
+              "severity": "warning"
+            },
+            {
+              "col": 9,
+              "file": "main.c",
+              "line": 8,
+              "message": "here",
+              "severity": "note"
+            },
+            {
+              "col": 17,
+              "file": "main.c",
+              "flag": "-Wimplicit-fallthrough",
+              "line": 9,
+              "message": "this statement may fall through",
+              "severity": "warning"
+            },
+            {
+              "col": 9,
+              "file": "main.c",
+              "line": 10,
+              "message": "here",
+              "severity": "note"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c: In function ‘main’:\nmain.c:6:17: warning: this statement may fall through [-Wimplicit-fallthrough=]\n    6 |         case 1: printf(\"Mon\\n\");\n      |                 ^~~~~~~~~~~~~~~\nmain.c:7:9: note: here\n    7 |         case 2: printf(\"Tue\\n\");\n      |         ^~~~\nmain.c:7:17: warning: this statement may fall through [-Wimplicit-fallthrough=]\n    7 |         case 2: printf(\"Tue\\n\");\n      |                 ^~~~~~~~~~~~~~~\nmain.c:8:9: note: here\n    8 |         case 3: printf(\"Wed\\n\"); break;\n      |         ^~~~\nmain.c:9:17: warning: this statement may fall through [-Wimplicit-fallthrough=]\n    9 |         case 4: printf(\"Thu\\n\");\n      |                 ^~~~~~~~~~~~~~~\nmain.c:10:9: note: here\n   10 |         default: printf(\"?\\n\");\n      |         ^~~~~~~\n"
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "Tue\nWed\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "truth-is-int": {
+      "hash": "33a540d3d9d74498",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "1 0 2\n-5 is true\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "typo-identifier": {
+      "hash": "e27278cbad71bd72",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 20,
+              "file": "main.c",
+              "line": 6,
+              "message": "‘cuont’ undeclared (first use in this function); did you mean ‘count’?",
+              "severity": "error"
+            },
+            {
+              "col": 20,
+              "file": "main.c",
+              "line": 6,
+              "message": "each undeclared identifier is reported only once for each function it appears in",
+              "severity": "note"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c: In function ‘main’:\nmain.c:6:20: error: ‘cuont’ undeclared (first use in this function); did you mean ‘count’?\n    6 |     printf(\"%d\\n\", cuont);\n      |                    ^~~~~\n      |                    count\nmain.c:6:20: note: each undeclared identifier is reported only once for each function it appears in\n"
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "typo-identifier-fixed": {
+      "hash": "c50270e6671e7869",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "4\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "uninit-total": {
+      "hash": "f6465edc9c2b334e",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "observed": [
+          {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "6\n"
+          }
+        ],
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "6\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "uninit-total-fixed": {
+      "hash": "c1801ac4f3388206",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "6\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    },
+    "warning-still-runs": {
+      "hash": "0bb74500bfd84d42",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 9,
+              "file": "main.c",
+              "flag": "-Wunused-variable",
+              "line": 4,
+              "message": "unused variable ‘unused’",
+              "severity": "warning"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c: In function ‘main’:\nmain.c:4:9: warning: unused variable ‘unused’ [-Wunused-variable]\n    4 |     int unused = 42;\n      |         ^~~~~~\n"
+        },
+        "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "still runs\n"
+        },
+        "target": "linux-aarch64-gcc"
+      }
+    }
+  },
+  "target": "linux-aarch64-gcc"
+}

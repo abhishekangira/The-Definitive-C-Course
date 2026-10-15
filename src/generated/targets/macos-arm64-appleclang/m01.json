@@ -1,0 +1,689 @@
+{
+  "generatedBy": "tools/verify --target-run; Apple clang version 15.0.0 (clang-1500.3.9.4)",
+  "module": "m01",
+  "samples": {
+    "add-frames": {
+      "hash": "ccf65d5ade264c2e",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "7\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "assign-in-if": {
+      "hash": "74ffbb50337485f4",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 11,
+              "file": "main.c",
+              "flag": "-Wparentheses",
+              "line": 5,
+              "message": "using the result of an assignment as a condition without parentheses",
+              "severity": "warning"
+            },
+            {
+              "col": 11,
+              "file": "main.c",
+              "line": 5,
+              "message": "place parentheses around the assignment to silence this warning",
+              "severity": "note"
+            },
+            {
+              "col": 11,
+              "file": "main.c",
+              "line": 5,
+              "message": "use '==' to turn this assignment into an equality comparison",
+              "severity": "note"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c:5:11: warning: using the result of an assignment as a condition without parentheses [-Wparentheses]\n    if (x = 5) {\n        ~~^~~\nmain.c:5:11: note: place parentheses around the assignment to silence this warning\n    if (x = 5) {\n          ^\n        (    )\nmain.c:5:11: note: use '==' to turn this assignment into an equality comparison\n    if (x = 5) {\n          ^\n          ==\n1 warning generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "x is five\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "assign-in-if-fixed": {
+      "hash": "8238ff70aff46825",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": ""
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "avg-truncates": {
+      "hash": "3b2d9de42794b889",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "3.0\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-frames": {
+      "hash": "fe5f02164f867dc3",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "15\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-half": {
+      "hash": "db3e09bc3c614f86",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "2.0 2.5\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-missing-brace": {
+      "hash": "30c9b61351064bef",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 2,
+              "file": "main.c",
+              "line": 10,
+              "message": "expected '}'",
+              "severity": "error"
+            },
+            {
+              "col": 16,
+              "file": "main.c",
+              "line": 3,
+              "message": "to match this '{'",
+              "severity": "note"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c:10:2: error: expected '}'\n}\n ^\nmain.c:3:16: note: to match this '{'\nint main(void) {\n               ^\n1 error generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-odd-total": {
+      "hash": "644f699c8e46e925",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "9 4\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-reprompt": {
+      "hash": "bd63aa2fe7c885f2",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "n: n: 8\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-scope-outcome": {
+      "hash": "2da19bc99b4f6920",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 13,
+              "file": "main.c",
+              "flag": "-Wunused-variable",
+              "line": 5,
+              "message": "unused variable 'square'",
+              "severity": "warning"
+            },
+            {
+              "col": 20,
+              "file": "main.c",
+              "line": 7,
+              "message": "use of undeclared identifier 'square'",
+              "severity": "error"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c:5:13: warning: unused variable 'square' [-Wunused-variable]\n        int square = i * i;\n            ^\nmain.c:7:20: error: use of undeclared identifier 'square'\n    printf(\"%d\\n\", square);\n                   ^\n1 warning and 1 error generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "format-mismatch": {
+      "hash": "e8b2e7f24e6cdceb",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 20,
+              "file": "main.c",
+              "flag": "-Wformat",
+              "line": 4,
+              "message": "format specifies type 'int' but the argument has type 'double'",
+              "severity": "warning"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c:4:20: warning: format specifies type 'int' but the argument has type 'double' [-Wformat]\n    printf(\"%d\\n\", 3.5);\n            ~~     ^~~\n            %f\n1 warning generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "observed": [
+          {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "0\n"
+          }
+        ],
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "0\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "format-mismatch-fixed": {
+      "hash": "8f2ad57d7a89b5e9",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "3.5\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "get-int-reprompt": {
+      "hash": "bb565690bd4eccf3",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "Number: Number: You typed 7\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "hello-pipeline": {
+      "hash": "56c4471617039c34",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "Hello, world!\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "hello-two-lines": {
+      "hash": "04ddbac576f1c663",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "Hello, world!\n2 + 2 = 4\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "int-division": {
+      "hash": "b735cc133badeec1",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "3 -3 1\n3.5\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "missing-paren": {
+      "hash": "7f8e30e5cf80acc8",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 15,
+              "file": "main.c",
+              "line": 5,
+              "message": "expected ')'",
+              "severity": "error"
+            },
+            {
+              "col": 8,
+              "file": "main.c",
+              "line": 5,
+              "message": "to match this '('",
+              "severity": "note"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c:5:15: error: expected ')'\n    if (n > 3 {\n              ^\nmain.c:5:8: note: to match this '('\n    if (n > 3 {\n       ^\n1 error generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "missing-paren-fixed": {
+      "hash": "acde7736eccbba75",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "big\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "missing-semicolon": {
+      "hash": "f15f687ae7a90ac6",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 26,
+              "file": "main.c",
+              "line": 4,
+              "message": "expected ';' after expression",
+              "severity": "error"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c:4:26: error: expected ';' after expression\n    printf(\"Compiled!\\n\")\n                         ^\n                         ;\n1 error generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "missing-semicolon-fixed": {
+      "hash": "1eb52e916e9b4e83",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "Compiled!\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "pass-by-value": {
+      "hash": "a0a8f59f4c815fbd",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "inside bump: 42\n41\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "scanf-returns": {
+      "hash": "e4774b6a340db9ef",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": ""
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "sizes-basic": {
+      "hash": "82fd3840c7209b33",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": ""
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "sizes-long": {
+      "hash": "787cdfbb92103716",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "long 8\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "switch-fallthrough": {
+      "hash": "66b793b451736929",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": ""
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "truth-is-int": {
+      "hash": "33a540d3d9d74498",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "1 0 2\n-5 is true\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "typo-identifier": {
+      "hash": "e27278cbad71bd72",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 20,
+              "file": "main.c",
+              "line": 6,
+              "message": "use of undeclared identifier 'cuont'; did you mean 'count'?",
+              "severity": "error"
+            },
+            {
+              "col": 9,
+              "file": "main.c",
+              "line": 4,
+              "message": "'count' declared here",
+              "severity": "note"
+            }
+          ],
+          "ok": false,
+          "raw": "main.c:6:20: error: use of undeclared identifier 'cuont'; did you mean 'count'?\n    printf(\"%d\\n\", cuont);\n                   ^~~~~\n                   count\nmain.c:4:9: note: 'count' declared here\n    int count = 3;\n        ^\n1 error generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "typo-identifier-fixed": {
+      "hash": "c50270e6671e7869",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "4\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "uninit-total": {
+      "hash": "f6465edc9c2b334e",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 9,
+              "file": "main.c",
+              "flag": "-Wuninitialized",
+              "line": 6,
+              "message": "variable 'total' is uninitialized when used here",
+              "severity": "warning"
+            },
+            {
+              "col": 14,
+              "file": "main.c",
+              "line": 4,
+              "message": "initialize the variable 'total' to silence this warning",
+              "severity": "note"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c:6:9: warning: variable 'total' is uninitialized when used here [-Wuninitialized]\n        total += i;\n        ^~~~~\nmain.c:4:14: note: initialize the variable 'total' to silence this warning\n    int total;\n             ^\n              = 0\n1 warning generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "observed": [
+          {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "10197974\n"
+          },
+          {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "80780246\n"
+          },
+          {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "72784854\n"
+          }
+        ],
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "10197974\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "uninit-total-fixed": {
+      "hash": "c1801ac4f3388206",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "6\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "warning-still-runs": {
+      "hash": "0bb74500bfd84d42",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 9,
+              "file": "main.c",
+              "flag": "-Wunused-variable",
+              "line": 4,
+              "message": "unused variable 'unused'",
+              "severity": "warning"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c:4:9: warning: unused variable 'unused' [-Wunused-variable]\n    int unused = 42;\n        ^\n1 warning generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "still runs\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    }
+  },
+  "target": "macos-arm64-appleclang"
+}

@@ -1,0 +1,25 @@
+{
+  "generatedBy": "tools/verify --target-run; Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64",
+  "module": "m01",
+  "samples": {
+    "sizes-long": {
+      "hash": "dd051a47da291efe",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "long 4\n"
+        },
+        "target": "windows-x64-msvc"
+      }
+    }
+  },
+  "target": "windows-x64-msvc"
+}
