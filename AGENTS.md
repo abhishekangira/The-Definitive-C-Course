@@ -102,6 +102,14 @@ content/modules/m01-c-in-your-browser/
 - **Chromium** is at `/opt/pw-browsers`. Don't run `playwright install` there. Open-source Chromium can't play H.264, so e2e tests use a WebM fixture.
 - **GitHub.** Web and API access is limited to repos attached to the session. `gh repo create` and GraphQL are blocked; use repo-scoped REST.
 
+## Working from a ticket (contributors other than the lead session)
+- Branch from the latest `main` (`ticket/<short-name>`), do **one ticket per pull request**, and never push to `main`. Never force-push.
+- Stay in scope. Don't start Module 2, change the licence, edit `PLAN.md` decisions, or add a dependency without saying why (pin exact versions).
+- Don't hand-edit `src/generated/`; regenerate it. Don't hand-type expected outputs.
+- Before opening the PR run the gates that touch your change (see Commands). For anything that changes the app, also run `npm run build && npm run e2e`.
+- The PR description says what changed and why, which commands you ran with their result, and anything you could not verify (say so plainly; don't claim a pass you didn't see).
+- If the ticket is wrong or blocked, stop and say so in the PR instead of working around it.
+
 ## Git
-- Work on `main`. Commit messages are descriptive; add the attribution lines your harness supplies.
-- Never force-push. Pull with rebase first (the Targets bot commits to `main`).
+- The lead session works on `main`; everyone else uses a branch and a pull request (above). Commit messages are descriptive; add the attribution lines your harness supplies.
+- Pull with rebase before you push (the Targets bot commits to `main`).
