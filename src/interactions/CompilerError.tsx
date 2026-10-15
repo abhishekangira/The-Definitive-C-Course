@@ -44,7 +44,9 @@ export function CompilerError({ children, question, options, answer, explain, fi
 
   const diags: Diagnostic[] = useMemo(() => sample?.results[tab]?.compile.diagnostics ?? [], [sample, tab]);
   const raw = sample?.results[tab]?.compile.raw ?? '';
-  const fixedOutput = fixedRef ? samples?.samples[fixedRef.id]?.answer.stdout : undefined;
+  // The fixed program's output is only comparable when it is defined: undefined-behaviour output is never stored or checked.
+  const fixedSample = fixedRef ? samples?.samples[fixedRef.id] : undefined;
+  const fixedOutput = fixedSample && fixedSample.meta.expect !== 'ub' ? fixedSample.answer.stdout : undefined;
   const first = (sample?.results['wasm32-clang22']?.compile.diagnostics ?? []).find(d => d.severity !== 'note');
   if (!sampleRef) return <p className={styles.warn}>CompilerError needs a nested ```c fence.</p>;
   if (!sample) return <p className={styles.warn} role="alert">Compiler output for <code>{sampleRef.id}</code> hasn't been generated yet (run <code>npm run verify</code>).</p>;
