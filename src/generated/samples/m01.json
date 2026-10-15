@@ -860,7 +860,7 @@
       "answer": {
         "native": {
           "outcome": "runs",
-          "stdout": "-1456811080\n"
+          "stdout": "1866272040\n"
         },
         "outcome": "runs",
         "stdout": "0\n"
@@ -898,26 +898,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-1406951784\n"
+              "stdout": "1375595416\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-103923432\n"
+              "stdout": "1653638552\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-735609656\n"
+              "stdout": "-971979816\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "-1406951784\n"
+            "stdout": "1375595416\n"
           },
           "sanitizer": {
             "ok": true
@@ -945,26 +945,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-1456811080\n"
+              "stdout": "1866272040\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "44945400\n"
+              "stdout": "-392156648\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-933698344\n"
+              "stdout": "398652632\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "-1456811080\n"
+            "stdout": "1866272040\n"
           },
           "sanitizer": {
             "ok": true
@@ -2028,6 +2028,21 @@
             "stdout": "long 4\n"
           },
           "target": "wasm32-clang22"
+        },
+        "windows-x64-msvc": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "long 4\n"
+          },
+          "target": "windows-x64-msvc"
         }
       }
     },
@@ -2384,7 +2399,7 @@
       "answer": {
         "native": {
           "outcome": "runs",
-          "stdout": "1998439582\n"
+          "stdout": "-1538093314\n"
         },
         "outcome": "runs",
         "stdout": "6\n"
@@ -2429,26 +2444,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-1471193890\n"
+              "stdout": "2091701470\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "593119342\n"
+              "stdout": "387534558\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-1240986210\n"
+              "stdout": "-1207696194\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "-1471193890\n"
+            "stdout": "2091701470\n"
           },
           "sanitizer": {
             "ok": true
@@ -2467,26 +2482,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "1998439582\n"
+              "stdout": "-1538093314\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-483691698\n"
+              "stdout": "60017534\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "563531710\n"
+              "stdout": "360782958\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "1998439582\n"
+            "stdout": "-1538093314\n"
           },
           "sanitizer": {
             "ok": true
