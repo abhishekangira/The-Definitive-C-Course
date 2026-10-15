@@ -114,4 +114,4 @@ Underneath, every type is just bits. Try it: type a number and watch its bits, t
 
 <NumberDrill value={42} from="dec" to="bin" width={8} />
 
-**What you know now:** C types are sizes plus interpretations; `sizeof` reports the size, which varies by platform (`long` is 4 bytes here but 8 on 64-bit Mac and Linux); `int / int` truncates even when you store the result in a `double`; and every `printf` format must match its argument's type, which `-Wall` checks for you.
+**What you know now:** C types are sizes plus interpretations; `sizeof` reports the size, which varies by platform (`long` is 4 bytes in the browser but 8 on 64-bit Mac and Linux); `int / int` truncates even when you store the result in a `double`; and every `printf` format must match its argument's type, which `-Wall` checks for you.
