@@ -1,0 +1,10 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "07:05"
+    stdin: "7\n5\n"
+  - name: "23:59"
+    stdin: "23\n59\n"
+  - name: "00:00"
+    stdin: "0\n0\n"
+  - name: "rejects 24 and 60"
+    stdin: "24\n12\n60\n30\n"

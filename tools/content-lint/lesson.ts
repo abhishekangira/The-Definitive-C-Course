@@ -15,6 +15,7 @@ import { visit } from 'unist-util-visit';
 import type { Code, Root, RootContent } from 'mdast';
 import { countWords, groupCards, INTERACTIONS, MEDIA, NEUTRAL } from '../../src/content-model/cards';
 import type { SampleMeta } from '../../src/content-model/types';
+import { lowerCodeFence } from '../mdx/remark-course';
 import { parseFenceMeta } from '../verify/meta';
 import type { ModuleCtx, SiteCtx } from './context';
 import { attr, hasSpread, isJsx, jsxElements, line, nestedLowered, UNKNOWN, type JsxNode, type Literal } from './jsx';
@@ -87,18 +88,12 @@ export function loadLesson(file: string, mod: ModuleCtx, rep: Collector): Loaded
   return loaded;
 }
 
-function jsxNode(name: string, attrs: Array<[string, string]>, at: Code, data: JsxNode['data']): RootContent {
-  return {
-    type: 'mdxJsxFlowElement',
-    name,
-    attributes: attrs.map(([n, v]) => ({ type: 'mdxJsxAttribute', name: n, value: v })),
-    children: [],
-    position: at.position,
-    data,
-  } as unknown as RootContent;
+/** Gives a lowered node the source position and marker the lint rules need (see jsx.ts). */
+function lowered(n: RootContent, at: Code, data: JsxNode['data']): RootContent {
+  return { ...n, position: at.position, data } as unknown as RootContent;
 }
 
-/** Mirrors tools/mdx/remark-course.ts: C fences become <CodeSample> (id=) or <CodeBlock> (fragment). */
+/** The fence-to-component step is `lowerCodeFence()` from tools/mdx/remark-course.ts, shared with the site's plugin; here errors are reported instead of thrown. */
 function lowerFences(tree: Root, file: string, mod: ModuleCtx, r: FileReporter): void {
   visit(tree, 'code', (node: Code, index, parent) => {
     if (!parent || index === undefined) return;
@@ -115,24 +110,15 @@ function lowerFences(tree: Root, file: string, mod: ModuleCtx, r: FileReporter):
       }
       return;
     }
-    let parsed;
-    try {
-      parsed = parseFenceMeta(node.meta);
-    } catch (e) {
-      r.error(at, 'fence-meta', (e as Error).name === 'SyntaxError'
-        ? `a quoted fence value is not a valid JSON string (${(e as Error).message}); quoted values use JSON escapes such as \\n and \\"`
-        : (e as Error).message);
-      replace(jsxNode('CodeBlock', [['code', node.value], ['lang', lang]], node, { lowered: true }));
+    const result = lowerCodeFence(node, parseFenceMeta);
+    if (!result.ok) {
+      r.error(at, result.error.rule, result.error.message);
+      replace(lowered(result.fallback, node, { lowered: true }));
       return;
     }
-    const meta = parsed.meta;
-    if (!meta) {
-      r.error(at, 'fence-id', 'C fence needs id=… (a runnable, predict-before-run sample) or fragment (an illustration)');
-      replace(jsxNode('CodeBlock', [['code', node.value], ['lang', lang]], node, { lowered: true }));
-      return;
-    }
+    const { meta, parsed } = result;
     if (meta.fragment) {
-      replace(jsxNode('CodeBlock', [['code', node.value], ['lang', lang]], node, { lowered: true }));
+      replace(lowered(result.node, node, { lowered: true }));
       return;
     }
     const standalone = parent.type === 'root';
@@ -142,7 +128,7 @@ function lowerFences(tree: Root, file: string, mod: ModuleCtx, r: FileReporter):
     const info: SampleInfo = { id: meta.id, file, line: at, module: mod.id, where: 'lesson', meta, code: node.value, warns: Object.keys(parsed.ext.warnByTarget).length > 0 };
     mod.samples.set(meta.id, [...(mod.samples.get(meta.id) ?? []), info]);
     checkSampleMeta(meta, node.value, at, r, { moduleId: mod.id, standalone });
-    replace(jsxNode('CodeSample', [['id', meta.id]], node, { lowered: true, sample: info }));
+    replace(lowered(result.node, node, { lowered: true, sample: info }));
   });
 }
 

@@ -9,7 +9,7 @@ import { useCRun } from '../runtime/useCRun';
 import { useCardDone, useSamples } from '../lesson/LessonContext';
 import { update, useProgress } from '../progress/store';
 import { PlatformPicker } from './PlatformPicker';
-import { describeOutcome, nativeFor, normOutput, TARGET_LABEL } from './platform';
+import { describeOutcome, nativeFor, normOutput, storedOutputText, TARGET_LABEL } from './platform';
 import styles from './Interaction.module.css';
 
 const OUTCOMES = [
@@ -146,7 +146,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
           <div className={styles.native}>
             <div className={styles.nativeLabel}>{TARGET_LABEL['wasm32-clang22']} (stored output: low-memory mode is on in Settings)</div>
             {wasm.compile.diagnostics.length > 0 && <DiagnosticsList diagnostics={wasm.compile.diagnostics} raw={wasm.compile.raw} />}
-            {wasm.compile.ok && <pre className={styles.stored}>{wasm.run ? (wasm.run.stdoutDisplay ?? wasm.run.stdout) || '(no output)' : '—'}</pre>}
+            {wasm.compile.ok && <pre className={styles.stored}>{storedOutputText(sample, wasm.run)}</pre>}
             <div className={styles.muted}>{describeOutcome(wasm.run, wasm.compile.ok)}</div>
           </div>
         );
@@ -192,7 +192,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
               {needs64 && <p className={native?.run && normOutput(p64) === normOutput(native.run.stdout) ? styles.goodText : styles.badText}>
                 {native?.run && normOutput(p64) === normOutput(native.run.stdout) ? '✓ Right for 64-bit too.' : '✗ The 64-bit answer differs from your prediction:'}</p>}
               <div className={styles.nativeLabel}>{TARGET_LABEL[native!.target]}{native!.fallback ? ' (stored; your platform’s run isn’t available yet)' : ' (stored output from a real run)'}</div>
-              <pre className={styles.stored}>{native?.run ? (native.run.stdoutDisplay ?? native.run.stdout) || '(no output)' : '—'}</pre>
+              <pre className={styles.stored}>{storedOutputText(sample, native?.run)}</pre>
               <div className={styles.muted}>{describeOutcome(native?.run, sample.results[native!.target]?.compile.ok ?? true)}</div>
             </>
           )}
@@ -202,7 +202,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
       {revealed && nativeOnly && (
         <div className={styles.native}>
           <div className={styles.nativeLabel}>{TARGET_LABEL['linux-x86_64-gcc13']} (stored output from a real run)</div>
-          <pre className={styles.stored}>{sample.results['linux-x86_64-gcc13']?.run?.stdoutDisplay ?? sample.results['linux-x86_64-gcc13']?.run?.stdout ?? '—'}</pre>
+          <pre className={styles.stored}>{storedOutputText(sample, sample.results['linux-x86_64-gcc13']?.run)}</pre>
         </div>
       )}
     </div>

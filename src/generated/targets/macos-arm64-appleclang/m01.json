@@ -245,18 +245,22 @@
         "observed": [
           {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "0\n"
+            "stdout": ""
           }
         ],
         "run": {
           "exit": 0,
-          "signal": null,
           "stderr": "",
-          "stdout": "0\n"
+          "stdout": ""
         },
-        "target": "macos-arm64-appleclang"
+        "target": "macos-arm64-appleclang",
+        "ub": {
+          "outcomes": [
+            "runs"
+          ],
+          "runs": 3
+        }
       }
     },
     "format-mismatch-fixed": {
@@ -613,30 +617,22 @@
         "observed": [
           {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "8641494\n"
-          },
-          {
-            "exit": 0,
-            "signal": null,
-            "stderr": "",
-            "stdout": "10181590\n"
-          },
-          {
-            "exit": 0,
-            "signal": null,
-            "stderr": "",
-            "stdout": "52075478\n"
+            "stdout": ""
           }
         ],
         "run": {
           "exit": 0,
-          "signal": null,
           "stderr": "",
-          "stdout": "8641494\n"
+          "stdout": ""
         },
-        "target": "macos-arm64-appleclang"
+        "target": "macos-arm64-appleclang",
+        "ub": {
+          "outcomes": [
+            "runs"
+          ],
+          "runs": 3
+        }
       }
     },
     "uninit-total-fixed": {

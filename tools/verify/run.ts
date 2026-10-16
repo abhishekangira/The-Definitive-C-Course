@@ -8,6 +8,7 @@ import { expectFor, warningsAllowed } from './meta';
 import { compileNative, runNative, writeSources, SANITIZER_ENV, type NativeToolchain } from './native';
 import { markPointerConversions, normaliseRun, pointerMode, remapColumns, type Insertion, type MarkedSource, type PointerMode } from './normalise';
 import { parseSanitizer } from './sanitizer';
+import { canonicalUb } from './ub';
 import { WASM_TARGET, type SampleRuns, type VerifiedTargetResult } from './types';
 import type { WasmTarget } from './wasm';
 
@@ -34,17 +35,6 @@ function outcome(raw: RawRun, mode: PointerMode, rebase: 'linux-x86_64' | 'none'
   if (raw.trap) o.trap = raw.trap;
   if (raw.timedOut) o.timedOut = true;
   return o;
-}
-
-/** Distinct outcomes, in first-seen order. */
-export function dedupeRuns(runs: RunOutcome[]): RunOutcome[] {
-  const seen = new Set<string>();
-  return runs.filter(r => {
-    const k = JSON.stringify([r.stdout, r.stderr, r.exit, r.signal, r.trap ?? null, r.timedOut ?? false]);
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
 }
 
 const isLinuxX64 = (t: TargetId) => t === 'linux-x86_64-gcc13' || t === 'linux-x86_64-clang22';
@@ -80,10 +70,10 @@ async function runNativeTarget(s: DiscoveredSample, tc: NativeToolchain, mode: P
 
   const mainMode = meta.stdoutMode === 'pipe' ? 'pipe' : 'tty';
   const runs: RunOutcome[] = [];
-  const n = expectFor(meta, s.ext, tc.target) === 'ub' || meta.expect === 'ub' ? UB_RUNS : 1;
-  for (let k = 0; k < n; k++) runs.push(await once(mainMode));
-  result.run = runs[0];
-  if (n > 1) result.observed = dedupeRuns(runs);
+  const ub = expectFor(meta, s.ext, tc.target) === 'ub' || meta.expect === 'ub';
+  for (let k = 0; k < (ub ? UB_RUNS : 1); k++) runs.push(await once(mainMode));
+  if (ub) Object.assign(result, canonicalUb(runs));
+  else result.run = runs[0];
   if (meta.stdoutMode === 'both') result.runPipe = await once('pipe');
 
   if (!ctx.noSanitizer && meta.sanitize !== false) {
@@ -116,11 +106,11 @@ async function runWasmTarget(s: DiscoveredSample, wasm: WasmTarget, mode: Pointe
     }
   }
   const timeoutMs = meta.timeout ?? DEFAULT_TIMEOUT_MS;
-  const n = expectFor(meta, s.ext, WASM_TARGET) === 'ub' || meta.expect === 'ub' ? UB_RUNS : 1;
+  const ub = expectFor(meta, s.ext, WASM_TARGET) === 'ub' || meta.expect === 'ub';
   const runs: RunOutcome[] = [];
-  for (let k = 0; k < n; k++) runs.push(outcome(await wasm.run(bin, { stdin: meta.stdin, args: meta.args, timeoutMs }), runMode, 'none', insertions));
-  result.run = runs[0];
-  if (n > 1) result.observed = dedupeRuns(runs);
+  for (let k = 0; k < (ub ? UB_RUNS : 1); k++) runs.push(outcome(await wasm.run(bin, { stdin: meta.stdin, args: meta.args, timeoutMs }), runMode, 'none', insertions));
+  if (ub) Object.assign(result, canonicalUb(runs));
+  else result.run = runs[0];
 
   if (meta.guardrail) {
     const src = marked && runMode === 'markers' ? marked.code : s.code;
