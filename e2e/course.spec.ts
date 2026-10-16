@@ -6,7 +6,10 @@ import {
   answerQuiz, availableModules, completeExercise, completeLesson, expectAccessible, progressJson, setEditor, solutionOf, starterOf,
 } from './lib';
 
-const modules = availableModules();
+// E2E_MODULE=m01 limits the run to one module (used by `npm run dod`); default is every available module.
+const only = process.env.E2E_MODULE;
+const modules = availableModules().filter(m => !only || m.id === only);
+if (only && !modules.length) throw new Error(`E2E_MODULE=${only} matches no available module`);
 
 for (const mod of modules) {
   test.describe.serial(`${mod.id}: ${mod.meta.title}`, () => {
