@@ -43,6 +43,8 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     expect(s['fx-compile-error'].answer.outcome).toBe('compile-error');
     expect(s['fx-warning'].results['wasm32-clang22']!.compile.diagnostics[0]).toMatchObject({ line: 4, severity: 'warning', flag: '-Wunused-variable' });
     expect(s['fx-uninit'].results['linux-x86_64-gcc13']!.observed!.length).toBeGreaterThanOrEqual(1);
+    // The canonical UB form: no raw output is stored, only the outcome categories (tools/verify/ub.ts).
+    expect(s['fx-uninit'].results['linux-x86_64-gcc13']).toMatchObject({ run: { stdout: '', stderr: '' }, ub: { runs: 3 } });
     expect(s['fx-uninit'].answer).toMatchObject({ outcome: 'runs' });
     expect(s['fx-choice']).toMatchObject({ lesson: 'quiz:checkpoint', answer: { stdout: '3\n' } });
     expect(s['fx-hello'].hash).toMatch(/^[0-9a-f]{16}$/);
@@ -104,6 +106,17 @@ describe('checkFragment', () => {
 });
 
 describe('checkProjection', () => {
+  it('treats a committed file from before the canonical UB form as equal to the canonical one', () => {
+    const file = (t: object): SamplesFile => ({
+      module: 'm', generatedBy: 'g', samples: {
+        u: { id: 'u', module: 'm', lesson: 'l', code: 'c', meta: { id: 'u', expect: 'ub' }, hash: 'h', flagged: false, answer: { stdout: '', outcome: 'runs' }, results: { 'linux-x86_64-gcc13': { target: 'linux-x86_64-gcc13', compiler: 'g', compile: { ok: true, diagnostics: [], raw: '' }, ...t } } },
+      },
+    });
+    const old = file({ run: { stdout: '123\n', stderr: '', exit: 0, signal: null }, observed: [{ stdout: '123\n', stderr: '', exit: 0, signal: null }, { stdout: '456\n', stderr: '', exit: 0, signal: null }] });
+    const canonical = file({ run: { stdout: '', stderr: '', exit: 0 }, observed: [{ stdout: '', stderr: '', exit: 0 }], ub: { runs: 3, outcomes: ['runs'] } });
+    expect(checkProjection(old)).toEqual(checkProjection(canonical));
+  });
+
   it('ignores UB garbage and display text, nothing else', () => {
     const mk = (garbage: string, display: string): SamplesFile => ({
       module: 'm', generatedBy: 'g', samples: {
