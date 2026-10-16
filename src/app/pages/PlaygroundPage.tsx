@@ -177,7 +177,7 @@ export function PlaygroundPage() {
       {!kept && <p className={ix.muted} role="status">This program is too big to keep in this browser between visits, so it will be lost when you close the tab.</p>}
       {/* The log and status regions below only exist once something ran; this one announces a failed compile. */}
       <p className="visually-hidden" role="status">
-        {runner.phase === 'done' && runner.result === null
+        {runner.phase === 'done' && runner.result === null && runner.diagnostics.length > 0
           ? `Compilation failed with ${runner.diagnostics.filter(d => d.severity === 'error' || d.severity === 'fatal error').length} error(s). The messages are below the editor.`
           : ''}
       </p>

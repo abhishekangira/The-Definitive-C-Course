@@ -35,7 +35,8 @@ export function Terminal({ segments, phase, result, onInput, onEOF, onStop, labe
 
   const status = exitLine(result);
   // A compile error never ran the program: there is no output to show, only the compiler's messages.
-  if (phase === 'done' && result === null) return null;
+  // If the compiler itself could not be downloaded, this is where the error and its Retry button show (nothing otherwise).
+  if (phase === 'done' && result === null) return <ToolchainProgress />;
   const running = phase === 'running' || phase === 'waiting-input';
   return (
     <div className={styles.wrap}>

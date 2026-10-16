@@ -25,7 +25,7 @@ export function PipelineExplorer({ children, code: codeProp }: { children?: Reac
 
   const open = async (t: Tab) => {
     setTab(t);
-    if (t === 'source' || out[t]) return;
+    if (t === 'source' || out[t]?.ok) return; // a failed stage (for example, no compiler) is tried again
     setBusy(true);
     const r = await getRuntime().stage({ 'main.c': code }, t);
     setOut(o => ({ ...o, [t]: r }));
@@ -44,7 +44,7 @@ export function PipelineExplorer({ children, code: codeProp }: { children?: Reac
         ))}
       </div>
       <p className={ix.muted}>{TABS.find(t => t.key === tab)!.blurb} {lineCount > 0 && <strong>{lineCount} lines.</strong>}</p>
-      {busy && <ToolchainProgress />}
+      {(busy || (current && !current.ok)) && <ToolchainProgress />}
       {busy && <p className={ix.muted}>Running clang…</p>}
       {current && !current.ok && <DiagnosticsList diagnostics={current.diagnostics} raw={current.raw} />}
       {!busy && text && (
