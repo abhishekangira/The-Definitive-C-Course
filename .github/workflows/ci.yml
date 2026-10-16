@@ -63,7 +63,7 @@ jobs:
         run: npm run verify:exercises
       - name: Videos (offline checks; CI never calls yt-dlp)
         run: npm run videos:check
-      - name: Animations (static: validation, hyperframes lint, manifest freshness; no browser)
+      - name: Animations (static checks, no browser)
         run: node tools/anim/check.mjs --static
 
       - run: npm run build
