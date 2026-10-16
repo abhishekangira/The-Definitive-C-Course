@@ -9,9 +9,38 @@ You were told to read this file and given a ticket. Do this, in order:
 3. Stay in scope. Don't start Module 2, change the licence, edit PLAN.md decisions, or add a dependency without saying why (pin exact versions).
 4. Don't hand-edit `src/generated/` (regenerate it with `npm run verify`) and don't hand-type expected outputs.
 5. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium` (`playwright.config.ts` falls back to Playwright's own Chromium; set `CHROMIUM_PATH` to use another).
-6. In the PR description say what changed and why, which commands you ran and their results, and anything you could not verify. Say so plainly; never claim a pass you didn't see.
+6. Write the PR description with the template in **Pull request rules** below. Say plainly what you could not verify; never claim a pass you didn't see.
 7. If the ticket is wrong, ambiguous or blocked, stop and say so (in the PR, or to the person who gave it to you) instead of working around it.
 8. No repository access, or can't run commands (for example a plain chat window)? Say so, return your change as a unified diff plus the exact commands a human should run to check it, and label everything unverified.
+
+## Raising issues (for the owner and the lead session)
+- Raise a GitHub issue only for **big** work: about M or L (half a day of human work or more, or several files), parallelizable and independently testable. Fix small things (S) directly instead of filing them: an issue costs a PR plus a review, which is more than a small fix.
+- Every issue states the goal, the **files the PR may touch** (and must not), and acceptance criteria that are each checkable with a command or a test, never "make sure X works". Add `Depends on #N` when another open issue edits the same files, and don't run two tickets that edit the same file in parallel.
+- Label it `complexity: M|L` plus an `area:` label. Don't write a criterion the code can only satisfy vacuously (for example "test that a constant equals itself").
+
+## Pull request rules (what makes review cheap)
+1. **Small and single-purpose.** One ticket, no unrelated edits (formatting, renames, drive-by fixes). If the diff is over about 400 changed lines (not counting fixtures and generated files), say why or split it.
+2. **The simplest thing that meets the acceptance criteria.** No speculative features or extra abstractions. If you add a mechanism of more than about 50 lines, say why a simpler one would not do.
+3. **Rebase first.** Rebase on the latest `main` before opening or updating the PR. If another open PR edits the same files, name it in the description and rebase after it merges.
+4. **Tests that can fail.** Every behaviour change has a test that fails without it (say how you checked, for example by reverting the fix). Tests call the real code: never recompute the expected value inside the test, never assert a constant against itself, and type your mocks (`satisfies` or the real type).
+5. **Evidence, not narration.** Paste the tail of each command's real output. Use the CI toolchain (Ubuntu 24.04, gcc 13, clang 22, gdb 15, valgrind 3.22, Node 22). If yours differs, say exactly how, and don't call a failure "pre-existing" unless you also ran it on a clean `main`. Once CI is green on `main`, CI is the evidence: link the green run.
+6. **Generated files.** Don't commit regenerated `src/generated/` files that differ only because your toolchain's version strings differ from CI's.
+7. **Post the report on the right PR**, once, in the description or in a single comment that names the PR number and head SHA. Never post a report on another PR.
+8. **Answer review with commits.** Push a new commit (no force-push) and reply to each point: fixed (commit), not fixed (why), or disagree (why). Don't mark a point resolved without one.
+9. **UI changes** also report the axe result in light and dark (`npm run e2e`) and how the change behaves with the keyboard.
+
+PR description template (under about 300 words):
+```
+Closes #N
+Summary: (at most 5 lines)
+Files touched and why:
+Acceptance criteria: (copied from the issue; each with ✓ or ✗ and the evidence)
+Commands run: (pasted output tails)
+Could not verify:
+Risk: (does it touch learner-facing app code, the generated-data format, or CI/deploy? yes or no, and what)
+```
+
+Review depth, so you know where evidence matters most: the maintainer reviews thoroughly when a PR touches learner-facing app code, the verifier's data format, or CI/deploy. For tests-only changes, content text and refactors whose output can be diffed, it runs the checks and reads the diff.
 
 ## Status
 - Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12 (public repo → GitHub Pages; MP4s committed; allocator-only capstone; dark-only animation renders).
