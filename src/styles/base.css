@@ -90,10 +90,10 @@ input, textarea, select { font: inherit; color: inherit; }
 }
 /* Inline SVG icons (src/components/Icon.tsx): sized by the surrounding text, coloured by `currentColor`. */
 .icon { display: inline-block; width: 1em; height: 1em; vertical-align: -0.15em; flex: none; }
-.btn:hover:not(:disabled) { border-color: var(--accent); }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--accent); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .btn-primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-.btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn-primary:hover:not(:disabled):not([aria-disabled="true"]) { filter: brightness(1.08); }
 .btn-ghost { background: transparent; border-color: transparent; }
 .btn-ghost:hover:not(:disabled) { background: var(--bg-sunken); border-color: var(--border); }
 .btn-sm { min-height: 32px; padding: 0 var(--space-3); font-size: 0.9em; }

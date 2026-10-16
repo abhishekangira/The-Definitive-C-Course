@@ -18,7 +18,7 @@
 }
 .title { font-size: 1rem; letter-spacing: -0.01em; }
 
-.nav { display: flex; align-items: center; gap: var(--space-4); font-size: 0.95rem; }
+.nav { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--space-1) var(--space-4); min-width: 0; font-size: 0.95rem; }
 .nav a { color: var(--text-muted); text-decoration: none; padding: 6px 2px; border-bottom: 2px solid transparent; }
 .nav a:hover { color: var(--text); }
 .nav a.active { color: var(--text); border-bottom-color: var(--accent); }
@@ -41,6 +41,6 @@
 @media (max-width: 640px) {
   .header { padding: var(--space-2) var(--space-3); }
   .title { display: none; }
-  .nav { gap: var(--space-3); font-size: 0.9rem; }
+  .nav { column-gap: var(--space-3); font-size: 0.9rem; }
   .main { padding: var(--space-5) var(--space-3) var(--space-6); }
 }

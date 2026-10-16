@@ -1,13 +1,13 @@
 // The Playground: a free C editor. No quiz, no gating and no progress is recorded; it uses the same in-browser
 // clang, flags and runtime as the lessons. The draft (code, input, arguments) is kept in this browser.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { CodeEditor } from '../../components/CodeEditor';
+import { CodeEditor, preloadCodeEditor } from '../../components/CodeEditor';
 import { DiagnosticsList } from '../../components/DiagnosticsList';
 import { Icon } from '../../components/Icon';
 import { Terminal } from '../../components/Terminal';
 import { STORAGE_PREFIX, useProgress } from '../../progress/store';
-import { detectStdinMode } from '../../runtime/CRuntime';
+import { detectStdinMode, getRuntime } from '../../runtime/CRuntime';
 import { useCRun } from '../../runtime/useCRun';
 import ix from '../../interactions/Interaction.module.css';
 import styles from './Playground.module.css';
@@ -52,27 +52,56 @@ function loadDraft(): Draft {
   return FRESH;
 }
 
-function saveDraft(d: Draft): void {
-  try { localStorage.setItem(KEY, JSON.stringify({ version: 1, ...d })); } catch { /* storage blocked: the draft lives only while the tab is open */ }
+/** The draft shares the browser's storage quota with the learner's progress, so a huge paste must not be kept. */
+const MAX_SAVED_CHARS = 200_000;
+
+/** False when the draft is too big to keep (nothing is written then). */
+function saveDraft(d: Draft): boolean {
+  const text = JSON.stringify({ version: 1, ...d });
+  if (text.length > MAX_SAVED_CHARS) return false;
+  try { localStorage.setItem(KEY, text); } catch { /* storage blocked: the draft lives only while the tab is open */ }
+  return true;
 }
 
 export function PlaygroundPage() {
   const [draft, setDraft] = useState(loadDraft);
   const { code, stdin, args, guardrail } = draft;
-  const set = (patch: Partial<Draft>) => setDraft(d => ({ ...d, ...patch }));
+  // Only a draft this tab has edited is saved, so opening the page in a second tab never overwrites newer work.
+  const dirty = useRef(false);
+  const [kept, setKept] = useState(true);
+  const set = (patch: Partial<Draft>) => { dirty.current = true; setDraft(d => ({ ...d, ...patch })); };
+  const stdinId = useId();
+  const argsId = useId();
   const runner = useCRun();
   const lowMemory = Boolean(useProgress().settings.storedOutputMode);
   const interactive = detectStdinMode() !== 'preset';
   const busy = runner.phase === 'compiling' || runner.phase === 'running' || runner.phase === 'waiting-input';
 
-  // Save shortly after the last edit, and once more when the page is left.
+  // Save shortly after the last edit, and again when the tab is hidden or closed or the page is left.
   const latest = useRef(draft);
   latest.current = draft;
   useEffect(() => {
-    const t = window.setTimeout(() => saveDraft(draft), 300);
+    if (!dirty.current) return;
+    const t = window.setTimeout(() => setKept(saveDraft(latest.current)), 300);
     return () => window.clearTimeout(t);
   }, [draft]);
-  useEffect(() => () => saveDraft(latest.current), []);
+  useEffect(() => {
+    const save = () => { if (dirty.current) saveDraft(latest.current); };
+    const onVisibility = () => { if (document.visibilityState === 'hidden') save(); };
+    window.addEventListener('pagehide', save);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pagehide', save);
+      document.removeEventListener('visibilitychange', onVisibility);
+      save();
+    };
+  }, []);
+
+  // The learner came here to run code: load the editor and warm the compiler now (never in low-memory mode).
+  useEffect(() => {
+    preloadCodeEditor();
+    if (!lowMemory) getRuntime().prefetch();
+  }, [lowMemory]);
 
   // Both the Run button and Ctrl/Cmd+Enter in the editor call this, so it reads the latest state through a ref.
   const doRun = () => {
@@ -91,7 +120,7 @@ export function PlaygroundPage() {
   runRef.current = doRun;
 
   const load = (ex: Example) => {
-    const untouched = EXAMPLES.some(e => e.code === code);
+    const untouched = EXAMPLES.some(e => e.code === code && (e.stdin ?? '') === stdin);
     if (!untouched && !window.confirm('Replace your code with this example?')) return;
     set({ code: ex.code, stdin: ex.stdin ?? '' });
     runner.reset();
@@ -106,7 +135,7 @@ export function PlaygroundPage() {
       </div>
 
       {lowMemory && (
-        <p className={ix.warn} role="status">
+        <p className={ix.warn} role="status" id="playground-low-memory">
           Low-memory mode is on, so the compiler is never downloaded and the playground can't run your code.
           {' '}Turn it off in <Link to="/settings">Settings</Link> to use it.
         </p>
@@ -120,7 +149,7 @@ export function PlaygroundPage() {
       <CodeEditor value={code} onChange={v => set({ code: v })} onRun={() => runRef.current()} label="C source (main.c)" minLines={14} diagnostics={runner.diagnostics} />
 
       <div className={ix.actions}>
-        <button type="button" className="btn btn-primary" onClick={doRun} disabled={busy || lowMemory}><Icon name="play" /> Run</button>
+        <button type="button" className="btn btn-primary" onClick={doRun} aria-disabled={busy || lowMemory} aria-describedby={lowMemory ? 'playground-low-memory' : undefined}><Icon name="play" /> Run</button>
         <span className={ix.muted}>or press <kbd className={styles.kbd}>Ctrl</kbd>+<kbd className={styles.kbd}>Enter</kbd> (<kbd className={styles.kbd}>Cmd</kbd>+<kbd className={styles.kbd}>Enter</kbd> on a Mac) in the editor</span>
         <label className={styles.check}>
           <input type="checkbox" checked={guardrail} onChange={e => set({ guardrail: e.target.checked })} />
@@ -129,21 +158,29 @@ export function PlaygroundPage() {
       </div>
 
       <div className={styles.options}>
-        <label className={ix.field}>
-          <span>Input for the program (stdin)</span>
-          <textarea value={stdin} onChange={e => set({ stdin: e.target.value })} rows={3} spellCheck={false} className={ix.mono} />
-          <span className={styles.help}>
+        <div className={ix.field}>
+          <label htmlFor={stdinId}>Input for the program (stdin)</label>
+          <textarea id={stdinId} aria-describedby={`${stdinId}-help`} value={stdin} onChange={e => set({ stdin: e.target.value })} rows={3} spellCheck={false} className={ix.mono} />
+          <span id={`${stdinId}-help`} className={styles.help}>
             {interactive
               ? 'Leave this empty to type input in the terminal while the program runs. Anything here is fed to the program instead.'
               : "This browser can't pause a program to wait for typing, so type everything the program will read here first, one line per answer."}
           </span>
-        </label>
-        <label className={ix.field}>
-          <span>Command-line arguments</span>
-          <input type="text" value={args} onChange={e => set({ args: e.target.value })} spellCheck={false} className={ix.mono} placeholder="separated by spaces" />
-          <span className={styles.help}>Passed to <code>main</code> as <code>argv[1]</code>, <code>argv[2]</code>, and so on.</span>
-        </label>
+        </div>
+        <div className={ix.field}>
+          <label htmlFor={argsId}>Command-line arguments</label>
+          <input id={argsId} aria-describedby={`${argsId}-help`} type="text" value={args} onChange={e => set({ args: e.target.value })} spellCheck={false} className={ix.mono} placeholder="separated by spaces" />
+          <span id={`${argsId}-help`} className={styles.help}>Separated by spaces; quote marks are not interpreted. Passed to <code>main</code> as <code>argv[1]</code>, <code>argv[2]</code>, and so on.</span>
+        </div>
       </div>
+
+      {!kept && <p className={ix.muted} role="status">This program is too big to keep in this browser between visits, so it will be lost when you close the tab.</p>}
+      {/* The log and status regions below only exist once something ran; this one announces a failed compile. */}
+      <p className="visually-hidden" role="status">
+        {runner.phase === 'done' && runner.result === null
+          ? `Compilation failed with ${runner.diagnostics.filter(d => d.severity === 'error' || d.severity === 'fatal error').length} error(s). The messages are below the editor.`
+          : ''}
+      </p>
 
       {runner.phase !== 'idle' && (
         <>
@@ -157,7 +194,7 @@ export function PlaygroundPage() {
         <p>
           One file, <code>main.c</code>, built by clang 22 for WebAssembly (wasm32) with <code>-std=c17 -Wall -Wextra -pedantic -O0 -g</code>, then run in a sandbox: 5 seconds of CPU time, 256 MiB of memory, 1 MiB of output, and an in-memory <code>/tmp</code> folder that vanishes when the program ends.
           You can <code>#include</code> the standard library and the course helper <code>"learnc.h"</code> (<code>get_int</code>, <code>get_line</code> and friends). Because this is 32-bit WebAssembly,
-          {' '}<code>long</code> and pointers are 4 bytes here, while most computers use 8. There are no threads or sockets.
+          {' '}<code>long</code> and pointers are 4 bytes here, while most computers use 8. There are no threads or sockets. In Safari and Firefox, waiting (for example <code>sleep</code>) also uses up the 5 seconds.
         </p>
       </details>
     </div>

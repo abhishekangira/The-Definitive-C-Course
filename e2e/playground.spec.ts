@@ -24,11 +24,12 @@ async function loadExample(page: Page, label: string) {
 
 test.describe.serial('playground', () => {
   let page: Page;
+  let dialogAction: 'accept' | 'dismiss' = 'accept';
   test.beforeAll(async ({ browser }) => {
     // One browser context for the whole group, so the compiler downloads once. AxeBuilder needs a context-made page.
     page = await (await browser.newContext()).newPage();
     page.on('pageerror', e => { throw e; });
-    page.on('dialog', d => void d.accept());
+    page.on('dialog', d => void d[dialogAction]());
   });
   test.afterAll(async () => { await page.context().close(); });
 
@@ -39,9 +40,29 @@ test.describe.serial('playground', () => {
     await expect(page.getByText('Nothing here counts toward your progress')).toBeVisible();
     await runAndWait(page);
     await expect(output(page)).toContainText('Hello from C!');
+    await expect(page.getByRole('status').filter({ hasText: 'Program exited with status 0.' })).toBeVisible();
     await expect(page.locator('[data-diagnostics]')).toHaveCount(0);
     const progress = await page.evaluate(() => JSON.parse(localStorage.getItem('tdcc:v1:progress') ?? '{}'));
     expect(Object.keys(progress.samples ?? {})).toEqual([]);
+  });
+
+  test('the course map links to it', async () => {
+    await page.goto('');
+    await page.getByRole('link', { name: 'playground', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Playground' })).toBeVisible();
+  });
+
+  test('loading an example asks before replacing edited code or input, and Cancel keeps both', async () => {
+    await loadExample(page, 'Hello');
+    await page.getByLabel('Input for the program (stdin)').fill('typed by me');
+    dialogAction = 'dismiss';
+    await loadExample(page, 'Type sizes');
+    dialogAction = 'accept';
+    await expect(editor(page)).toContainText('Hello from C!');
+    await expect(page.getByLabel('Input for the program (stdin)')).toHaveValue('typed by me');
+    await loadExample(page, 'Type sizes');
+    await expect(editor(page)).toContainText('sizeof(long long)');
+    await expect(page.getByLabel('Input for the program (stdin)')).toHaveValue('');
   });
 
   test('every example compiles without a diagnostic and exits normally', async () => {
@@ -87,7 +108,9 @@ test.describe.serial('playground', () => {
     await expect(diagnostics).toBeVisible({ timeout: RUN_TIMEOUT });
     await expect(diagnostics).toContainText("use of undeclared identifier 'missing'");
     await expect(page.locator('main .cm-lint-marker-error, main .cm-lintRange-error').first()).toBeVisible();
-    await expect(runButton(page)).toBeEnabled();
+    await expect(page.getByRole('status').filter({ hasText: 'Compilation failed with 1 error' })).toBeAttached();
+    await expect(output(page)).toHaveCount(0);
+    await expect(runButton(page)).not.toHaveAttribute('aria-disabled', 'true');
   });
 
   test('Ctrl+Enter in the editor runs the program', async () => {
@@ -118,6 +141,27 @@ test.describe.serial('playground', () => {
     await expect(page.getByLabel('Command-line arguments')).toHaveValue('keep me');
   });
 
+  test('a second tab that changed nothing does not overwrite the draft', async () => {
+    const stored = () => page.evaluate(k => localStorage.getItem(k), DRAFT_KEY);
+    const before = await stored();
+    expect(before).toContain('keep me');
+    const other = await page.context().newPage();
+    await other.goto('#/playground');
+    await expect(other.getByRole('heading', { level: 1, name: 'Playground' })).toBeVisible();
+    await other.getByRole('navigation', { name: 'Site' }).getByRole('link', { name: 'Course' }).click();
+    await other.close();
+    expect(await stored()).toBe(before);
+  });
+
+  test('a draft that is too large to share the storage quota is not kept, and says so', async () => {
+    const before = await page.evaluate(k => localStorage.getItem(k), DRAFT_KEY);
+    await page.getByLabel('Input for the program (stdin)').fill('x'.repeat(250_000));
+    await expect(page.getByText(/too big to keep in this browser/)).toBeVisible();
+    expect(await page.evaluate(k => localStorage.getItem(k), DRAFT_KEY)).toBe(before);
+    await page.getByLabel('Input for the program (stdin)').fill('');
+    await expect(page.getByText(/too big to keep in this browser/)).toHaveCount(0);
+  });
+
   test('is accessible in light and dark, and Stop is reachable while a program runs', async () => {
     await loadExample(page, 'Hello');
     await runAndWait(page);
@@ -129,33 +173,52 @@ test.describe.serial('playground', () => {
     await runButton(page).click();
     const stop = page.getByRole('button', { name: 'Stop', exact: true });
     await expect(stop).toBeVisible({ timeout: RUN_TIMEOUT });
+    await expect(page.getByRole('group', { name: 'Examples' }).getByRole('button', { name: 'Hello', exact: true })).toBeDisabled();
+    await expect(runButton(page)).toHaveAttribute('aria-disabled', 'true');
     await stop.click();
     await expect(page.getByText('Stopped.')).toBeVisible({ timeout: RUN_TIMEOUT });
-    await expect(runButton(page)).toBeEnabled();
+    await expect(runButton(page)).not.toHaveAttribute('aria-disabled', 'true');
   });
 });
 
-test('without JSPI (Safari, Firefox) the input box is how a program gets input, and it still runs', async ({ browser }) => {
-  const page = await (await browser.newContext()).newPage();
-  page.on('pageerror', e => { throw e; });
-  page.on('dialog', d => void d.accept());
-  // Take away the feature that lets a program pause for typing, as those browsers do not have it.
-  await page.addInitScript(() => {
-    const wasm = WebAssembly as unknown as Record<string, unknown>;
-    for (const name of ['Suspending', 'promising']) Object.defineProperty(wasm, name, { value: undefined, configurable: true });
-  });
-  await page.goto('#/playground');
-  await expect(page.getByText("This browser can't pause a program to wait for typing")).toBeVisible();
-  await loadExample(page, 'Read input');
-  await runAndWait(page);
-  await expect(output(page)).toContainText('2 + 40 = 42');
-  await expect(page.locator('#term-input')).toHaveCount(0);
+test('without JSPI (Safari, Firefox) the input box is how a program gets input, and it still runs', async ({ playwright }, testInfo) => {
+  // A Chromium that really lacks JSPI, in the page and in the run worker (an init script would only hide it from the page).
+  const base = testInfo.project.use.launchOptions ?? {};
+  const browser = await playwright.chromium.launch({ ...base, args: [...(base.args ?? []), '--js-flags=--no-experimental-wasm-jspi'] });
+  try {
+    const page = await (await browser.newContext()).newPage();
+    page.on('pageerror', e => { throw e; });
+    page.on('dialog', d => void d.accept());
+    await page.goto('#/playground');
+    await expect(page.getByRole('heading', { level: 1, name: 'Playground' })).toBeVisible();
+    expect(await page.evaluate(() => typeof (WebAssembly as unknown as Record<string, unknown>).Suspending)).toBe('undefined');
+    await expect(page.getByText("This browser can't pause a program to wait for typing")).toBeVisible();
+    await loadExample(page, 'Read input');
+    await runAndWait(page);
+    await expect(output(page)).toContainText('2 + 40 = 42');
+    await expect(page.locator('#term-input')).toHaveCount(0);
 
-  // No input typed: the program reads end-of-input, which the course helper reports, instead of hanging.
-  await page.getByLabel('Input for the program (stdin)').fill('');
-  await runAndWait(page, 1);
-  await expect(output(page)).toContainText('(end of input)');
-  await page.context().close();
+    // No input typed: the program reads end-of-input, which the course helper reports, instead of hanging.
+    await page.getByLabel('Input for the program (stdin)').fill('');
+    await runAndWait(page, 1);
+    await expect(output(page)).toContainText('(end of input)');
+  } finally {
+    await browser.close();
+  }
+});
+
+test('no page scrolls sideways at 320 px wide (the header grew a link)', async ({ browser }) => {
+  const page = await (await browser.newContext({ viewport: { width: 320, height: 700 } })).newPage();
+  try {
+    for (const [route, heading] of [['', 'The Definitive C Course'], ['#/playground', 'Playground'], ['#/about', 'About & licenses']]) {
+      await page.goto(route);
+      await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+      const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+      expect(scroll, `scrollWidth on ${route || 'the course map'}`).toBeLessThanOrEqual(width);
+    }
+  } finally {
+    await page.context().close();
+  }
 });
 
 test('low-memory mode: Run is disabled, the reason is shown, and the compiler is never downloaded', async ({ page }) => {

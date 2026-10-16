@@ -34,6 +34,8 @@ export function Terminal({ segments, phase, result, onInput, onEOF, onStop, labe
   useEffect(() => { const b = boxRef.current; if (b) b.scrollTop = b.scrollHeight; }, [segments, phase]);
 
   const status = exitLine(result);
+  // A compile error never ran the program: there is no output to show, only the compiler's messages.
+  if (phase === 'done' && result === null) return null;
   const running = phase === 'running' || phase === 'waiting-input';
   return (
     <div className={styles.wrap}>
@@ -45,9 +47,8 @@ export function Terminal({ segments, phase, result, onInput, onEOF, onStop, labe
       </div>
       {phase === 'compiling' && <ToolchainProgress />}
       <div className={styles.screen} ref={boxRef} role="log" aria-live="polite" aria-label={label} tabIndex={0}>
-        {segments.length === 0 && phase === 'done' && !status && <span className={styles.muted}>(no output)</span>}
         {segments.map((s, i) => <span key={i} className={styles[s.kind]} data-kind={s.kind}>{s.text}</span>)}
-        {phase === 'done' && segments.length === 0 && status && <span className={styles.muted}>(no output)</span>}
+        {phase === 'done' && segments.length === 0 && <span className={styles.muted}>(no output)</span>}
         {phase === 'waiting-input' && onInput && (
           <form className={styles.inputRow} onSubmit={e => { e.preventDefault(); onInput(line); setLine(''); }}>
             <label className="visually-hidden" htmlFor="term-input">Type input for the program, then press Enter</label>
@@ -57,7 +58,7 @@ export function Terminal({ segments, phase, result, onInput, onEOF, onStop, labe
           </form>
         )}
       </div>
-      {status && <div className={`${styles.status} ${result?.kind === 'exit' && result.exitCode === 0 ? styles.ok : styles.bad}`}>{status}</div>}
+      <div role="status">{status && <div className={`${styles.status} ${result?.kind === 'exit' && result.exitCode === 0 ? styles.ok : styles.bad}`}>{status}</div>}</div>
     </div>
   );
 }
