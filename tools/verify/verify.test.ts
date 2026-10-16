@@ -81,7 +81,7 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
 
     const changedOutput = JSON.parse(onDisk) as SamplesFile;
     changedOutput.samples['fx-hello'].results['linux-x86_64-gcc13']!.run!.stdout += 'extra\n';
-    // Writing (not checking) over a version-only difference keeps the committed file as it is.
+    // Writing (not checking) over a difference that is only versions (UB garbage is the same kind of noise) keeps the committed file as it is.
     writeFileSync(samplesPath, JSON.stringify(reversioned, null, 1));
     const rewrite = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm99', trace: false });
     expect(rewrite.files.written).toEqual([]);
@@ -93,6 +93,9 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     const regenerated = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm99', trace: false });
     expect(regenerated.files.written).toHaveLength(1); // an output change is written, with the current versions
     expect(JSON.parse(readFileSync(samplesPath, 'utf8')).generatedBy).toBe(file.generatedBy);
+    // A rerun with no behaviour change writes nothing, even though UB samples print new garbage each time.
+    const rerun = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm99', trace: false, force: true });
+    expect(rerun.files.written).toEqual([]);
     writeFileSync(samplesPath, onDisk);
   }, 120_000);
 

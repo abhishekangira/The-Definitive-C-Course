@@ -223,17 +223,16 @@ export async function verify(o: VerifyOptions): Promise<VerifyReport> {
     const target = path.join(outDir, `${m}.json`);
     const current = existsSync(target) ? readFileSync(target, 'utf8') : null;
     if (current === text) { report.files.unchanged.push(target); continue; }
+    // Same behaviour (only version strings, UB garbage or display text differ): keep the committed file,
+    // so a toolchain change or a rerun alone never dirties src/generated/ (CI would otherwise commit noise).
+    const same = current !== null && JSON.stringify(checkProjection(JSON.parse(current))) === JSON.stringify(checkProjection(file));
+    if (same) { report.files.unchanged.push(target); continue; }
     if (o.check) {
-      const same = current !== null && JSON.stringify(checkProjection(JSON.parse(current))) === JSON.stringify(checkProjection(file));
-      if (same) { report.files.unchanged.push(target); continue; }
       report.files.stale.push(target);
       const changed = current === null ? ['(file missing)'] : diffSampleIds(JSON.parse(current) as SamplesFile, file);
       report.problems.push(`${path.relative(process.cwd(), target)} is stale; run npm run verify and commit. Changed: ${changed.join(', ')}`);
       continue;
     }
-    // Only the version strings differ: keep the committed file, so a toolchain change alone never
-    // dirties src/generated/ (they are rewritten together with the next behaviour change).
-    if (current !== null && JSON.stringify(sortKeysDeep(withoutVersions(JSON.parse(current)))) === JSON.stringify(sortKeysDeep(withoutVersions(file)))) { report.files.unchanged.push(target); continue; }
     mkdirSync(outDir, { recursive: true });
     writeFileSync(target, text);
     report.files.written.push(target);
