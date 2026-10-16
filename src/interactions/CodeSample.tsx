@@ -10,6 +10,7 @@ import { useCardDone, useSamples } from '../lesson/LessonContext';
 import { update, useProgress } from '../progress/store';
 import { PlatformPicker } from './PlatformPicker';
 import { describeOutcome, nativeFor, normOutput, storedOutputText, TARGET_LABEL } from './platform';
+import { Mark } from '../components/Icon';
 import styles from './Interaction.module.css';
 
 const OUTCOMES = [
@@ -80,6 +81,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
 
   const correct = committed ? isCorrect(prediction) : null;
   const needs64 = sample.flagged && sample.meta.predict64 && sample.meta.predict64 !== 'none';
+  const right64 = Boolean(native?.run) && normOutput(p64) === normOutput(native?.run?.stdout ?? '');
 
   return (
     <div className={styles.box} data-interaction="predict" data-sample={id}>
@@ -161,7 +163,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
 
       {revealed && predictKind !== 'none' && correct !== null && (
         <div className={correct ? styles.good : styles.bad} role="status">
-          {correct ? <strong>✓ Your prediction was right.</strong> : <strong>✗ Not quite.</strong>}{' '}
+          {correct ? <strong><Mark ok /> Your prediction was right.</strong> : <strong><Mark ok={false} /> Not quite.</strong>}{' '}
           {!correct && predictKind === 'output' && (
             <span>Expected <code className={styles.pre}>{answerText || '(nothing)'}</code>; you predicted <code className={styles.pre}>{normOutput(prediction) || '(nothing)'}</code>.</span>
           )}
@@ -189,8 +191,8 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
             <p className={styles.warn}>Your edit changes this program, so the stored 64-bit output no longer applies. Run it on your own machine (Module 3 shows how) to see the native result.</p>
           ) : (
             <>
-              {needs64 && <p className={native?.run && normOutput(p64) === normOutput(native.run.stdout) ? styles.goodText : styles.badText}>
-                {native?.run && normOutput(p64) === normOutput(native.run.stdout) ? '✓ Right for 64-bit too.' : '✗ The 64-bit answer differs from your prediction:'}</p>}
+              {needs64 && <p className={right64 ? styles.goodText : styles.badText}>
+                <Mark ok={right64} /> {right64 ? 'Right for 64-bit too.' : 'The 64-bit answer differs from your prediction:'}</p>}
               <div className={styles.nativeLabel}>{TARGET_LABEL[native!.target]}{native!.fallback ? ' (stored; your platform’s run isn’t available yet)' : ' (stored output from a real run)'}</div>
               <pre className={styles.stored}>{storedOutputText(sample, native?.run)}</pre>
               <div className={styles.muted}>{describeOutcome(native?.run, sample.results[native!.target]?.compile.ok ?? true)}</div>

@@ -1,11 +1,12 @@
 // Pieces shared by exercise kinds: test results, tiered hints, the solution gate.
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { describeResult } from '../testing/format';
 import type { TestResult } from '../testing/runner';
 import type { ExerciseProgress } from '../progress/store';
 import { solutionGate } from '../progress/gating';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { CodeEditor } from '../components/CodeEditor';
+import { Icon, Mark } from '../components/Icon';
 import styles from './Interaction.module.css';
 
 /** The failure explanation: output is shown escaped ("a\\tb\\n"), so invisible differences are visible. */
@@ -14,7 +15,9 @@ function TestDetail({ r }: { r: TestResult }) {
   if (!lines.length) return null;
   return (
     <pre className={styles.testDetail}>
-      {lines.map(l => `${'    '.repeat(l.indent ?? 0)}${l.mark ? (l.mark === 'pass' ? '✓ ' : '✗ ') : ''}${l.text}`).join('\n')}
+      {lines.map((l, i) => (
+        <Fragment key={i}>{i > 0 && '\n'}{'    '.repeat(l.indent ?? 0)}{l.mark && <><Mark ok={l.mark === 'pass'} /> </>}{l.text}</Fragment>
+      ))}
     </pre>
   );
 }
@@ -28,7 +31,7 @@ export function TestResults({ results, hideHints }: { results: TestResult[]; hid
       <ul className={styles.testList}>
         {results.map((r, i) => (
           <li key={i} className={`${styles.test} ${r.status === 'pass' ? styles.testPass : r.status === 'fail' ? styles.testFail : styles.testSkip}`}>
-            <span className={styles.testName}>{r.status === 'pass' ? '✓' : r.status === 'fail' ? '✗' : '–'} {r.name}</span>
+            <span className={styles.testName}><Icon name={r.status === 'pass' ? 'check' : r.status === 'fail' ? 'cross' : 'minus'} /> {r.name}</span>
             {r.status !== 'pass' && <TestDetail r={r} />}
             {r.status === 'fail' && r.hint && !hideHints && <div className={styles.muted}>Hint: {r.hint}</div>}
           </li>

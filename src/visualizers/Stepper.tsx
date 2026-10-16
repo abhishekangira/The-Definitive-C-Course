@@ -7,6 +7,7 @@ import { CodeListing } from '../components/CodeListing';
 import { useCardDone } from '../lesson/LessonContext';
 import { nestedSample } from '../interactions/nested';
 import { formatValue, isInterestingTransition } from './trace-format';
+import { Icon, Mark } from '../components/Icon';
 import styles from './Stepper.module.css';
 import ix from '../interactions/Interaction.module.css';
 
@@ -64,15 +65,15 @@ export function Stepper({ sample, children, predict = true, maxPredictions = 4, 
             pickCorrect={guess === null ? null : guess === next?.line}
           />
           <div className={styles.controls}>
-            <button type="button" className="btn btn-sm" onClick={() => { setGuess(null); setI(0); }} disabled={i === 0}>⟲ Restart</button>
-            <button type="button" className="btn btn-sm" onClick={() => { setGuess(null); setI(x => Math.max(0, x - 1)); }} disabled={i === 0}>← Back</button>
-            <button type="button" className="btn btn-sm btn-primary" onClick={advance} disabled={atEnd || Boolean(mustPredict)}>Step →</button>
+            <button type="button" className="btn btn-sm" onClick={() => { setGuess(null); setI(0); }} disabled={i === 0}><Icon name="restart" /> Restart</button>
+            <button type="button" className="btn btn-sm" onClick={() => { setGuess(null); setI(x => Math.max(0, x - 1)); }} disabled={i === 0}><Icon name="arrow-left" /> Back</button>
+            <button type="button" className="btn btn-sm btn-primary" onClick={advance} disabled={atEnd || Boolean(mustPredict)}>Step <Icon name="arrow-right" /></button>
             <span className={styles.counter} aria-live="polite">Step {i + 1} of {steps.length}{trace.truncated ? ' (trace truncated)' : ''}</span>
           </div>
           {mustPredict && <p className={styles.prompt}>Before you step: <strong>which line runs next?</strong> Click it in the code.</p>}
           {guess !== null && next && (
             <p className={guess === next.line ? ix.goodText : ix.badText} role="status">
-              {guess === next.line ? '✓ Right.' : `✗ Line ${next.line} runs next.`} {next.event === 'call' ? 'A function call pushes a new frame.' : next.stack.length < step.stack.length ? 'The function returns and its frame is popped.' : ''}
+              <Mark ok={guess === next.line} /> {guess === next.line ? 'Right.' : `Line ${next.line} runs next.`} {next.event === 'call' ? 'A function call pushes a new frame.' : next.stack.length < step.stack.length ? 'The function returns and its frame is popped.' : ''}
             </p>
           )}
           {asked > 0 && <p className={ix.muted}>Predictions: {score} of {asked} right.</p>}

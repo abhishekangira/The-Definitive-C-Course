@@ -13,6 +13,7 @@ import { normOutput } from '../../interactions/platform';
 import { seededShuffle } from '../../interactions/hash';
 import { update, useProgress } from '../../progress/store';
 import { CHECKPOINT_PASS, quizKey } from '../../progress/gating';
+import { Icon, Mark } from '../../components/Icon';
 import ix from '../../interactions/Interaction.module.css';
 import styles from './Pages.module.css';
 
@@ -36,7 +37,7 @@ function QuizItemView({ item, samples, index, onResult, result, assessment }: { 
   );
   const feedback = result && (
     <div className={result.correct ? ix.good : ix.bad} role="status">
-      <strong>{result.correct ? '✓ Correct.' : '✗ Not quite.'}</strong> {item.explain && <MiniMarkdown text={item.explain} />}
+      <strong><Mark ok={result.correct} /> {result.correct ? 'Correct.' : 'Not quite.'}</strong> {item.explain && <MiniMarkdown text={item.explain} />}
     </div>
   );
   const locked = Boolean(result);
@@ -102,8 +103,8 @@ function QuizItemView({ item, samples, index, onResult, result, assessment }: { 
               <li key={o}>
                 <span>{o}</span>
                 <span>
-                  <button type="button" className="btn btn-sm btn-ghost" disabled={locked || i === 0} aria-label={`Move up: ${o}`} onClick={() => setOrder(x => { const n = [...x]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; })}>↑</button>
-                  <button type="button" className="btn btn-sm btn-ghost" disabled={locked || i === order.length - 1} aria-label={`Move down: ${o}`} onClick={() => setOrder(x => { const n = [...x]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; return n; })}>↓</button>
+                  <button type="button" className="btn btn-sm btn-ghost" disabled={locked || i === 0} aria-label={`Move up: ${o}`} onClick={() => setOrder(x => { const n = [...x]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; })}><Icon name="arrow-up" /></button>
+                  <button type="button" className="btn btn-sm btn-ghost" disabled={locked || i === order.length - 1} aria-label={`Move down: ${o}`} onClick={() => setOrder(x => { const n = [...x]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; return n; })}><Icon name="arrow-down" /></button>
                 </span>
               </li>
             ))}

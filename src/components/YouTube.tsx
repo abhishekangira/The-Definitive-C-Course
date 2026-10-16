@@ -2,6 +2,7 @@
 // behind a click-to-load facade (no request to YouTube until the learner chooses to watch).
 import { useState } from 'react';
 import { videoByKey } from '../content-runtime/course';
+import { Icon } from './Icon';
 import styles from './YouTube.module.css';
 
 const fmt = (s: number) => `${Math.floor(s / 3600) ? `${Math.floor(s / 3600)}:` : ''}${String(Math.floor((s % 3600) / 60)).padStart(Math.floor(s / 3600) ? 2 : 1, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -19,7 +20,7 @@ export function YouTube({ video }: { video: string }) {
           <iframe src={src} title={`${v.title} (${fmt(v.start)}–${fmt(v.end)})`} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen loading="lazy" referrerPolicy="strict-origin-when-cross-origin" />
         ) : (
           <button type="button" className={styles.facade} onClick={() => setPlay(true)}>
-            <span className={styles.play} aria-hidden="true">▶</span>
+            <span className={styles.play} aria-hidden="true"><Icon name="play" /></span>
             <span className={styles.facadeText}>
               <strong>Watch a {Math.round(length / 60 * 10) / 10}-minute clip</strong>
               <span>{v.title}, {fmt(v.start)}–{fmt(v.end)} · {v.channel}</span>

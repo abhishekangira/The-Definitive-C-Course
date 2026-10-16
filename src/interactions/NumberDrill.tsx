@@ -2,6 +2,7 @@
 import { useId, useState } from 'react';
 import { asSigned, asUnsigned, binary, ctype, hex, parseNumber, toBits, type Width } from '../visualizers/numbers';
 import { useCardDone } from '../lesson/LessonContext';
+import { Mark } from '../components/Icon';
 import styles from './Interaction.module.css';
 
 type Base = 'dec' | 'bin' | 'hex';
@@ -48,7 +49,7 @@ export function NumberDrill({ value, from = 'dec', to = 'bin', width = 8, signed
       </form>
       {result !== null && (
         <div className={result ? styles.good : styles.bad} role="status">
-          {result ? '✓ Correct.' : <>✗ It's <code>{answer}</code>.</>}
+          <Mark ok={result} /> {result ? 'Correct.' : <>It's <code>{answer}</code>.</>}
         </div>
       )}
     </div>

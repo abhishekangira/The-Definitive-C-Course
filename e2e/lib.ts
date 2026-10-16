@@ -121,12 +121,12 @@ export async function completePredict(mod: ModuleInfo, box: Locator): Promise<vo
       expect(normOutput(await terminalStdout(box)), `${id}: browser output`).toBe(normOutput(s.results['wasm32-clang22'].run?.stdout ?? ''));
     }
   }
-  if (kind !== 'none') await expect(box.getByText('✓ Your prediction was right.')).toBeVisible();
+  if (kind !== 'none') await expect(box.getByText('Your prediction was right.', { exact: true })).toBeVisible();
   if (s.flagged && s.meta.predict64 && s.meta.predict64 !== 'none') {
     const native = nativeFor(s, undefined);
     await box.locator('textarea').last().fill(normOutput(native.run?.stdout ?? ''));
     await box.getByRole('button', { name: 'Check my 64-bit prediction' }).click();
-    await expect(box.getByText('✓ Right for 64-bit too.')).toBeVisible();
+    await expect(box.getByText('Right for 64-bit too.', { exact: true })).toBeVisible();
   }
 }
 
@@ -136,7 +136,7 @@ async function answerAuthoredChoice(box: Locator, submit: string, scope: Locator
   await box.getByRole('button', { name: submit, exact: true }).click();
   await scope.locator('[data-correct="true"] input[type=radio]').check();
   await box.getByRole('button', { name: /^(Check|Check again)$/ }).click();
-  await expect(box.getByText('✓ Correct.')).toBeVisible();
+  await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
 }
 
 export async function completeChoice(box: Locator): Promise<void> {
@@ -149,14 +149,14 @@ export async function completeCompilerError(page: Page, mod: ModuleInfo, box: Lo
   const first = s.results['wasm32-clang22']?.compile.diagnostics.find(d => d.severity !== 'note');
   expect(first, `${id}: needs a browser diagnostic`).toBeTruthy();
   await box.locator(`label[data-line="${first!.line}"]`).click();
-  await expect(box.getByText('✓ Yes: the file:line:col prefix says so.')).toBeVisible();
+  await expect(box.getByText('Yes: the file:line:col prefix says so.', { exact: true })).toBeVisible();
   await answerAuthoredChoice(box, 'Check', box.locator('form'));
   const fixButton = box.getByRole('button', { name: 'Compile and check' });
   if (await fixButton.count()) {
     const fixed = sample(mod, `${id}-fixed`);
     await setEditor(page, box, fixed.code);
     await fixButton.click();
-    await expect(box.getByText(/^✓ Fixed: it compiles cleanly/)).toBeVisible({ timeout: RUN_TIMEOUT });
+    await expect(box.getByText(/^\s*Fixed: it compiles cleanly/)).toBeVisible({ timeout: RUN_TIMEOUT });
     await box.getByRole('button', { name: 'Continue' }).click();
   }
 }
@@ -176,19 +176,19 @@ export async function completeMemoryDiagram(box: Locator): Promise<void> {
     await select.selectOption(correctAnswer(hit!.v));
   }
   await box.getByRole('button', { name: 'Check', exact: true }).click();
-  await expect(box.getByText('✓ All correct.')).toBeVisible();
+  await expect(box.getByText('All correct.', { exact: true })).toBeVisible();
 }
 
 export async function completeStepper(box: Locator): Promise<void> {
   const id = (await box.getAttribute('data-sample'))!;
   const steps = trace(id).steps;
-  const stepButton = box.getByRole('button', { name: 'Step →' });
+  const stepButton = box.getByRole('button', { name: 'Step', exact: true });
   for (let guard = 0; guard < steps.length + 5; guard++) {
     if (await box.getByText('which line runs next?').isVisible()) {
       const counter = (await box.getByText(/^Step \d+ of \d+/).textContent())!;
       const current = Number(/^Step (\d+)/.exec(counter)![1]); // 1-based, so steps[current] is the next step
       await box.getByRole('button', { name: new RegExp(`^Line ${steps[current].line}:`) }).click();
-      await expect(box.getByText(/^✓ Right\./)).toBeVisible();
+      await expect(box.getByText(/^\s*Right\./)).toBeVisible();
     }
     if (await stepButton.isDisabled()) break;
     await stepButton.click();
@@ -203,7 +203,7 @@ export async function completeNumberDrill(box: Locator): Promise<void> {
   const answer = to === 'bin' ? binary(bits, width) : to === 'hex' ? hex(bits, width) : bits.toString();
   await box.locator('input').first().fill(answer);
   await box.getByRole('button', { name: 'Check', exact: true }).click();
-  await expect(box.getByText('✓ Correct.')).toBeVisible();
+  await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
 }
 
 export async function completeExercise(page: Page, mod: ModuleInfo, box: Locator, opts: { viewHint?: boolean } = {}): Promise<void> {
@@ -278,7 +278,7 @@ export async function answerQuiz(page: Page, mod: ModuleInfo, kind: 'retrieval' 
       await box.locator('input[type=radio]').nth(idx).check();
     } else throw new Error(`no e2e handler for quiz item type ${item.type}`);
     await box.getByRole('button', { name: 'Submit answer' }).click();
-    await expect(box.getByText('✓ Correct.')).toBeVisible();
+    await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
   }
 }
 

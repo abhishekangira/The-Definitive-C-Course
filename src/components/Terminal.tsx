@@ -53,7 +53,7 @@ export function Terminal({ segments, phase, result, onInput, onEOF, onStop, labe
             <label className="visually-hidden" htmlFor="term-input">Type input for the program, then press Enter</label>
             <input id="term-input" ref={inputRef} className={styles.input} value={line} onChange={e => setLine(e.target.value)} autoComplete="off" spellCheck={false}
               onKeyDown={e => { if (e.key === 'd' && e.ctrlKey && onEOF) { e.preventDefault(); onEOF(); } }} />
-            <span className={styles.hint} aria-hidden="true">Enter ↵ · Ctrl-D = end of input</span>
+            <span className={styles.hint} aria-hidden="true">Enter sends the line · Ctrl-D = end of input</span>
           </form>
         )}
       </div>

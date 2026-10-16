@@ -8,6 +8,7 @@ import { useCardDone } from '../lesson/LessonContext';
 import { nestedSample } from './nested';
 import { formatValue, findVar } from '../visualizers/trace-format';
 import { correctAnswer, pickStep } from './memory-answers';
+import { Mark } from '../components/Icon';
 import styles from './Interaction.module.css';
 import ms from './MemoryDiagram.module.css';
 
@@ -86,7 +87,7 @@ export function MemoryDiagram({ sample, children, line, occurrence, step: stepIn
                         ) : (
                           <input aria-label={`${f.func}: value of ${v.name}`} value={answers[path] ?? ''} onChange={e => setAnswers(a => ({ ...a, [path]: e.target.value }))} size={8} />
                         )}
-                        {checked > 0 && <span aria-label={matches(v, answers[path] ?? '') ? 'correct' : 'incorrect'}>{matches(v, answers[path] ?? '') ? ' ✓' : ' ✗'}</span>}
+                        {checked > 0 && <span role="img" aria-label={matches(v, answers[path] ?? '') ? 'correct' : 'incorrect'}> <Mark ok={matches(v, answers[path] ?? '')} /></span>}
                         {reveal && !matches(v, answers[path] ?? '') && <span className={ms.reveal}> answer: {correctAnswer(v)}</span>}
                       </span>
                     ) : (
@@ -101,7 +102,7 @@ export function MemoryDiagram({ sample, children, line, occurrence, step: stepIn
       </div>
       <div className={styles.actions}>
         <button type="button" className="btn btn-primary" onClick={() => { if (checked === 0) onResult?.(allRight); setChecked(c => c + 1); markDone(); }}>Check</button>
-        {checked > 0 && <span className={allRight ? styles.goodText : styles.badText} role="status">{allRight ? '✓ All correct.' : reveal ? 'Here are the answers. Compare them with yours.' : 'Some cells are wrong. Look again and check once more.'}</span>}
+        {checked > 0 && <span className={allRight ? styles.goodText : styles.badText} role="status">{allRight ? <><Mark ok /> All correct.</> : reveal ? 'Here are the answers. Compare them with yours.' : 'Some cells are wrong. Look again and check once more.'}</span>}
       </div>
       <p className={styles.muted}>Values recorded by running the program on x86-64 Linux.</p>
     </div>

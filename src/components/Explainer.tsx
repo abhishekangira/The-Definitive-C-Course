@@ -2,6 +2,7 @@
 // captions on by default, step chips, pause-at-step prediction prompts, transcript, and a still-image
 // sequence for learners who prefer reduced motion.
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Icon, Mark } from './Icon';
 import styles from './Explainer.module.css';
 
 interface StepsFile {
@@ -88,7 +89,7 @@ export function Explainer({ id, pauses = [] }: { id: string; pauses?: PausePromp
               {answered[prompt.step] !== undefined && (
                 <>
                   <p className={answered[prompt.step] === prompt.answer ? styles.right : styles.wrong}>
-                    {answered[prompt.step] === prompt.answer ? '✓ Right.' : `✗ It's “${prompt.options[prompt.answer]}”.`} {prompt.explain}
+                    <Mark ok={answered[prompt.step] === prompt.answer} /> {answered[prompt.step] === prompt.answer ? 'Right.' : `It's “${prompt.options[prompt.answer]}”.`} {prompt.explain}
                   </p>
                   <button type="button" className="btn btn-primary" onClick={() => { setPrompt(null); void video.current?.play(); }}>Continue</button>
                 </>
@@ -100,9 +101,9 @@ export function Explainer({ id, pauses = [] }: { id: string; pauses?: PausePromp
         <div className={styles.stills}>
           <img src={`${base}${meta.stills?.[stillKeys[stillIndex]] ?? meta.poster}`} alt={meta.steps[stillIndex]?.label ?? ''} className={styles.video} />
           <div className={styles.stillNav}>
-            <button type="button" className="btn btn-sm" onClick={() => setStillIndex(i => Math.max(0, i - 1))} disabled={stillIndex === 0}>← Previous</button>
+            <button type="button" className="btn btn-sm" onClick={() => setStillIndex(i => Math.max(0, i - 1))} disabled={stillIndex === 0}><Icon name="arrow-left" /> Previous</button>
             <span aria-live="polite">Step {stillIndex + 1} of {meta.steps.length}: {meta.steps[stillIndex]?.label}</span>
-            <button type="button" className="btn btn-sm" onClick={() => setStillIndex(i => Math.min(meta.steps.length - 1, i + 1))} disabled={stillIndex >= meta.steps.length - 1}>Next →</button>
+            <button type="button" className="btn btn-sm" onClick={() => setStillIndex(i => Math.min(meta.steps.length - 1, i + 1))} disabled={stillIndex >= meta.steps.length - 1}>Next <Icon name="arrow-right" /></button>
           </div>
         </div>
       )}

@@ -11,6 +11,7 @@ import { browserExec } from './exec-browser';
 import { seededShuffle } from './hash';
 import { useExerciseProgress } from './useExerciseProgress';
 import { GiveUp, Hints, TestResults, type AssessmentProps } from './ExerciseParts';
+import { Icon } from '../components/Icon';
 import styles from './Interaction.module.css';
 import ps from './Parsons.module.css';
 
@@ -63,7 +64,7 @@ export function Parsons({ entry, files, spec, fileName, isVariant, parentId, onP
             {bank.map(b => (
               <li key={b.key} className={ps.block}>
                 <code className={ps.code}>{b.text}</code>
-                <button type="button" className="btn btn-sm" onClick={() => setPlaced(p => [...p, b])} aria-label={`Add line: ${b.text.trim()}`}>Add →</button>
+                <button type="button" className="btn btn-sm" onClick={() => setPlaced(p => [...p, b])} aria-label={`Add line: ${b.text.trim()}`}>Add <Icon name="arrow-right" /></button>
               </li>
             ))}
           </ul>
@@ -75,11 +76,11 @@ export function Parsons({ entry, files, spec, fileName, isVariant, parentId, onP
               <li key={b.key} className={ps.block}>
                 <code className={ps.code} style={{ paddingLeft: `${b.indent * 2}ch` }}>{b.text}</code>
                 <span className={ps.tools}>
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move up: ${b.text.trim()}`}>↑</button>
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => move(i, 1)} disabled={i === placed.length - 1} aria-label={`Move down: ${b.text.trim()}`}>↓</button>
-                  {indentMode && <button type="button" className="btn btn-sm btn-ghost" onClick={() => indent(i, -1)} aria-label={`Outdent: ${b.text.trim()}`}>⇤</button>}
-                  {indentMode && <button type="button" className="btn btn-sm btn-ghost" onClick={() => indent(i, 1)} aria-label={`Indent: ${b.text.trim()}`}>⇥</button>}
-                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setPlaced(p => p.filter(x => x.key !== b.key))} aria-label={`Remove: ${b.text.trim()}`}>✕</button>
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move up: ${b.text.trim()}`}><Icon name="arrow-up" /></button>
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => move(i, 1)} disabled={i === placed.length - 1} aria-label={`Move down: ${b.text.trim()}`}><Icon name="arrow-down" /></button>
+                  {indentMode && <button type="button" className="btn btn-sm btn-ghost" onClick={() => indent(i, -1)} aria-label={`Outdent: ${b.text.trim()}`}><Icon name="outdent" /></button>}
+                  {indentMode && <button type="button" className="btn btn-sm btn-ghost" onClick={() => indent(i, 1)} aria-label={`Indent: ${b.text.trim()}`}><Icon name="indent" /></button>}
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => setPlaced(p => p.filter(x => x.key !== b.key))} aria-label={`Remove: ${b.text.trim()}`}><Icon name="cross" /></button>
                 </span>
               </li>
             ))}

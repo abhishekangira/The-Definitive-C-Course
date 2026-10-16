@@ -8,6 +8,7 @@ import { isModuleUnlocked, moduleStatus } from '../../progress/gating';
 import { useProgress } from '../../progress/store';
 import type { SamplesFile } from '../../content-model/types';
 import { getRuntime } from '../../runtime/CRuntime';
+import { Icon } from '../../components/Icon';
 import styles from './Pages.module.css';
 
 export function LessonPage() {
@@ -55,11 +56,11 @@ export function LessonPage() {
       <footer className={styles.lessonFooter}>
         {done ? <p className={styles.okBox}>Lesson complete.</p> : <p className={styles.muted}>Finish each part to reveal the next one.</p>}
         <div className={styles.pager}>
-          {prev ? <Link className="btn" to={`/m/${moduleId}/${prev.stem}`}>← {prev.frontmatter.title}</Link> : <span />}
+          {prev ? <Link className="btn" to={`/m/${moduleId}/${prev.stem}`}><Icon name="arrow-left" /> {prev.frontmatter.title}</Link> : <span />}
           {next ? (
-            <Link className={`btn ${done ? 'btn-primary' : ''}`} to={`/m/${moduleId}/${next.stem}`}>{next.frontmatter.title} →</Link>
+            <Link className={`btn ${done ? 'btn-primary' : ''}`} to={`/m/${moduleId}/${next.stem}`}>{next.frontmatter.title} <Icon name="arrow-right" /></Link>
           ) : (
-            <Link className={`btn ${done ? 'btn-primary' : ''}`} to={`/m/${moduleId}`}>Back to the module →</Link>
+            <Link className={`btn ${done ? 'btn-primary' : ''}`} to={`/m/${moduleId}`}>Back to the module <Icon name="arrow-right" /></Link>
           )}
         </div>
       </footer>

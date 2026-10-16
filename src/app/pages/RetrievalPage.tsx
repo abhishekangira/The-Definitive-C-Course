@@ -3,6 +3,7 @@ import { moduleById } from '../../content-runtime/course';
 import { isModuleUnlocked } from '../../progress/gating';
 import { useProgress } from '../../progress/store';
 import { QuizRunner } from './QuizRunner';
+import { Icon } from '../../components/Icon';
 import styles from './Pages.module.css';
 
 export function RetrievalPage() {
@@ -18,7 +19,7 @@ export function RetrievalPage() {
         ? 'Before any C: a few questions about the JavaScript you already know. Some JS behaviours you take for granted are exactly what C does differently, so we will come back to them.'
         : 'Questions from earlier modules. Pulling things back out of memory is how they stay there. This quiz is not graded.'}</p>
       <QuizRunner moduleId={moduleId} kind="retrieval" />
-      <p><Link to={`/m/${moduleId}`}>← Back to the module</Link></p>
+      <p><Link to={`/m/${moduleId}`}><Icon name="arrow-left" /> Back to the module</Link></p>
     </div>
   );
 }

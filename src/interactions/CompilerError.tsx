@@ -9,6 +9,7 @@ import { useCRun } from '../runtime/useCRun';
 import { useCardDone, useSamples } from '../lesson/LessonContext';
 import { nestedSamples } from './nested';
 import { normOutput, TARGET_LABEL } from './platform';
+import { Mark } from '../components/Icon';
 import styles from './Interaction.module.css';
 
 const COMPILER_TABS: TargetId[] = ['wasm32-clang22', 'linux-x86_64-gcc13', 'macos-arm64-appleclang'];
@@ -87,7 +88,7 @@ export function CompilerError({ children, question, options, answer, explain, fi
             </li>
           ))}
         </ol>
-        {lineGuess !== null && <p className={lineRight ? styles.goodText : styles.badText}>{lineRight ? '✓ Yes: the file:line:col prefix says so.' : `✗ Look at the number after the file name in the first message.`}</p>}
+        {lineGuess !== null && <p className={lineRight ? styles.goodText : styles.badText}><Mark ok={lineRight} /> {lineRight ? 'Yes: the file:line:col prefix says so.' : 'Look at the number after the file name in the first message.'}</p>}
       </fieldset>
 
       <form className={styles.predict} onSubmit={e => { e.preventDefault(); if (picked !== null) { setSubmitted(true); if (!fix) markDone(); } }}>
@@ -104,7 +105,7 @@ export function CompilerError({ children, question, options, answer, explain, fi
       </form>
       {submitted && (
         <div className={picked === answer ? styles.good : styles.bad} role="status">
-          <strong>{picked === answer ? '✓ Correct.' : '✗ Not quite.'}</strong>
+          <strong><Mark ok={picked === answer} /> {picked === answer ? 'Correct.' : 'Not quite.'}</strong>
           {explain && <MiniMarkdown text={explain} />}
         </div>
       )}
@@ -119,7 +120,7 @@ export function CompilerError({ children, question, options, answer, explain, fi
           </div>
           {runner.phase !== 'idle' && <DiagnosticsList diagnostics={runner.diagnostics} raw={runner.rawDiagnostics} />}
           {runner.phase !== 'idle' && runner.diagnostics.length === 0 && <Terminal segments={runner.segments} phase={runner.phase} result={runner.result} onStop={runner.stop} />}
-          {fixState === 'ok' && <div className={styles.good} role="status"><strong>✓ Fixed: it compiles cleanly{fixedOutput !== undefined ? ' and prints the right output' : ''}.</strong></div>}
+          {fixState === 'ok' && <div className={styles.good} role="status"><strong><Mark ok /> Fixed: it compiles cleanly{fixedOutput !== undefined ? ' and prints the right output' : ''}.</strong></div>}
           {fixState === 'ok' && <button type="button" className="btn" onClick={markDone}>Continue</button>}
           {fixState === 'bad' && <div className={styles.bad} role="status">{runner.diagnostics.length ? 'Still not clean: read the new message, which may point somewhere else.' : 'It compiles, but the output isn\'t right yet.'}</div>}
           {fixedRef && fixAttempts >= 2 && fixState !== 'ok' && !shownFix && (

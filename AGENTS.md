@@ -61,7 +61,7 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 - **Content lives in `content/`** (MDX/YAML), separate from `src/`.
 - **Outside resources:** at most 1–2 per module, each naming an exact chapter or lecture.
 - **YouTube:** at most 2 segments per module, only when they clearly beat the app. Each goes in `videos.json` with `why`.
-- **Accessibility:** axe must report no serious or critical violation on any page in light *and* dark. Contrast is WCAG AA (4.5:1). Never dim with `opacity`, and never use Unicode glyphs as icons (fonts lack them; use inline SVG).
+- **Accessibility:** axe must report no serious or critical violation on any page in light *and* dark. Contrast is WCAG AA (4.5:1). Never dim with `opacity`, and never use Unicode glyphs as icons (fonts lack them; use inline SVG: `<Icon>` and `<Mark>` in `src/components/Icon.tsx`; `Icon.test.ts` fails on a check mark, cross, play triangle or arrow glyph in a control).
 
 ## Commands (keep in sync with `package.json`)
 | Command | What it does |
@@ -142,6 +142,7 @@ content/modules/m01-c-in-your-browser/
 - Never commit machine-dependent output (stack garbage, ASLR addresses). `verify --check` and `trace --check` must be stable across runs.
 - **Timed-out runs are cached (known bug, fix pending).** `tools/verify` stores a run that timed out under load as if it were a result and replays it (`checkSample` reports a timeout as a problem, but the cache only checks for run errors). If a verify or fixture test fails fast right after a slow or loaded run, clear `.cache/verify` and `.cache/verify-test` and rerun before debugging. Delete this note when it is fixed.
 - **Judge a failure on a clean `main` under the same load before blaming a PR.** The e2e suite and the verifier fixture tests are timing-sensitive on a busy 4-CPU machine; we saw one-off failures at load 5 to 7 that passed on rerun. Run gates one at a time and don't run e2e while other heavy jobs run.
+- **Playwright `getByText` with a regex does not trim.** An icon before the words leaves a leading space, so `/^Right\./` misses and `/^\s*Right\./` matches; a plain string (with `exact: true`) is trimmed. Check the button name too: an `aria-hidden` icon adds nothing to it, so `name: 'Step', exact: true`.
 - **Wait for a signal that identifies the page.** A bare `h1` also matches the page you are leaving; use the specific heading text or a `data-*` attribute.
 - **Tests that make their own context** (`browser.newContext()`, needed for axe) get no automatic Playwright trace or failure screenshot; start `context.tracing` yourself when debugging.
 - **Compiler diagnostics depend on the locale.** gcc and clang print Unicode quotes in UTF-8 locales, while the generated files and tests assume ASCII. Run `verify`, `trace` and the tests with `LC_ALL=C`.

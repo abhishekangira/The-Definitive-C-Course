@@ -2,6 +2,7 @@
 import { useId, useState } from 'react';
 import { useCardDone } from '../lesson/LessonContext';
 import { MiniMarkdown } from '../components/MiniMarkdown';
+import { Mark } from '../components/Icon';
 import styles from './Interaction.module.css';
 
 export function Choice({ question, options, answer, explain, why }: {
@@ -40,7 +41,7 @@ export function Choice({ question, options, answer, explain, why }: {
       </form>
       {submitted !== null && (
         <div className={correct ? styles.good : styles.bad} role="status">
-          <strong>{correct ? '✓ Correct.' : '✗ Not quite.'}</strong>
+          <strong><Mark ok={correct} /> {correct ? 'Correct.' : 'Not quite.'}</strong>
           {explain && <MiniMarkdown text={explain} />}
         </div>
       )}

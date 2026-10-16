@@ -9,7 +9,7 @@ export type Tone = 'plain' | 'dim' | 'bad' | 'good' | 'hint';
 export interface Line {
   text: string;
   tone?: Tone;
-  /** Unit subtests: draw a ✓/✗ mark before the text. */
+  /** Unit subtests: draw a pass/fail mark before the text (an SVG icon in the app, a terminal symbol in check.mjs). */
   mark?: 'pass' | 'fail';
   /** Extra indentation level (subtest messages). */
   indent?: number;
