@@ -99,7 +99,8 @@ behaves differently under the sanitizers, or times out; nothing is written for a
 Output is deterministic: run it twice and `git status` stays clean.
 
 Scope: single-file, stdin/args/stdout/exit cases (what Module 1 uses). Unit-harness and `make` tests, stderr expectations and
-multi-file sources are still written by hand; `exercises:expect` does not touch a folder without `cases.yaml` (it reports it).
+multi-file sources are still written by hand; `exercises:expect` skips a folder without `cases.yaml` (reports it as skipped, exit 0)
+so those hand-written folders do not break `--check` in CI. A mistyped `--only` or `--module` that matches nothing exits 1.
 Tests: `expect.test.ts`, fixtures in `fixtures/expect/`.
 
 ## Files

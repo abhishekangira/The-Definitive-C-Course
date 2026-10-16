@@ -40,6 +40,8 @@ export interface ExpectItem {
   /** The file that was (or would be) written. */
   target: string;
   ok: boolean;
+  /** true when there is no cases.yaml: hand-written tests stay untouched. */
+  skipped: boolean;
   /** true when the file's content changed (or, with check, would change). */
   changed: boolean;
   cases: number;
@@ -116,8 +118,7 @@ function expectOne(cc: string, work: string, sourceDir: string, sources: string[
     if (SAN_REPORT.test(s.stderr) || s.exit === 86) { problems.push(`case "${c.name}" fails under ASan+UBSan:\n${s.stderr.trim().split('\n').slice(0, 6).join('\n')}`); continue; }
     if (s.stdout !== a.stdout || s.exit !== a.exit) { problems.push(`case "${c.name}": the sanitizer build behaves differently from the plain build`); continue; }
     const run_: Record<string, unknown> = {};
-    if (c.stdin !== undefined) run_.stdin = c.stdin;
-    else run_.stdin = '';
+    run_.stdin = c.stdin ?? '';
     if (c.args && c.args.length) run_.args = c.args;
     if (c.timeoutMs !== undefined) run_.timeoutMs = c.timeoutMs;
     const t: Record<string, unknown> = { name: c.name, run: run_, expect: { stdout: a.stdout, exit: a.exit } };
@@ -143,9 +144,10 @@ export function expectAll(o: ExpectOptions): ExpectItem[] {
   try {
     for (const f of folders) {
       const target = path.join(f.dir, f.project ? 'check.json' : 'tests.json');
-      const item: ExpectItem = { id: f.id, dir: f.dir, target, ok: true, changed: false, cases: 0, problems: [] };
+      const item: ExpectItem = { id: f.id, dir: f.dir, target, ok: true, skipped: false, changed: false, cases: 0, problems: [] };
       const casesPath = path.join(f.dir, 'cases.yaml');
-      if (!existsSync(casesPath)) { item.ok = false; item.problems.push('cases.yaml is missing'); items.push(item); continue; }
+      // Hand-written unit/make folders have no cases.yaml; skip them so CI --check stays green.
+      if (!existsSync(casesPath)) { item.skipped = true; item.problems.push('cases.yaml is missing (skipped)'); items.push(item); continue; }
       const finish = () => { item.ok = item.problems.length === 0; items.push(item); };
       let raw: unknown;
       try { raw = parseYaml(readFileSync(casesPath, 'utf8')); } catch (e) { item.problems.push(`cases.yaml is not valid YAML: ${(e as Error).message}`); finish(); continue; }

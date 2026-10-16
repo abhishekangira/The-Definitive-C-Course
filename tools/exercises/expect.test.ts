@@ -1,4 +1,5 @@
 // exercises:expect on fixtures (tools/exercises/fixtures/expect) and on broken copies of them.
+import { spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -30,10 +31,10 @@ describe('exercises:expect', () => {
     const root = copy();
     for (let i = 0; i < 2; i++) {
       const items = byId(root);
-      expect(items.map(x => [x.id, x.ok, x.changed, x.problems])).toEqual([
-        ['echo-args', true, false, []],
-        ['echo-args/variants/1', true, false, []],
-        ['project/p0-sum', true, false, []],
+      expect(items.map(x => [x.id, x.ok, x.skipped, x.changed, x.problems])).toEqual([
+        ['echo-args', true, false, false, []],
+        ['echo-args/variants/1', true, false, false, []],
+        ['project/p0-sum', true, false, false, []],
       ]);
     }
     expect(read(root, `${ECHO}/tests.json`)).toBe(read(FIXTURES, `${ECHO}/tests.json`));
@@ -87,9 +88,12 @@ describe('exercises:expect', () => {
     expect(byId(leak, 'echo-args')[0].problems.join('\n')).toMatch(/fails under ASan\+UBSan/);
   });
 
-  it('reports a missing or invalid cases.yaml', () => {
+  it('skips a missing cases.yaml and rejects an invalid one', () => {
     const missing = copy(r => rmSync(path.join(r, `${ECHO}/cases.yaml`)));
-    expect(byId(missing, 'echo-args')[0].problems).toEqual(['cases.yaml is missing']);
+    const skipped = byId(missing, 'echo-args')[0];
+    expect(skipped.skipped).toBe(true);
+    expect(skipped.ok).toBe(true);
+    expect(skipped.problems).toEqual(['cases.yaml is missing (skipped)']);
     const bad = copy(r => write(r, `${ECHO}/cases.yaml`, 'cases:\n  - name: a\n    stdn: "x"\n  - name: a\n'));
     const problems = byId(bad, 'echo-args')[0].problems.join('\n');
     expect(problems).toMatch(/unknown key "stdn"/);
@@ -102,6 +106,38 @@ describe('exercises:expect', () => {
       write(r, `${ECHO}/cases.yaml`, 'cases:\n  - name: hangs\n    timeoutMs: 300\n');
     });
     expect(byId(root, 'echo-args')[0].problems[0]).toMatch(/case "hangs"/);
+  });
+});
+
+describe('exercises:expect CLI exit status', () => {
+  const CLI = path.join(path.dirname(fileURLToPath(import.meta.url)), 'expect-cli.ts');
+  const run = (root: string, ...args: string[]) => {
+    const r = spawnSync('npx', ['tsx', CLI, '--content-root', root, ...args], { encoding: 'utf8' });
+    return { code: r.status, out: `${r.stdout}${r.stderr}` };
+  };
+
+  it('--only that matches nothing exits 1 (even with --check)', () => {
+    const root = copy();
+    for (const extra of [[], ['--check']]) {
+      const r = run(root, '--only', 'no-such-exercise', ...extra);
+      expect(r.code).toBe(1);
+      expect(r.out).toMatch(/No exercises or projects matched --only no-such-exercise/);
+    }
+  });
+
+  it('--module that matches nothing exits 1', () => {
+    expect(run(copy(), '--module', 'm99').code).toBe(1);
+  });
+
+  it('--only with a real id still exits 0', () => {
+    expect(run(copy(), '--only', 'echo-args', '--check').code).toBe(0);
+  });
+
+  it('a folder without cases.yaml is skipped: --check exits 0 and says so', () => {
+    const root = copy(r => rmSync(path.join(r, `${ECHO}/cases.yaml`)));
+    const r = run(root, '--check');
+    expect(r.code).toBe(0);
+    expect(r.out).toMatch(/skipped \(no cases\.yaml\)/);
   });
 });
 
