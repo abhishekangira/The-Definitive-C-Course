@@ -7,22 +7,22 @@ summary: Anatomy of a diagnostic, fixing the first error first, warnings versus 
 
 You've read a few compiler messages already. Every clang diagnostic has the same anatomy:
 
-`main.c:6:20: error: use of undeclared identifier 'cuont'; did you mean 'count'?`
+`main.c:6:20: error: use of undeclared identifier 'cuont'`
 
 - **file:line:column**: exactly where the compiler noticed the problem (not always where you made it).
 - **severity**: `error` stops the build. `warning` lets it continue, but in this course every warning is treated as a bug. `note` adds context to the message above it.
-- **message**: often with a suggestion. Below it, a **caret** `^` points at the column, and sometimes a **fix-it** shows replacement text.
+- **message**: sometimes with a suggestion, such as `did you mean 'count'?` when a name is very close to one that exists. Below it, a **caret** `^` points at the column, and sometimes a **fix-it** shows replacement text.
 
 <CompilerError
   question="What's wrong?"
   options={[
     "`count` was declared after it was used",
-    "There's a typo: `cuont` was never declared, and clang suggests the variable you probably meant",
+    "There's a typo: `cuont` was never declared (the variable is spelled `count`)",
     "`printf` can't print variables",
     "`int` variables need an initial value",
   ]}
   answer={1}
-  explain="An **undeclared identifier** means the name doesn't exist in this scope. Clang's spell-checker spotted the nearby name `count`. In JavaScript this would be a runtime ReferenceError; in C you find out before anything runs."
+  explain="An **undeclared identifier** means the name doesn't exist in this scope. Here `cuont` is a typo for `count`. Clang did not guess that (it only offers a `did you mean ...?` suggestion when a name is very close to an existing one), so read the message against your code. In JavaScript this would be a runtime ReferenceError; in C you find out before anything runs."
 >
 
 ```c id=typo-identifier expect=compile-error
@@ -52,7 +52,7 @@ int main(void) {
 **Fix the first error first.** One mistake can confuse the parser so badly that it reports errors on perfectly good lines below. Fix the first message, recompile, and see what's left. Usually the cascade disappears.
 
 <CompilerError
-  question="Clang reports errors, but one mistake causes them all. Which?"
+  question="Clang reports one error and one note. Which mistake caused them?"
   options={[
     "`return 0` is missing a semicolon",
     "The `if` condition is missing its closing parenthesis `)`, so everything after it is parsed wrongly",
@@ -60,7 +60,7 @@ int main(void) {
     "`main` must be declared before `if`",
   ]}
   answer={1}
-  explain={"The first error points at the `{` where clang expected `)`. Fix that one and the rest vanish. The note \"to match this '('\" shows where the unmatched parenthesis began."}
+  explain={"The error points at the `{` where clang expected `)`. The note \"to match this '('\" shows where the unmatched parenthesis began, and fixing the first message is usually enough."}
 >
 
 ```c id=missing-paren expect=compile-error
