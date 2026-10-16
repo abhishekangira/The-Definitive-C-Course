@@ -11,7 +11,7 @@ You've read a few compiler messages already. Every clang diagnostic has the same
 
 - **file:line:column**: exactly where the compiler noticed the problem (not always where you made it).
 - **severity**: `error` stops the build. `warning` lets it continue, but in this course every warning is treated as a bug. `note` adds context to the message above it.
-- **message**: sometimes with a suggestion, such as `did you mean 'count'?` when a name is very close to one that exists. Below it, a **caret** `^` points at the column, and sometimes a **fix-it** shows replacement text.
+- **message**: sometimes with a suggestion (gcc prints `did you mean 'count'?` for the typo below; clang 22 prints no suggestion for it). Below it, a **caret** `^` points at the column, and sometimes a **fix-it** shows replacement text.
 
 <CompilerError
   question="What's wrong?"
@@ -22,7 +22,7 @@ You've read a few compiler messages already. Every clang diagnostic has the same
     "`int` variables need an initial value",
   ]}
   answer={1}
-  explain="An **undeclared identifier** means the name doesn't exist in this scope. Here `cuont` is a typo for `count`. Clang did not guess that (it only offers a `did you mean ...?` suggestion when a name is very close to an existing one), so read the message against your code. In JavaScript this would be a runtime ReferenceError; in C you find out before anything runs."
+  explain="An **undeclared identifier** means the name doesn't exist in this scope. Here `cuont` is a typo for `count`. Clang 22 printed no suggestion for it (gcc does print `did you mean 'count'?`), so don't count on one: read the message against your code. In JavaScript this would be a runtime ReferenceError; in C you find out before anything runs."
 >
 
 ```c id=typo-identifier expect=compile-error

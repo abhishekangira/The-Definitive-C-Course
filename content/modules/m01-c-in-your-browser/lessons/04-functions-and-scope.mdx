@@ -59,7 +59,7 @@ Now draw it yourself. The program is paused just before `return sum;` runs insid
 
 <MemoryDiagram sample="add-frames" line={5} ask={['add.a', 'add.b', 'add.sum', 'main.x']} />
 
-**Scope** is per block: a variable declared inside `{ … }` exists only until the closing brace, like `let`. Unlike `let`, a local variable is **not initialised** for you. Until you assign it, it holds whatever bytes were already in that memory. There is no `undefined`. Reading it is undefined behaviour, so the compiler warns.
+**Scope** is per block: a variable declared inside `{ … }` exists only until the closing brace, like `let`. Unlike `let`, a local variable is **not initialised** for you. Until you assign it, it holds whatever bytes were already in that memory. There is no `undefined`. Reading it is undefined behaviour, so the compiler may warn (it depends on the compiler and optimisation level).
 
 <CompilerError
   question="Why does clang warn here?"

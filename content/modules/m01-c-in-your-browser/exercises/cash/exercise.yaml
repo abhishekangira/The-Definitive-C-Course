@@ -18,7 +18,7 @@ hints:
 - 'Keep subtracting the largest coin that fits and count how many coins you take. Is there a faster
   way to ask how many quarters fit into the amount?'
 - 'Integer division tells you how many of a coin fit, and the remainder is what is left for the smaller
-  coins. Do this for quarters, then dimes, nickels and pennies, and add up the counts.'
+  coins. Do this for each coin, and add up the counts.'
 - '```
 
   int coins = 0;
