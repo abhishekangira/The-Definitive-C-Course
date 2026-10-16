@@ -860,7 +860,7 @@
       "answer": {
         "native": {
           "outcome": "runs",
-          "stdout": "1866272040\n"
+          "stdout": "-650065192\n"
         },
         "outcome": "runs",
         "stdout": "0\n"
@@ -898,26 +898,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "1375595416\n"
+              "stdout": "1181389464\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "1653638552\n"
+              "stdout": "-446464856\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-971979816\n"
+              "stdout": "-899787992\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "1375595416\n"
+            "stdout": "1181389464\n"
           },
           "sanitizer": {
             "ok": true
@@ -945,26 +945,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "1866272040\n"
+              "stdout": "-650065192\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-392156648\n"
+              "stdout": "274195592\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "398652632\n"
+              "stdout": "-1412383752\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "1866272040\n"
+            "stdout": "-650065192\n"
           },
           "sanitizer": {
             "ok": true
@@ -2399,7 +2399,7 @@
       "answer": {
         "native": {
           "outcome": "runs",
-          "stdout": "-1538093314\n"
+          "stdout": "-1123150354\n"
         },
         "outcome": "runs",
         "stdout": "6\n"
@@ -2444,26 +2444,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "2091701470\n"
+              "stdout": "-1245689202\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "387534558\n"
+              "stdout": "2086168494\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-1207696194\n"
+              "stdout": "-574275138\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "2091701470\n"
+            "stdout": "-1245689202\n"
           },
           "sanitizer": {
             "ok": true
@@ -2482,26 +2482,26 @@
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "-1538093314\n"
+              "stdout": "-1123150354\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "60017534\n"
+              "stdout": "-1414125266\n"
             },
             {
               "exit": 0,
               "signal": null,
               "stderr": "",
-              "stdout": "360782958\n"
+              "stdout": "2103847182\n"
             }
           ],
           "run": {
             "exit": 0,
             "signal": null,
             "stderr": "",
-            "stdout": "-1538093314\n"
+            "stdout": "-1123150354\n"
           },
           "sanitizer": {
             "ok": true
