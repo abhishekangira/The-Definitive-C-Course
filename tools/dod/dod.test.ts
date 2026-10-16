@@ -1,9 +1,12 @@
+import { spawnSync } from 'node:child_process';
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { main, parseArgs } from './cli';
 import { formatReport, runSteps, spawnExec, type Exec } from './run';
-import { animationIds, buildSteps, findModuleDir, type Step } from './steps';
+import { EXERCISE_PROBLEM, animationIds, buildSteps, findModuleDir, type Step } from './steps';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const contentRoot = path.join(here, 'fixtures', 'content');
@@ -16,7 +19,7 @@ const exec = spawnExec(here);
 describe('buildSteps on the fixture modules', () => {
   it('runs the steps in the order the ticket lists, with the module passed to the module-aware commands', () => {
     const steps = buildSteps({ module: 'm90', contentRoot });
-    expect(steps.map(s => s.id)).toEqual(['typecheck', 'lint', 'verify', 'trace', 'exercises', 'videos', 'anim', 'unit', 'build', 'e2e', 'targets']);
+    expect(steps.map(s => s.id)).toEqual(['prepare', 'typecheck', 'lint', 'verify', 'trace', 'exercises', 'videos', 'anim', 'unit', 'build', 'e2e', 'targets']);
     expect(steps.find(s => s.id === 'verify')?.command.join(' ')).toContain('--check --module m90');
     expect(steps.find(s => s.id === 'e2e')?.env).toEqual({ E2E_MODULE: 'm90' });
   });
@@ -29,6 +32,13 @@ describe('buildSteps on the fixture modules', () => {
     expect(animated?.command.join(' ')).toContain('--static a91-demo');
     expect(animated?.command.join(' ')).toContain('--static a91-other');
     expect(animationIds(findModuleDir(contentRoot, 'm91')!)).toEqual(['a91-demo', 'a91-other']);
+  });
+
+  it('runs toolchain:prepare before typecheck, and the full npm test (src/ and tools/) for point 6', () => {
+    const steps = buildSteps({ module: 'm90', contentRoot, fast: true });
+    expect(steps[0].command.join(' ')).toContain('toolchain:prepare');
+    expect(steps[1].id).toBe('typecheck');
+    expect(steps.find(s => s.id === 'unit')?.command).toEqual(['npm', 'run', '--silent', 'test']);
   });
 
   it('--fast skips build and e2e with a reason', () => {
@@ -60,6 +70,23 @@ describe('runSteps', () => {
     expect(text).toContain('SKIPPED (not needed)');
     expect(text).toContain('FAIL bad (§3.6 point 6)');
     expect(text).toContain('dod m90: FAIL (bad)');
+  });
+
+  it('lists the failing exercise lines even when they fall outside the 15-line tail', async () => {
+    // Shaped like `verify:exercises`: the failing row sorts first, then 20 passing rows and a summary.
+    const script = [
+      'console.log("  \u2717 cash   ct \u00b7 browser   solution 1/6")',
+      'console.log("      - the starter passes every test")',
+      'for (let i = 1; i <= 20; i++) console.log("  \u2713 ok-" + i)',
+      'console.log("1 of 21 checked have problems.")',
+      'process.exit(1)',
+    ].join(';');
+    const step: Step = { ...node('exercises', script), highlight: EXERCISE_PROBLEM };
+    const [r] = (await runSteps([step], exec, meta)).steps;
+    expect(r.tail?.some(l => l.includes('cash'))).toBe(false);
+    expect(r.failing).toEqual(['  \u2717 cash   ct \u00b7 browser   solution 1/6', '      - the starter passes every test']);
+    expect(formatReport({ ...meta, ok: false, steps: [r] })).toContain('failing lines:\n      \u2717 cash');
+    expect(buildSteps({ module: 'm90', contentRoot }).find(s => s.id === 'exercises')?.highlight).toBe(EXERCISE_PROBLEM);
   });
 
   it('is ok when everything passes or is skipped', async () => {
@@ -103,4 +130,22 @@ describe('cli', () => {
     expect(err).toHaveBeenCalledWith(expect.stringContaining('unknown module "m77"'));
     err.mockRestore();
   });
+});
+
+describe('the real cli process with --json', () => {
+  it('writes clean JSON on stdout even when every step prints to stdout itself', () => {
+    // A stub `npm` and `sh` on PATH print a banner like npm's and succeed, so the real spawn path runs without the slow checks.
+    const bin = mkdtempSync(path.join(tmpdir(), 'dod-bin-'));
+    for (const name of ['npm', 'sh']) {
+      writeFileSync(path.join(bin, name), '#!/bin/sh\necho "> noisy banner on stdout"\nexit 0\n');
+      chmodSync(path.join(bin, name), 0o755);
+    }
+    const tsx = path.resolve(here, '../../node_modules/.bin/tsx');
+    const r = spawnSync(process.execPath, [tsx, path.join(here, 'cli.ts'), '--module', 'm91', '--json', '--content-root', contentRoot],
+      { encoding: 'utf8', env: { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}` } });
+    expect(r.status).toBe(0);
+    const report = JSON.parse(r.stdout);
+    expect(report).toMatchObject({ module: 'm91', ok: true });
+    expect(report.steps.filter((s: { status: string }) => s.status === 'PASS').length).toBeGreaterThan(5);
+  }, 60_000);
 });

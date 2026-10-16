@@ -12,6 +12,8 @@ export interface Step {
   env?: Record<string, string>;
   /** When set the step is not run and is reported as `SKIPPED (<reason>)`. */
   skip?: string;
+  /** On failure, output lines matching this are listed too (the tail alone can cut off the line that names the culprit). */
+  highlight?: RegExp;
 }
 
 export interface BuildOptions { module: string; fast?: boolean; contentRoot: string }
@@ -34,6 +36,9 @@ export function animationIds(moduleDir: string): string[] {
   return [...ids];
 }
 
+/** Lines of `verify:exercises` that name what is wrong: the `✗ <exercise>` row and its indented `- <problem>` lines. */
+export const EXERCISE_PROBLEM = /✗|^\s+- /;
+
 const npm = (...args: string[]) => ['npm', 'run', '--silent', ...args];
 
 /** Steps in the order they run (sequentially: the checks are timing-sensitive on small machines). */
@@ -42,16 +47,18 @@ export function buildSteps({ module, fast = false, contentRoot }: BuildOptions):
   if (!dir) throw new Error(`unknown module "${module}": no ${contentRoot}/modules/${module}-* directory`);
   const anims = animationIds(dir);
   const steps: Step[] = [
+    // typecheck imports the gitignored src/generated/toolchain-version.json, which only this step writes (build runs it too).
+    { id: 'prepare', point: 6, name: 'toolchain:prepare', command: npm('toolchain:prepare') },
     { id: 'typecheck', point: 6, name: 'typecheck', command: npm('typecheck') },
     { id: 'lint', point: 3, name: 'lint:content --strict', command: npm('lint:content', '--', '--strict', '--module', module) },
     { id: 'verify', point: 1, name: 'verify --check', command: npm('verify', '--', '--check', '--module', module) },
     { id: 'trace', point: 1, name: 'trace --check', command: npm('trace', '--', '--check', '--module', module) },
-    { id: 'exercises', point: 2, name: 'verify:exercises', command: npm('verify:exercises', '--', '--module', module) },
+    { id: 'exercises', point: 2, name: 'verify:exercises', command: npm('verify:exercises', '--', '--module', module), highlight: EXERCISE_PROBLEM },
     { id: 'videos', point: 5, name: 'videos:check', command: npm('videos:check') },
     anims.length
       ? { id: 'anim', point: 4, name: `anim:check --static (${anims.join(', ')})`, command: ['sh', '-c', anims.map(a => `npm run --silent anim:check -- --static ${a}`).join(' && ')] }
       : { id: 'anim', point: 4, name: 'anim:check --static', command: [], skip: 'module references no animation' },
-    { id: 'unit', point: 6, name: 'unit tests of tools/', command: npm('test', '--', 'tools') },
+    { id: 'unit', point: 6, name: 'unit tests (npm test)', command: npm('test') },
     fast
       ? { id: 'build', point: 6, name: 'build', command: [], skip: '--fast' }
       : { id: 'build', point: 6, name: 'build', command: npm('build') },

@@ -74,7 +74,7 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 | `npm run anim:check` / `anim:render` | HyperFrames lint, check and deterministic render (needs Chromium + ffmpeg; see `animations/README.md`) |
 | `npm run videos:check [-- --online]` | `videos.json` schema and transcript anchors (CI never calls yt-dlp) |
 | `npm test` / `npm run typecheck` | Vitest / `tsc --noEmit` |
-| `npm run dod -- --module m01 [--fast] [--json]` | the per-module definition of done (PLAN §3.6) in one table: typecheck, strict lint, `verify --check`, `trace --check`, exercises, videos, static animation check, `tools/` unit tests, build, e2e (`E2E_MODULE` limits e2e to the module); `--fast` skips build and e2e. See `tools/dod/README.md` |
+| `npm run dod -- --module m01 [--fast] [--json]` (use `npm run -s dod` for clean `--json`) | the per-module definition of done (PLAN §3.6) in one table: toolchain:prepare, typecheck, strict lint, `verify --check`, `trace --check`, exercises, videos, static animation check, all unit tests (`npm test`), build, e2e (`E2E_MODULE` limits e2e to the module); `--fast` skips build and e2e. See `tools/dod/README.md` |
 | `npm run e2e` | Playwright click-through of every lesson, problem set, project and checkpoint, plus axe (run `npm run build` first) |
 
 CI (`.github/workflows/ci.yml`) runs all of these, then deploys `dist` to GitHub Pages. The `Targets` workflow runs samples on macOS arm64, Linux arm64 and Windows MSVC and a bot commits `src/generated/targets/`, so **`git pull --rebase` before you push**.

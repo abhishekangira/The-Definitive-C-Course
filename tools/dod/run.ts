@@ -13,6 +13,8 @@ export interface StepResult {
   durationMs: number;
   /** Last lines of output, only for FAIL. */
   tail?: string[];
+  /** Only for FAIL steps that define `highlight`: every output line it matched (not just those in the tail). */
+  failing?: string[];
 }
 export interface Report { module: string; fast: boolean; ok: boolean; steps: StepResult[] }
 
@@ -36,6 +38,10 @@ export const spawnExec = (cwd: string): Exec => step =>
 
 const stripAnsi = (s: string) => s.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
 
+export function matchingLines(output: string, re: RegExp, max = 40): string[] {
+  return stripAnsi(output).split(/\r?\n/).filter(l => l.trim() && re.test(l)).slice(0, max);
+}
+
 export function lastLines(output: string, n = TAIL_LINES): string[] {
   return stripAnsi(output).split(/\r?\n/).filter(l => l.trim()).slice(-n);
 }
@@ -52,7 +58,8 @@ export async function runSteps(steps: Step[], exec: Exec, meta: { module: string
       const { code, output } = await exec(step);
       r = code === 0
         ? { ...base, status: 'PASS', durationMs: Date.now() - started }
-        : { ...base, status: 'FAIL', durationMs: Date.now() - started, tail: lastLines(output) };
+        : { ...base, status: 'FAIL', durationMs: Date.now() - started, tail: lastLines(output),
+          ...(step.highlight ? { failing: matchingLines(output, step.highlight) } : {}) };
     }
     results.push(r);
     onStep?.(r);
@@ -69,6 +76,7 @@ export function formatReport(report: Report): string {
   const line = (c: string[]) => `| ${c.map((x, i) => x.padEnd(w[i])).join(' | ')} |`;
   const out = [line(head), `|${w.map(n => '-'.repeat(n + 2)).join('|')}|`, ...rows.map(line)];
   for (const r of report.steps.filter(s => s.status === 'FAIL')) {
+    if (r.failing?.length) out.push('', `FAIL ${r.name} (§3.6 point ${r.point}), failing lines:`, ...r.failing.map(l => `    ${l}`));
     out.push('', `FAIL ${r.name} (§3.6 point ${r.point}), last ${r.tail?.length ?? 0} lines:`, ...(r.tail ?? []).map(l => `    ${l}`));
   }
   const failed = report.steps.filter(s => s.status === 'FAIL').map(s => s.name);

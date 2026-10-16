@@ -1,14 +1,15 @@
 // npm run dod -- --module m01 [--fast] [--json]
 //
 // Runs the per-module definition of done (PLAN.md §3.6) in order and prints one table; exit status 1 on any FAIL,
-// 2 on a usage error. --fast skips build and e2e. --json prints the same data as JSON (nothing else on stdout).
+// 2 on a usage error. --fast skips build and e2e. --json prints the same data as JSON (nothing else on stdout from this
+// program; npm's own "> pkg@ver dod" banner goes to stdout first, so call it as `npm run -s dod -- … --json`).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatReport, runSteps, spawnExec, type Exec, type Report } from './run';
 import { buildSteps } from './steps';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const USAGE = 'usage: npm run dod -- --module mNN [--fast] [--json]';
+const USAGE = 'usage: npm run dod -- --module mNN [--fast] [--json]   (with --json use: npm run -s dod -- … --json)';
 
 export interface CliArgs { module: string; fast: boolean; json: boolean; contentRoot: string }
 
