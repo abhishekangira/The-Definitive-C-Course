@@ -41,7 +41,7 @@ You were told to read this file and given a ticket. Do this, in order:
 | `npm run trace` | gdb stepper traces for `trace` samples → `src/generated/traces/` |
 | `npm run verify:exercises` | every solution passes, every starter fails, every variant passes (browser and native) |
 | `npm run lint:content [-- --strict --stats]` | word budget, cadence, fence ids, analogies, quiz and module rules |
-| `npm run anim:check` / `anim:render` | HyperFrames lint, check and deterministic render (needs Chromium + ffmpeg; see `animations/README.md`) |
+| `npm run anim:check` / `anim:render` | HyperFrames lint, check and deterministic render (needs Chromium + ffmpeg; see `animations/README.md`); CI runs only `node tools/anim/check.mjs --static`, the full check is local |
 | `npm run videos:check [-- --online]` | `videos.json` schema and transcript anchors (CI never calls yt-dlp) |
 | `npm test` / `npm run typecheck` | Vitest / `tsc --noEmit` |
 | `npm run e2e` | Playwright click-through of every lesson, problem set, project and checkpoint, plus axe (run `npm run build` first) |
