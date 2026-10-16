@@ -46,6 +46,8 @@ interface JsonReport {
   progressCode?: string; completionToken?: string; learnerProblem?: string; results: TestResult[];
 }
 
+// LC_ALL=C keeps gcc/clang diagnostics ASCII for these assertions. It means this suite does not exercise check.mjs under a
+// UTF-8 locale; that gap is tracked in issue #26 (pin LC_ALL=C for compiler subprocesses in the shipped check.mjs).
 function check(dir: string, args: string[] = [], env: NodeJS.ProcessEnv = {}) {
   const r = spawnSync(process.execPath, ['check.mjs', ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', CC: 'gcc', NO_COLOR: '1', FORCE_COLOR: '', ...env } });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };

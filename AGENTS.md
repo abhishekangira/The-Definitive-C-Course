@@ -9,9 +9,39 @@ You were told to read this file and given a ticket. Do this, in order:
 3. Stay in scope. Don't start Module 2, change the licence, edit PLAN.md decisions, or add a dependency without saying why (pin exact versions).
 4. Don't hand-edit `src/generated/` (regenerate it with `npm run verify`) and don't hand-type expected outputs.
 5. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium` (`playwright.config.ts` falls back to Playwright's own Chromium; set `CHROMIUM_PATH` to use another).
-6. In the PR description say what changed and why, which commands you ran and their results, and anything you could not verify. Say so plainly; never claim a pass you didn't see.
+6. Write the PR description with the template in **Pull request rules** below. Say plainly what you could not verify; never claim a pass you didn't see.
 7. If the ticket is wrong, ambiguous or blocked, stop and say so (in the PR, or to the person who gave it to you) instead of working around it.
 8. No repository access, or can't run commands (for example a plain chat window)? Say so, return your change as a unified diff plus the exact commands a human should run to check it, and label everything unverified.
+9. **Keep this file current.** When you hit a gotcha or learn a practice that would have saved you time, add one concise bullet under **Pitfalls we already hit** (or the relevant section) in the same PR, and delete a bullet once the bug it describes is fixed. Only write down what you observed or verified.
+
+## Raising issues (for the owner and the lead session)
+- Raise a GitHub issue only for **big** work: about M or L (half a day of human work or more, or several files), parallelizable and independently testable. Fix small things (S) directly instead of filing them: an issue costs a PR plus a review, which is more than a small fix.
+- Every issue states the goal, the **files the PR may touch** (and must not), and acceptance criteria that are each checkable with a command or a test, never "make sure X works". Add `Depends on #N` when another open issue edits the same files, and don't run two tickets that edit the same file in parallel.
+- Label it `complexity: M|L` plus an `area:` label. Don't write a criterion the code can only satisfy vacuously (for example "test that a constant equals itself").
+
+## Pull request rules (what makes review cheap)
+1. **Small and single-purpose.** One ticket, no unrelated edits (formatting, renames, drive-by fixes). If the diff is over about 400 changed lines (not counting fixtures and generated files), say why or split it.
+2. **The simplest thing that meets the acceptance criteria.** No speculative features or extra abstractions. If you add a mechanism of more than about 50 lines, say why a simpler one would not do.
+3. **Rebase first.** Rebase on the latest `main` before opening or updating the PR. If another open PR edits the same files, name it in the description and rebase after it merges.
+4. **Tests that can fail.** Every behaviour change has a test that fails without it (say how you checked, for example by reverting the fix). Tests call the real code: never recompute the expected value inside the test, never assert a constant against itself, and type your mocks (`satisfies` or the real type).
+5. **Evidence, not narration.** Paste the tail of each command's real output. Use the CI toolchain (Ubuntu 24.04, gcc 13, clang 22, gdb 15, valgrind 3.22, Node 22). If yours differs, say exactly how, and don't call a failure "pre-existing" unless you also ran it on a clean `main`. Once CI is green on `main`, CI is the evidence: link the green run.
+6. **Generated files.** Don't commit regenerated `src/generated/{samples,traces}` files: CI owns them and a bot commit updates your branch when behaviour changes (see **Pitfalls**). Never commit files that differ only because your toolchain's version strings or UB garbage differ from CI's.
+7. **Post the report on the right PR**, once, in the description or in a single comment that names the PR number and head SHA. Never post a report on another PR.
+8. **Answer review with commits.** Push a new commit (no force-push) and reply to each point: fixed (commit), not fixed (why), or disagree (why). Don't mark a point resolved without one.
+9. **UI changes** also report the axe result in light and dark (`npm run e2e`) and how the change behaves with the keyboard.
+
+PR description template (under about 300 words):
+```
+Closes #N
+Summary: (at most 5 lines)
+Files touched and why:
+Acceptance criteria: (copied from the issue; each with ✓ or ✗ and the evidence)
+Commands run: (pasted output tails)
+Could not verify:
+Risk: (does it touch learner-facing app code, the generated-data format, or CI/deploy? yes or no, and what)
+```
+
+Review depth, so you know where evidence matters most: the maintainer reviews thoroughly when a PR touches learner-facing app code, the verifier's data format, or CI/deploy. For tests-only changes, content text and refactors whose output can be diffed, it runs the checks and reads the diff.
 
 ## Status
 - Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12 (public repo → GitHub Pages; MP4s committed; allocator-only capstone; dark-only animation renders).
@@ -97,6 +127,7 @@ content/modules/m01-c-in-your-browser/
   - Leak checks link `leakcheck.c` with `-Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=free`, which is what makes them correct for every translation unit. `-include leakcheck.h` only adds `file:line` tags through function-like macros, so `free` passed as a function pointer still reaches the wrapped function; blocks with no learner location are ignored.
 - **Gotchas found in research:** prefetch with `runClang(null, {}, {fetchProgress})`; pass `{debug:false}` to `new WASI(...)`; pass `decodeASCII:false`; patch `fetch` before importing the yowasp bundle; never `await cache.put()` in the fetch hook; override `poll_oneoff` (`sleep` busy-waits).
 - **Native CI toolchain:** Ubuntu 24.04 with gcc 13, clang 22 (apt.llvm.org) + `libclang-rt-22-dev`, gdb 15, valgrind 3.22, Node ≥22, FFmpeg. Stored targets: macOS arm64 and ubuntu-24.04-arm (all samples), windows-latest (`platform` samples).
+- **Reference environment:** CI on the GitHub Actions `ubuntu-24.04` runner is the authority for every check. Local and sandbox runs are advisory: say how your toolchain differs and let CI decide. There is no Docker (the agent sandboxes have no Docker daemon). The `check` job logs the runner image (`ImageOS`, `ImageVersion`) and the versions of gcc-13, clang-22, gdb, valgrind, node and ffmpeg; the `deploy` job installs nothing and logs nothing. We select the gcc major version by package name (`gcc-13`) and accept patch drift in clang 22 (apt.llvm.org) and the other apt tools. `verify --check` ignores version strings (`generatedBy`, each target's `compiler`) and compares behaviour only, so drift cannot turn it red.
 - **Local project runner:** `check.mjs` (zero dependencies, Node 18+) via `make test`. It reads `.learner` (the seed) and prints progress codes and completion tokens via `src/testing/token.ts`. Project ids with a slash are written with a dot in codes.
 - **Unit-test harness:** `#define main learner_main` plus `#include` of the file defining `main`, with `-Wreturn-type` and `-Wmissing-prototypes` silenced. Never trust its return value. Multi-file projects are tested through `make` targets in `check.json`.
 
@@ -106,14 +137,22 @@ content/modules/m01-c-in-your-browser/
 - The PTY runner (`tools/verify/pty_run.py`) must hold the slave open until output is drained; macOS drops unread output otherwise.
 - Test harness: `AxeBuilder` needs pages from `browser.newContext()`; scope `summary` locators with `:scope >` because exercises contain nested `<details>`.
 - Never commit machine-dependent output (stack garbage, ASLR addresses). `verify --check` and `trace --check` must be stable across runs.
-- **Reference environment:** CI on the GitHub Actions `ubuntu-24.04` runner is the authority for every check; local and sandbox runs are advisory. Each CI log starts with the runner image (`ImageOS`, `ImageVersion`) and the versions of gcc, clang-22, gdb, valgrind, node and ffmpeg. We pin gcc-13 by package name and accept patch drift in clang 22 (apt.llvm.org) and the other apt tools; `verify --check` ignores version strings (`generatedBy`, each target's `compiler`) and compares behaviour only, so drift cannot turn it red.
-- **CI-owned generated files.** On a same-repo PR, the `Regenerate` step in `ci.yml` runs `npm run verify`, commits a changed `src/generated/{samples,traces}` as `github-actions[bot]`, pushes to the PR branch and dispatches CI again for the new head (pushes made with `GITHUB_TOKEN` do not trigger workflows; `workflow_dispatch` is exempt), then cancels its own run. The dispatched run finds nothing to regenerate, so the checks on the final head SHA come from it. Fork PRs cannot be pushed to and just fail `verify --check`. Timed-out runs are never cached (`cacheRuns` in `tools/verify/cache.ts`).
+- **Judge a failure on a clean `main` under the same load before blaming a PR.** The e2e suite and the verifier fixture tests are timing-sensitive on a busy 4-CPU machine; we saw one-off failures at load 5 to 7 that passed on rerun. Run gates one at a time and don't run e2e while other heavy jobs run.
+- **Wait for a signal that identifies the page.** A bare `h1` also matches the page you are leaving; use the specific heading text or a `data-*` attribute.
+- **Tests that make their own context** (`browser.newContext()`, needed for axe) get no automatic Playwright trace or failure screenshot; start `context.tracing` yourself when debugging.
+- **Compiler diagnostics depend on the locale.** gcc and clang print Unicode quotes in UTF-8 locales, while the generated files and tests assume ASCII. Run `verify`, `trace` and the tests with `LC_ALL=C`.
+- **Parallel PRs that edit the same file conflict** (for example `tools/mdx/remark-course.ts`). Detect it before merging with `git merge-tree $(git merge-base A B) A B`, merge one, rebase the other.
+- `import.meta.glob` hands a plugin's `resolveId` importer-relative paths; resolve them against `importer` (see the `?frontmatter` plugin).
+- **Compiler output quoted in prose comes from the generated data, not memory.** Lesson 6 once showed `did you mean 'count'?` for the typo `cuont`; clang 22 offers no suggestion there (it does for `cont`), so the lesson contradicted the diagnostics panel. Copy messages from `src/generated/samples` (`raw`), and re-read the sentences around them whenever a sample changes.
+- **CI-owned generated files.** On a same-repo PR, the `check` job runs `npm run verify` with a read-only token. If `src/generated/{samples,traces}` changes in behaviour, it uploads the files, fails on purpose, and the separate `commit-generated` job (the only one with `contents: write` and `actions: write`, and it runs no PR code) commits them as `github-actions[bot]` to the PR branch and dispatches CI for the new head (a push made with `GITHUB_TOKEN` triggers no workflow, `workflow_dispatch` is exempt). The checks on the final head SHA come from the dispatched run. If the branch moved meanwhile, the bot skips the push and your own push gets its own run. Fork PRs cannot be pushed to and just fail `verify --check`. Timed-out runs are never cached (`cacheRuns` in `tools/verify/cache.ts`).
 
 ## Environment recipes (verified in the cloud container)
 - **YouTube.** Check a video: `curl "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=<ID>&format=json"`. Transcript: `yt-dlp --js-runtimes node --extractor-args "youtube:player_client=web_embedded" --ignore-no-formats-error --skip-download --write-subs --write-auto-subs --sub-langs "en" --sub-format vtt -o "%(id)s" "https://www.youtube.com/watch?v=<ID>"`. Default clients hit a bot check and bursts get 429s, so fetch slowly. Commit transcript excerpts; CI must not call yt-dlp. Node's `fetch` needs `NODE_USE_ENV_PROXY=1` behind the proxy.
 - **HyperFrames.** Needs Node ≥22 and FFmpeg. `tools/anim` sets `HYPERFRAMES_NO_TELEMETRY=1 HYPERFRAMES_SKIP_SKILLS=1 HYPERFRAMES_NO_UPDATE_CHECK=1 HYPERFRAMES_BROWSER_PATH=…` itself and pins `hyperframes@0.8.162` via npx. Read `animations/README.md` and PLAN.md §4.6 before authoring. Commit only the MP4; WebM is transcoded at deploy.
 - **Chromium** is at `/opt/pw-browsers`. Don't run `playwright install` there. Open-source Chromium can't play H.264, so e2e tests use a WebM fixture.
 - **GitHub.** Web and API access is limited to repos attached to the session. `gh repo create` and GraphQL are blocked; use repo-scoped REST.
+- **GitHub API details.** Use REST (`gh api repos/<owner>/<repo>/...`). In list endpoints (`pulls?state=open`) `additions`, `deletions`, `changed_files` and `mergeable` come back `null`: read a single PR (`pulls/N`), and retry `mergeable` after a few seconds (it stays `null` while GitHub computes it).
+- **Review a PR locally without touching your working tree:** `git fetch origin pull/N/head && git update-ref refs/review/prN FETCH_HEAD`, then `git worktree add --detach <dir> refs/review/prN`, `ln -sfn <repo>/node_modules <dir>/node_modules`, `mkdir -p <dir>/public && ln -sfn <repo>/public/toolchain <dir>/public/toolchain`, `cp <repo>/src/generated/toolchain-version.json <dir>/src/generated/`. Run the gates there with a distinct port (`E2E_PORT=4181`) and `E2E_RUN_TIMEOUT=120000`, and remove the worktree afterwards (`git worktree remove --force <dir>`). Use `ln -sfn`, not `ln -s`: onto an existing link, plain `ln -s` creates a link *inside* the target, which once put `public/toolchain/toolchain` (pointing at itself) into the shared directory and broke every build with `ELOOP`. If you see that, delete just that link (`rm public/toolchain/toolchain`, no trailing slash).
 
 ## Git
 - The lead session works on `main`; everyone else uses a branch and a pull request (see **Start here**). Commit messages are descriptive; add the attribution lines your harness supplies.
