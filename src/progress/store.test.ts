@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { daysSinceExport, emptyProgress, exerciseProgress, getProgress, mergeProgress, markCard, migrate, summarise, update, type ExerciseProgress, type ProgressV1 } from './store';
+import {
+  daysSinceExport, emptyProgress, exerciseProgress, getProgress, mergeProgress, markCard, migrate, summarise, update,
+  type ExerciseProgress, type ProgressV1, type ProjectProgress, type QuizProgress, type SampleProgress,
+} from './store';
 
 const SEED = '0123456789abcdef';
 const at = '2026-01-01T00:00:00.000Z';
@@ -23,6 +26,27 @@ describe('migrate', () => {
     const p = migrate({ version: 1, seed: SEED, createdAt: at, lessons: { 'm01-l1': { completedAt: at } }, settings: { platform: 'wsl' } });
     expect(Object.keys(p.lessons)).toEqual(['m01-l1']);
     expect(p.settings.platform).toBe('wsl');
+  });
+
+  it('keeps every field of every record: a field missing from the whitelist would be dropped on every load', () => {
+    // `satisfies Required<...>` makes the compiler ask for a value here when a field is added to a record type,
+    // and then this test fails until migrate() keeps that field too.
+    const full = {
+      version: 1, seed: SEED, createdAt: at, lastExportedAt: at,
+      settings: { platform: 'wsl', storedOutputMode: true, stdinMode: 'preset' },
+      cards: { 'm01-l1': [0, 1, 2] },
+      lessons: { 'm01-l1': { completedAt: at } },
+      samples: { s1: { prediction: 'x', correct: true, predict64: 'y', predict64Correct: false, at } satisfies Required<SampleProgress> },
+      exercises: {
+        e1: {
+          attempts: 3, substantive: 2, lastCodeHash: 'abc', code: 'int main(void) { return 0; }', activeMs: 5, hintsViewed: 1, passed: true,
+          solutionViewed: true, variant: 'e1/variants/1', variantsTried: ['e1/variants/1'], mastered: false, codes: ['TDCC1-R1-e1-DONE-00000000'],
+        } satisfies Required<ExerciseProgress>,
+      },
+      quizzes: { q1: { score: 3, total: 4, passed: false, at, answers: { a: 1, b: 'x' } } satisfies Required<QuizProgress> },
+      projects: { p1: { passed: true, at, token: 'TDCC1-R1-p1-DONE-00000000' } satisfies Required<ProjectProgress> },
+    } satisfies ProgressV1;
+    expect(migrate(structuredClone(full))).toEqual(full);
   });
 
   it.each([

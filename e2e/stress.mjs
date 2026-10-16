@@ -1,7 +1,8 @@
 // `npm run e2e:stress`: the full e2e suite, repeated, while busy-loop processes load the CPUs.
 // E2E_STRESS_LOAD   number of busy loops (default: the CPU count, so the suite competes for every core)
 // E2E_STRESS_REPEAT --repeat-each value (default 5)
-// Extra arguments go to `playwright test`, e.g. `npm run e2e:stress -- course.spec.ts -g "Functions"`.
+// Extra arguments go to `playwright test`. Select whole spec files (for example `npm run e2e:stress -- playground.spec.ts`), not `-g`:
+// the lesson tests are a serial group, so a single lesson cannot run on its own.
 // Run `npm run build` first. Exit code is Playwright's.
 import { spawn } from 'node:child_process';
 import { availableParallelism, loadavg } from 'node:os';
@@ -14,13 +15,21 @@ if (!Number.isInteger(load) || load < 0 || !Number.isInteger(repeat) || repeat <
 }
 
 const loops = Array.from({ length: load }, () => spawn(process.execPath, ['-e', 'for(;;){}'], { stdio: 'ignore' }));
+let pw; // Playwright runs in its own process group, so one signal reaches `npx`, Playwright and the preview server it started.
 const stopLoops = () => { for (const l of loops) l.kill('SIGKILL'); };
+const signalPlaywright = sig => { if (pw?.pid) { try { process.kill(-pw.pid, sig); } catch { /* already gone */ } } };
 process.on('exit', stopLoops);
-for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { stopLoops(); process.exit(130); });
+// Ctrl-C or kill: stop the loops, ask Playwright to shut down (SIGINT lets it stop its web server too), and leave once it has.
+for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => {
+  stopLoops();
+  if (!pw || pw.exitCode !== null) process.exit(130);
+  signalPlaywright('SIGINT');
+  setTimeout(() => { signalPlaywright('SIGKILL'); process.exit(130); }, 10_000).unref();
+});
 
 console.log(`e2e:stress: ${load} busy loops on ${availableParallelism()} usable CPUs, --repeat-each=${repeat}, load average at start ${loadavg()[0].toFixed(1)}`);
 const started = Date.now();
-const pw = spawn('npx', ['playwright', 'test', `--repeat-each=${repeat}`, '--retries=0', ...process.argv.slice(2)], { stdio: 'inherit' });
+pw = spawn('npx', ['playwright', 'test', `--repeat-each=${repeat}`, '--retries=0', ...process.argv.slice(2)], { stdio: 'inherit', detached: true });
 pw.on('exit', code => {
   console.log(`e2e:stress: exit ${code} after ${Math.round((Date.now() - started) / 1000)} s, load average at end ${loadavg()[0].toFixed(1)}`);
   stopLoops();
