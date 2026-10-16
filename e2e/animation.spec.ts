@@ -3,7 +3,8 @@
 // player looks for it. The tests that need a pause-at-step prompt run against the real <Explainer> on a throwaway Vite
 // page (e2e/fixtures/explainer), because no shipped lesson has a prompt yet.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createServer, type ViteDevServer } from 'vite';
@@ -14,19 +15,17 @@ import { answerQuiz, availableModules, completeInteraction, completeChoice, expe
 const ID = 'a01-press-run';
 const DIR = path.join(ROOT, 'public', 'animations', ID);
 const steps = JSON.parse(readFileSync(path.join(DIR, 'steps.json'), 'utf8')) as {
-  duration: number; title: string; transcript: string; captions: string; stills: Record<string, string>;
+  duration: number; title: string; description: string; transcript: string; captions: string; stills: Record<string, string>;
   steps: { key: string; label: string; time: number; end: number }[];
 };
 const first = steps.steps[0];
-const last = steps.steps[steps.steps.length - 1];
 
-/** MP4 -> small WebM (VP9, 480 px wide, 10 fps, no audio: the animation has none), cached by the MP4's size and mtime. */
+/** MP4 -> small WebM (VP9, 480 px wide, 10 fps, no audio: the animation has none), cached by a hash of the MP4's bytes. */
 function webmFixture(): string {
   const mp4 = path.join(DIR, `${ID}.mp4`);
-  const st = statSync(mp4);
   const dir = path.join(os.tmpdir(), 'tdcc-e2e-animation');
   mkdirSync(dir, { recursive: true });
-  const out = path.join(dir, `${ID}-${st.size}-${Math.floor(st.mtimeMs)}.webm`);
+  const out = path.join(dir, `${ID}-${createHash('sha256').update(readFileSync(mp4)).digest('hex').slice(0, 16)}.webm`);
   if (!existsSync(out)) {
     const tmp = `${out}.${process.pid}.tmp.webm`;
     execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', mp4, '-vf', 'scale=480:-2,fps=10', '-an', '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '45',
@@ -57,26 +56,38 @@ const video = (page: Page) => page.locator('video');
 const time = (page: Page) => video(page).evaluate((v: HTMLVideoElement) => v.currentTime);
 const paused = (page: Page) => video(page).evaluate((v: HTMLVideoElement) => v.paused);
 const chip = (page: Page, label: string) => page.getByRole('list', { name: 'Jump to a step' }).getByRole('button', { name: label, exact: true });
+/** Click a chip and report where the video was when that seek finished (the first `seeked` after the click), so a late or wrong seek cannot hide behind playback moving on. */
+async function clickChipAndGetSeekTarget(page: Page, label: string): Promise<number> {
+  await settled(page);
+  await video(page).evaluate((v: HTMLVideoElement) => { (window as unknown as { __seeked?: number }).__seeked = undefined; v.addEventListener('seeked', () => { (window as unknown as { __seeked?: number }).__seeked = v.currentTime; }, { once: true }); });
+  await chip(page, label).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __seeked?: number }).__seeked), { message: `seek after the "${label}" chip` }).not.toBeUndefined();
+  return page.evaluate(() => (window as unknown as { __seeked: number }).__seeked);
+}
+/** Wait until no seek is pending, so an earlier seek's `seeked` event cannot be mistaken for the next one. */
+const settled = (page: Page) => expect.poll(() => video(page).evaluate((v: HTMLVideoElement) => v.seeking)).toBe(false);
 const seekTo = (page: Page, t: number) => video(page).evaluate((v: HTMLVideoElement, t) => { v.currentTime = t; }, t);
 
 let fixtureServer: ViteDevServer;
 let fixtureUrl: string;
+let viteCache: string;
 let webm: string;
 
 test.beforeAll(async () => {
   webm = webmFixture();
+  viteCache = mkdtempSync(path.join(os.tmpdir(), 'tdcc-e2e-vite-'));
   fixtureServer = await createServer({
     configFile: path.join(ROOT, 'vite.config.ts'),
     root: path.join(ROOT, 'e2e', 'fixtures', 'explainer'),
     publicDir: path.join(ROOT, 'public'),
-    cacheDir: path.join(os.tmpdir(), 'tdcc-e2e-vite-cache'),
+    cacheDir: viteCache,
     logLevel: 'error',
     server: { port: 0, host: '127.0.0.1', hmr: false, fs: { strict: false } },
   });
   await fixtureServer.listen();
   fixtureUrl = `http://127.0.0.1:${(fixtureServer.httpServer!.address() as AddressInfo).port}/`;
 });
-test.afterAll(async () => { await fixtureServer?.close(); });
+test.afterAll(async () => { await fixtureServer?.close(); if (viteCache) rmSync(viteCache, { recursive: true, force: true }); });
 
 async function openFixture(page: Page, query = '?pauses=0', { video: hasVideo = true } = {}) {
   await useWebm(page, webm);
@@ -101,9 +112,10 @@ test.describe('animation player', () => {
   test('step chips seek to the step time and highlight the current step', async ({ page }) => {
     await openFixture(page);
     for (const s of steps.steps) {
-      await chip(page, s.label).click();
-      await expect.poll(() => time(page), { message: `after the "${s.label}" chip` }).toBeGreaterThanOrEqual(s.time);
-      expect(await time(page)).toBeLessThan(s.time + 3);
+      await video(page).evaluate((v: HTMLVideoElement) => v.pause());
+      const landed = await clickChipAndGetSeekTarget(page, s.label);
+      expect(landed, `"${s.label}" chip seeks to the step time`).toBeCloseTo(s.time + 0.01, 1);
+      await expect.poll(() => paused(page), { message: `a chip click resumes playback ("${s.label}")` }).toBe(false);
       await expect(chip(page, s.label)).toHaveClass(/active/);
     }
     // In the exit fade between a step's `end` and the next step's `time` the chip stays on the step that just played.
@@ -111,7 +123,6 @@ test.describe('animation player', () => {
     await seekTo(page, first.end + 0.2);
     await expect(chip(page, first.label)).toHaveClass(/active/);
     await expect(chip(page, steps.steps[1].label)).not.toHaveClass(/active/);
-    await chip(page, last.label).focus();
   });
 
   test('captions are on by default and the transcript is available', async ({ page }) => {
@@ -151,9 +162,11 @@ test.describe('animation player', () => {
 
     const target = steps.steps[2];
     await chip(page, target.label).focus();
+    await settled(page);
+    await video(page).evaluate((x: HTMLVideoElement) => { (window as unknown as { __seeked?: number }).__seeked = undefined; x.addEventListener('seeked', () => { (window as unknown as { __seeked?: number }).__seeked = x.currentTime; }, { once: true }); });
     await page.keyboard.press('Enter');
-    await expect.poll(() => time(page)).toBeGreaterThanOrEqual(target.time);
-    expect(await time(page)).toBeLessThan(target.time + 3);
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __seeked?: number }).__seeked)).toBeCloseTo(target.time + 0.01, 1);
+    await expect.poll(() => paused(page)).toBe(false);
 
     const toggle = page.getByRole('checkbox', { name: /step-by-step stills/ });
     await toggle.focus();
@@ -209,6 +222,39 @@ test.describe('animation player', () => {
     await seekTo(page, step.end - 0.5);
     await expect.poll(() => time(page)).toBeGreaterThan(step.end + 0.8);
     await expect(dialog).toHaveCount(0);
+  });
+});
+
+test.describe('steps.json variations', () => {
+  const route = (page: Page, patch: Record<string, unknown>) => page.route(`**/animations/${ID}/steps.json`, async r => {
+    const res = await r.fetch();
+    await r.fulfill({ response: res, json: { ...(await res.json()), ...patch } });
+  });
+
+  test('a null poster sets no poster attribute, and the transcript file named in steps.json is the one fetched', async ({ page }) => {
+    await route(page, { poster: null, transcript: 'notes.txt' });
+    await page.route(`**/animations/${ID}/notes.txt`, r => r.fulfill({ contentType: 'text/plain', body: 'A differently named transcript.' }));
+    await openFixture(page);
+    await expect(video(page)).not.toHaveAttribute('poster', /.*/);
+    const details = page.locator('details', { has: page.getByText('Transcript', { exact: true }) });
+    await details.locator('summary').click();
+    await expect(details.locator('p')).toHaveText('A differently named transcript.');
+  });
+
+  test('a null poster and no stills show no broken image in the step view', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await route(page, { poster: null, stills: {} });
+    await openFixture(page, '?pauses=0', { video: false });
+    await expect(page.getByText(`Step 1 of ${steps.steps.length}: ${first.label}`)).toBeVisible();
+    await expect(page.getByRole('figure').getByRole('img')).toHaveCount(0);
+  });
+
+  test('the figure is described by the animation description', async ({ page }) => {
+    await openFixture(page);
+    const figure = page.getByRole('figure', { name: `Animation: ${steps.title}` });
+    const id = await figure.getAttribute('aria-describedby');
+    expect(id).toBeTruthy();
+    await expect(page.locator(`[id="${id}"]`)).toHaveText(steps.description);
   });
 });
 
