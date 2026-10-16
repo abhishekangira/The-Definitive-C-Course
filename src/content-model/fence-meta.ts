@@ -1,6 +1,6 @@
 // Parses code-fence meta strings like:  id=sum stdin="3 4\n" expect=warning choices="7|8|34"
 // Quoted values use JSON string escapes. Bare words are boolean flags. Shared by app and tools.
-import type { SampleMeta, Expect, CompilerKey } from './types';
+import type { SampleMeta, Expect, CompilerKey } from './types.ts';
 
 export type RawMeta = Record<string, string | true>;
 

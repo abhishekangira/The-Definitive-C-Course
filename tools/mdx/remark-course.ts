@@ -4,9 +4,9 @@
 //  2. Top-level content is wrapped into <Card index gated> groups (see src/content-model/cards.ts).
 import type { Root, RootContent, Code } from 'mdast';
 import { visit } from 'unist-util-visit';
-import { parseRawMeta, toSampleMeta } from '../../src/content-model/fence-meta';
-import { groupCards } from '../../src/content-model/cards';
-import type { SampleMeta } from '../../src/content-model/types';
+import { parseRawMeta, toSampleMeta } from '../../src/content-model/fence-meta.ts';
+import { groupCards } from '../../src/content-model/cards.ts';
+import type { SampleMeta } from '../../src/content-model/types.ts';
 
 type JsxAttr = { type: 'mdxJsxAttribute'; name: string; value: string | null };
 const attr = (name: string, value: string): JsxAttr => ({ type: 'mdxJsxAttribute', name, value });
