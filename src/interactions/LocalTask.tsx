@@ -5,7 +5,7 @@ import type { ExerciseEntry } from '../content-runtime/course';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { useCardDone } from '../lesson/LessonContext';
 import { update, useProgress } from '../progress/store';
-import { verifyCode } from '../testing/token';
+import { formatCode, verifyCode } from '../testing/token';
 import { useFolder } from './Exercise';
 import { useExerciseProgress } from './useExerciseProgress';
 import { Hints } from './ExerciseParts';
@@ -29,16 +29,17 @@ export function LocalTask({ entry, onPassed, projectId }: { entry: ExerciseEntry
   const submit = async () => {
     const v = await verifyCode(code, progress.seed, { exercise: entry.id });
     if (!v.ok) { setMsg({ ok: false, text: v.message }); return; }
+    const canonical = formatCode(v.code); // never store the pasted text: it may be huge or carry other content
     const complete = v.code.type === 'completion';
     const run = v.code.type === 'progress' ? v.code.run : undefined;
     patch(e => {
-      e.codes = [...new Set([...(e.codes ?? []), code.trim()])];
+      e.codes = [...new Set([...(e.codes ?? []), canonical])];
       e.attempts = Math.max(e.attempts, run ?? e.attempts + 1);
       e.substantive = Math.max(e.substantive, e.codes.length);
       if (complete) { e.passed = true; if (!e.solutionViewed) e.mastered = true; }
     });
     if (complete) {
-      if (projectId) update(p => { p.projects[projectId] = { passed: true, at: new Date().toISOString(), token: code.trim() }; });
+      if (projectId) update(p => { p.projects[projectId] = { passed: true, at: new Date().toISOString(), token: canonical }; });
       setMsg({ ok: true, text: 'Completion token accepted: all checks passed on your machine.' });
       markDone();
       onPassed?.();

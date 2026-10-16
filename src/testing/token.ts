@@ -135,13 +135,24 @@ export async function encodeCompletionToken(p: { exercise: string; runner?: numb
   return `${TOKEN_FORMAT}-R${c.runner}-${exercise}-DONE-${mac}`;
 }
 
+const MAX_CODE_LENGTH = 200;
+
+/** The canonical spelling of a parsed code (what check.mjs printed): store this, never the pasted text around it. */
+export function formatCode(c: ParsedCode): string {
+  const head = `${TOKEN_FORMAT}-R${c.runner}-${c.exercise}`;
+  return c.type === 'progress' ? `${head}-${c.bits}-${c.run}-${c.src}-${c.mac}` : `${head}-DONE-${c.mac}`;
+}
+
 /**
  * Parses a pasted code. Tolerates surrounding text and quotes, spaces or line breaks inside the code,
  * and any letter case. Does not check the MAC (see verifyCode).
  */
 export function parseCode(text: string): { ok: true; code: ParsedCode } | { ok: false; error: string } {
-  const compact = text.replace(/\s+/g, '').toLowerCase();
-  const start = compact.indexOf(TOKEN_FORMAT.toLowerCase() + '-');
+  const whole = text.replace(/\s+/g, '').toLowerCase();
+  const start = whole.indexOf(TOKEN_FORMAT.toLowerCase() + '-');
+  // A code is far shorter than MAX_CODE_LENGTH; looking at no more keeps the trailing-punctuation regex below linear
+  // (on a megabyte of dashes it was quadratic).
+  const compact = start < 0 ? whole.slice(0, 16) : whole.slice(0, start + MAX_CODE_LENGTH);
   if (start < 0) {
     return /^tdcc\d+-/.test(compact)
       ? { ok: false, error: 'this code comes from a different version of the course runner' }

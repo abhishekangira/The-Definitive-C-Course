@@ -4,7 +4,7 @@ import { Fragment, type ReactNode } from 'react';
 
 function inline(text: string, keyBase: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[[^\]]+\]\([^)\s]+\))/g;
+  const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[[^\][]+\]\([^)\s[]+\))/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let i = 0;
@@ -16,7 +16,7 @@ function inline(text: string, keyBase: string): ReactNode[] {
     else if (tok.startsWith('**')) out.push(<strong key={key}>{tok.slice(2, -2)}</strong>);
     else if (tok.startsWith('*')) out.push(<em key={key}>{tok.slice(1, -1)}</em>);
     else {
-      const lm = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(tok)!;
+      const lm = /^\[([^\][]+)\]\(([^)\s[]+)\)$/.exec(tok)!;
       const safe = /^(https?:|#|\.\/)/.test(lm[2]) ? lm[2] : '#';
       out.push(<a key={key} href={safe} target={safe.startsWith('http') ? '_blank' : undefined} rel="noreferrer">{lm[1]}</a>);
     }

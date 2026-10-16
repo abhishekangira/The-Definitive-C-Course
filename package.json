@@ -6,7 +6,7 @@
   "description": "A self-paced, interactive course that teaches C17 and low-level fundamentals to front-end engineers.",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.22.2"
   },
   "scripts": {
     "dev": "npm run toolchain:prepare && node tools/check/build.mjs --into public && vite",
@@ -54,6 +54,7 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "esbuild": "0.28.2",
+    "jsdom": "30.1.3",
     "remark-frontmatter": "5.0.0",
     "remark-gfm": "4.0.1",
     "remark-mdx": "3.1.1",
