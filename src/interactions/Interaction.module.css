@@ -50,8 +50,8 @@
 .nativeHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .nativeLabel { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
 .stored { margin: 0; background: var(--terminal-bg); color: var(--terminal-text); border-color: #000; white-space: pre-wrap; }
-.platform { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 0.9rem; }
-.platform select { padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg); }
+.platform { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: 0.9rem; max-width: 100%; }
+.platform select { max-width: 100%; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--bg); }
 
 .hints { display: flex; flex-direction: column; gap: var(--space-2); }
 .hint { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); background: var(--bg); }

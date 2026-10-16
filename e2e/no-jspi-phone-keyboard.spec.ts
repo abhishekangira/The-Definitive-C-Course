@@ -3,13 +3,25 @@
 //      lesson 5 (get-int-reprompt, scanf-returns, hello-its-me) and the exercise's "Input for Run" box.
 //   2. No route scrolls sideways at 390 px.
 //   3. Lesson 1 with the keyboard only (Tab, Shift+Tab, Enter, Space; arrows inside a radio group; typed text in fields).
-import { test, expect, type Browser, type Locator, type Page } from '@playwright/test';
+import { test, expect, type Browser, type ElementHandle, type Locator, type Page } from '@playwright/test';
 import { answerQuiz, availableModules, completeLesson, progressJson, topLevel, type ModuleInfo } from './lib';
 import { normOutput } from '../src/interactions/platform';
 
 const RUN_TIMEOUT = Number(process.env.E2E_RUN_TIMEOUT ?? 180_000);
 const mod: ModuleInfo = availableModules()[0];
 const lessonStem = (n: number) => mod.lessons.find(l => l.stem.startsWith(String(n).padStart(2, '0')))!.stem;
+
+// Each test below sets up what it needs (once per page), so any of them also runs alone with -g.
+const done = new WeakMap<Page, Set<string>>();
+async function once(page: Page, step: string, run: () => Promise<void>) {
+  const steps = done.get(page) ?? done.set(page, new Set()).get(page)!;
+  if (steps.has(step)) return;
+  await run();
+  steps.add(step);
+}
+const warmUp = (page: Page) => once(page, 'warm-up', () => finishWarmUp(page));
+// completePredict compares the browser's output with the output verified in Node, for get-int-reprompt and scanf-returns.
+const lesson5 = (page: Page) => once(page, 'lesson5', async () => { await warmUp(page); await completeLesson(page, mod, lessonStem(5)); });
 
 async function finishWarmUp(page: Page) {
   await page.goto(`#/m/${mod.id}/retrieval`);
@@ -19,7 +31,8 @@ async function finishWarmUp(page: Page) {
 }
 
 async function expectNoSidewaysScroll(page: Page, what: string) {
-  const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+  // clientWidth, not innerWidth: with isMobile Chromium grows innerWidth to the content width, so scrollWidth <= innerWidth never fails.
+  const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
   expect(scroll, `scrollWidth on ${what}`).toBeLessThanOrEqual(width);
 }
 
@@ -44,14 +57,14 @@ test.describe.serial('no JSPI on a phone (390x844)', () => {
   });
 
   test('warm-up, then lesson 5 runs its samples and exercise on preset input', async () => {
-    await finishWarmUp(page);
-    // completePredict compares the browser's output with the output verified in Node, for get-int-reprompt and scanf-returns.
-    await completeLesson(page, mod, lessonStem(5));
+    await lesson5(page);
     for (const id of ['get-int-reprompt', 'scanf-returns']) await expect(page.locator(`[data-sample="${id}"]`)).toBeVisible();
     await expect(page.locator('#term-input')).toHaveCount(0);
   });
 
   test('hello-its-me: the "Input for Run" box feeds the program, and empty input ends it instead of waiting', async () => {
+    await lesson5(page);
+    await page.goto(`#/m/${mod.id}/${lessonStem(5)}`);
     const box = page.locator('[data-exercise="hello-its-me"]');
     await box.scrollIntoViewIfNeeded();
     const run = box.getByRole('button', { name: 'Run', exact: true });
@@ -73,6 +86,7 @@ test.describe.serial('no JSPI on a phone (390x844)', () => {
   });
 
   test('every route fits a 390 px screen without sideways scrolling', async () => {
+    await lesson5(page);
     const routes: Array<[string, string]> = [
       ['', 'course map'], [`#/m/${mod.id}`, 'module page'], [`#/m/${mod.id}/retrieval`, 'warm-up'],
       ...mod.lessons.map(l => [`#/m/${mod.id}/${l.stem}`, `lesson ${l.stem}`] as [string, string]),
@@ -107,6 +121,19 @@ test.describe.serial('lesson 1 with the keyboard only', () => {
 
   const key = (k: string) => page.keyboard.press(k);
   const inEditor = () => page.evaluate(() => Boolean(document.activeElement?.closest('.cm-content')));
+  /** A focused element must show it: an outline or box-shadow on itself, its label, or (editor) the frame around CodeMirror (.editor:focus-within). */
+  const hasFocusIndicator = (el: ElementHandle) => el.evaluate(node => {
+    const e = node as Element;
+    const shown = (n: Element | null) => {
+      if (!n) return false;
+      const c = getComputedStyle(n);
+      return (c.outlineStyle !== 'none' && parseFloat(c.outlineWidth) > 0) || c.boxShadow !== 'none';
+    };
+    // A visually hidden control (1px, clipped) is not where the learner looks: its label must show the focus.
+    const r = e.getBoundingClientRect();
+    const hidden = r.width < 4 || r.height < 4;
+    return (!hidden && shown(e)) || shown(e.closest('label')) || shown(e.closest('.cm-editor')?.parentElement ?? null);
+  });
   /** One Tab press; inside the editor Tab indents, so leave it first (Esc, then Tab: see CodeEditorImpl.tsx). */
   async function tab(back = false) {
     if (await inEditor()) await key('Escape');
@@ -117,7 +144,10 @@ test.describe.serial('lesson 1 with the keyboard only', () => {
     const el = await target.elementHandle({ timeout: 10_000 });
     if (!el) throw new Error(`${what}: not in the page`);
     for (let presses = 0; presses < 150; presses++) {
-      if (await el.evaluate(e => e === document.activeElement)) return;
+      if (await el.evaluate(e => e === document.activeElement)) {
+        expect(await hasFocusIndicator(el), `${what}: focus must be visible (outline or box-shadow on it or its label)`).toBe(true);
+        return;
+      }
       await tab(back);
     }
     throw new Error(`${what}: not reached in 150 Tab presses`);
@@ -142,9 +172,8 @@ test.describe.serial('lesson 1 with the keyboard only', () => {
     await press(submit, `${what}: Check again`, 'Enter');
   }
 
-  test('warm-up is done (with the mouse, it is not under test)', async () => { await finishWarmUp(page); });
-
-  test('every card of lesson 1 can be completed with Tab, Shift+Tab, Enter and Space', async () => {
+    test('every card of lesson 1 can be completed with Tab, Shift+Tab, Enter and Space', async () => {
+    await warmUp(page); // with the mouse: the warm-up is not under test
     await page.goto(`#/m/${mod.id}/${lessonStem(1)}`);
     const first = page.locator('section[data-card="0"]');
     await expect(first).toBeVisible();
@@ -190,7 +219,9 @@ test.describe.serial('lesson 1 with the keyboard only', () => {
     expect((await progressJson(page)).lessons?.[mod.lessons[0].id], 'lesson 1 complete').toBeTruthy();
   });
 
-  test('the code editor never traps focus: Tab indents, Esc then Tab and Shift+Tab leave', async () => {
+  test('the code editor never traps focus: Tab indents, Esc then Tab and Shift+Tab leave (pins the documented contract, whoever implements it)', async () => {
+    // End to end: CodeMirror's keymap and the wrapper's Escape handler (CodeEditorImpl.tsx) both leave focus out, so removing
+    // only one of them does not fail this test; it fails if focus can get trapped.
     await page.goto('#/playground');
     await expect(page.getByRole('heading', { level: 1, name: 'Playground' })).toBeVisible();
     const editor = page.locator('main .cm-content[contenteditable="true"]').first();
