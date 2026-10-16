@@ -23,7 +23,7 @@ int main(void) {
 }
 ```
 
-The first line, `abc`, isn't a number, so `get_int` printed the prompt a second time and read `7`. Note `#include "learnc.h"` with quotes: quotes mean "a header from my project", angle brackets mean "a system header".
+The first line, `abc`, isn't a number, so `get_int` printed the prompt a second time and read `7`. Note `#include "learnc.h"` with quotes: by convention quotes mean "a header from my project" and angle brackets mean "a system header".
 
 <Analogy js="const name = prompt('Name?')" c={'const char *name = get_line("Name? ");'} breaksDown="`prompt` returns `null` if the user cancels. `get_line` has no such value: at end of input it ends the program. More importantly, C's input is a stream of bytes; there is no dialog box and no event loop, and your program simply blocks until a line arrives." />
 
@@ -56,4 +56,4 @@ Your turn. Write the classic first interactive program. Tests feed it names and 
   explain="That's why `learnc.h` re-prompts: it reads a whole line, then validates it. When you write your own input code, check `scanf`'s return value, or read a line with `fgets` and parse it."
 />
 
-**What you know now:** `learnc.h` gives you safe input now (`get_int`, `get_line`); headers in quotes are yours and in angle brackets are the system's; `scanf` returns how many items it converted, and ignoring that return value is a bug.
+**What you know now:** `learnc.h` gives you safe input now (`get_int`, `get_line`); headers in quotes are yours and in angle brackets are the system's; `scanf` returns how many items it converted, and ignoring that return value is usually a bug.

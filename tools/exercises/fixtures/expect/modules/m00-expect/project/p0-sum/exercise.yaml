@@ -1,0 +1,8 @@
+id: project/p0-sum
+kind: ct
+title: Sum
+prompt: Read two integers and print their sum.
+runsIn: browser
+hints: [one, two, three]
+file: sum.c
+variants: []

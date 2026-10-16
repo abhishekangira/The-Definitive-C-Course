@@ -119,9 +119,11 @@ export function checkProjection(file: SamplesFile): unknown {
       for (const r of [t.run, t.guardrail, ...(t.observed ?? []), (t as { runPipe?: TargetResult['run'] }).runPipe]) {
         if (!r) continue;
         delete r.stdoutDisplay;
-        if (ub) { r.stdout = '<ub>'; r.stderr = '<ub>'; }
+        if (ub) { r.stdout = '<ub>'; r.stderr = '<ub>'; if (r.signal === null) delete r.signal; }
       }
-      if (ub && t.observed) t.observed = [];
+      // Committed files written before the canonical form (tools/verify/ub.ts) hold raw garbage in `observed` and
+      // have no `ub` summary; both are compared only once the files are regenerated (see the PR for #5).
+      if (ub) { delete t.observed; delete t.ub; }
     }
     if (ub) {
       s.answer.stdout = '<ub>';

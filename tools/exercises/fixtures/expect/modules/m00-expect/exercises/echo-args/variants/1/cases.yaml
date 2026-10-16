@@ -1,0 +1,3 @@
+cases:
+  - name: "three"
+    args: ["1", "2", "3"]

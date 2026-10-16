@@ -1,0 +1,6 @@
+sources: [sum.c]
+cases:
+  - name: "adds"
+    stdin: "2 3\n"
+  - name: "bad input exits 1"
+    stdin: "x\n"

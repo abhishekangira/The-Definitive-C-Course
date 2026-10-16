@@ -33,6 +33,16 @@ export function nativeFor(sample: SampleResult, platform: Platform | undefined):
   return { target: 'linux-x86_64-gcc13', run: sample.results['linux-x86_64-gcc13']?.run, fallback: Boolean(platform) };
 }
 
+/** What to show where a stored run's output would go. Undefined-behaviour output is never stored, and never shown. */
+export const UB_OUTPUT_NOTE = 'Undefined behaviour: the program has no defined output, and it can differ from run to run, so none is shown.';
+
+/** The stored stdout of a sample's run, or a note for expect=ub samples (their output is garbage by definition). */
+export function storedOutputText(sample: SampleResult, run: RunOutcome | undefined): string {
+  if (!run) return '—';
+  if (sample.meta.expect === 'ub') return UB_OUTPUT_NOTE;
+  return (run.stdoutDisplay ?? run.stdout) || '(no output)';
+}
+
 export function describeOutcome(run: RunOutcome | undefined, compiled = true): string {
   if (!compiled) return 'Does not compile.';
   if (!run) return '—';

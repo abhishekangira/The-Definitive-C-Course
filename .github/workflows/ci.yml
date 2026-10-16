@@ -137,8 +137,8 @@ jobs:
         with:
           path: dist
 
-  # The only job with write access. It runs no PR-authored code: it unpacks the files produced by `check`
-  # (only paths under src/generated/{samples,traces}), commits them as the bot and dispatches CI for the new head.
+  # The only job with write access. It runs none of the PR's build or test code (no npm, no tests): it unpacks the files produced by `check`
+  # (validated by tools/ci/unpack-generated.mjs: regular files under src/generated/{samples,traces} only), commits them as the bot and dispatches CI for the new head.
   #   contents: write  -> git push to the PR branch
   #   actions: write   -> `gh workflow run` (workflow_dispatch). Needed because a push made with GITHUB_TOKEN does
   #                       not trigger workflows, so the new head would otherwise get no CI run at all.
@@ -169,11 +169,14 @@ jobs:
             echo "The branch moved since this run started; the author's push gets its own run, which regenerates again."
             exit 0
           fi
-          # Refuse anything outside the two generated directories, then unpack.
-          if tar -tf "$RUNNER_TEMP/regenerated/files.tar" | grep -Ev '^src/generated/(samples|traces)/[A-Za-z0-9._/-]+$|^$' | grep -q .; then
-            echo "Unexpected paths in the artifact"; exit 1
-          fi
-          tar -xf "$RUNNER_TEMP/regenerated/files.tar"
+          # The tarball comes from a job that ran PR-authored code, so treat it as hostile. The validator
+          # (tools/ci/unpack-generated.mjs, node built-ins only, unit-tested) accepts only regular files strictly under
+          # src/generated/{samples,traces}/ (no "..", absolute, "./", backslash, links, devices, directories or
+          # extension headers), checks every member before writing anything, and writes 0644 files into a clean dir.
+          node tools/ci/unpack-generated.mjs "$RUNNER_TEMP/regenerated/files.tar" "$RUNNER_TEMP/unpacked"
+          # Never copy through a symlink that the branch itself may contain.
+          if find src/generated -type l | grep -q .; then echo "Symlink under src/generated"; exit 1; fi
+          cp -r "$RUNNER_TEMP/unpacked/src/generated/." src/generated/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/generated/samples src/generated/traces

@@ -5,16 +5,16 @@ minutes: 45
 summary: int, char, double and bool are sizes and encodings, not labels; integer division; format specifiers that must match.
 ---
 
-In TypeScript, `let n: number` is a promise to the type checker that disappears at runtime: every number is a 64-bit float. In C a type is a **memory layout**. It decides how many bytes a variable occupies, how those bits are interpreted, and which machine instructions operate on it.
+In TypeScript, `let n: number` is a promise to the type checker that disappears at runtime: every `number` is a 64-bit float. In C a type is a **memory layout**. It decides how many bytes a variable occupies, how those bits are interpreted, and which machine instructions operate on it.
 
 The four types you'll use most:
 
 | Type | Typical size | Holds |
 |---|---|---|
 | `char` | 1 byte | a small integer, used for characters |
-| `int` | 4 bytes | a whole number, about ±2.1 billion |
-| `double` | 8 bytes | a floating-point number (exactly JavaScript's `number`) |
-| `bool` | 1 byte | `true` or `false` (needs `#include <stdbool.h>` in C17) |
+| `int` | typically 4 bytes | a whole number, about ±2.1 billion |
+| `double` | 8 bytes | a floating-point number (on virtually all platforms the same 64-bit format as JavaScript's `number`) |
+| `bool` | typically 1 byte | `true` or `false` (needs `#include <stdbool.h>` in C17) |
 
 `sizeof` tells you how many bytes something takes. `%zu` is the format for its result.
 
@@ -40,7 +40,7 @@ int main(void) {
 }
 ```
 
-<Analogy js="let n: number" c="int n;" breaksDown="TypeScript types vanish at runtime; every number is still an 8-byte float. A C `int` really is 4 bytes holding a whole number, so a fraction assigned to it is silently cut off, with no error. Module 2 shows what those bytes look like, bit by bit." />
+<Analogy js="let n: number" c="int n;" breaksDown="TypeScript types vanish at runtime; every `number` is still an 8-byte float. A C `int` really is 4 bytes holding a whole number, so a fraction assigned to it is silently cut off, with no error. Module 2 shows what those bytes look like, bit by bit." />
 
 Arithmetic follows the types of the operands. When **both** operands are integers, `/` is integer division: the fractional part is thrown away, rounding toward zero.
 
@@ -85,7 +85,7 @@ Format specifiers must match the argument's type: `%d` for `int`, `%f` for `doub
     "The program will print `3`, which is a rounding warning",
   ]}
   answer={1}
-  explain="`-Wformat` checks each `%` directive against its argument. `%d` reads an `int` from where an `int` would be, but a `double` was passed (and on most platforms it travels in a different register entirely). The output would be garbage. The fix is `%f` (or `%.1f`), or passing an `int`."
+  explain="`-Wformat` checks each `%` directive against its argument. `%d` reads an `int` from where an `int` would be, but a `double` was passed (on some platforms, such as x86-64 Linux, it travels in a different register entirely). The behaviour is undefined, so the output can't be relied on. The fix is `%f` (or `%.1f`), or passing an `int`."
 >
 
 ```c id=format-mismatch expect=ub predict=none warn=-Wformat
@@ -114,4 +114,4 @@ Underneath, every type is just bits. Try it: type a number and watch its bits, t
 
 <NumberDrill value={42} from="dec" to="bin" width={8} />
 
-**What you know now:** C types are sizes plus interpretations; `sizeof` reports the size, which varies by platform (`long` is 4 bytes here but 8 on your 64-bit machine); `int / int` truncates even when you store the result in a `double`; and every `printf` format must match its argument's type, which `-Wall` checks for you.
+**What you know now:** C types are sizes plus interpretations; `sizeof` reports the size, which varies by platform (`long` is 4 bytes in the browser but 8 on 64-bit Mac and Linux); `int / int` truncates even when you store the result in a `double`; and every `printf` format must match its argument's type, which `-Wall` checks for you.

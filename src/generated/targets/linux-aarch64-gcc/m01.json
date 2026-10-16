@@ -231,30 +231,22 @@
         "observed": [
           {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "-751996440\n"
-          },
-          {
-            "exit": 0,
-            "signal": null,
-            "stderr": "",
-            "stdout": "-439587320\n"
-          },
-          {
-            "exit": 0,
-            "signal": null,
-            "stderr": "",
-            "stdout": "-167500056\n"
+            "stdout": ""
           }
         ],
         "run": {
           "exit": 0,
-          "signal": null,
           "stderr": "",
-          "stdout": "-751996440\n"
+          "stdout": ""
         },
-        "target": "linux-aarch64-gcc"
+        "target": "linux-aarch64-gcc",
+        "ub": {
+          "outcomes": [
+            "runs"
+          ],
+          "runs": 3
+        }
       }
     },
     "format-mismatch-fixed": {
@@ -641,18 +633,22 @@
         "observed": [
           {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "6\n"
+            "stdout": ""
           }
         ],
         "run": {
           "exit": 0,
-          "signal": null,
           "stderr": "",
-          "stdout": "6\n"
+          "stdout": ""
         },
-        "target": "linux-aarch64-gcc"
+        "target": "linux-aarch64-gcc",
+        "ub": {
+          "outcomes": [
+            "runs"
+          ],
+          "runs": 3
+        }
       }
     },
     "uninit-total-fixed": {

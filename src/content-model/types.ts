@@ -172,13 +172,29 @@ export interface RunOutcome {
   timedOut?: boolean;
 }
 
+/** Deterministic summary of an expect=ub sample's repeated runs. */
+export interface UbSummary {
+  /** How many times the program was run. */
+  runs: number;
+  /** The outcome categories seen, sorted: "runs", "runtime-error", "exit:N". */
+  outcomes: string[];
+  // The number of distinct values seen is deliberately not stored: it is itself nondeterministic (the same
+  // uninitialised variable gave 1 distinct value in one verify run and 2 in the next), so it would bring the churn back.
+}
+
 export interface TargetResult {
   target: TargetId;
   compiler: string; // version string
   compile: { ok: boolean; diagnostics: Diagnostic[]; raw: string };
   run?: RunOutcome;
-  /** For expect=ub: outcomes observed across repeated runs (deduplicated). */
+  /**
+   * For expect=ub: one output-free entry per outcome category seen across the repeated runs. The raw output of an
+   * undefined-behaviour program is never stored (it differs on every run), so `run` and `observed` carry empty
+   * stdout/stderr; show `ub` or describe the outcome instead.
+   */
   observed?: RunOutcome[];
+  /** For expect=ub: the canonical summary of the repeated runs (see tools/verify/ub.ts). */
+  ub?: UbSummary;
   sanitizer?: { ok: boolean; report?: string; kind?: string; file?: string; line?: number };
   /** stdout=both samples: the run with stdout on a pipe (run is the tty run). */
   runPipe?: RunOutcome;

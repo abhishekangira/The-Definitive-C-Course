@@ -1,0 +1,9 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "greets Ada"
+    stdin: "Ada\n"
+    hint: "The prompt must be exactly \"What's your name? \" (with the space)."
+  - name: "greets Linus"
+    stdin: "Linus\n"
+  - name: "keeps spaces in the name"
+    stdin: "Grace Hopper\n"
