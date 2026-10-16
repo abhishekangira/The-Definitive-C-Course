@@ -2,4 +2,5 @@
 .text { margin-bottom: 6px; }
 .track { height: 6px; background: #26303b; border-radius: 999px; overflow: hidden; }
 .fill { height: 100%; background: #7cb2ff; transition: width 200ms linear; }
+.box:focus-visible { outline: 2px solid #7cb2ff; outline-offset: -2px; }
 .detail { margin: 6px 0 0; font-size: 0.8rem; color: #9fb0c3; overflow-wrap: anywhere; }

@@ -34,7 +34,11 @@ const retryButton = (page: Page) => toolchainAlert(page).getByRole('button', { n
 
 async function expectRunWorks(page: Page) {
   await runButton(page).click();
-  await expect(page.getByText('Program exited with status 0.')).toBeVisible({ timeout: RUN_TIMEOUT });
+  // Fail fast: if the compiler could not load, the alert shows within seconds; don't sit out the whole run timeout.
+  const exited = page.getByText('Program exited with status 0.');
+  await expect(exited.or(toolchainAlert(page)).first()).toBeVisible({ timeout: RUN_TIMEOUT });
+  await expect(toolchainAlert(page), 'the compiler failed to load').toHaveCount(0);
+  await expect(exited).toBeVisible();
   await expect(page.getByRole('log', { name: 'Program output' })).toContainText('Hello from C!');
 }
 
@@ -57,6 +61,8 @@ function hold(context: BrowserContext, which: RegExp) {
     },
   };
 }
+
+const MANIFEST_FILES = () => readdirSync(toolchainDir()).filter(f => f !== 'manifest.json').sort();
 
 const cachedFiles = (page: Page) => page.evaluate(async () => {
   const out: string[] = [];
@@ -84,8 +90,19 @@ test('1. a download that drops shows an error with Retry, and Retry works withou
     await expectAccessible(page, `toolchain error (${scheme})`);
   }
 
+  // A failed download is not a failed compile: nothing may announce "Compilation failed with 0 error(s)".
+  await expect(runButton(page)).toHaveAttribute('aria-disabled', 'false'); // the failed run has ended, so its announcement would be in place
+  await expect(page.getByRole('status').filter({ hasText: /Compilation failed/ })).toHaveCount(0);
+
+  // Retry by keyboard. The button disappears, so focus must land on the progress box, not on <body>.
   await context.setOffline(false);
-  await retryButton(page).click();
+  const slow = hold(context, BIG);
+  await retryButton(page).focus();
+  await page.keyboard.press('Enter');
+  await slow.first;
+  await expect(page.locator('[data-toolchain="loading"]')).toBeFocused();
+  await slow.release('continue');
+  await expect(page.locator('[data-toolchain="ready"]')).toBeVisible({ timeout: RUN_TIMEOUT });
   await expect(toolchainAlert(page)).toHaveCount(0);
   await expectRunWorks(page);
   await context.close();
@@ -123,6 +140,8 @@ test('3. second visit makes no toolchain requests, and Run still works with the 
   await page.goto('#/playground');
   await expectRunWorks(page);
   expect(requests, 'the probe sees the first download').toContain('llvm.core.wasm');
+  // No polling: once the first Run works the cache is complete (the worker reports ready only after every put settled).
+  expect(await cachedFiles(page)).toEqual(MANIFEST_FILES());
   requests.length = 0;
 
   // The app itself is not an offline app (the page needs the network to load), so "offline" here is: every toolchain URL fails.
@@ -196,5 +215,57 @@ test('6. low-memory mode never downloads the compiler, in the playground or on a
   await page.clock.fastForward(10_000);
   await page.waitForLoadState('networkidle');
   expect(requests).toEqual([]);
+  await context.close();
+});
+
+test('7. one evicted file while offline keeps the other five, and Retry fetches only what is missing', async ({ browser }) => {
+  const { context, page, requests } = await session(browser);
+  await page.goto('#/playground');
+  await expectRunWorks(page);
+  await page.evaluate(async () => {
+    for (const k of await caches.keys()) {
+      const cache = await caches.open(k);
+      for (const r of await cache.keys()) if (r.url.endsWith('/llvm.core2.wasm')) await cache.delete(r);
+    }
+  });
+  const kept = MANIFEST_FILES().filter(f => f !== 'llvm.core2.wasm');
+  expect(await cachedFiles(page)).toEqual(kept);
+
+  await context.route(TOOLCHAIN, route => route.abort('internetdisconnected'));
+  await page.reload();
+  await runButton(page).click();
+  await expect(toolchainAlert(page)).toBeVisible({ timeout: RUN_TIMEOUT });
+  expect(await cachedFiles(page), 'a failed load must not delete the good files').toEqual(kept);
+
+  await context.unroute(TOOLCHAIN);
+  requests.length = 0;
+  await retryButton(page).click();
+  await expectRunWorks(page);
+  expect(requests, 'only the evicted file is downloaded again').toEqual(['llvm.core2.wasm']);
+  await context.close();
+});
+
+test('8. in the pipeline explorer a failed stage shows the alert, and the same tab works after Retry', async ({ browser }) => {
+  const { context, page } = await session(browser);
+  const mod = availableModules()[0];
+  const lesson = mod.lessons[0];
+  await page.addInitScript(([lessonId, quizKey]) => {
+    if (localStorage.getItem('tdcc:v1:progress')) return;
+    const cards = { [lessonId]: Array.from({ length: 40 }, (_, k) => k) };
+    localStorage.setItem('tdcc:v1:progress', JSON.stringify({ version: 1, seed: '0123456789abcdef', settings: {}, cards, lessons: {}, samples: {}, exercises: {}, quizzes: { [quizKey]: { passed: true, score: 1, total: 1, at: 'x', answers: {} } }, projects: {} }));
+  }, [lesson.id, `${mod.id}:retrieval`]);
+  await context.route(TOOLCHAIN, route => route.abort('internetdisconnected'));
+  await page.goto(`#/m/${mod.id}/${lesson.stem}`);
+  const explorer = page.getByLabel('Pipeline explorer');
+  const tab = explorer.getByRole('tab', { name: '2. After the preprocessor' });
+  await tab.click();
+  await expect(explorer.getByRole('alert')).toContainText(/didn.t finish downloading/, { timeout: RUN_TIMEOUT });
+
+  await context.unroute(TOOLCHAIN);
+  await explorer.getByRole('button', { name: 'Retry' }).click();
+  await expect(explorer.locator('[data-toolchain="ready"]')).toBeVisible({ timeout: RUN_TIMEOUT });
+  await tab.click(); // the failed result is not remembered: this asks the compiler again
+  await expect(explorer.getByText(/\d+ lines\./)).toBeVisible({ timeout: RUN_TIMEOUT });
+  await expect(explorer.getByRole('alert')).toHaveCount(0);
   await context.close();
 });
