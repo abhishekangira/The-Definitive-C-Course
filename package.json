@@ -23,6 +23,7 @@
     "check:build": "node tools/check/build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "dod": "tsx tools/dod/cli.ts",
     "e2e": "playwright test"
   },
   "dependencies": {
