@@ -1,6 +1,7 @@
 import { createHashRouter, type RouteObject } from 'react-router';
 import { Layout } from './Layout';
 import { NotFound } from './pages/NotFound';
+import { RouteError } from './pages/RouteError';
 import { RouteLoading } from './RouteLoading';
 
 /**
@@ -15,7 +16,7 @@ const page = <K extends string>(load: () => Promise<Record<K, React.ComponentTyp
 export const router = createHashRouter([
   {
     element: <Layout />,
-    errorElement: <Layout><NotFound /></Layout>,
+    errorElement: <Layout><RouteError /></Layout>,
     HydrateFallback: RouteLoading,
     children: [
       { index: true, ...page(() => import('./pages/CourseMap'), 'CourseMap') },

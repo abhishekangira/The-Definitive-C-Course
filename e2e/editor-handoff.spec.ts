@@ -68,7 +68,8 @@ test('focus requested before navigating away does not steal focus on return', as
   await ph.focus();
   await expect(ph).toBeFocused();
   await page.goto(`#/m/${mod.id}`);
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  // A bare h1 also matches the page being left; wait for this module's own title.
+  await expect(page.getByRole('heading', { level: 1, name: mod.meta.title })).toBeVisible();
   release();
   await page.goto(url);
   await expect(page.locator('.cm-content').first()).toBeVisible();
