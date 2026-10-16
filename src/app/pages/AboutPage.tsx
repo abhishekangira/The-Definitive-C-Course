@@ -21,7 +21,7 @@ export function AboutPage() {
         <li><strong>Fonts in animations</strong>: SIL Open Font License 1.1.</li>
         <li><strong>CS50 lecture clips</strong> are embedded from YouTube (Harvard CS50, CC BY-NC-SA 4.0) and are not re-hosted.</li>
       </ul>
-      <p>The course's own code and content: MIT licence. The helper header <code>learnc.h</code> is part of the course (MIT).</p>
+      <p>The course's own code and content: MIT licence, copyright 2026 Abhishek Angira (see the <code>LICENSE</code> file in the repository). The helper header <code>learnc.h</code> is part of the course (MIT).</p>
     </div>
   );
 }

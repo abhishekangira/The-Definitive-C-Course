@@ -44,6 +44,7 @@ Risk: (does it touch learner-facing app code, the generated-data format, or CI/d
 Review depth, so you know where evidence matters most: the maintainer reviews thoroughly when a PR touches learner-facing app code, the verifier's data format, or CI/deploy. For tests-only changes, content text and refactors whose output can be diffed, it runs the checks and reads the diff.
 
 ## Status
+- **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/ (GitHub Pages; the `deploy` job in `ci.yml` publishes `main`).
 - Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12 (public repo → GitHub Pages; MP4s committed; allocator-only capstone; dark-only animation renders).
 - Stage 2 (app shell + Module 1) is **built and awaiting client review**. Open items are listed in the review hand-off; do not start Module 2 before the client signs off.
 - The client reviews after each stage and after each module, so stop and ask for review at those points.
@@ -114,7 +115,7 @@ content/modules/m01-c-in-your-browser/
 - **Traces** come from x86-64 Linux gdb and are labelled as such. Variables whose declaration has not run are recorded as `declared: false` with a placeholder value, never the stack bytes.
 - **Line endings are LF everywhere** (`.gitattributes`). Windows CRLF changes sample hashes and marks stored results stale.
 - **Routing.** HashRouter with Vite `base: './'`. The toolchain URL is resolved on the main thread and passed to the workers.
-- **Licensing.** The repo's own licence and copyright holder are the client's decision (open item); `learnc.h` is MIT.
+- **Licensing.** MIT for the code and the course content (the client's decision): `LICENSE`, copyright (c) 2026 Abhishek Angira. `package.json`, the About page and `learnc.h` agree. Don't change it.
 
 ## Key technical decisions (details in PLAN.md §1–§4)
 - **In-browser compiler:** `@yowasp/clang@22.0.0-git20542-10` (pinned). Programs run with `@bjorn3/browser_wasi_shim@0.4.2` in a per-run worker, under `WebAssembly.promising` when JSPI exists (Chromium), otherwise with preset stdin.
