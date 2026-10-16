@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  daysSinceExport, emptyProgress, exportFileName, exportProgress, getProgress, mergeProgress, migrate, replaceProgress, summarise,
+  daysSinceExport, emptyProgress, exportFileName, exportProgress, getProgress, MAX_IMPORT_BYTES, mergeProgress, parseProgressFile, replaceProgress, summarise,
   update, useProgress, type ProgressV1,
 } from '../../progress/store';
 import { useTheme, type ThemeChoice } from '../theme';
@@ -20,7 +20,8 @@ export function SettingsPage() {
   const onFile = async (f: File | undefined) => {
     if (!f) return;
     try {
-      const next = migrate(JSON.parse(await f.text()));
+      if (f.size > MAX_IMPORT_BYTES) throw new Error('That file is too large to be a progress file.');
+      const next = parseProgressFile(await f.text());
       setPending(next);
       setMessage(null);
     } catch (e) {

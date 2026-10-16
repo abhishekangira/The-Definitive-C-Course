@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { videoByKey } from '../content-runtime/course';
 import { Icon } from './Icon';
+import { embedSrc } from './youtube-embed';
 import styles from './YouTube.module.css';
 
 const fmt = (s: number) => `${Math.floor(s / 3600) ? `${Math.floor(s / 3600)}:` : ''}${String(Math.floor((s % 3600) / 60)).padStart(Math.floor(s / 3600) ? 2 : 1, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -11,8 +12,9 @@ export function YouTube({ video }: { video: string }) {
   const v = videoByKey(video);
   const [play, setPlay] = useState(false);
   if (!v) return <p role="alert">Unknown video “{video}” (not in videos.json).</p>;
+  const src = embedSrc(v);
+  if (!src) return <p role="alert">Video “{video}” has an invalid id or time range in videos.json.</p>;
   const length = v.end - v.start;
-  const src = `https://www.youtube-nocookie.com/embed/${v.id}?start=${v.start}&end=${v.end}&rel=0&autoplay=1`;
   return (
     <figure className={styles.box}>
       <div className={styles.frame}>

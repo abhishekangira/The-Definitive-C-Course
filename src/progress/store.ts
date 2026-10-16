@@ -55,25 +55,89 @@ export function emptyProgress(): ProgressV1 {
   return { version: 1, seed: randomSeed(), createdAt: new Date().toISOString(), settings: {}, cards: {}, lessons: {}, samples: {}, exercises: {}, quizzes: {}, projects: {} };
 }
 
-/** Accepts unknown JSON, returns a valid ProgressV1 or throws with a readable message. */
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
+const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+const bool = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : undefined);
+const strList = (v: unknown): string[] | undefined => (Array.isArray(v) && v.every(x => typeof x === 'string') ? (v as string[]) : undefined);
+
+/** Keeps the entries of a record that `one` accepts. "__proto__" is never a key: assigning it later would swap an object's prototype. */
+function section<T>(v: unknown, one: (x: Record<string, unknown>) => T | undefined): Record<string, T> {
+  const out: Record<string, T> = {};
+  if (!isRecord(v)) return out;
+  for (const [k, x] of Object.entries(v)) {
+    if (k === '__proto__' || !isRecord(x)) continue;
+    const clean = one(x);
+    if (clean !== undefined) out[k] = clean;
+  }
+  return out;
+}
+
+const drop = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
+
+function cleanExercise(x: Record<string, unknown>): ExerciseProgress {
+  const d = exerciseProgress(emptyProgress(), '');
+  return drop({
+    attempts: num(x.attempts) ?? d.attempts,
+    substantive: num(x.substantive) ?? d.substantive,
+    lastCodeHash: str(x.lastCodeHash),
+    code: str(x.code),
+    activeMs: num(x.activeMs) ?? d.activeMs,
+    hintsViewed: num(x.hintsViewed) ?? d.hintsViewed,
+    passed: bool(x.passed) ?? d.passed,
+    solutionViewed: bool(x.solutionViewed) ?? d.solutionViewed,
+    variant: str(x.variant),
+    variantsTried: strList(x.variantsTried),
+    mastered: bool(x.mastered) ?? d.mastered,
+    codes: strList(x.codes),
+  });
+}
+
+/** Accepts unknown JSON, returns a valid ProgressV1 (unknown keys dropped, wrong-typed parts replaced by defaults) or throws with a readable message. */
 export function migrate(raw: unknown): ProgressV1 {
-  if (!raw || typeof raw !== 'object') throw new Error('Not a progress file.');
-  const o = raw as Partial<ProgressV1> & { version?: number };
+  if (!isRecord(raw)) throw new Error('Not a progress file.');
+  const o = raw;
   if (o.version !== 1) throw new Error(`Unsupported progress version: ${String(o.version)}.`);
   if (typeof o.seed !== 'string' || !/^[0-9a-f]{16}$/.test(o.seed)) throw new Error('The progress file has no valid learner seed.');
   const base = emptyProgress();
-  return {
-    ...base,
-    ...o,
+  const s = isRecord(o.settings) ? o.settings : {};
+  const platforms: Platform[] = ['mac-arm', 'mac-intel', 'wsl', 'linux-x86', 'linux-arm'];
+  const cards: Record<string, number[]> = {};
+  if (isRecord(o.cards)) {
+    for (const [k, v] of Object.entries(o.cards)) {
+      if (k !== '__proto__' && Array.isArray(v) && v.every(i => Number.isInteger(i) && i >= 0)) cards[k] = v as number[];
+    }
+  }
+  return drop({
     version: 1,
-    settings: { ...base.settings, ...(o.settings ?? {}) },
-    cards: o.cards ?? {},
-    lessons: o.lessons ?? {},
-    samples: o.samples ?? {},
-    exercises: o.exercises ?? {},
-    quizzes: o.quizzes ?? {},
-    projects: o.projects ?? {},
-  } as ProgressV1;
+    seed: o.seed,
+    createdAt: str(o.createdAt) ?? base.createdAt,
+    lastExportedAt: str(o.lastExportedAt),
+    settings: drop({
+      platform: platforms.find(p => p === s.platform),
+      storedOutputMode: bool(s.storedOutputMode),
+      stdinMode: s.stdinMode === 'auto' || s.stdinMode === 'preset' ? s.stdinMode : undefined,
+    }),
+    cards,
+    lessons: section(o.lessons, x => (typeof x.completedAt === 'string' ? { completedAt: x.completedAt } : undefined)),
+    samples: section(o.samples, x => (typeof x.prediction === 'string' && typeof x.correct === 'boolean' && typeof x.at === 'string'
+      ? drop({ prediction: x.prediction, correct: x.correct, predict64: str(x.predict64), predict64Correct: bool(x.predict64Correct), at: x.at }) : undefined)),
+    exercises: section(o.exercises, cleanExercise),
+    quizzes: section(o.quizzes, x => (num(x.score) !== undefined && num(x.total) !== undefined && typeof x.passed === 'boolean' && typeof x.at === 'string'
+      ? { score: x.score as number, total: x.total as number, passed: x.passed, at: x.at, answers: isRecord(x.answers) ? Object.fromEntries(Object.entries(x.answers).filter(([k]) => k !== '__proto__')) : {} } : undefined)),
+    projects: section(o.projects, x => (typeof x.passed === 'boolean' && typeof x.at === 'string' ? drop({ passed: x.passed, at: x.at, token: str(x.token) }) : undefined)),
+  }) as ProgressV1;
+}
+
+/** Largest progress file the importer reads. A real document is a few hundred KB; localStorage holds about 5 MB anyway. */
+export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
+
+/** Parses the text of an imported progress file (size-capped, then migrate). */
+export function parseProgressFile(text: string): ProgressV1 {
+  if (text.length > MAX_IMPORT_BYTES) throw new Error('That file is too large to be a progress file.');
+  let json: unknown;
+  try { json = JSON.parse(text); } catch { throw new Error('Not a progress file (it is not valid JSON).'); }
+  return migrate(json);
 }
 
 function storageGet(key: string): string | null {
@@ -166,6 +230,7 @@ export function summarise(p: ProgressV1): ImportSummary {
 
 /** Merge keeps the furthest progress from both documents; replace overwrites everything. */
 export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
+  // Callers pass migrate()d documents; migrate drops "__proto__" keys, so assigning by key here cannot swap a prototype.
   const out = structuredClone(a);
   for (const [k, v] of Object.entries(b.cards)) out.cards[k] = [...new Set([...(out.cards[k] ?? []), ...v])].sort((x, y) => x - y);
   for (const [k, v] of Object.entries(b.lessons)) out.lessons[k] ??= v;

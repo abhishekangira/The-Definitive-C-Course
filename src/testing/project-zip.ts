@@ -95,7 +95,8 @@ export function defaultReadme(id: string, title?: string, prompt?: string): stri
 
 function safePath(p: string): string {
   const norm = p.replace(/\\/g, '/').replace(/^\.\//, '');
-  if (!norm || norm.startsWith('/') || norm.split('/').includes('..')) throw new Error(`unsafe path in project: ${JSON.stringify(p)}`);
+  // Reject absolute paths, drive letters, empty/"."/".." segments and control characters: the app never builds such names.
+  if (!norm || /^[a-zA-Z]:|[\u0000-\u001f]/.test(norm) || norm.split('/').some(seg => seg === '' || seg === '.' || seg === '..')) throw new Error(`unsafe path in project: ${JSON.stringify(p)}`);
   return norm;
 }
 
@@ -114,6 +115,7 @@ export function projectZipEntries(input: ProjectZipInput): Record<string, string
 
 /** The zip itself: one top-level folder named after the id, deterministic bytes. */
 export function buildProjectZip(input: ProjectZipInput): Uint8Array {
+  if (!/^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(input.id) || input.id.includes('..')) throw new Error(`unsafe folder name for the zip: ${JSON.stringify(input.id)}`);
   const entries = projectZipEntries(input);
   const tree: Zippable = {};
   for (const p of Object.keys(entries).sort()) {
@@ -173,7 +175,7 @@ export function folderToProjectFiles<T extends string | Uint8Array>(folder: Reco
  * "cash/variants/1" -> "cash-v1", "hello-world" -> "hello-world".
  */
 export function zipFolderName(exerciseId: string): string {
-  return normaliseExerciseId(exerciseId.replace(/^project\//, '').replace(/\/variants\//, '-v').replace(/\//g, '-')).replace(/\./g, '-');
+  return normaliseExerciseId(exerciseId.replace(/^project\//, '').replace(/\/variants\//, '-v').replace(/\//g, '-')).replace(/[^a-z0-9_-]/g, '-');
 }
 
 export interface FolderZipInput {
