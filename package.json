@@ -25,7 +25,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dod": "tsx tools/dod/cli.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:stress": "node e2e/stress.mjs"
   },
   "dependencies": {
     "@bjorn3/browser_wasi_shim": "0.4.2",

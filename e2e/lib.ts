@@ -46,6 +46,11 @@ export function availableModules(): ModuleInfo[] {
   });
 }
 
+/** The course title on the map's h1 (content/course.yaml), so the map is told apart from any other page. */
+export function courseTitle(): string {
+  return (parse(read('content/course.yaml')) as { title: string }).title;
+}
+
 export function trace(id: string): TraceFile {
   return JSON.parse(read(`src/generated/traces/${id}.json`)) as TraceFile;
 }
