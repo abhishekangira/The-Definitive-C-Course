@@ -230,13 +230,15 @@ export function summarise(p: ProgressV1): ImportSummary {
 
 /** Merge keeps the furthest progress from both documents; replace overwrites everything. */
 export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
-  // Callers pass migrate()d documents; migrate drops "__proto__" keys, so assigning by key here cannot swap a prototype.
+  // Keys are data (imported ids), so look them up as own properties only: "constructor" or "toString" must not
+  // find Object.prototype members. migrate() drops "__proto__", so assigning by key cannot swap a prototype.
+  const own = <T>(o: Record<string, T>, k: string): T | undefined => (Object.hasOwn(o, k) ? o[k] : undefined);
   const out = structuredClone(a);
-  for (const [k, v] of Object.entries(b.cards)) out.cards[k] = [...new Set([...(out.cards[k] ?? []), ...v])].sort((x, y) => x - y);
-  for (const [k, v] of Object.entries(b.lessons)) out.lessons[k] ??= v;
-  for (const [k, v] of Object.entries(b.samples)) out.samples[k] ??= v;
+  for (const [k, v] of Object.entries(b.cards)) out.cards[k] = [...new Set([...(own(out.cards, k) ?? []), ...v])].sort((x, y) => x - y);
+  for (const [k, v] of Object.entries(b.lessons)) if (!Object.hasOwn(out.lessons, k)) out.lessons[k] = v;
+  for (const [k, v] of Object.entries(b.samples)) if (!Object.hasOwn(out.samples, k)) out.samples[k] = v;
   for (const [k, v] of Object.entries(b.exercises)) {
-    const cur = out.exercises[k];
+    const cur = own(out.exercises, k);
     if (!cur) { out.exercises[k] = v; continue; }
     out.exercises[k] = {
       ...cur,
@@ -252,10 +254,10 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
     };
   }
   for (const [k, v] of Object.entries(b.quizzes)) {
-    const cur = out.quizzes[k];
+    const cur = own(out.quizzes, k);
     if (!cur || (v.passed && !cur.passed) || v.score > cur.score) out.quizzes[k] = { ...v, passed: v.passed || Boolean(cur?.passed) };
   }
-  for (const [k, v] of Object.entries(b.projects)) if (!out.projects[k]?.passed) out.projects[k] = v;
+  for (const [k, v] of Object.entries(b.projects)) if (!own(out.projects, k)?.passed) out.projects[k] = v;
   return out;
 }
 
@@ -267,7 +269,7 @@ export function daysSinceExport(p: ProgressV1, now = Date.now()): number | null 
 // ---------- small helpers used across components ----------
 
 export function exerciseProgress(p: ProgressV1, id: string): ExerciseProgress {
-  return p.exercises[id] ?? { attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false };
+  return (Object.hasOwn(p.exercises, id) ? p.exercises[id] : undefined) ?? { attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false };
 }
 
 export function markCard(lessonId: string, index: number): void {

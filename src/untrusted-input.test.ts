@@ -101,6 +101,28 @@ describe('progress import: migrate', () => {
 });
 
 describe('progress import: mergeProgress', () => {
+  it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__'])('a key named %s merges like any other key', key => {
+    const ex = (attempts: number, passed: boolean) => `{"attempts":${attempts},"substantive":1,"activeMs":5,"hintsViewed":0,"passed":${passed},"solutionViewed":false,"mastered":false}`;
+    const doc = (attempts: number) => `{"version":1,"seed":"${SEED}","createdAt":"${at}","cards":{"${key}":[${attempts}]},"lessons":{"${key}":{"completedAt":"${at}"}},
+      "samples":{"${key}":{"prediction":"p","correct":true,"at":"${at}"}},"exercises":{"${key}":${ex(attempts, attempts > 1)}},
+      "quizzes":{"${key}":{"score":${attempts},"total":9,"passed":${attempts > 1},"at":"${at}","answers":{}}},"projects":{"${key}":{"passed":${attempts > 1},"at":"${at}"}}}`;
+    const none = migrate(hostile(`{"version":1,"seed":"${SEED}","createdAt":"${at}"}`));
+    const a = migrate(hostile(doc(1)));
+    const b = migrate(hostile(doc(3)));
+    for (const [mine, theirs] of [[none, b], [a, b], [b, a]]) {
+      const m = mergeProgress(mine, theirs);
+      protoClean();
+      for (const sec of [m.cards, m.lessons, m.samples, m.exercises, m.quizzes, m.projects]) expect(Object.getPrototypeOf(sec)).toBe(Object.prototype);
+      if (key === '__proto__') { expect(Object.keys(m.exercises)).toEqual([]); continue; }
+      expect(m.cards[key]).toEqual([3, 1].filter(n => mine === none ? n === 3 : true).sort());
+      expect(m.exercises[key]).toEqual(expect.objectContaining({ attempts: 3, passed: true }));
+      expect(Object.values(m.exercises[key]).filter(v => typeof v === 'number' && Number.isNaN(v))).toEqual([]);
+      expect(m.quizzes[key].score).toBe(3);
+      expect(m.projects[key].passed).toBe(true);
+      expect(JSON.parse(JSON.stringify(m))).toEqual(m);
+    }
+  });
+
   it('merging a hostile (migrated) file changes no prototype and keeps both sides', () => {
     const mine: ProgressV1 = { ...emptyProgress(), seed: SEED, exercises: { a: { attempts: 1, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false } } };
     const theirs = migrate(hostile(`{"version":1,"seed":"${SEED}","createdAt":"${at}","cards":{"__proto__":[7]},"exercises":{"__proto__":{"attempts":99},"a":{"attempts":5,"passed":true}},"lessons":{"__proto__":{"completedAt":"x"}}}`));
@@ -179,8 +201,22 @@ describe('MiniMarkdown (prompts, hints, explanations)', () => {
     expect(out).toContain('&lt;script&gt;');
   });
 
-  it('survives unbalanced markup, huge input and control characters', () => {
-    for (const t of ['**', '`', '[', '[]()', '[a](', '```', '- ', '1. ', '\0\u202e', '*'.repeat(100000), '['.repeat(50000), '`a'.repeat(50000)]) expect(() => html(t)).not.toThrow();
+  it('survives unbalanced markup and control characters', () => {
+    for (const t of ['**', '`', '[', '[]()', '[a](', '```', '- ', '1. ', '\0\u202e']) expect(() => html(t)).not.toThrow();
+  });
+
+  it('is linear on long runs of markup characters', () => {
+    const n = 200_000;
+    const runs = ['*', '[', '[a](', '[a](x', '[a](x[a](x', '`a', '[x', '[x]', '[x](', ']('];
+    for (const r of runs) {
+      const t0 = performance.now();
+      html(r.repeat(Math.ceil(n / r.length)));
+      expect(performance.now() - t0, JSON.stringify(r)).toBeLessThan(1000);
+    }
+  });
+
+  it('still renders links, including text that has no brackets inside', () => {
+    expect(html('see [the docs](https://example.com/x) now')).toContain('<a href="https://example.com/x"');
   });
 });
 
