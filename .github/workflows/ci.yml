@@ -19,11 +19,19 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # Write access is only used by the Regenerate step, and only for same-repo pull requests
+    # (GitHub gives fork PRs a read-only token whatever is requested here).
+    permissions:
+      contents: write
+      actions: write
     env:
       # gcc/clang quote with Unicode quotes in UTF-8 locales; tests and verify compare ASCII diagnostics.
       LC_ALL: C
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Same-repo PRs: check out the branch itself (not the merge ref) so the bot can commit onto it.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref || '' }}
 
       - uses: actions/setup-node@v4
         with:
@@ -38,7 +46,14 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/llvm-22.list
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends gcc-13 clang-22 lld-22 libclang-rt-22-dev gdb valgrind ffmpeg python3
-          gcc --version | head -1; clang-22 --version | head -1; gdb --version | head -1
+
+      - name: Log the reference environment
+        run: |
+          echo "ImageOS=$ImageOS ImageVersion=$ImageVersion"
+          grep PRETTY_NAME /etc/os-release
+          for c in "gcc-13 --version" "clang-22 --version" "gdb --version" "valgrind --version" "node --version" "ffmpeg -version"; do
+            echo "$c: $($c 2>&1 | head -1)"
+          done
 
       - run: npm ci
 
@@ -51,6 +66,34 @@ jobs:
           path: .cache/verify
           key: verify-${{ runner.os }}-${{ hashFiles('content/**', 'src/runtime/c/**', 'tools/verify/**', 'tools/shared/**', 'package-lock.json') }}
           restore-keys: verify-${{ runner.os }}-
+
+      # CI owns src/generated/{samples,traces}. On a same-repo PR, regenerate them here and commit
+      # any behaviour change as the bot. A push made with GITHUB_TOKEN does not trigger workflows
+      # (workflow_dispatch is exempt), so dispatch CI for the new head; the checks that gate the PR
+      # come from that run, and this one stops. Fork PRs and pushes to main skip this and rely on
+      # the --check steps below. verify keeps files that differ only by version strings, so a PR
+      # that changes no code fence produces no commit.
+      - name: Regenerate samples and traces
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          npm run verify
+          if [ -n "$(git status --porcelain src/generated/samples src/generated/traces)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add src/generated/samples src/generated/traces
+            git commit -m "Regenerate samples and traces (CI)"
+            git push origin "HEAD:refs/heads/$HEAD_REF"
+            gh workflow run ci.yml --ref "$HEAD_REF"
+            echo "Pushed regenerated files; CI was dispatched for the new head. Stopping this run."
+            gh run cancel "$GITHUB_RUN_ID"
+            sleep 120
+          else
+            echo "Generated files already match."
+          fi
 
       - run: npm run typecheck
       - run: npm test
