@@ -108,8 +108,8 @@ describe('solutionGate', () => {
     expect(reason(15 * MIN)).toContain('5 more minutes'); // exactly 5:00 left
     expect(reason(15 * MIN + 1)).toContain('5 more minutes'); // 4:59.999 left rounds up to 5, not down to 4
     expect(reason(15 * MIN - 1)).toContain('6 more minutes'); // 5:00.001 left rounds up to 6
-    expect(reason(19 * MIN)).toContain('1 more minutes');
-    expect(reason(20 * MIN - 1)).toContain('1 more minutes'); // 1 ms short still says 1, never 0
+    expect(reason(19 * MIN)).toContain('1 more minute of work'); // singular
+    expect(reason(20 * MIN - 1)).toContain('1 more minute of work'); // 1 ms short still says 1, never 0
   });
 
   it('more than the minimum stays unlocked', () => {

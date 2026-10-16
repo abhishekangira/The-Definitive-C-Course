@@ -75,5 +75,6 @@ export function solutionGate(e: ExerciseProgress, isVariant: boolean): SolutionG
   const minutes = e.activeMs / 60000;
   if (e.substantive >= 2 || (e.substantive >= 1 && minutes >= 20)) return { unlocked: true };
   if (e.substantive === 0) return { unlocked: false, reason: 'Make a real attempt first: change the code and run the tests.' };
-  return { unlocked: false, reason: `One more changed attempt (or ${Math.ceil(20 - minutes)} more minutes of work) unlocks the solution.` };
+  const left = Math.ceil(20 - minutes);
+  return { unlocked: false, reason: `One more changed attempt (or ${left} more ${left === 1 ? 'minute' : 'minutes'} of work) unlocks the solution.` };
 }
