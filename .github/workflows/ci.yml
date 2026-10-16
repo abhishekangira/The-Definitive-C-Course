@@ -19,6 +19,9 @@ jobs:
   check:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      # gcc/clang quote with Unicode quotes in UTF-8 locales; tests and verify compare ASCII diagnostics.
+      LC_ALL: C
     steps:
       - uses: actions/checkout@v4
 
@@ -60,8 +63,8 @@ jobs:
         run: npm run verify:exercises
       - name: Videos (offline checks; CI never calls yt-dlp)
         run: npm run videos:check
-      - name: Animations
-        run: npm run anim:check
+      - name: Animations (static: validation, hyperframes lint, manifest freshness; no browser)
+        run: node tools/anim/check.mjs --static
 
       - run: npm run build
 
@@ -79,11 +82,7 @@ jobs:
           retention-days: 7
 
       - name: Transcode animations to WebM
-        run: |
-          shopt -s nullglob
-          for f in dist/animations/*/*.mp4; do
-            ffmpeg -loglevel error -y -i "$f" -c:v libvpx-vp9 -b:v 0 -crf 34 -row-mt 1 -an "${f%.mp4}.webm"
-          done
+        run: node tools/anim/render.mjs --webm dist/animations
 
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

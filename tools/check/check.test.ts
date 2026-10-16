@@ -47,7 +47,7 @@ interface JsonReport {
 }
 
 function check(dir: string, args: string[] = [], env: NodeJS.ProcessEnv = {}) {
-  const r = spawnSync(process.execPath, ['check.mjs', ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, CC: 'gcc', NO_COLOR: '1', FORCE_COLOR: '', ...env } });
+  const r = spawnSync(process.execPath, ['check.mjs', ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', CC: 'gcc', NO_COLOR: '1', FORCE_COLOR: '', ...env } });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
@@ -226,7 +226,7 @@ describe('the zip the app builds in the browser (buildZipFromFolder), used the w
     }
     return dir;
   }
-  const make = (dir: string, args: string[]) => spawnSync('make', args, { cwd: dir, encoding: 'utf8', env: { ...process.env, CC: 'gcc', NO_COLOR: '1' } });
+  const make = (dir: string, args: string[]) => spawnSync('make', args, { cwd: dir, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', CC: 'gcc', NO_COLOR: '1' } });
 
   it('`make` builds the starter, `make test` prints a progress code that the app accepts, `make hint` shows the next hint', async () => {
     const dir = unzipped('app-zip-starter', appFolder());
