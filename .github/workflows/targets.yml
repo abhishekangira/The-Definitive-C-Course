@@ -13,6 +13,14 @@ on:
       - 'content/**'
       - 'src/runtime/c/**'
       - 'tools/verify/**'
+  # The project-runner job below also runs on PRs that touch it (the sample job does not).
+  pull_request:
+    paths:
+      - 'tools/check/**'
+      - 'tools/ci/verify-project-run.ts'
+      - 'src/testing/**'
+      - 'content/modules/m01-c-in-your-browser/project/mario-more/**'
+      - '.github/workflows/targets.yml'
 
 permissions:
   contents: read
@@ -23,6 +31,8 @@ concurrency:
 
 jobs:
   run:
+    # Sample verification is slow and its outputs are committed from main only.
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -52,6 +62,59 @@ jobs:
           name: target-${{ matrix.target }}
           path: targets-out/${{ matrix.target }}
           retention-days: 7
+
+  # check.mjs end to end on the learner platforms we cannot run locally (issue #10): build the Mario
+  # project zip, `make test` the starter (must fail, progress code) and the solution (must pass,
+  # completion token), and check each code with the app's verifyCode(). Windows is not run (WSL only).
+  project-runner:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      EXERCISE: project/mario-more
+      PROJECT: content/modules/m01-c-in-your-browser/project/mario-more
+      SEED: 0123456789abcdef
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Log the runner
+        run: |
+          uname -a
+          node --version
+          make --version | head -1
+          cc --version | head -1
+          command -v gcc clang || true
+      - name: Starter must fail with a progress code
+        run: |
+          rm -rf work/starter && mkdir -p work/starter
+          node tools/check/build.mjs --zip "$PROJECT" --out work/starter.zip --seed "$SEED"
+          unzip -q work/starter.zip -d work/starter
+          set +e
+          (cd work/starter/mario-more && make test) 2>&1 | tee work/starter.log
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "make test exit status: $code"
+          npx tsx tools/ci/verify-project-run.ts starter "$SEED" "$EXERCISE" "$code" work/starter.log
+      - name: Solution must pass with a completion token
+        run: |
+          rm -rf work/solution && mkdir -p work/solution
+          node tools/check/build.mjs --zip "$PROJECT" --out work/solution.zip --solution --seed "$SEED"
+          unzip -q work/solution.zip -d work/solution
+          set +e
+          (cd work/solution/mario-more && make test) 2>&1 | tee work/solution.log
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "make test exit status: $code"
+          npx tsx tools/ci/verify-project-run.ts solution "$SEED" "$EXERCISE" "$code" work/solution.log
 
   commit:
     needs: run

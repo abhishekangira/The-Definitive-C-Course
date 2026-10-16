@@ -137,3 +137,18 @@ the solution passes everything and earns the token; the starter fails with expla
 code that `verifyCode()` accepts; a leak-only variant fails only the memory check; a syntax error
 skips everything after the compile check; the valgrind fallback (clang-18, no sanitizers), the macOS
 `leaks` path (simulated), make tests, the zips and the generated Makefile are covered too.
+
+## Platforms verified by CI
+
+The `project-runner` job in `.github/workflows/targets.yml` builds the Mario project zip, runs `make test` on the starter
+(must exit non-zero and print a progress code) and on the `--solution` zip (must exit 0 and print a completion token), and
+checks each code with `verifyCode()`. It runs on pushes to `main` touching these files and on pull requests that do.
+
+| Platform | Status |
+|---|---|
+| Linux x86-64 (Ubuntu 24.04, gcc 13 / clang 22) | `npm test` runs `check.mjs` on `fixtures/caesar` (`ci.yml`) |
+| macOS arm64 (`macos-14`, Apple clang) | `project-runner` |
+| Linux arm64 (`ubuntu-24.04-arm`, gcc) | `project-runner` |
+| Windows | **not run**: use WSL Ubuntu 24.04 (the Linux path); native Windows is unsupported and untested |
+
+`project-runner` uses only the Mario project, so the macOS `leaks` path (Mario has no `memory` check) is still only simulated.
