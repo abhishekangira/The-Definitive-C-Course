@@ -89,6 +89,18 @@ describe('checkFragment', () => {
     expect(bad.ok).toBe(false);
     expect(bad.diagnostics).toMatch(/fragment\.c:1:\d+: error: 'total' undeclared/);
   });
+
+  it('reports ASCII quotes even when the caller runs in a UTF-8 locale', () => {
+    const saved = process.env.LC_ALL;
+    process.env.LC_ALL = 'C.UTF-8'; // gcc prints \u2018total\u2019 here unless checkFragment pins LC_ALL=C itself
+    try {
+      const bad = checkFragment('for (int i = 0; i < 3; i++) total += i;\n');
+      expect(bad.diagnostics).toContain("'total' undeclared");
+      expect(bad.diagnostics).not.toMatch(/[\u2018\u2019]/);
+    } finally {
+      if (saved === undefined) delete process.env.LC_ALL; else process.env.LC_ALL = saved;
+    }
+  });
 });
 
 describe('checkProjection', () => {
