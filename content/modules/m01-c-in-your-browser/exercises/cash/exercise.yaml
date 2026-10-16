@@ -15,10 +15,10 @@ prompt: 'A cashier gives change using as few coins as possible: quarters (25¢),
   '
 runsIn: browser
 hints:
-- 'Keep subtracting the largest coin that fits and count how many coins you take. Or, faster: how many
-  quarters fit into the amount is `cents / 25`.'
-- 'With integer division and remainder: `quarters = cents / 25; cents = cents % 25;` then the same for
-  10, 5 and 1. Add up the counts.'
+- 'Keep subtracting the largest coin that fits and count how many coins you take. Is there a faster
+  way to ask how many quarters fit into the amount?'
+- 'Integer division tells you how many of a coin fit, and the remainder is what is left for the smaller
+  coins. Do this for each coin, and add up the counts.'
 - '```
 
   int coins = 0;

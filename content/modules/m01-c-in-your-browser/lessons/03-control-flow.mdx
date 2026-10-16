@@ -5,7 +5,7 @@ minutes: 40
 summary: if, switch and loops look like JavaScript, with three traps (truth is an int, = vs ==, switch fall-through) and a classic off-by-one.
 ---
 
-You already know `if`, `while` and `for`; C's look almost the same. What's different is **truth**. C17 has no boolean values at its core: a comparison produces the `int` 1 (true) or 0 (false), and *any* non-zero value counts as true. (`bool` from `<stdbool.h>` is a convenience over this.)
+You already know `if`, `while` and `for`; C's look almost the same. What's different is **truth**. In C a comparison produces the `int` 1 (true) or 0 (false), not a special boolean value, and *any* non-zero value counts as true. (`bool` from `<stdbool.h>` is a macro for the built-in `_Bool` type, which is still an integer type.)
 
 ```c id=truth-is-int
 #include <stdio.h>
@@ -21,7 +21,7 @@ int main(void) {
 }
 ```
 
-<Analogy js="if (count) { … }" c="if (count) { … }" breaksDown="C has no `undefined`, `null` or `NaN` to test in a condition, and no `===`: zero is false and everything else is true. A comparison is also just a number you can add up, as you just saw." />
+<Analogy js="if (count) { … }" c="if (count) { … }" breaksDown="C has no `undefined` and no `===`: zero is false and everything else is true. That includes `NaN`, which compares unequal to 0 and so counts as true (unlike in JavaScript), while a null pointer is false. A comparison is also just a number you can add up, as you just saw." />
 
 A classic C bug: `=` assigns, `==` compares. `if (x = 5)` *assigns* 5 to `x`, then tests the result, 5, which is always true. It compiles, so the compiler warns instead.
 
