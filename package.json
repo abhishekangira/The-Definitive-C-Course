@@ -6,7 +6,7 @@
   "description": "A self-paced, interactive course that teaches C17 and low-level fundamentals to front-end engineers.",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.22.2"
   },
   "scripts": {
     "dev": "npm run toolchain:prepare && node tools/check/build.mjs --into public && vite",

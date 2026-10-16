@@ -8,7 +8,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { MiniMarkdown } from './components/MiniMarkdown';
 import { embedSrc } from './components/youtube-embed';
-import { emptyProgress, MAX_IMPORT_BYTES, mergeProgress, migrate, parseProgressFile, summarise, type ProgressV1 } from './progress/store';
+import { emptyProgress, exerciseProgress, MAX_IMPORT_BYTES, mergeProgress, migrate, parseProgressFile, summarise, type ProgressV1 } from './progress/store';
 import { buildProjectZip, buildZipFromFolder, projectZipEntries, zipFolderName, type ProjectZipInput } from './testing/project-zip';
 import { encodeCompletionToken, encodeProgressCode, formatCode, parseCode, verifyCode } from './testing/token';
 import type { TestsSpec } from './content-model/types';
@@ -100,6 +100,25 @@ describe('progress import: migrate', () => {
   });
 });
 
+describe('progress import: a quiz that failed is still merged under an inherited-name key', () => {
+  it.each(['constructor', 'toString', 'valueOf'])('quiz %s', key => {
+    const theirs = migrate(hostile(`{"version":1,"seed":"${SEED}","createdAt":"${at}","quizzes":{"${key}":{"score":1,"total":9,"passed":false,"at":"${at}","answers":{}}}}`));
+    const merged = mergeProgress(migrate(hostile(`{"version":1,"seed":"${SEED}","createdAt":"${at}"}`)), theirs);
+    expect(merged.quizzes[key]).toMatchObject({ score: 1, total: 9, passed: false });
+  });
+});
+
+describe('progress lookups by id', () => {
+  it.each(['constructor', 'toString', 'hasOwnProperty'])('exerciseProgress for an id named %s gives the defaults, not Object.prototype members', id => {
+    const p = emptyProgress();
+    const e = exerciseProgress(p, id);
+    expect(e).toEqual(exerciseProgress(p, 'no-such-exercise'));
+    expect(e.attempts).toBe(0);
+    p.exercises[id] = { ...e, attempts: 4 };
+    expect(exerciseProgress(p, id).attempts).toBe(4);
+  });
+});
+
 describe('progress import: mergeProgress', () => {
   it.each(['constructor', 'toString', 'valueOf', 'hasOwnProperty', '__proto__'])('a key named %s merges like any other key', key => {
     const ex = (attempts: number, passed: boolean) => `{"attempts":${attempts},"substantive":1,"activeMs":5,"hintsViewed":0,"passed":${passed},"solutionViewed":false,"mastered":false}`;
@@ -118,6 +137,9 @@ describe('progress import: mergeProgress', () => {
       expect(m.exercises[key]).toEqual(expect.objectContaining({ attempts: 3, passed: true }));
       expect(Object.values(m.exercises[key]).filter(v => typeof v === 'number' && Number.isNaN(v))).toEqual([]);
       expect(m.quizzes[key].score).toBe(3);
+      expect(m.quizzes[key].passed).toBe(true);
+      expect(m.samples[key]).toEqual({ prediction: 'p', correct: true, at });
+      expect(m.lessons[key]).toEqual({ completedAt: at });
       expect(m.projects[key].passed).toBe(true);
       expect(JSON.parse(JSON.stringify(m))).toEqual(m);
     }
@@ -206,12 +228,15 @@ describe('MiniMarkdown (prompts, hints, explanations)', () => {
   });
 
   it('is linear on long runs of markup characters', () => {
-    const n = 200_000;
+    // Load-robust: the cost at 4N is compared with the cost at N (linear ~4x, quadratic ~16x), best of 3 so a busy
+    // CPU slows both sides alike. The old quadratic code gave about 16x on "[". The cap on the larger run is generous.
+    const best = (text: string) => Math.min(...[0, 1, 2].map(() => { const t0 = performance.now(); html(text); return performance.now() - t0; }));
     const runs = ['*', '[', '[a](', '[a](x', '[a](x[a](x', '`a', '[x', '[x]', '[x](', ']('];
     for (const r of runs) {
-      const t0 = performance.now();
-      html(r.repeat(Math.ceil(n / r.length)));
-      expect(performance.now() - t0, JSON.stringify(r)).toBeLessThan(1000);
+      const small = best(r.repeat(Math.ceil(25_000 / r.length)));
+      const big = best(r.repeat(Math.ceil(100_000 / r.length)));
+      expect(big, JSON.stringify(r)).toBeLessThan(Math.max(small, 5) * 9);
+      expect(big, JSON.stringify(r)).toBeLessThan(10_000);
     }
   });
 
