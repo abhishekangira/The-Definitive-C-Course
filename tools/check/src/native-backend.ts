@@ -25,6 +25,14 @@ const UBSAN_EXIT = 87;
 const VALGRIND_EXIT = 99;
 const MAX_OUTPUT = 16 << 20;
 
+/**
+ * The environment for the compiler (and for `make`, which runs it). parseDiagnostics() and the link-error explanations read
+ * English text: the words "warning" and "error", ASCII quotes. In another locale gcc and clang translate or re-quote them, the
+ * compile check would see no warnings, and the learner's progress code would differ from the browser's. The learner's program
+ * keeps the learner's own environment.
+ */
+const compilerEnv = (): NodeJS.ProcessEnv => ({ ...process.env, LC_ALL: 'C' });
+
 export interface Compiler {
   cc: string;
   /** First line of `cc --version`, e.g. "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0". */
@@ -168,7 +176,7 @@ export class NativeBackend implements ExecBackend<NativeArtifact> {
       const probe = path.join(this.work, 'probe.c');
       writeFileSync(probe, '#include <stdlib.h>\nint main(void) { void *p = malloc(7); return p == 0; }\n');
       const exe = path.join(this.work, 'probe');
-      const b = sh(this.compiler.cc, [...SANITIZE_FLAGS, probe, '-o', exe], { timeout: 60_000 });
+      const b = sh(this.compiler.cc, [...SANITIZE_FLAGS, probe, '-o', exe], { timeout: 60_000, env: compilerEnv() });
       if (b.status === 0) {
         const quiet = { ...process.env, ASAN_OPTIONS: 'detect_leaks=0', MallocNanoZone: '0' };
         sanitizers = sh(exe, [], { env: quiet, timeout: 20_000 }).status === 0;
@@ -207,7 +215,7 @@ export class NativeBackend implements ExecBackend<NativeArtifact> {
   private build(sources: string[], generated: Set<string>, flags: string[], out: string) {
     const srcArgs = sources.map(s => (generated.has(s) ? path.join(this.work, s) : s));
     const args = ['-fdiagnostics-color=never', ...STRICT_FLAGS, ...flags, `-I${this.work}`, `-I${this.dir}`, ...srcArgs, '-o', out, ...LIBS];
-    const r = sh(this.compiler.cc, args, { cwd: this.dir, timeout: 120_000 });
+    const r = sh(this.compiler.cc, args, { cwd: this.dir, timeout: 120_000, env: compilerEnv() });
     // Show generated files by their logical names, not their temporary paths.
     const raw = (r.stderr + r.stdout).split(this.work + path.sep).join('');
     return { ok: r.status === 0, raw, diagnostics: parseDiagnostics(raw) as Diagnostic[] };
@@ -286,7 +294,7 @@ export class NativeBackend implements ExecBackend<NativeArtifact> {
   }
 
   async make(target: string, o: MakeOptions): Promise<MakeOutcome> {
-    const env = { ...process.env, CC: this.compiler.cc };
+    const env = { ...compilerEnv(), CC: this.compiler.cc };
     const r = sh('make', [target], { cwd: this.dir, timeout: o.timeoutMs, env });
     const output = r.stdout + r.stderr;
     if (r.missing) return { ok: false, exit: null, output, missing: true };
