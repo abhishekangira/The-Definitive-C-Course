@@ -8,7 +8,7 @@ import path from 'node:path';
 import type { SampleResult, SamplesFile, TargetId, TargetResult } from '../../src/content-model/types';
 import { sortKeysDeep, stableStringify } from '../shared/stable-json';
 import { sampleHash } from '../shared/sample-hash';
-import { ResultCache, environmentFingerprint } from './cache';
+import { ResultCache, cacheRuns, environmentFingerprint } from './cache';
 import { checkSample } from './checks';
 import { discover, type DiscoveredFragment, type DiscoveredSample } from './discover';
 import { resolveToolchain, type NativeToolchain } from './native';
@@ -98,12 +98,21 @@ export function readTargetsFile(generatedRoot: string, target: TargetId, module:
 
 // ---------- --check projection ----------
 
+/** A copy without the version strings (provenance, not behaviour: apt.llvm.org clang carries a build timestamp). */
+export function withoutVersions(file: SamplesFile): SamplesFile {
+  const clone = JSON.parse(JSON.stringify(file)) as SamplesFile;
+  clone.generatedBy = '<version>';
+  for (const s of Object.values(clone.samples)) for (const t of Object.values(s.results) as TargetResult[]) t.compiler = '<version>';
+  return clone;
+}
+
 /**
- * What --check compares. Undefined-behaviour runs legitimately differ between runs (garbage values,
+ * What --check compares: behaviour only, so `generatedBy` and each target's `compiler` string are
+ * ignored (kept in the files as provenance). Undefined-behaviour runs legitimately differ between runs (garbage values,
  * ASLR), and display rebasing can regroup addresses, so those parts are reduced to what is stable.
  */
 export function checkProjection(file: SamplesFile): unknown {
-  const clone = JSON.parse(JSON.stringify(file)) as SamplesFile;
+  const clone = withoutVersions(file);
   for (const s of Object.values(clone.samples)) {
     const ub = s.meta.expect === 'ub';
     for (const t of Object.values(s.results) as TargetResult[]) {
@@ -165,7 +174,7 @@ export async function verify(o: VerifyOptions): Promise<VerifyReport> {
         const t0 = performance.now();
         runs = await runSample(s, { native: toolchains, wasm, tmpRoot: path.join(scratch, 'runs') });
         log(`  ran ${s.id} in ${Math.round(performance.now() - t0)} ms`);
-        if (!runs.errors.length) cache.set(key, runs);
+        cacheRuns(cache, key, runs);
       }
       const hash = sampleHash({ code: s.code, stdin: s.meta.stdin, args: s.meta.args, guardrail: s.meta.guardrail });
       const stored: Array<{ target: TargetId; result: TargetResult }> = [];
@@ -216,9 +225,11 @@ export async function verify(o: VerifyOptions): Promise<VerifyReport> {
     const target = path.join(outDir, `${m}.json`);
     const current = existsSync(target) ? readFileSync(target, 'utf8') : null;
     if (current === text) { report.files.unchanged.push(target); continue; }
+    // Same behaviour (only version strings, UB garbage or display text differ): keep the committed file,
+    // so a toolchain change or a rerun alone never dirties src/generated/ (CI would otherwise commit noise).
+    const same = current !== null && JSON.stringify(checkProjection(JSON.parse(current))) === JSON.stringify(checkProjection(file));
+    if (same) { report.files.unchanged.push(target); continue; }
     if (o.check) {
-      const same = current !== null && JSON.stringify(checkProjection(JSON.parse(current))) === JSON.stringify(checkProjection(file));
-      if (same) { report.files.unchanged.push(target); continue; }
       report.files.stale.push(target);
       const changed = current === null ? ['(file missing)'] : diffSampleIds(JSON.parse(current) as SamplesFile, file);
       report.problems.push(`${path.relative(process.cwd(), target)} is stale; run npm run verify and commit. Changed: ${changed.join(', ')}`);
@@ -245,7 +256,6 @@ function diffSampleIds(a: SamplesFile, b: SamplesFile): string[] {
   const pa = checkProjection(a) as SamplesFile;
   const pb = checkProjection(b) as SamplesFile;
   const out = [...ids].filter(id => JSON.stringify(pa.samples?.[id]) !== JSON.stringify(pb.samples[id])).sort();
-  if (a.generatedBy !== b.generatedBy) out.unshift(`generatedBy (${a.generatedBy} → ${b.generatedBy})`);
   return out.length ? out : ['(formatting)'];
 }
 
@@ -287,7 +297,7 @@ export async function targetRun(o: TargetRunOptions): Promise<{ problems: string
       let runs = cache.get(key);
       if (!runs) {
         runs = await runSample(s, { native: [tc], wasm: null, tmpRoot: path.join(scratch, 'runs'), noSanitizer: true, noWerror: true });
-        if (!runs.errors.length) cache.set(key, runs);
+        cacheRuns(cache, key, runs);
       }
       return { s, runs };
     });

@@ -65,3 +65,26 @@ export class ResultCache<T> {
     writeFileSync(path.join(this.dir, `${key}.json`), JSON.stringify(value));
   }
 }
+
+/**
+ * True when a result may be replayed later. A run that timed out under load (native, browser,
+ * guardrail, any observed run, or the sanitizer run) says nothing about the program, so it must
+ * never be cached; neither may a run with hard errors.
+ */
+export function isCacheable(runs: { errors: string[]; results: Record<string, unknown> }): boolean {
+  if (runs.errors.length) return false;
+  for (const r of Object.values(runs.results) as Array<{ run?: Out; runPipe?: Out; guardrail?: Out; observed?: Out[]; sanitizer?: { kind?: string } } | undefined>) {
+    if (!r) continue;
+    if ([r.run, r.runPipe, r.guardrail, ...(r.observed ?? [])].some(o => o?.timedOut)) return false;
+    if (r.sanitizer?.kind === 'timeout') return false;
+  }
+  return true;
+}
+type Out = { timedOut?: boolean };
+
+/** Stores `value` unless it is a timed-out or failed run. Returns whether it was stored. */
+export function cacheRuns<T extends { errors: string[]; results: Record<string, unknown> }>(cache: ResultCache<T>, key: string, runs: T): boolean {
+  if (!isCacheable(runs)) return false;
+  cache.set(key, runs);
+  return true;
+}

@@ -2,13 +2,14 @@
 // throwaway fixture modules in tools/verify/fixtures. Results are cached in .cache/verify-test,
 // so reruns take well under a second; a cold run takes a few seconds per module.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { SamplesFile, TraceFile } from '../../src/content-model/types';
 import { ROOT } from '../shared/wasm-node';
+import { isCacheable } from './cache';
 import { checkFragment, checkProjection, cleanupScratch, verify } from './verify';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -68,6 +69,51 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     const again = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm99', check: true, trace: hasGdb });
     expect(again.problems).toEqual([]);
     expect(again.files.stale).toEqual([]);
+
+    // --check compares behaviour only: a version-string-only change passes, an output change fails.
+    const samplesPath = path.join(generatedRoot, 'samples/m99.json');
+    const onDisk = readFileSync(samplesPath, 'utf8');
+    const reversioned = JSON.parse(onDisk) as SamplesFile;
+    reversioned.generatedBy = 'tools/verify; gcc: gcc 99.0; clang22: clang 99 (++20990101000000); wasm: other';
+    for (const sample of Object.values(reversioned.samples)) for (const t of Object.values(sample.results)) t!.compiler = 'some other compiler 99.0';
+    writeFileSync(samplesPath, JSON.stringify(reversioned, null, 1));
+    const versionOnly = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm99', check: true, trace: false });
+    expect(versionOnly.problems).toEqual([]);
+    expect(versionOnly.files.stale).toEqual([]);
+
+    const changedOutput = JSON.parse(onDisk) as SamplesFile;
+    changedOutput.samples['fx-hello'].results['linux-x86_64-gcc13']!.run!.stdout += 'extra\n';
+    // Writing (not checking) over a difference that is only versions (UB garbage is the same kind of noise) keeps the committed file as it is.
+    writeFileSync(samplesPath, JSON.stringify(reversioned, null, 1));
+    const rewrite = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm99', trace: false });
+    expect(rewrite.files.written).toEqual([]);
+    expect(JSON.parse(readFileSync(samplesPath, 'utf8')).generatedBy).toBe(reversioned.generatedBy);
+    writeFileSync(samplesPath, JSON.stringify(changedOutput));
+    const outputChanged = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm99', check: true, trace: false });
+    expect(outputChanged.files.stale).toHaveLength(1);
+    expect(outputChanged.problems.join('\n')).toMatch(/m99\.json is stale.*Changed: fx-hello/);
+    const regenerated = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm99', trace: false });
+    expect(regenerated.files.written).toHaveLength(1); // an output change is written, with the current versions
+    expect(JSON.parse(readFileSync(samplesPath, 'utf8')).generatedBy).toBe(file.generatedBy);
+    // A rerun with no behaviour change writes nothing, even though UB samples print new garbage each time.
+    const rerun = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm99', trace: false, force: true });
+    expect(rerun.files.written).toEqual([]);
+    writeFileSync(samplesPath, onDisk);
+  }, 120_000);
+
+  it('never caches a timed-out run, so a later run is not poisoned by it', async () => {
+    const freshCache = mkdtempSync(path.join(tmpdir(), 'tdcc-verify-cache-'));
+    try {
+      const first = await verify({ contentRoot, generatedRoot, cacheDir: freshCache, module: 'm98', only: 'neg-timeout', trace: false });
+      expect(first.samples[0].problems.join('\n')).toMatch(/timed out/);
+      expect(first.samples[0].cached).toBe(false);
+      expect(readdirSync(freshCache).filter(f => f.endsWith('.json'))).toEqual([]);
+      const second = await verify({ contentRoot, generatedRoot, cacheDir: freshCache, module: 'm98', only: 'neg-timeout', trace: false });
+      expect(second.samples[0].cached).toBe(false); // ran again instead of replaying the timeout
+      // A sample that finishes is still cached.
+      await verify({ contentRoot, generatedRoot, cacheDir: freshCache, module: 'm99', only: 'fx-hello', trace: false });
+      expect(readdirSync(freshCache).filter(f => f.endsWith('.json'))).toHaveLength(1);
+    } finally { rmSync(freshCache, { recursive: true, force: true }); }
   }, 120_000);
 
   it('m98: each negative sample fails for its reason', async () => {
@@ -105,7 +151,31 @@ describe('checkFragment', () => {
   });
 });
 
+describe('isCacheable', () => {
+  const ok = { stdout: '', stderr: '', exit: 0 };
+  const target = (extra: object) => ({ 'linux-x86_64-gcc13': { target: 'linux-x86_64-gcc13', compiler: 'g', compile: { ok: true, diagnostics: [], raw: '' }, ...extra } });
+  it('rejects hard errors and a timeout anywhere in the results, accepts clean runs', () => {
+    expect(isCacheable({ errors: [], results: target({ run: ok }) })).toBe(true);
+    expect(isCacheable({ errors: ['pty_run crashed'], results: target({ run: ok }) })).toBe(false);
+    expect(isCacheable({ errors: [], results: target({ run: { ...ok, exit: null, timedOut: true } }) })).toBe(false);
+    expect(isCacheable({ errors: [], results: target({ run: ok, observed: [ok, { ...ok, timedOut: true }] }) })).toBe(false);
+    expect(isCacheable({ errors: [], results: target({ run: ok, guardrail: { ...ok, timedOut: true } }) })).toBe(false);
+    expect(isCacheable({ errors: [], results: target({ run: ok, sanitizer: { ok: false, kind: 'timeout' } }) })).toBe(false);
+    expect(isCacheable({ errors: [], results: target({ run: ok, sanitizer: { ok: true } }) })).toBe(true);
+  });
+});
+
 describe('checkProjection', () => {
+  it('ignores version strings but not behaviour', () => {
+    const mk = (by: string, compiler: string, stdout: string): SamplesFile => ({
+      module: 'm', generatedBy: by, samples: {
+        p: { id: 'p', module: 'm', lesson: 'l', code: 'c', meta: { id: 'p' }, hash: 'h', flagged: false, answer: { stdout, outcome: 'runs' }, results: { 'linux-x86_64-clang22': { target: 'linux-x86_64-clang22', compiler, compile: { ok: true, diagnostics: [], raw: '' }, run: { stdout, stderr: '', exit: 0 } } } },
+      },
+    });
+    expect(checkProjection(mk('a', 'clang 22.1.0 ++2026', 'x\n'))).toEqual(checkProjection(mk('b', 'clang 22.1.1 ++2027', 'x\n')));
+    expect(checkProjection(mk('a', 'c', 'x\n'))).not.toEqual(checkProjection(mk('a', 'c', 'y\n')));
+  });
+
   it('treats a committed file from before the canonical UB form as equal to the canonical one', () => {
     const file = (t: object): SamplesFile => ({
       module: 'm', generatedBy: 'g', samples: {
