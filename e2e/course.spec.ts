@@ -3,7 +3,7 @@
 // complete. Separate tests cover the hint/solution/variant gates, export/import and accessibility.
 import { test, expect, type Page } from '@playwright/test';
 import {
-  answerQuiz, availableModules, completeExercise, completeLesson, expectAccessible, progressJson, setEditor, solutionOf, starterOf,
+  answerQuiz, availableModules, courseTitle, completeExercise, completeLesson, expectAccessible, progressJson, setEditor, solutionOf, starterOf,
 } from './lib';
 
 // E2E_MODULE=m01 limits the run to one module (used by `npm run dod`); default is every available module.
@@ -24,7 +24,7 @@ for (const mod of modules) {
 
     test('course map and module page', async () => {
       await page.goto('');
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1, name: courseTitle() })).toBeVisible();
       await expectAccessible(page, 'course map');
       await page.goto(`#/m/${mod.id}`);
       await expect(page.getByRole('heading', { level: 1, name: mod.meta.title })).toBeVisible();
@@ -156,6 +156,7 @@ test('low-memory mode shows stored output without downloading the compiler', asy
   await box.getByRole('button', { name: 'Reveal the result' }).click();
   await expect(box.getByText(/stored output: low-memory mode is on/)).toBeVisible();
   await expect(box.locator('pre').filter({ hasText: mod.samples.samples[id].answer.stdout.split('\n')[0] })).toBeVisible();
-  await page.waitForTimeout(2500);
+  // A fixed sleep proved nothing; wait for the network to settle after the stored output shows, then count compiler requests.
+  await page.waitForLoadState('networkidle');
   expect(toolchainRequests).toEqual([]);
 });
