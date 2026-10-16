@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { quizFor, samplesFor, type QuizItem } from '../../content-runtime/course';
 import type { SamplesFile } from '../../content-model/types';
-import { CodeEditor } from '../../components/CodeEditor';
+import { CodeEditor, preloadCodeEditor } from '../../components/CodeEditor';
 import { MiniMarkdown } from '../../components/MiniMarkdown';
 import { DiagnosticsList } from '../../components/DiagnosticsList';
 import { Exercise } from '../../interactions/Exercise';
@@ -125,6 +125,7 @@ export function QuizRunner({ moduleId, kind }: { moduleId: string; kind: 'retrie
   const [results, setResults] = useState<Record<string, Result>>({});
   const [finished, setFinished] = useState(false);
   useEffect(() => { void samplesFor(moduleId).then(setSamples); }, [moduleId]);
+  useEffect(() => { preloadCodeEditor(); }, []);
   const answered = Object.keys(results).length;
   const score = Object.values(results).filter(r => r.correct).length;
   const pass = kind === 'retrieval' || score / items.length >= CHECKPOINT_PASS;

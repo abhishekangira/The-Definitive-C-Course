@@ -1,4 +1,5 @@
 import { useEffect, useState, type ComponentType } from 'react';
+import { preloadCodeEditor } from '../../components/CodeEditor';
 import { Link, Navigate, useParams } from 'react-router';
 import { MDXProvider } from '@mdx-js/react';
 import { exercises, folderFiles, moduleById, projectLoader } from '../../content-runtime/course';
@@ -16,6 +17,7 @@ export function ProjectPage() {
   const progress = useProgress();
   const [Page, setPage] = useState<ComponentType<{ components?: Record<string, unknown> }> | null>(null);
   useEffect(() => {
+    preloadCodeEditor();
     const load = projectLoader(moduleId);
     if (load) void load().then(mod => setPage(() => mod.default));
   }, [moduleId]);

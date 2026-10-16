@@ -7,6 +7,7 @@ import { LessonProvider } from '../../lesson/LessonContext';
 import { isModuleUnlocked, moduleStatus } from '../../progress/gating';
 import { useProgress } from '../../progress/store';
 import type { SamplesFile } from '../../content-model/types';
+import { preloadCodeEditor } from '../../components/CodeEditor';
 import { getRuntime } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
 import styles from './Pages.module.css';
@@ -21,6 +22,7 @@ export function LessonPage() {
 
   useEffect(() => {
     setLesson(null);
+    preloadCodeEditor();
     const load = lessonLoader(moduleId, lessonStem);
     if (load) void load().then(mod => setLesson(() => mod.default));
     void samplesFor(moduleId).then(setSamples);
