@@ -1,0 +1,9 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "height 1 prints one row"
+    stdin: "1\n"
+    hint: "Count the lines for height 1. How many times does the outer loop run?"
+  - name: "height 3 prints three rows"
+    stdin: "3\n"
+  - name: "height 5 prints five rows"
+    stdin: "5\n"

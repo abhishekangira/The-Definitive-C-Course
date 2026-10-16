@@ -8,7 +8,7 @@ import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { parse as parseYaml } from 'yaml';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import remarkCourse from './tools/mdx/remark-course';
+import remarkCourse from './tools/mdx/remark-course.ts';
 
 /** `import x from './file.yaml'` → parsed object. */
 function yamlPlugin(): Plugin {

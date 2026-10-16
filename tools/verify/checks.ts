@@ -44,7 +44,7 @@ export function outcomeOf(t: TargetResult | undefined): Outcome {
   return runOutcome(t.run);
 }
 
-/** Every run of a target (UB samples keep all distinct observations). */
+/** Every run of a target (UB samples keep one output-free entry per outcome category, see ub.ts). */
 export function allRuns(t: TargetResult): RunOutcome[] {
   return t.observed?.length ? t.observed : t.run ? [t.run] : [];
 }

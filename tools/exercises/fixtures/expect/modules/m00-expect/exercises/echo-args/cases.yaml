@@ -1,0 +1,8 @@
+cases:
+  - name: "no arguments exits 2"
+    hint: "Check argc first."
+  - name: "two arguments"
+    args: ["a", "b c"]
+  - name: "stdin is ignored"
+    stdin: "ignored\n"
+    args: ["x"]

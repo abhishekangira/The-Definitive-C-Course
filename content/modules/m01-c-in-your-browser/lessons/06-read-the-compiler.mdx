@@ -7,22 +7,22 @@ summary: Anatomy of a diagnostic, fixing the first error first, warnings versus 
 
 You've read a few compiler messages already. Every clang diagnostic has the same anatomy:
 
-`main.c:6:20: error: use of undeclared identifier 'cuont'; did you mean 'count'?`
+`main.c:6:20: error: use of undeclared identifier 'cuont'`
 
 - **file:line:column**: exactly where the compiler noticed the problem (not always where you made it).
 - **severity**: `error` stops the build. `warning` lets it continue, but in this course every warning is treated as a bug. `note` adds context to the message above it.
-- **message**: often with a suggestion. Below it, a **caret** `^` points at the column, and sometimes a **fix-it** shows replacement text.
+- **message**: sometimes with a suggestion (gcc prints `did you mean 'count'?` for the typo below; clang 22 prints no suggestion for it). Below it, a **caret** `^` points at the column, and sometimes a **fix-it** shows replacement text.
 
 <CompilerError
   question="What's wrong?"
   options={[
     "`count` was declared after it was used",
-    "There's a typo: `cuont` was never declared, and clang suggests the variable you probably meant",
+    "There's a typo: `cuont` was never declared (the variable is spelled `count`)",
     "`printf` can't print variables",
     "`int` variables need an initial value",
   ]}
   answer={1}
-  explain="An **undeclared identifier** means the name doesn't exist in this scope. Clang's spell-checker spotted the nearby name `count`. In JavaScript this would be a runtime ReferenceError; in C you find out before anything runs."
+  explain="An **undeclared identifier** means the name doesn't exist in this scope. Here `cuont` is a typo for `count`. Clang 22 printed no suggestion for it (gcc does print `did you mean 'count'?`), so don't count on one: read the message against your code. In JavaScript this would be a runtime ReferenceError; in C you find out before anything runs."
 >
 
 ```c id=typo-identifier expect=compile-error
@@ -52,7 +52,7 @@ int main(void) {
 **Fix the first error first.** One mistake can confuse the parser so badly that it reports errors on perfectly good lines below. Fix the first message, recompile, and see what's left. Usually the cascade disappears.
 
 <CompilerError
-  question="Clang reports errors, but one mistake causes them all. Which?"
+  question="Clang reports one error and one note. Which mistake caused them?"
   options={[
     "`return 0` is missing a semicolon",
     "The `if` condition is missing its closing parenthesis `)`, so everything after it is parsed wrongly",
@@ -60,7 +60,7 @@ int main(void) {
     "`main` must be declared before `if`",
   ]}
   answer={1}
-  explain={"The first error points at the `{` where clang expected `)`. Fix that one and the rest vanish. The note \"to match this '('\" shows where the unmatched parenthesis began."}
+  explain={"The error points at the `{` where clang expected `)`. The note \"to match this '('\" shows where the unmatched parenthesis began, and fixing the first message is usually enough."}
 >
 
 ```c id=missing-paren expect=compile-error
@@ -101,7 +101,7 @@ int main(void) {
 }
 ```
 
-It runs: warnings are advice, and the compiler still produces a program. Professional teams compile with `-Werror` so warnings fail the build, because each one is a likely bug. This course's checks do the same.
+It runs: warnings are advice, and the compiler still produces a program. Many teams compile with `-Werror` so warnings fail the build, because each one is a likely bug. This course's checks do the same.
 
 "Compiling" is really four stages, and knowing which stage complains tells you what kind of mistake you made:
 
@@ -121,7 +121,7 @@ Now decide which stage an error comes from:
     "The assembler, because `prinft` isn't a CPU instruction",
   ]}
   answer={1}
-  explain="Type checking happens in the compiler, which requires a declaration first. If the code *had* declared `int prinft(const char *, ...);` but nothing defined it, compilation would succeed and the **linker** would fail with `undefined reference to 'prinft'`. Module 11 is all about that stage."
+  explain="Type checking happens in the compiler, which requires a declaration first. If the code *had* declared `int prinft(const char *, ...);` but nothing defined it, compilation would succeed and the **linker** would fail (with GNU ld the message is `undefined reference to 'prinft'`; other linkers word it differently). Module 11 is all about that stage."
 />
 
 **What you know now:** read `file:line:col`, fix the first error first, treat warnings as bugs, and use the stage that complains (compiler or linker) to know what kind of mistake you made. That's Module 1. Next, the problem set and the Mario project put it all together, then the checkpoint.

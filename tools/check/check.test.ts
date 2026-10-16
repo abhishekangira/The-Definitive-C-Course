@@ -46,8 +46,10 @@ interface JsonReport {
   progressCode?: string; completionToken?: string; learnerProblem?: string; results: TestResult[];
 }
 
+// LC_ALL=C keeps gcc/clang diagnostics ASCII for these assertions. It means this suite does not exercise check.mjs under a
+// UTF-8 locale; that gap is tracked in issue #26 (pin LC_ALL=C for compiler subprocesses in the shipped check.mjs).
 function check(dir: string, args: string[] = [], env: NodeJS.ProcessEnv = {}) {
-  const r = spawnSync(process.execPath, ['check.mjs', ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, CC: 'gcc', NO_COLOR: '1', FORCE_COLOR: '', ...env } });
+  const r = spawnSync(process.execPath, ['check.mjs', ...args], { cwd: dir, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', CC: 'gcc', NO_COLOR: '1', FORCE_COLOR: '', ...env } });
   return { status: r.status, stdout: r.stdout, stderr: r.stderr };
 }
 
@@ -156,12 +158,16 @@ describe('check.mjs on the caesar fixture (gcc + ASan/UBSan/LSan)', () => {
 });
 
 describe('memory-check fallbacks', () => {
-  it.runIf(has('clang-18') && has('valgrind'))('clang without sanitizer runtimes falls back to valgrind', () => {
-    const leaky = checkJson(project('solution', path.join(VARIANTS, 'leaky.c')), ['--cc', 'clang-18']);
+  // "No sanitizer runtime" is simulated with CHECK_NO_SANITIZERS, so the result does not depend on whether the
+  // machine's clang happens to ship compiler-rt (the GitHub runner's clang-18 does; a bare box may not).
+  const CLANG = ['clang-22', 'clang'].find(c => has(c));
+  it.runIf(!!CLANG && has('valgrind'))('clang without sanitizer runtimes falls back to valgrind', () => {
+    const noSan = { CHECK_NO_SANITIZERS: '1' };
+    const leaky = checkJson(project('solution', path.join(VARIANTS, 'leaky.c')), ['--cc', CLANG!], noSan);
     expect(byName(leaky, 'no memory errors or leaks').message).toBe('memory leak: 2 bytes allocated at caesar.c:42 were never freed');
-    const starter = checkJson(project('starter'), ['--cc', 'clang-18']);
+    const starter = checkJson(project('starter'), ['--cc', CLANG!], noSan);
     expect(byName(starter, 'no memory errors or leaks').message).toBe('heap overflow at caesar.c:26: wrote 1 byte just past the end of a 1-byte block allocated at caesar.c:22');
-    expect(byName(checkJson(project('solution'), ['--cc', 'clang-18']), 'no memory errors or leaks')).toMatchObject({ status: 'pass', note: 'valgrind' });
+    expect(byName(checkJson(project('solution'), ['--cc', CLANG!], noSan), 'no memory errors or leaks')).toMatchObject({ status: 'pass', note: 'valgrind' });
   }, 120_000);
 
   it('macOS (simulated): ASan without LeakSanitizer, plus leaks --atExit for leaks', () => {
@@ -226,7 +232,7 @@ describe('the zip the app builds in the browser (buildZipFromFolder), used the w
     }
     return dir;
   }
-  const make = (dir: string, args: string[]) => spawnSync('make', args, { cwd: dir, encoding: 'utf8', env: { ...process.env, CC: 'gcc', NO_COLOR: '1' } });
+  const make = (dir: string, args: string[]) => spawnSync('make', args, { cwd: dir, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', CC: 'gcc', NO_COLOR: '1' } });
 
   it('`make` builds the starter, `make test` prints a progress code that the app accepts, `make hint` shows the next hint', async () => {
     const dir = unzipped('app-zip-starter', appFolder());

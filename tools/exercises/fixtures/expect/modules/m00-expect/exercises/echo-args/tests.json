@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "sources": [
+    "echo.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "no arguments exits 2",
+      "run": {
+        "stdin": ""
+      },
+      "expect": {
+        "stdout": "usage: echo ARG...\n",
+        "exit": 2
+      },
+      "hint": "Check argc first."
+    },
+    {
+      "name": "two arguments",
+      "run": {
+        "stdin": "",
+        "args": [
+          "a",
+          "b c"
+        ]
+      },
+      "expect": {
+        "stdout": "a\nb c\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "stdin is ignored",
+      "run": {
+        "stdin": "ignored\n",
+        "args": [
+          "x"
+        ]
+      },
+      "expect": {
+        "stdout": "x\n",
+        "exit": 0
+      }
+    }
+  ]
+}

@@ -253,6 +253,10 @@ export async function completeLesson(page: Page, mod: ModuleInfo, stem: string):
   for (let i = 0; i < total; i++) {
     const card = page.locator(`section[data-card="${i}"]`);
     await expect(card, `card ${i + 1} of ${total} appears`).toBeVisible();
+    // `.all()` does not wait: on a slow runner the card's section can be visible before its interaction is in the DOM,
+    // the loop then finds no boxes, skips the card and times out waiting for the next one (CI run 38870988443).
+    // Every card except the last (non-gated) one ends in an interaction, so wait for it.
+    if (i < total - 1) await expect(topLevel(card).first(), `card ${i + 1} of ${total} has its interaction`).toBeVisible();
     // Heavy interactions are lazy chunks: wait for their loading placeholders (data-loading) to go before looking for them.
     await expect(card.locator('[data-loading="true"]'), `card ${i + 1} finished loading`).toHaveCount(0);
     for (const box of await topLevel(card).all()) await completeInteraction(page, mod, box);

@@ -1,0 +1,8 @@
+id: echo-args
+kind: ct
+title: Echo arguments
+prompt: Print each argument on its own line; exit 2 when there are none.
+runsIn: browser
+hints: [one, two, three]
+file: echo.c
+variants: ['1']
