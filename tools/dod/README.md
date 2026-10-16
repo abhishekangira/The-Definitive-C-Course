@@ -19,7 +19,7 @@ The steps run one after another on purpose: the checks (browser compiler, e2e) a
 | 6 | `verify:exercises --module mNN` | 2 |
 | 7 | `videos:check` (covers every module; it has no module filter) | 5 |
 | 8 | `anim:check --static <id>` for each `<Animation id>` the lessons use; skipped when there is none | 4 |
-| 9 | all unit tests (`npm test`: `tools/` and `src/`, so §3.6 point 6 is covered in full; it is the slowest of the quick steps, about 1 to 2 minutes, because the verifier fixture tests compile C) | 6 |
+| 9 | all unit tests (`npm test`: `tools/` and `src/`, so §3.6 point 6 is covered in full; about 30 s on a 4-CPU box, because the verifier fixture tests compile C) | 6 |
 | 10 | `npm run build` (skipped by `--fast`) | 6 |
 | 11 | `npm run e2e` with `E2E_MODULE=mNN` (skipped by `--fast`) | 6 |
 | 12 | platform targets: always `SKIPPED`, the Targets workflow checks them in CI | 7 |
