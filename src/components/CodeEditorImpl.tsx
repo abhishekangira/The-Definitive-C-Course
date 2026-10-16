@@ -1,6 +1,7 @@
 // CodeMirror 6 editor for C, with clang diagnostics shown as inline markers.
 // Loaded on demand through the wrapper in CodeEditor.tsx so CodeMirror stays out of the entry chunk.
 // Keyboard: Tab indents; Esc then Tab (or Shift+Tab) moves focus out, so focus is never trapped.
+// When the page passes `onRun`, Ctrl+Enter (Cmd+Enter on a Mac) runs the program.
 import { useEffect, useRef } from 'react';
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection } from '@codemirror/view';
@@ -70,6 +71,8 @@ export interface CodeEditorProps {
   fileName?: string;
   label: string;
   minLines?: number;
+  /** Ctrl/Cmd+Enter inside the editor. Without it that key keeps its default (insert a blank line). */
+  onRun?: () => void;
   /** Lines to highlight (1-based), e.g. the stepper's current line. */
   highlightLine?: number | null;
   /** Internal: id of the placeholder this editor replaces (see editor-focus.ts). */
@@ -89,13 +92,15 @@ function editableExtensions(readOnly?: boolean) {
   ];
 }
 
-export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileName = 'main.c', label, minLines = 4, handoffId }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, onRun, readOnly, diagnostics = [], fileName = 'main.c', label, minLines = 4, handoffId }: CodeEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const editable = useRef(new Compartment());
   const highlight = useRef(new Compartment());
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onRunRef = useRef(onRun);
+  onRunRef.current = onRun;
 
   useEffect(() => {
     const dark = () => document.documentElement.dataset.theme === 'dark' ||
@@ -108,7 +113,7 @@ export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileNa
           lineNumbers(), highlightActiveLineGutter(), history(), drawSelection(), indentOnInput(), bracketMatching(), highlightActiveLine(),
           cpp(),
           highlight.current.of(syntaxHighlighting(dark() ? darkHighlight : lightHighlight)),
-          keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
+          keymap.of([{ key: 'Mod-Enter', run: () => { const run = onRunRef.current; if (!run) return false; run(); return true; } }, indentWithTab, ...defaultKeymap, ...historyKeymap]),
           linter(null), lintGutter(),
           theme,
           editable.current.of(editableExtensions(readOnly)),
@@ -118,10 +123,13 @@ export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileNa
       }),
     });
     view.current = v;
-    // Re-theme highlighting when the app theme changes.
-    const obs = new MutationObserver(() => v.dispatch({ effects: highlight.current.reconfigure(syntaxHighlighting(dark() ? darkHighlight : lightHighlight)) }));
+    // Re-theme highlighting when the app theme changes, or (with the "System" theme) when the operating system's does.
+    const retheme = () => v.dispatch({ effects: highlight.current.reconfigure(syntaxHighlighting(dark() ? darkHighlight : lightHighlight)) });
+    const obs = new MutationObserver(retheme);
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => { obs.disconnect(); v.destroy(); view.current = null; };
+    const scheme = window.matchMedia('(prefers-color-scheme: dark)');
+    scheme.addEventListener('change', retheme);
+    return () => { obs.disconnect(); scheme.removeEventListener('change', retheme); v.destroy(); view.current = null; };
     // The editor is created once; value/readOnly updates are applied by the effects below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

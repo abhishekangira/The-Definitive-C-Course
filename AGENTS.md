@@ -114,6 +114,7 @@ content/modules/m01-c-in-your-browser/
 - **Normalisation.** Only `%p` output is normalised to `<addrN>`. On those lines `0`, `0x0` and `(nil)` mean NULL.
 - **Traces** come from x86-64 Linux gdb and are labelled as such. Variables whose declaration has not run are recorded as `declared: false` with a placeholder value, never the stack bytes.
 - **Line endings are LF everywhere** (`.gitattributes`). Windows CRLF changes sample hashes and marks stored results stale.
+- **Playground.** `#/playground` (`src/app/pages/PlaygroundPage.tsx`) is a free, ungated C editor on the same compiler and runtime as the lessons. It records no progress. Its draft (code, stdin, arguments, the UBSan switch) lives in its own key `tdcc:v1:playground`, which progress export, import and reset leave alone. Low-memory mode disables Run there, because there is no stored output for arbitrary code. `e2e/playground.spec.ts` covers it, including a no-JSPI run (Safari and Firefox lack JSPI; the test removes `WebAssembly.Suspending` and `promising` to imitate them).
 - **Routing.** HashRouter with Vite `base: './'`. The toolchain URL is resolved on the main thread and passed to the workers.
 - **Licensing.** MIT for the code and the course content (the client's decision): `LICENSE`, copyright (c) 2026 Abhishek Angira. `package.json`, the About page and `learnc.h` agree. Don't change it.
 

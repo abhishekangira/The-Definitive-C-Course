@@ -25,6 +25,7 @@ export const router = createHashRouter([
       { path: 'm/:moduleId/project', ...page(() => import('./pages/ProjectPage'), 'ProjectPage') },
       { path: 'm/:moduleId/checkpoint', ...page(() => import('./pages/CheckpointPage'), 'CheckpointPage') },
       { path: 'm/:moduleId/:lessonStem', ...page(() => import('./pages/LessonPage'), 'LessonPage') },
+      { path: 'playground', ...page(() => import('./pages/PlaygroundPage'), 'PlaygroundPage') },
       { path: 'settings', ...page(() => import('./pages/SettingsPage'), 'SettingsPage') },
       { path: 'about', ...page(() => import('./pages/AboutPage'), 'AboutPage') },
       { path: '*', element: <NotFound /> },

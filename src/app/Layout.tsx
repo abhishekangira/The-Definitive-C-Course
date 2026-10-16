@@ -51,6 +51,7 @@ export function Layout({ children }: { children?: ReactNode }) {
         </Link>
         <nav className={styles.nav} aria-label="Site">
           <NavLink to="/" end className={({ isActive }) => (isActive ? styles.active : undefined)}>Course</NavLink>
+          <NavLink to="/playground" className={({ isActive }) => (isActive ? styles.active : undefined)}>Playground</NavLink>
           <NavLink to="/settings" className={({ isActive }) => (isActive ? styles.active : undefined)}>Progress &amp; settings</NavLink>
           <button
             type="button"

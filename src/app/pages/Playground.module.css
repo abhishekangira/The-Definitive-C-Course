@@ -1,0 +1,13 @@
+.page { display: flex; flex-direction: column; gap: var(--space-4); }
+.page h1 { margin: 0; }
+.eyebrow { color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 var(--space-2); }
+.lede { font-size: 1.12rem; color: var(--text-muted); margin: var(--space-2) 0 0; }
+.examples { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.examplesLabel { font-weight: 600; font-size: 0.9rem; color: var(--text-muted); }
+.check { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 0.95rem; }
+.options { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); }
+.help { font-weight: 400; font-size: 0.85rem; color: var(--text-muted); }
+.kbd { font-family: var(--font-mono); font-size: 0.85em; border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; background: var(--bg-sunken); color: var(--text); }
+.details { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-4); background: var(--bg-elev); }
+.details summary { cursor: pointer; font-weight: 600; padding: var(--space-1) 0; }
+.details p { margin: var(--space-2) 0; font-size: 0.95rem; color: var(--text-muted); }

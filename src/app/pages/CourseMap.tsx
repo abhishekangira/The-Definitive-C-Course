@@ -17,6 +17,7 @@ export function CourseMap() {
           clang right here in your browser, and by the end you'll match a Harvard CS50 student on everything CS50 teaches through C, then go further:
           the CPU, memory hierarchy, linking and the operating system.
         </p>
+        <p className={styles.muted}>Just want to try C? Open the <Link to="/playground">playground</Link>: a free editor and compiler, no quiz or progress needed.</p>
         <ul className={styles.facts}>
           <li><strong>{course.modules.length - 1} modules + capstone</strong></li>
           <li><strong>≈{Math.round(total)} hours</strong> · about {Math.round(total / course.hoursPerWeek)} weeks at {course.hoursPerWeek} h/week</li>
