@@ -19,7 +19,7 @@ function lazyInteraction<P extends object>(load: () => Promise<ComponentType<P>>
   const Inner = lazy(async () => ({ default: await load() })) as unknown as ComponentType<object>;
   return function LazyInteraction(props: P) {
     return (
-      <Suspense fallback={<div role="status" aria-busy="true" style={{ minHeight: '10rem', padding: 'var(--space-4, 1rem)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)' }}>Loading {what}…</div>}>
+      <Suspense fallback={<div role="status" data-loading="true" style={{ minHeight: '10rem', padding: 'var(--space-4, 1rem)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)' }}>Loading {what}…</div>}>
         <Inner {...props} />
       </Suspense>
     );

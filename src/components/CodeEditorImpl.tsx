@@ -4,13 +4,13 @@
 import { useEffect, useRef } from 'react';
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+import { defaultKeymap, deleteCharBackward, history, historyKeymap, indentWithTab, insertNewlineAndIndent } from '@codemirror/commands';
 import { cpp } from '@codemirror/lang-cpp';
 import { syntaxHighlighting, indentOnInput, bracketMatching, HighlightStyle } from '@codemirror/language';
 import { linter, lintGutter, setDiagnostics, type Diagnostic as CmDiagnostic } from '@codemirror/lint';
 import { tags as t } from '@lezer/highlight';
 import type { Diagnostic } from '../content-model/types';
-import { takeEditorFocusRequest } from './editor-focus';
+import { takeHandoff } from './editor-focus';
 import styles from './CodeEditor.module.css';
 
 const darkHighlight = HighlightStyle.define([
@@ -72,6 +72,8 @@ export interface CodeEditorProps {
   minLines?: number;
   /** Lines to highlight (1-based), e.g. the stepper's current line. */
   highlightLine?: number | null;
+  /** Internal: id of the placeholder this editor replaces (see editor-focus.ts). */
+  handoffId?: string;
 }
 
 /**
@@ -87,7 +89,7 @@ function editableExtensions(readOnly?: boolean) {
   ];
 }
 
-export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileName = 'main.c', label, minLines = 4 }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileName = 'main.c', label, minLines = 4, handoffId }: CodeEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const editable = useRef(new Compartment());
@@ -116,8 +118,6 @@ export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileNa
       }),
     });
     view.current = v;
-    // The learner focused the placeholder while this chunk was loading: hand focus to the real editor.
-    if (takeEditorFocusRequest(label)) v.focus();
     // Re-theme highlighting when the app theme changes.
     const obs = new MutationObserver(() => v.dispatch({ effects: highlight.current.reconfigure(syntaxHighlighting(dark() ? darkHighlight : lightHighlight)) }));
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
@@ -132,6 +132,26 @@ export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileNa
     if (v && v.state.doc.toString() !== value) v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: value } });
   }, [value]);
 
+  // The learner used the placeholder while this chunk was loading: carry over selection, typed keys and focus.
+  // This runs after the value effect above on purpose; that one would otherwise reset the document to the stale prop.
+  useEffect(() => {
+    const v = view.current;
+    const handoff = v && handoffId ? takeHandoff(handoffId) : undefined;
+    if (!v || !handoff) return;
+    const clamp = (n: number) => Math.max(0, Math.min(n, v.state.doc.length));
+    v.dispatch({ selection: { anchor: clamp(handoff.anchor), head: clamp(handoff.head) } });
+    if (!readOnly) {
+      for (const op of handoff.ops) {
+        if (op.type === 'insert') v.dispatch(v.state.replaceSelection(op.text), { userEvent: 'input.type', scrollIntoView: true });
+        else if (op.type === 'enter') insertNewlineAndIndent(v);
+        else deleteCharBackward(v);
+      }
+    }
+    if (handoff.focus) v.focus();
+    // Once, at mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     view.current?.dispatch({ effects: editable.current.reconfigure(editableExtensions(readOnly)) });
   }, [readOnly]);
@@ -141,8 +161,17 @@ export function CodeEditor({ value, onChange, readOnly, diagnostics = [], fileNa
     if (v) v.dispatch(setDiagnostics(v.state, toCm(v, diagnostics, fileName)));
   }, [diagnostics, fileName]);
 
+  // Until CodeMirror has measured its lines it lays out with estimated heights, which is shorter than the placeholder
+  // for a frame. Hold the box at the placeholder's exact height (lines x 1.4 x 14.5px + padding + border) until then.
+  const baseMin = `${minLines * 1.5 + 1.4}em`;
+  const initialMin = useRef(`max(${baseMin}, ${(value.split('\n').length * 20.3 + 22).toFixed(1)}px)`);
+  useEffect(() => {
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => { raf2 = requestAnimationFrame(() => { if (host.current) host.current.style.minHeight = baseMin; }); });
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2); };
+  }, [baseMin]);
   return (
-    <div className={styles.editor} style={{ minHeight: `${minLines * 1.5 + 1.4}em` }} ref={host}
+    <div className={styles.editor} style={{ minHeight: initialMin.current }} ref={host}
       onKeyDown={e => { if (e.key === 'Escape') (e.currentTarget.querySelector('.cm-content') as HTMLElement | null)?.blur(); }} />
   );
 }

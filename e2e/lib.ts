@@ -253,8 +253,8 @@ export async function completeLesson(page: Page, mod: ModuleInfo, stem: string):
   for (let i = 0; i < total; i++) {
     const card = page.locator(`section[data-card="${i}"]`);
     await expect(card, `card ${i + 1} of ${total} appears`).toBeVisible();
-    // Heavy interactions are lazy chunks: wait for their loading placeholders (aria-busy) to go before looking for them.
-    await expect(card.locator('[aria-busy="true"]'), `card ${i + 1} finished loading`).toHaveCount(0);
+    // Heavy interactions are lazy chunks: wait for their loading placeholders (data-loading) to go before looking for them.
+    await expect(card.locator('[data-loading="true"]'), `card ${i + 1} finished loading`).toHaveCount(0);
     for (const box of await topLevel(card).all()) await completeInteraction(page, mod, box);
   }
 }
