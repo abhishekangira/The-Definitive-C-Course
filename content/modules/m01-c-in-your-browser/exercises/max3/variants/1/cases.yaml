@@ -1,0 +1,10 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "smallest first"
+    stdin: "1\n3\n4\n"
+  - name: "smallest middle"
+    stdin: "3\n1\n4\n"
+  - name: "smallest last"
+    stdin: "3\n4\n1\n"
+  - name: "negatives"
+    stdin: "-5\n-2\n-9\n"

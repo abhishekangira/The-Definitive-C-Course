@@ -70,6 +70,7 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 | `npm run verify [-- --module m01 --check --force]` | compile/run every sample on gcc, clang, the browser compiler (+ stored macOS/arm/Windows results); writes `src/generated/samples/` and traces |
 | `npm run trace` | gdb stepper traces for `trace` samples → `src/generated/traces/` |
 | `npm run verify:exercises` | every solution passes, every starter fails, every variant passes (browser and native) |
+| `npm run exercises:expect [-- --check]` | regenerate `tests.json`/`check.json` from each folder's `cases.yaml` by running the reference solution (gcc `-Werror` + ASan/UBSan); `--check` only reports drift |
 | `npm run lint:content [-- --strict --stats]` | word budget, cadence, fence ids, analogies, quiz and module rules |
 | `npm run anim:check` / `anim:render` | HyperFrames lint, check and deterministic render (needs Chromium + ffmpeg; see `animations/README.md`); CI runs only `node tools/anim/check.mjs --static`, the full check is local |
 | `npm run videos:check [-- --online]` | `videos.json` schema and transcript anchors (CI never calls yt-dlp) |
@@ -94,13 +95,13 @@ CI (`.github/workflows/ci.yml`) runs all of these, then deploys `dist` to GitHub
 content/modules/m01-c-in-your-browser/
   module.yaml                  id number title why hours weeks time{…} lessons problemSet project coreExercises resources retrieval
   lessons/NN-name.mdx          frontmatter: id (m01-l1), title, minutes (25–60), summary
-  exercises/<id>/              exercise.yaml  starter.c  solution.c  tests.json   (+ variants/<n>/ as standalone folders)
-  project/<id>/                project.mdx  exercise.yaml  check.json  Makefile  README.md  starter/  solution/
+  exercises/<id>/              exercise.yaml  starter.c  solution.c  cases.yaml  tests.json   (+ variants/<n>/ as standalone folders)
+  project/<id>/                project.mdx  exercise.yaml  cases.yaml  check.json  Makefile  README.md  starter/  solution/
   quizzes/retrieval.yaml, quizzes/checkpoint.yaml
 ```
 - **Lessons** are MDX. `tools/mdx/remark-course.ts` turns ```` ```c ```` fences into `<CodeSample>` (needs `id=`) or `<CodeBlock>` (`fragment`) and groups content into gated `<Card>`s, each ending in one interaction. Components available without imports: `Choice`, `CompilerError`, `MemoryDiagram`, `Stepper`, `NumberDrill`, `NumberPlayground`, `PipelineExplorer`, `Exercise`, `Analogy` (`js`, `c`, `breaksDown`), `Callout`, `Animation`, `YouTube`, `TestExample`.
 - **Fence meta keys:** `id`, `fragment` (or `fragment=partial`), `predict` (`output|outcome|choice|none`), `choices="a|b|c"`, `stdin`, `args`, `expect` (`success|warning|compile-error|runtime-error|ub|exit:N`), `expect.<gcc|clang|wasm|apple|msvc>`, `warn=-Wflag` and `warn.<compiler>=`, `platform`, `predict64`, `reason`, `target=native`, `stdout=tty|pipe|both`, `posix`, `guardrail`, `sanitize=off`, `trace`, `timeout`, `norm`, `files`, `run`.
-- **Exercises:** `kind` is `ct` (write), `fb` (fix a bug from a symptom), `pa` (Parsons) or `lt` (runs on the learner's machine). Exactly three hints (nudge → concept → partial code). A variant inherits nothing from its parent. `tests.json` is `{version, sources, warnings, tests[{name, run{stdin,args}, expect{stdout,exit}, hint}]}`.
+- **Exercises:** `kind` is `ct` (write), `fb` (fix a bug from a symptom), `pa` (Parsons) or `lt` (runs on the learner's machine). Exactly three hints (nudge → concept → partial code). A variant inherits nothing from its parent. `tests.json` is `{version, sources, warnings, tests[{name, run{stdin,args}, expect{stdout,exit}, hint}]}`. For single-file stdin/args/stdout/exit exercises it is **generated**: write `cases.yaml` (`cases: [{name, stdin?, args?, hint?}]`) and run `npm run exercises:expect` (see `tools/exercises/README.md`); never type an expectation. Hand-written unit/make tests remain hand-written.
 - **Quiz items:** `predict`, `outcome`, `choice`, `ce`, `md`, `sp`, `exercise`, `np`, `order`. A `choice` with `code` has no `answer` (the verified output must equal one choice). A `ce` needs `answer`. An `md` needs `sample`, `line`, `items` and `meta: trace predict=none`. Checkpoints run in assessment mode: no hints, no solutions, explicit skip counts as wrong, one `transfer: true` item.
 - **Generated files** in `src/generated/` are committed but never edited by hand: run `npm run verify`.
 - **Progress schema** (`src/progress/store.ts`): one JSON document at `tdcc:v1:progress` (`version, seed, cards, lessons, samples, exercises, quizzes, projects, settings`). Gating rules live in `src/progress/gating.ts`.
