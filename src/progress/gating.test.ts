@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { emptyProgress, type ExerciseProgress, type ProgressV1 } from './store';
 
 // Fixture course so the rules are tested at their boundaries independent of the real content:
-// m01 and m02 are built, m03 is listed in the manifest but not built yet.
+// m01, m02 and m04 are built; m03 is listed in the manifest between them but not built yet.
 vi.mock('../content-runtime/course', () => {
   const mod = (id: string, lessons: string[], core: string[], project: string) => ({
     dir: id,
@@ -10,10 +10,11 @@ vi.mock('../content-runtime/course', () => {
     lessons: lessons.map(stem => ({ stem, frontmatter: { id: `${id}-${stem}` } })),
   });
   return {
-    course: { modules: [{ id: 'm01' }, { id: 'm02' }, { id: 'm03' }] },
+    course: { modules: [{ id: 'm01' }, { id: 'm02' }, { id: 'm03' }, { id: 'm04' }] },
     modules: {
       m01: mod('m01', ['a', 'b'], ['ex1', 'ex2'], 'proj1'),
       m02: mod('m02', ['a'], [], 'proj2'),
+      m04: mod('m04', ['a'], [], 'proj4'),
     },
     // m01 has a retrieval quiz; m02 has none.
     quizFor: (id: string, name: string) => (id === 'm01' && name === 'retrieval' ? [{ id: 'q' }] : []),
@@ -30,28 +31,26 @@ const ex = (patch: Partial<ExerciseProgress> = {}): ExerciseProgress => ({
   attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false, ...patch,
 });
 const MIN = 60000;
-const checkpoint = (score: number, total = 10) => ({ score, total, passed: score / total >= CHECKPOINT_PASS, at, answers: {} });
+// `passed` is stored data here (QuizRunner decides it in the app); tests pass it explicitly instead of recomputing the rule.
+const checkpoint = (score: number, passed: boolean, total = 10) => ({ score, total, passed, at, answers: {} });
 
 /** A fully complete m01: lessons, retrieval, checkpoint, project, core exercises mastered. */
 const completeM01 = (patch: Partial<ProgressV1> = {}): ProgressV1 => doc({
   lessons: { 'm01-a': { completedAt: at }, 'm01-b': { completedAt: at } },
-  quizzes: { [quizKey('m01', 'retrieval')]: checkpoint(8), [quizKey('m01', 'checkpoint')]: checkpoint(8) },
+  quizzes: { [quizKey('m01', 'retrieval')]: checkpoint(8, true), [quizKey('m01', 'checkpoint')]: checkpoint(8, true) },
   projects: { proj1: { passed: true, at } },
   exercises: { ex1: ex({ passed: true }), ex2: ex({ passed: true }) },
   ...patch,
 });
 
+// The 80% comparison itself lives in QuizRunner.tsx (a component), not in gating.ts, so it is not tested here.
 describe('CHECKPOINT_PASS', () => {
-  it('is 0.8', () => {
+  it('is 0.8 (the value QuizRunner compares against)', () => {
     expect(CHECKPOINT_PASS).toBe(0.8);
   });
-  it('treats 8/10 as a pass and 7/10 as a fail', () => {
-    expect(8 / 10 >= CHECKPOINT_PASS).toBe(true);
-    expect(7 / 10 >= CHECKPOINT_PASS).toBe(false);
-  });
   it('moduleStatus follows the stored passed flag, not the score', () => {
-    expect(moduleStatus(doc({ quizzes: { 'm01:checkpoint': checkpoint(7) } }), 'm01').checkpointPassed).toBe(false);
-    expect(moduleStatus(doc({ quizzes: { 'm01:checkpoint': checkpoint(8) } }), 'm01').checkpointPassed).toBe(true);
+    expect(moduleStatus(doc({ quizzes: { 'm01:checkpoint': checkpoint(7, false) } }), 'm01').checkpointPassed).toBe(false);
+    expect(moduleStatus(doc({ quizzes: { 'm01:checkpoint': checkpoint(8, true) } }), 'm01').checkpointPassed).toBe(true);
   });
 });
 
@@ -103,8 +102,14 @@ describe('solutionGate', () => {
     expect(unlocked({ hintsViewed: 3, substantive: 1, activeMs: 20 * MIN - 1000 })).toBe(false);
   });
 
-  it('the locked reason for 19 minutes says one minute more', () => {
-    expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 19 * MIN }), false).reason).toMatch(/1 more minutes?/);
+  it('pins the lock-message rounding: the remaining minutes are rounded up', () => {
+    const reason = (activeMs: number) => solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs }), false).reason;
+    expect(reason(0)).toContain('20 more minutes');
+    expect(reason(15 * MIN)).toContain('5 more minutes'); // exactly 5:00 left
+    expect(reason(15 * MIN + 1)).toContain('5 more minutes'); // 4:59.999 left rounds up to 5, not down to 4
+    expect(reason(15 * MIN - 1)).toContain('6 more minutes'); // 5:00.001 left rounds up to 6
+    expect(reason(19 * MIN)).toContain('1 more minutes');
+    expect(reason(20 * MIN - 1)).toContain('1 more minutes'); // 1 ms short still says 1, never 0
   });
 
   it('more than the minimum stays unlocked', () => {
@@ -143,7 +148,7 @@ describe('moduleStatus', () => {
 
   it('retrieval is done when recorded, or when the module has no retrieval quiz', () => {
     expect(moduleStatus(doc(), 'm01').retrievalDone).toBe(false);
-    expect(moduleStatus(doc({ quizzes: { 'm01:retrieval': checkpoint(1) } }), 'm01').retrievalDone).toBe(true);
+    expect(moduleStatus(doc({ quizzes: { 'm01:retrieval': checkpoint(1, true) } }), 'm01').retrievalDone).toBe(true);
     expect(moduleStatus(doc(), 'm02').retrievalDone).toBe(true);
   });
 
@@ -170,7 +175,7 @@ describe('moduleStatus', () => {
       expect(moduleStatus(completeM01(), 'm01').complete).toBe(true);
     });
     it('is false at 7/10 on the checkpoint', () => {
-      const p = completeM01({ quizzes: { 'm01:retrieval': checkpoint(8), 'm01:checkpoint': checkpoint(7) } });
+      const p = completeM01({ quizzes: { 'm01:retrieval': checkpoint(8, true), 'm01:checkpoint': checkpoint(7, false) } });
       expect(moduleStatus(p, 'm01').complete).toBe(false);
     });
     it('is false without a passed project', () => {
@@ -189,7 +194,7 @@ describe('moduleStatus', () => {
 describe('isCheckpointUnlocked', () => {
   const lessons = (...ids: string[]) => Object.fromEntries(ids.map(i => [i, { completedAt: at }]));
   it('needs retrieval done and every lesson complete', () => {
-    const retrieval = { 'm01:retrieval': checkpoint(8) };
+    const retrieval = { 'm01:retrieval': checkpoint(8, true) };
     expect(isCheckpointUnlocked(doc(), 'm01')).toBe(false);
     expect(isCheckpointUnlocked(doc({ quizzes: retrieval, lessons: lessons('m01-a') }), 'm01')).toBe(false);
     expect(isCheckpointUnlocked(doc({ lessons: lessons('m01-a', 'm01-b') }), 'm01')).toBe(false);
@@ -204,6 +209,12 @@ describe('isCheckpointUnlocked', () => {
 });
 
 describe('isModuleUnlocked', () => {
+  const completeM02 = (patch: Partial<ProgressV1> = {}): ProgressV1 => completeM01({
+    lessons: { 'm01-a': { completedAt: at }, 'm01-b': { completedAt: at }, 'm02-a': { completedAt: at } },
+    quizzes: { 'm01:retrieval': checkpoint(8, true), 'm01:checkpoint': checkpoint(8, true), 'm02:checkpoint': checkpoint(9, true) },
+    projects: { proj1: { passed: true, at }, proj2: { passed: true, at } },
+    ...patch,
+  });
   it('the first module is always unlocked', () => {
     expect(isModuleUnlocked(doc(), 'm01')).toBe(true);
   });
@@ -213,13 +224,16 @@ describe('isModuleUnlocked', () => {
   });
   it('stays locked for each missing completion requirement of the earlier module', () => {
     expect(isModuleUnlocked(completeM01({ projects: {} }), 'm02')).toBe(false);
-    expect(isModuleUnlocked(completeM01({ quizzes: { 'm01:checkpoint': checkpoint(7) } }), 'm02')).toBe(false);
+    expect(isModuleUnlocked(completeM01({ quizzes: { 'm01:checkpoint': checkpoint(7, false) } }), 'm02')).toBe(false);
     expect(isModuleUnlocked(completeM01({ exercises: { ex1: ex({ passed: true, solutionViewed: true }) } }), 'm02')).toBe(false);
   });
-  it('a module that is not built stays locked, even when earlier modules are complete', () => {
-    expect(isModuleUnlocked(completeM01(), 'm03')).toBe(false);
+  it('a listed but unbuilt module (m03) is locked even when every built module before it is complete', () => {
+    expect(isModuleUnlocked(completeM02(), 'm03')).toBe(false);
+  });
+  it('a built module behind an unbuilt one (m04 after m03) stays locked even though m01 and m02 are complete', () => {
+    expect(isModuleUnlocked(completeM02(), 'm04')).toBe(false);
   });
   it('an unknown module is locked', () => {
-    expect(isModuleUnlocked(completeM01(), 'zzz')).toBe(false);
+    expect(isModuleUnlocked(completeM02(), 'zzz')).toBe(false);
   });
 });
