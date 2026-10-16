@@ -37,6 +37,15 @@ container: software GL), and a render of unchanged sources is skipped.
 Skipped on purpose (they are interactive or online): the skills' intent interview and `BRIEF.md`, `usage`,
 `publish`, `auth`, `open`, `feedback`, `skills update`, cloud renders.
 
+## What CI runs
+
+CI (`.github/workflows/ci.yml`) runs `node tools/anim/check.mjs --static` only: static validation, `hyperframes lint` and
+manifest freshness, with no browser. The full `npm run anim:check` needs Chromium and a network download of the pinned
+`hyperframes` CLI, and the manifest records the exact browser build the MP4s were rendered with, so a different Chromium on
+the runner would report stale renders. Run the full check locally when you touch an animation. A separate CI step transcodes
+the committed MP4s with `node tools/anim/render.mjs --webm dist/animations` (the only WebM step). It has no `if:`, so it
+runs on every CI run including PRs; only the artifact upload and the Pages deploy are main-only.
+
 ## Layout and naming
 
 ```

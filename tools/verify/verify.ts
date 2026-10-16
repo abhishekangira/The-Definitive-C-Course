@@ -77,7 +77,7 @@ const FRAGMENT_PRELUDE = ['stdio.h', 'stdlib.h', 'string.h', 'stdint.h', 'stdboo
  */
 export function checkFragment(code: string, gcc = 'gcc'): { ok: boolean; diagnostics: string } {
   const attempt = (src: string) => {
-    const r = spawnSync(gcc, ['-fsyntax-only', '-std=c17', '-Wall', '-Wextra', '-pedantic', '-fdiagnostics-color=never', '-x', 'c', '-'], { input: src, encoding: 'utf8' });
+    const r = spawnSync(gcc, ['-fsyntax-only', '-std=c17', '-Wall', '-Wextra', '-pedantic', '-fdiagnostics-color=never', '-x', 'c', '-'], { input: src, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C' } });
     return { ok: r.status === 0, diagnostics: (r.stderr ?? '').replace(/^<stdin>: /gm, '') };
   };
   const fileScope = attempt(`${FRAGMENT_PRELUDE}#line 1 "fragment.c"\n${code}`);
