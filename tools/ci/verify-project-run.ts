@@ -7,11 +7,16 @@ import { readFileSync } from 'node:fs';
 import { verifyCode } from '../../src/testing/token';
 
 const [kind, seed, exercise, exitCode, file] = process.argv.slice(2);
-const output = readFileSync(file, 'utf8');
 const fail = (msg: string): never => {
   console.error(`FAIL (${kind}): ${msg}`);
   process.exit(1);
 };
+let output = '';
+try {
+  output = readFileSync(file, 'utf8');
+} catch {
+  fail(`cannot read the log file "${file}" (did \`make test\` run?)`);
+}
 
 if (kind !== 'starter' && kind !== 'solution') fail('first argument must be starter or solution');
 if (kind === 'starter' && exitCode === '0') fail('the starter passed `make test`; it must fail');

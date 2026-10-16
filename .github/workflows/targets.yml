@@ -17,6 +17,7 @@ on:
   pull_request:
     paths:
       - 'tools/check/**'
+      - '!tools/check/**/*.md'  # docs-only edits (the README table) don't need real runners
       - 'tools/ci/verify-project-run.ts'
       - 'src/testing/**'
       - 'content/modules/m01-c-in-your-browser/project/mario-more/**'
@@ -26,7 +27,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: targets
+  # PR runs get their own group per ref so they never queue behind (or replace a pending) run on main.
+  group: ${{ github.event_name == 'pull_request' && format('targets-pr-{0}', github.ref) || 'targets' }}
   cancel-in-progress: false
 
 jobs:
