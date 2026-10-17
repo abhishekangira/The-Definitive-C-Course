@@ -1,0 +1,31 @@
+id: unsigned-countdown
+kind: fb
+title: The countdown that never lands
+prompt: |
+  **Bug report:** "My countdown works when I type a negative number, but for `3` it prints `3`, `2`, `1`,
+  `0` and then keeps printing huge numbers until the program is killed."
+
+  Expected for a start of 3:
+  ```
+  Start: 3
+  2
+  1
+  0
+  Liftoff!
+  ```
+  (The prompt `Start: ` has no newline and the input you type isn't part of the output, so the first `3`
+  follows the prompt. A negative start prints `Nothing to count.` and stops.)
+
+  Find the bug and fix it without rewriting the program.
+runsIn: browser
+hints:
+- Run it with a start of 1. After `0`, what number does the loop print next, and why is it not negative?
+- 'The loop variable is `unsigned`, and an unsigned number can never be below 0: `0 - 1` wraps around to
+  the largest value. So `i >= 0` is true for every `unsigned` value, and the loop has no way out.'
+- Declare the loop variable as `int i` instead of `unsigned i`. The condition `i >= 0` then becomes false
+  after the 0 is printed.
+file: countdown.c
+variants:
+- '1'
+sampleStdin: |
+  3

@@ -1,0 +1,11 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "9 and 4 are 5 apart"
+    stdin: "9\n4\n"
+  - name: "equal numbers are 0 apart"
+    stdin: "7\n7\n"
+  - name: "4 and 9 are 5 apart"
+    stdin: "4\n9\n"
+    hint: "Which of the two numbers is bigger? Subtract the smaller from the bigger."
+  - name: "0 and 1 are 1 apart"
+    stdin: "0\n1\n"

@@ -1,0 +1,123 @@
+---
+id: m02-l3
+title: Unsigned and two's complement
+minutes: 45
+summary: Unsigned arithmetic wraps by definition, signed overflow is undefined behaviour, and negative numbers are the same bits read another way.
+---
+
+Every integer type comes in two flavours. An **unsigned** type uses all its bits for the magnitude, so an 8-bit one counts from 0 to 255. When it runs off the end, C defines what happens: the value **wraps around** modulo 256. You may rely on that.
+
+<Analogy js="x|0 and x>>>0" c="int32_t and uint32_t" breaksDown="In JavaScript, `x|0` forces a 32-bit signed result and `x>>>0` a 32-bit unsigned one, and overflow wraps quietly. In C, unsigned overflow wraps, but signed overflow is undefined behaviour: the compiler may assume it never happens." />
+
+Predict the output. `unsigned char` holds 0 to 255.
+
+```c id=uchar-wrap
+#include <stdio.h>
+
+int main(void) {
+    unsigned char c = 250;
+    c += 10;
+    printf("%d\n", c);
+    return 0;
+}
+```
+
+Picture the 8-bit patterns as a ring (a **wheel**) with 256 positions. Adding 1 at 255 lands on 0, and subtracting 1 at 0 lands on 255. The outer labels show the unsigned reading and the inner ones the signed reading of the same bits. Press the buttons and watch both.
+
+<NumberPlayground mode="wheel" value={253} width={8} />
+
+How do the signed labels work? In **two's complement** the top bit is worth minus its place value, so in 8 bits it is worth -128 and the rest keep their normal value. `1111 1111` is -128 + 127 = -1. To negate a number, flip every bit and add 1. Every width works alike, so -1 in 32 bits is all ones.
+
+<NumberDrill value={-1} from="dec" to="hex" width={32} signed />
+
+The bits do not change when you change the reading; only the type does. Converting a value that does not fit into a **signed** type is not undefined: the C standard calls the result implementation-defined (C17 6.3.1.3), and on every compiler this course uses, the bits are kept. Converting to **unsigned** is fully defined: the value is reduced modulo 2 to the power of the width.
+
+```c id=same-bits
+#include <stdio.h>
+
+int main(void) {
+    unsigned char u = 200;
+    signed char s = (signed char)u;
+    unsigned int big = (unsigned int)-1;
+    printf("%d %d\n", u, s);
+    printf("%u\n", big);
+    return 0;
+}
+```
+
+When a signed and an unsigned int meet in one expression, the signed one is **converted to unsigned** first. So `-1` becomes the biggest unsigned value and the comparison below goes the wrong way. Predict it.
+
+```c id=minus-one-less
+#include <stdio.h>
+
+int main(void) {
+    printf("%d\n", -1 < 0u);
+    return 0;
+}
+```
+
+That is easy to do by accident, which is why compilers warn about it when both sides are variables.
+
+<CompilerError
+  question="Which warning flag does the compiler name?"
+  options={[
+    "`-Wunused-variable`",
+    "`-Wsign-compare`",
+    "`-Wformat`",
+    "`-Wimplicit-int`"
+  ]}
+  answer={1}
+  explain="Comparing a signed `int` with an `unsigned` one converts the signed value first, so `a < b` is false for `a = -1`. The fix is to compare as signed (`a < (int)b`, when `b` is known to be small) or to make both sides the same signedness at the source."
+>
+
+```c id=sign-compare expect=warning warn=-Wsign-compare
+#include <stdio.h>
+
+int main(void) {
+    int a = -1;
+    unsigned b = 0;
+    if (a < b) {
+        printf("smaller\n");
+    } else {
+        printf("not smaller\n");
+    }
+    return 0;
+}
+```
+
+```c id=sign-compare-fixed predict=none
+#include <stdio.h>
+
+int main(void) {
+    int a = -1;
+    int b = 0;
+    if (a < b) {
+        printf("smaller\n");
+    } else {
+        printf("not smaller\n");
+    }
+    return 0;
+}
+```
+
+</CompilerError>
+
+Signed overflow is different. If `int` arithmetic goes past `INT_MAX`, the C standard says the behaviour is **undefined**, not wrapped. The program below does exactly that at run time. Do not predict a number: predict what happens. The result will show what the checker in the browser reports.
+
+```c id=int-overflow expect=ub predict=outcome guardrail
+#include <limits.h>
+#include <stdio.h>
+
+int main(void) {
+    volatile int big = INT_MAX;
+    int next = big + 1;
+    printf("%d\n", next);
+    return 0;
+}
+```
+
+Now a bug that unsigned types make easy. A countdown loop uses `unsigned i` and the test `i >= 0`. Something is wrong with that test. Find and fix it.
+
+<Exercise id="unsigned-countdown" />
+
+**What you know now:** unsigned arithmetic wraps by definition, signed overflow is undefined, and a negative number is the same bits as a big unsigned one. Mixed signed and unsigned comparisons convert to unsigned. `unsigned i >= 0` is always true.
