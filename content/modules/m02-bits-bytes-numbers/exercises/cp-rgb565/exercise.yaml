@@ -1,0 +1,26 @@
+id: cp-rgb565
+kind: ct
+title: Squeeze a colour into 16 bits
+prompt: |
+  Small displays store a colour in 16 bits: 5 bits of red in the top, then 6 bits of green, then 5 bits of
+  blue in the lowest bits (`rrrrrggggggbbbbb`). To pack a channel from 8 bits into fewer bits, keep its top
+  bits: red and blue are shifted right by 3, green by 2. To unpack, shift a channel back left by the same
+  amount (the dropped bits become 0).
+
+  Fill in `pack565`, `red8`, `green8` and `blue8` using only shifts, masks and `|`. `main` reads red,
+  green and blue (0 to 255), packs them, prints the packed value in hex, then prints the three channels
+  after unpacking. For red 255, green 128 and blue 8 it prints `0xfc01` and then `red=248 green=128 blue=8`.
+runsIn: browser
+hints:
+- 'Pack: red keeps its top 5 bits (`r >> 3`) and lands in bits 11 to 15, so it moves left by 11. Green
+  keeps 6 bits (`g >> 2`) and moves left by 5. Blue keeps 5 bits (`b >> 3`) and needs no shift.'
+- 'Unpack with a shift and a mask the width of the field: blue is `p & 0x1F`, green is `(p >> 5) & 0x3F`,
+  red is `(p >> 11) & 0x1F`. Then shift the result left by 3, 2 and 3 to get back to 8 bits.'
+- 'Use `return ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);` for `pack565`, and `return ((p >> 11) & 0x1F) << 3;`
+  for `red8`.'
+file: rgb565.c
+variants: []
+sampleStdin: |
+  255
+  128
+  8

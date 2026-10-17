@@ -1,0 +1,14 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "zero has no set bits"
+    stdin: "0\n"
+  - name: "13 has three"
+    stdin: "13\n"
+  - name: "255 has eight"
+    stdin: "255\n"
+  - name: "a power of two has one"
+    stdin: "1024\n"
+  - name: "the largest int has thirty-one"
+    stdin: "2147483647\n"
+  - name: "a negative number is asked again"
+    stdin: "-4\n7\n"
