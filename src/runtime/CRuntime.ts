@@ -45,7 +45,7 @@ export type ToolchainState =
   | { status: 'idle' }
   | { status: 'loading'; done: number; total: number }
   | { status: 'ready'; ms: number; fromCache: boolean }
-  | { status: 'error'; message: string };
+  | { status: 'error'; kind: 'download' | 'corrupt' | 'startup'; message: string };
 
 export class CRuntime {
   private compiler: Worker;
@@ -66,7 +66,7 @@ export class CRuntime {
       else if (m.type === 'ready') {
         this.setState({ status: 'ready', ms: m.ms, fromCache: m.networkFetches === 0 });
         navigator.storage?.persist?.().catch(() => {});
-      } else if (m.type === 'load-error') this.setState({ status: 'error', message: m.message });
+      } else if (m.type === 'load-error') this.setState({ status: 'error', kind: m.kind, message: m.message });
       else if (m.type === 'compiled') { this.pending.get(m.id)?.(m); this.pending.delete(m.id); }
       else if (m.type === 'staged') { this.pendingStage.get(m.id)?.(m); this.pendingStage.delete(m.id); }
     };

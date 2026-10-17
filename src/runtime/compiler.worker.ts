@@ -7,6 +7,7 @@ import leakcheckH from './c/leakcheck.h?raw';
 import learncH from './c/learnc.h?raw';
 import { compileC, compileStage, type RunClang, type SupportFiles } from './compile-core';
 import type { CompilerIn, CompilerOut } from './protocol';
+import { classifyLoadFailure, createToolchainFetch, describeLoadFailure, loadToolchain, patchBundleSource, ToolchainDownloadError, ToolchainLoadError, type ToolchainFetch } from './toolchain-cache';
 
 declare const self: DedicatedWorkerGlobalScope;
 const post = (m: CompilerOut, t: Transferable[] = []) => self.postMessage(m, t);
@@ -21,33 +22,33 @@ const SUPPORT: SupportFiles = {
 
 let base: URL | null = null;
 let cacheName = '';
-let cacheHits = 0;
-let networkFetches = 0;
+let tf: ToolchainFetch | null = null;
 let initResolve!: () => void;
 const initialised = new Promise<void>(r => (initResolve = r));
 
 // Cache-first fetch for the versioned toolchain URLs. Installed BEFORE the yowasp bundle is imported,
 // because the bundle captures `globalThis.fetch` when it is evaluated.
 const realFetch = self.fetch.bind(self);
-self.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-  const url = new URL(input instanceof Request ? input.url : String(input), self.location.href);
-  if (!base || !url.href.startsWith(base.href) || !('caches' in self)) return realFetch(input, init);
+self.fetch = (input: RequestInfo | URL, init?: RequestInit) => (tf ? tf.fetch(input, init) : realFetch(input, init));
+
+/**
+ * Loads bundle.js (the yowasp JS that fetches the wasm files) through the cache-first fetch, so a visit with a warm cache
+ * needs no network at all. A plain import() of the URL would always ask the network. See patchBundleSource for the blob: URL.
+ */
+async function importBundle(): Promise<{ runClang: RunClang }> {
+  const url = new URL('bundle.js', base!).href;
+  const resp = await self.fetch(url);
+  if (!resp.ok) throw new ToolchainDownloadError(`HTTP ${resp.status} for bundle.js`);
+  const blobUrl = URL.createObjectURL(new Blob([patchBundleSource(await resp.text(), url)], { type: 'text/javascript' }));
   try {
-    const cache = await caches.open(cacheName);
-    const hit = await cache.match(url.href);
-    if (hit) { cacheHits++; return hit; }
-    const resp = await realFetch(url.href, init);
-    networkFetches++;
-    // Never await put(): it drains its tee branch while the caller streams the other (keeps progress live).
-    if (resp.ok) cache.put(url.href, resp.clone()).catch(() => {});
-    return resp;
-  } catch {
-    networkFetches++;
-    return realFetch(input, init);
+    return (await import(/* @vite-ignore */ blobUrl)) as { runClang: RunClang };
+  } finally {
+    URL.revokeObjectURL(blobUrl);
   }
-};
+}
 
 let clangP: Promise<RunClang> | null = null;
+let loadFailure: ToolchainLoadError | null = null;
 function loadClang(): Promise<RunClang> {
   return (clangP ??= (async () => {
     await initialised;
@@ -55,20 +56,21 @@ function loadClang(): Promise<RunClang> {
     if ('caches' in self) {
       for (const k of await caches.keys()) if (k.startsWith('tdcc-toolchain-') && k !== cacheName) await caches.delete(k);
     }
-    const mod = (await import(/* @vite-ignore */ new URL('bundle.js', base!).href)) as { runClang: RunClang };
     let lastPost = 0;
-    // args=null: only fetch and compile the wasm modules and unpack the sysroot.
-    await mod.runClang(null, {}, {
-      fetchProgress: ({ doneLength, totalLength }: { doneLength: number; totalLength: number }) => {
+    const { runClang } = await loadToolchain({
+      tf: tf!,
+      importBundle,
+      onProgress: (done, total) => {
         const now = performance.now();
-        if (now - lastPost > 100 || doneLength === totalLength) { lastPost = now; post({ type: 'progress', done: doneLength, total: totalLength }); }
+        if (now - lastPost > 100 || done === total) { lastPost = now; post({ type: 'progress', done, total }); }
       },
     });
-    post({ type: 'ready', ms: performance.now() - t0, cacheHits, networkFetches });
-    return mod.runClang;
+    post({ type: 'ready', ms: performance.now() - t0, cacheHits: tf!.stats.cacheHits, networkFetches: tf!.stats.networkFetches });
+    return runClang;
   })().catch(err => {
     clangP = null;
-    post({ type: 'load-error', message: String(err?.message ?? err) });
+    loadFailure = err instanceof ToolchainLoadError ? err : new ToolchainLoadError(classifyLoadFailure(err), String(err?.message ?? err));
+    post({ type: 'load-error', kind: loadFailure.kind, message: loadFailure.detail });
     throw err;
   }));
 }
@@ -78,13 +80,14 @@ self.onmessage = async (e: MessageEvent<CompilerIn>) => {
   if (msg.type === 'init') {
     base = new URL(msg.baseUrl);
     cacheName = `tdcc-toolchain-${msg.version}`;
+    tf = createToolchainFetch({ base, cacheName, fetch: realFetch, caches: 'caches' in self ? self.caches : undefined });
     initResolve();
     return;
   }
   if (msg.type === 'prefetch') { loadClang().catch(() => {}); return; }
   let runClang: RunClang;
   try { runClang = await loadClang(); } catch (err) {
-    const raw = `The compiler could not be loaded: ${String((err as Error)?.message ?? err)}`;
+    const raw = loadFailure?.message ?? describeLoadFailure('download', String((err as Error)?.message ?? err));
     if (msg.type === 'stage') post({ type: 'staged', id: msg.id, ok: false, text: '', diagnostics: [], raw, ms: 0 });
     else post({ type: 'compiled', id: msg.id, ok: false, diagnostics: [], raw, ms: 0 });
     return;

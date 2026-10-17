@@ -8,7 +8,7 @@ import { Icon } from '../../components/Icon';
 import { Terminal } from '../../components/Terminal';
 import { STORAGE_PREFIX, useProgress } from '../../progress/store';
 import { getRuntime } from '../../runtime/CRuntime';
-import { useCRun } from '../../runtime/useCRun';
+import { useCRun, useToolchainState } from '../../runtime/useCRun';
 import ix from '../../interactions/Interaction.module.css';
 import styles from './Playground.module.css';
 
@@ -73,6 +73,7 @@ export function PlaygroundPage() {
   const stdinId = useId();
   const argsId = useId();
   const runner = useCRun();
+  const toolchain = useToolchainState();
   const lowMemory = Boolean(useProgress().settings.storedOutputMode);
   const busy = runner.phase === 'compiling' || runner.phase === 'running' || runner.phase === 'waiting-input';
 
@@ -172,7 +173,7 @@ export function PlaygroundPage() {
       {!kept && <p className={ix.muted} role="status">This program is too big to keep in this browser between visits, so it will be lost when you close the tab.</p>}
       {/* The log and status regions below only exist once something ran; this one announces a failed compile. */}
       <p className="visually-hidden" role="status">
-        {runner.phase === 'done' && runner.result === null
+        {runner.phase === 'done' && runner.result === null && toolchain.status !== 'error'
           ? `Compilation failed with ${runner.diagnostics.filter(d => d.severity === 'error' || d.severity === 'fatal error').length} error(s). The messages are below the editor.`
           : ''}
       </p>
