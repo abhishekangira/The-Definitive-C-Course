@@ -4,7 +4,8 @@ title: The largest of three
 prompt: 'Complete the function `max3` so it returns the largest of its three arguments. `main` is written
   for you:
 
-  it reads three numbers and prints the result. Don''t change `main`.
+  it reads three numbers with `get_int` (from the helper header `learnc.h` that comes with the course; lesson 5
+  opens it up) and prints the result. Don''t change `main`.
 
   '
 runsIn: browser

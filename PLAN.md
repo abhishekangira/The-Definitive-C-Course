@@ -18,7 +18,7 @@ A self-paced, interactive web app that teaches C17 and low-level computer fundam
 |---|---|---|
 | In-browser C compiler | **`@yowasp/clang` 22.0.0-git20542-10**, pinned and self-hosted | Real clang 22; diagnostics matched native clang 18 on our test set, apart from warnings that clang 22 adds or renames (§3.1 step 4), and CI compares against native clang 22; warm compile+link ≈100–150 ms; needs no COOP/COEP. Deterministic, so the same binary runs in Node for CI **[V]** |
 | Running the compiled program | `@bjorn3/browser_wasi_shim` 0.4.2 in a per-run Web Worker, with our own stdin/stdout file descriptors | Small (6.7 KB gzip worker); stdin, in-memory FS and streaming output; MIT/Apache **[V]** |
-| Interactive `scanf` | **JSPI** where supported (Chrome/Edge 137+, Firefox 153+, Safari 27); a pre-filled stdin box elsewhere | Needs no special hosting headers **[V in Chromium]** |
+| Interactive `scanf` | **JSPI** (Chrome/Edge 137+; the app targets Chromium-based browsers only, §12); a pre-filled stdin box on older ones | Needs no special hosting headers **[V in Chromium]** |
 | App stack | Vite + React 19 + TypeScript; MDX + YAML content in `content/`; CodeMirror 6 editor; HashRouter | Lessons are editable without touching components; works from any static server or subpath |
 | Progress | `localStorage` (namespaced, versioned schema) + export/import as a JSON file | As specified |
 | Local toolchain | **Module 3 (weeks 5–6)**: macOS Command Line Tools or WSL Ubuntu 24.04. All projects from M3 on are local and checked by `check.mjs`. | Matches the spec's "early module… from then on, debugger, sanitizer and project work happens locally" |
@@ -171,12 +171,10 @@ research/                         # Stage 1 reports and prototypes (reference on
   - `prefers-reduced-motion` swaps animations for step stills.
   - Captions are on by default.
   - axe-core runs in every Playwright test.
-- **Responsive.** Editor and output stack on narrow screens. If a compile or instantiate fails for lack of memory, the app switches that lesson to "show stored output" mode. There is also a manual toggle; `navigator.deviceMemory` doesn't exist in Safari or Firefox.
+- **Responsive.** Editor and output stack on narrow screens. If a compile or instantiate fails for lack of memory, the app switches that lesson to "show stored output" mode. There is also a manual toggle.
 - **Browser support.**
-  - Target: current Chrome, Edge, Firefox and Safari.
+  - Target: current Chromium-based browsers (Chrome, Edge, Brave and similar). Firefox and Safari are not supported and not tested (owner decision, §12 item 9).
   - Compile+run is verified in Chromium **[V]**.
-  - Firefox and WebKit: Playwright smoke tests in CI.
-  - Real Safari/iOS: a manual check before Stage 2 sign-off; you'll need to do this, since I can't run Safari.
 
 ### 2.3 In-browser C runtime
 This was prototyped end to end in Vite + React and verified in Chromium **[V]**; see `research/prototypes/runtime/`.
@@ -280,7 +278,7 @@ Short explanation of the wheel (≤ 250 words)…
 - **Export and import.**
   - Export downloads `c-course-progress-YYYY-MM-DD.json`.
   - Import validates the file, shows a diff ("this file has M1–M4 complete"), then merges or replaces.
-  - Safari deletes script-written storage after 7 days without a visit. So the app shows "last exported N days ago" and prompts for an export after each module.
+  - Browsers can lose site data (the user clears it, or it is evicted). So the app shows "last exported N days ago" and prompts for an export after each module.
 - **Gate.** A module unlocks only when the previous one is complete:
   - its **checkpoint** scored ≥80%;
   - its **project** passed, via the in-browser runner (M1–M2) or a native completion token (M3+);
@@ -399,7 +397,7 @@ This container's clang 18 lacks compiler-rt, but gcc's ASan works **[V]**. Proto
   - fills diagrams;
   - passes the checkpoint and checks the next module unlocks;
   - runs axe.
-- Chromium runs per change; Firefox and WebKit smoke tests run in CI.
+- Chromium runs per change.
 - Video playback is tested with a WebM fixture, because open-source Chromium can't decode H.264.
 
 ### 3.6 Per-module definition of done
@@ -1214,9 +1212,8 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 |---|---|
 | First Run downloads ≈24 MB (gzip) | Lazy load, progress bar, persistent cache (0 requests on repeat visits **[V]**), stored outputs viewable without compiling, brotli where the host supports it |
 | yowasp is young and built with LLVM assertions on | Pin the exact version and vendor the files; `CompilerBackend` interface; live-codes as the tested fallback |
-| JSPI missing on older Safari/Firefox | Pre-filled stdin box (always works) |
-| Safari's 7-day storage eviction | Export reminders; `persist()`; namespaced keys |
-| Firefox/WebKit/Safari untested here | CI Playwright matrix; a manual Safari/iOS check by you before Stage 2 sign-off |
+| JSPI missing on Chromium older than 137 | Pre-filled stdin box (works, but unsupported) |
+| Browser storage cleared or evicted | Export reminders; `persist()`; namespaced keys |
 | macOS/arm64/Windows outputs can't be produced on Linux | CI runners per target, with outputs committed through a manifest |
 | HyperFrames CLI is pre-1.0 and releases daily | Pin the version; MP4s committed; `check --strict` in CI |
 | Completion tokens can be forged | An honour system by design (no backend), stated openly |
@@ -1228,7 +1225,8 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 2. **Rendered animations.** Commit the MP4s; WebM is transcoded at deploy. Each re-render adds a new copy to git history, but at ≈2 MB per animation this is negligible.
 3. **Course length.** Keep ≈200 h (40 weeks at 5 h/week), with the fast lane as defined.
 4. **Capstone.** The allocator only; Speller Pro is dropped. CS50's Speller parity is already met in M9.
-5. **Browser floor.** Accepted: JSPI browsers get interactive `scanf`; others get the pre-filled stdin box.
+5. **Browser floor.** Accepted: Chromium-based browsers with JSPI (137+) get interactive `scanf`; older ones get the pre-filled stdin box. Superseded in part by item 9.
 6. **Animation palette.** A single dark render per animation, shown as-is in both app themes.
 7. **Videos.** "Only when it clearly beats the app" is the bar.
 8. **Local toolchain timing.** Module 3 (weeks 5–6) stays.
+9. **Chromium only (2026-10-17).** The owner runs the course in Chromium-based browsers only. Firefox and Safari (including iOS) are not supported, tested or tracked: no cross-browser tickets, no WebKit or Firefox Playwright projects, no manual Safari check.

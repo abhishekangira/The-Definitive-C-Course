@@ -1,6 +1,6 @@
 # The Definitive C Course
 
-A self-paced, interactive course that teaches C17 and low-level computer fundamentals to front-end engineers. It is a static web app (React + TypeScript): the C compiler runs in your browser, so there is nothing to install to start.
+A self-paced, interactive course that teaches C17 and low-level computer fundamentals to front-end engineers. It is a static web app (React + TypeScript): the C compiler runs in your browser, so there is nothing to install to start. Use a Chromium-based browser (Chrome, Edge, Brave and similar); other browsers are not supported.
 
 **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/
 

@@ -29,7 +29,7 @@ int main(void) {
 }
 ```
 
-Sizes aren't fixed by the C standard; each platform decides. Here's one that differs between your browser and the 64-bit computer you're probably using. The browser runs a 32-bit target (WebAssembly), where `long` is 4 bytes.
+Apart from `char`, which is always 1 byte, sizes aren't fixed by the C standard; each platform decides. Here's one that differs between your browser and the 64-bit computer you're probably using. The browser runs a 32-bit target (WebAssembly), where `long` is 4 bytes.
 
 ```c id=sizes-long platform predict64="On a 64-bit Mac, Linux or WSL machine, what does the same program print?"
 #include <stdio.h>
@@ -40,7 +40,7 @@ int main(void) {
 }
 ```
 
-<Analogy js="let n: number" c="int n;" breaksDown="TypeScript types vanish at runtime; every `number` is still an 8-byte float. A C `int` really is 4 bytes holding a whole number, so a fraction assigned to it is silently cut off, with no error. Module 2 shows what those bytes look like, bit by bit." />
+<Analogy js="let n: number" c="int n;" breaksDown="TypeScript types vanish at runtime; every `number` is still an 8-byte float. A C `int` really is 4 bytes holding a whole number, so a fraction assigned to it is cut off with no error, and often no warning (clang warns for a literal like `3.7`, not for a `double` variable). Module 2 shows what those bytes look like, bit by bit." />
 
 Arithmetic follows the types of the operands. When **both** operands are integers, `/` is integer division: the fractional part is thrown away, rounding toward zero.
 

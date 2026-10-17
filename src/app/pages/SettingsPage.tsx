@@ -40,7 +40,7 @@ export function SettingsPage() {
         <h2>Back up your progress</h2>
         <p>Your progress is stored only in this browser ({Object.keys(progress.lessons).length} lessons done). Export it to a file to keep it safe or move to another computer.
           {' '}{days === null ? 'You haven’t exported yet.' : `Last export: ${days === 0 ? 'today' : `${days} days ago`}.`}</p>
-        <p className={styles.muted}>Safari deletes a site's stored data after 7 days without a visit, so export regularly if you use Safari.</p>
+        <p className={styles.muted}>Clearing this site's data in your browser erases your progress, so export a backup now and then.</p>
         <div className={styles.row}>
           <button type="button" className="btn btn-primary" onClick={() => downloadBlob(exportProgress(), exportFileName())}>Export progress</button>
           <label className="btn">

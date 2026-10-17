@@ -1,7 +1,7 @@
 id: mario-less/variants/1
 kind: ct
 title: Upside-down steps
-prompt: 'Ask for a height between 1 and 5 (re-ask otherwise) and print a **left-aligned, upside-down**
+prompt: 'Ask for a height between 1 and 5 inclusive (re-ask otherwise) and print a **left-aligned, upside-down**
   staircase:
 
   for height 3:

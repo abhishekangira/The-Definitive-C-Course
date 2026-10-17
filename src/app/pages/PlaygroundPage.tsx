@@ -7,8 +7,8 @@ import { DiagnosticsList } from '../../components/DiagnosticsList';
 import { Icon } from '../../components/Icon';
 import { Terminal } from '../../components/Terminal';
 import { STORAGE_PREFIX, useProgress } from '../../progress/store';
-import { detectStdinMode, getRuntime } from '../../runtime/CRuntime';
-import { useCRun } from '../../runtime/useCRun';
+import { getRuntime } from '../../runtime/CRuntime';
+import { useCRun, useToolchainState } from '../../runtime/useCRun';
 import ix from '../../interactions/Interaction.module.css';
 import styles from './Playground.module.css';
 
@@ -73,8 +73,8 @@ export function PlaygroundPage() {
   const stdinId = useId();
   const argsId = useId();
   const runner = useCRun();
+  const toolchain = useToolchainState();
   const lowMemory = Boolean(useProgress().settings.storedOutputMode);
-  const interactive = detectStdinMode() !== 'preset';
   const busy = runner.phase === 'compiling' || runner.phase === 'running' || runner.phase === 'waiting-input';
 
   // Save shortly after the last edit, and again when the tab is hidden or closed or the page is left.
@@ -110,8 +110,8 @@ export function PlaygroundPage() {
     const words = d.args.trim() === '' ? [] : d.args.trim().split(/\s+/);
     void runner.run({
       files: { 'main.c': d.code },
-      // Typed input is fed to the program as is; with none, an interactive browser lets the program wait for typing.
-      stdin: d.stdin !== '' || !interactive ? d.stdin : undefined,
+      // Typed input is fed to the program as is; with none, the program can wait for typing in the terminal.
+      stdin: d.stdin !== '' ? d.stdin : undefined,
       args: words,
       guardrail: d.guardrail,
     });
@@ -161,11 +161,7 @@ export function PlaygroundPage() {
         <div className={ix.field}>
           <label htmlFor={stdinId}>Input for the program (stdin)</label>
           <textarea id={stdinId} aria-describedby={`${stdinId}-help`} value={stdin} onChange={e => set({ stdin: e.target.value })} rows={3} spellCheck={false} className={ix.mono} />
-          <span id={`${stdinId}-help`} className={styles.help}>
-            {interactive
-              ? 'Leave this empty to type input in the terminal while the program runs. Anything here is fed to the program instead.'
-              : "This browser can't pause a program to wait for typing, so type everything the program will read here first, one line per answer."}
-          </span>
+          <span id={`${stdinId}-help`} className={styles.help}>Leave this empty to type input in the terminal while the program runs. Anything here is fed to the program instead.</span>
         </div>
         <div className={ix.field}>
           <label htmlFor={argsId}>Command-line arguments</label>
@@ -177,7 +173,7 @@ export function PlaygroundPage() {
       {!kept && <p className={ix.muted} role="status">This program is too big to keep in this browser between visits, so it will be lost when you close the tab.</p>}
       {/* The log and status regions below only exist once something ran; this one announces a failed compile. */}
       <p className="visually-hidden" role="status">
-        {runner.phase === 'done' && runner.result === null
+        {runner.phase === 'done' && runner.result === null && toolchain.status !== 'error'
           ? `Compilation failed with ${runner.diagnostics.filter(d => d.severity === 'error' || d.severity === 'fatal error').length} error(s). The messages are below the editor.`
           : ''}
       </p>
@@ -194,7 +190,7 @@ export function PlaygroundPage() {
         <p>
           One file, <code>main.c</code>, built by clang 22 for WebAssembly (wasm32) with <code>-std=c17 -Wall -Wextra -pedantic -O0 -g</code>, then run in a sandbox: 5 seconds of CPU time, 256 MiB of memory, 1 MiB of output, and an in-memory <code>/tmp</code> folder that vanishes when the program ends.
           You can <code>#include</code> the standard library and the course helper <code>"learnc.h"</code> (<code>get_int</code>, <code>get_line</code> and friends). Because this is 32-bit WebAssembly,
-          {' '}<code>long</code> and pointers are 4 bytes here, while most computers use 8. There are no threads or sockets. In Safari and Firefox, waiting (for example <code>sleep</code>) also uses up the 5 seconds.
+          {' '}<code>long</code> and pointers are 4 bytes here, while most computers use 8. There are no threads or sockets.
         </p>
       </details>
     </div>

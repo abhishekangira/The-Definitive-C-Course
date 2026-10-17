@@ -28,7 +28,7 @@ void bump(int n) {
 }
 ```
 
-<Analogy js="function bump(n) { n++ }" c="void bump(int n) { n++; }" breaksDown="JS copies primitives too, but passes an object as a *reference*, so mutations show through. C has no hidden references: everything is a copy, and sharing requires an explicit pointer (Module 6)." />
+<Analogy js="function bump(n) { n++ }" c="void bump(int n) { n++; }" breaksDown="JS copies primitives too, and for an object it copies the *reference*, so mutations show through (reassigning the parameter still doesn't change the caller). C has no hidden references: everything is a copy, and sharing requires an explicit pointer (Module 6)." />
 
 Each call gets its own **stack frame**: a block of memory holding that call's parameters and local variables. It's the same idea as the call stack in DevTools, except here it's real memory with real sizes. Step through this program. Before each jump, predict which line runs next.
 
@@ -70,7 +70,7 @@ Now draw it yourself. The program is paused just before `return sum;` runs insid
     "The loop never runs",
   ]}
   answer={1}
-  explain="`total += i` means `total = total + i`, which reads `total`. Locals start with garbage, not 0. Initialise at the declaration: `int total = 0;`. Look at the gcc tab: gcc at `-O0` says nothing here. Compilers catch different mistakes, which is one reason this course checks every program with more than one."
+  explain="`total += i` means `total = total + i`, which reads `total`. A local is not set to 0 for you: its value is indeterminate, so it may be 0 by luck or anything else, and you can't rely on either. Initialise at the declaration: `int total = 0;`. Look at the gcc tab: gcc at `-O0` says nothing here. Compilers catch different mistakes, which is one reason this course checks every program with more than one."
 >
 
 ```c id=uninit-total expect=ub predict=none warn.clang=-Wuninitialized warn.wasm=-Wuninitialized
@@ -105,4 +105,4 @@ Your turn to write a function, tested automatically.
 
 <Exercise id="max3" />
 
-**What you know now:** declare before use (prototypes); arguments are copies; each call gets a stack frame that typically disappears when it returns; locals are scoped to their block and start uninitialised. For named constants, prefer `#define MAX 10` or an `enum` over magic numbers.
+**What you know now:** declare before use (prototypes); arguments are copies; each call gets a stack frame that typically disappears when it returns; locals are scoped to their block and start uninitialised.

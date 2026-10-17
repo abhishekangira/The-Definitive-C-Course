@@ -20,7 +20,7 @@ export type CompilerIn =
 export type CompilerOut =
   | { type: 'progress'; done: number; total: number }
   | { type: 'ready'; ms: number; cacheHits: number; networkFetches: number }
-  | { type: 'load-error'; message: string }
+  | { type: 'load-error'; kind: 'download' | 'corrupt' | 'startup'; message: string }
   | { type: 'compiled'; id: number; ok: boolean; wasm?: Uint8Array; diagnostics: Diagnostic[]; raw: string; ms: number }
   | { type: 'staged'; id: number; ok: boolean; text: string; diagnostics: Diagnostic[]; raw: string; ms: number };
 
