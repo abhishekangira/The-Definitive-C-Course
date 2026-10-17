@@ -102,10 +102,15 @@ Output is deterministic: run it twice and `git status` stays clean.
 next to `unit` tests (`src/testing/scan.ts`; rules in `tools/check/README.md`). The verifier needs nothing extra: the reference solution must pass the scan, and the
 starter must fail some check. Such a folder has no `cases.yaml`, so `exercises:expect` skips it.
 The scan rejects the ways to hide code from it: digraphs and trigraphs (`%:` is a `#`), a backslash-newline, a second definition of the scanned
-function, and casts in the body. Known limits: a `unit` test reports through plain `@@PASS` lines on stdout (`src/testing/harness.ts`), so a
-file-scope constructor could print a forged report; the scan blocks that for scan exercises by rejecting `@` in strings, `__attribute__`,
-inline assembly, `_Pragma` and `exit`-style calls, but it is a mitigation, not a proof (a per-run token in the report lines would close it).
-The implicit conversion to the return type (`uint8_t`) truncates like a mask; the scan cannot see it, and the puzzle text says so.
+function, and casts in the body (`(void)x;` is allowed: it narrows nothing). Report forging: a `unit` test reports through plain `@@PASS`
+lines on stdout (`src/testing/harness.ts`) and the learner's file is compiled with it, so a file that may define anything at file scope can
+redefine `printf` (or `putchar`, `fflush`, ...) or run a constructor and forge the report, with escapes such as `\x40` hiding the `@`. For that reason
+a scan exercise sets `"exclusive": [<puzzle functions>]`: the file may then hold only `#include <stdint.h>`, definitions of those functions
+and `main` (with plain integer types), and no string or character literal anywhere, so there is nothing at file scope to redefine. Every
+puzzle body is still scanned by its own test. What remains: this protects only exercises that set `exclusive` (today only bitlab-lite;
+it is the only exercise with `unit` tests); the harness itself still trusts stdout, so any future `unit` exercise without `exclusive` is
+forgeable, and a per-run token in the report lines (a change to `harness.ts` and `check.h`) is the real fix.
+The implicit conversion to the return type (`uint8_t`) truncates like a mask and the scan cannot see it; bitlab-lite's puzzle text says so.
 
 Scope: single-file, stdin/args/stdout/exit cases (what Module 1 uses). Unit-harness and `make` tests, stderr expectations and
 multi-file sources are still written by hand; `exercises:expect` skips a folder without `cases.yaml` (reports it as skipped, exit 0)

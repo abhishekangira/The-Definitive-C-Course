@@ -92,8 +92,13 @@ compiler-rt) falls back to valgrind when it is installed; otherwise the check is
   operator-restricted puzzles: only its parameters, its own locals, type names and `return`; integer
   literals up to `maxLiteral` (default 255); only the operators in `allow`; at most `maxOps` operator
   tokens (`=`, parentheses, braces, commas and semicolons are free); no calls, loops, `if`, `?:` or
-  `sizeof`; and no `#` line anywhere in the file except `#include`. Comments are blanked first, so they
-  never count. It needs no compiler and runs the same code (`src/testing/scan.ts`) in the browser, in
+  `sizeof`; no casts (except `(void)`); and no `#` line anywhere in the file except `#include`. These
+  are also rejected anywhere in the file: digraphs and trigraphs (`%:`, `<:`, `:>`, `<%`, `%>`, `??`),
+  a backslash-newline, a second definition of the function, `@` in a string, and `__attribute__`, asm,
+  `_Pragma` or `exit`-style names. With `exclusive: [names]` the whole file may hold only
+  `#include <stdint.h>`, definitions of those functions and `main`, and no string or character literal
+  (this is what stops a learner file from redefining `printf` to forge a unit report). Comments are
+  blanked first, so they never count. It needs no compiler and runs the same code (`src/testing/scan.ts`) in the browser, in
   `tools/exercises` and here. Pair it with a unit test that checks behaviour: the scan alone says nothing
   about correctness.
 
