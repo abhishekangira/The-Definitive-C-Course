@@ -24,6 +24,10 @@ int main(void) {
 }
 ```
 
+The Pac-Man level 256 bug is this kind of failure. Watch the short clip, then work out when a 32-bit counter fails.
+
+<YouTube video="yt-1" />
+
 Bigger counters only postpone the day. A 32-bit signed counter that ticks at a fixed rate runs out after 2 to the power of 31 ticks. How long is that? Which tick rate gives about 248 days? The program below works out two candidates, one for ticks of a tenth of a second and one for ticks of a hundredth of a second. Predict both, then see which one gives a figure near 248 days.
 
 ```c id=tick-days
