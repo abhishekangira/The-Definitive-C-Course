@@ -8,3 +8,5 @@ cases:
     stdin: "100\n"
   - name: "rejects 0"
     stdin: "0\n3\n"
+  - name: "rejects 1001"
+    stdin: "1001\n3\n"

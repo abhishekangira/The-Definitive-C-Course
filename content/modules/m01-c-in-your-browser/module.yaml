@@ -13,14 +13,13 @@ projectRunsIn: browser
 successCriteria:
   - { sc: SC1, level: I }
   - { sc: SC2, level: I }
-  - { sc: SC3, level: I }
   - { sc: SC7, level: I }
 resources:
   - title: "Beej's Guide to C Programming (v0.11)"
     detail: 'Chapter 2 "Hello, World!", chapter 3 "Variables and Statements", chapter 4 "Functions"'
     url: https://beej.us/guide/bgc/html/split/
   - title: "Kernighan & Ritchie, The C Programming Language (2nd ed.)"
-    detail: "Chapter 1, sections 1.1–1.10 (A Tutorial Introduction)"
+    detail: "Chapter 1, sections 1.1–1.10 (A Tutorial Introduction). Its programs predate C99: write int main(void) instead of a bare main(), which the course compiler rejects"
 lessons:
   - 01-hello-compiled-world
   - 02-types-are-layouts

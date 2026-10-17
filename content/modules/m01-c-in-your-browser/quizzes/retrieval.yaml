@@ -3,7 +3,7 @@
 - id: js-number
   type: choice
   from: js
-  prompt: "In JavaScript, how is the value of `n` stored after `let n = 3;`?"
+  prompt: "According to the JavaScript specification, how is the value of `n` represented after `let n = 3;`?"
   choices:
     - As a 32-bit integer, because 3 has no fractional part
     - As a 64-bit floating-point number, like every JS `number`
