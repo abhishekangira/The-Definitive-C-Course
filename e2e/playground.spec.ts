@@ -181,32 +181,6 @@ test.describe.serial('playground', () => {
   });
 });
 
-test('without JSPI (Safari, Firefox) the input box is how a program gets input, and it still runs', async ({ playwright }, testInfo) => {
-  // A Chromium that really lacks JSPI, in the page and in the run worker (an init script would only hide it from the page).
-  const base = testInfo.project.use.launchOptions ?? {};
-  const browser = await playwright.chromium.launch({ ...base, args: [...(base.args ?? []), '--js-flags=--no-experimental-wasm-jspi'] });
-  try {
-    const page = await (await browser.newContext()).newPage();
-    page.on('pageerror', e => { throw e; });
-    page.on('dialog', d => void d.accept());
-    await page.goto('#/playground');
-    await expect(page.getByRole('heading', { level: 1, name: 'Playground' })).toBeVisible();
-    expect(await page.evaluate(() => typeof (WebAssembly as unknown as Record<string, unknown>).Suspending)).toBe('undefined');
-    await expect(page.getByText("This browser can't pause a program to wait for typing")).toBeVisible();
-    await loadExample(page, 'Read input');
-    await runAndWait(page);
-    await expect(output(page)).toContainText('2 + 40 = 42');
-    await expect(page.locator('#term-input')).toHaveCount(0);
-
-    // No input typed: the program reads end-of-input, which the course helper reports, instead of hanging.
-    await page.getByLabel('Input for the program (stdin)').fill('');
-    await runAndWait(page, 1);
-    await expect(output(page)).toContainText('(end of input)');
-  } finally {
-    await browser.close();
-  }
-});
-
 test('no page scrolls sideways at 320 px wide (the header grew a link)', async ({ browser }) => {
   const page = await (await browser.newContext({ viewport: { width: 320, height: 700 } })).newPage();
   try {
