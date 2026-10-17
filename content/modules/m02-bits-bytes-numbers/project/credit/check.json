@@ -324,6 +324,191 @@
         "exit": 0
       },
       "hint": "The number does not fit even in a long long: `get_ll` already asks again, so do not read it any other way."
+    },
+    {
+      "name": "Visa, checksum total ends in 5",
+      "run": {
+        "stdin": "4111111111111116\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      },
+      "hint": "A checksum of 35 is not a multiple of 10: only a total ending in 0 is valid."
+    },
+    {
+      "name": "Visa, checksum total ends in 2",
+      "run": {
+        "stdin": "4111111111111113\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Visa, checksum total ends in 1 (a doubled digit is wrong)",
+      "run": {
+        "stdin": "4111111111111211\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Mastercard, checksum total ends in 5",
+      "run": {
+        "stdin": "5555555555554449\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex, checksum total ends in 5",
+      "run": {
+        "stdin": "378282246310000\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex-like prefix 31, 15 digits, valid checksum",
+      "run": {
+        "stdin": "310000000000005\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      },
+      "hint": "Only prefixes 34 and 37 are American Express."
+    },
+    {
+      "name": "Amex-like prefix 33, 15 digits, valid checksum",
+      "run": {
+        "stdin": "330000000000001\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex-like prefix 35, 15 digits, valid checksum",
+      "run": {
+        "stdin": "350000000000006\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex-like prefix 36, 15 digits, valid checksum",
+      "run": {
+        "stdin": "360000000000004\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex-like prefix 38, 15 digits, valid checksum",
+      "run": {
+        "stdin": "380000000000000\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex-like prefix 39, 15 digits, valid checksum",
+      "run": {
+        "stdin": "390000000000008\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex prefix 34 but 16 digits (valid checksum)",
+      "run": {
+        "stdin": "3400000000000000\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      },
+      "hint": "American Express has exactly 15 digits."
+    },
+    {
+      "name": "Amex prefix 37 but 16 digits (valid checksum)",
+      "run": {
+        "stdin": "3700000000000007\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Mastercard prefix 51 but 17 digits (valid checksum)",
+      "run": {
+        "stdin": "51000000000000003\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      },
+      "hint": "Mastercard has exactly 16 digits."
+    },
+    {
+      "name": "Mastercard prefix 55 but 17 digits (valid checksum)",
+      "run": {
+        "stdin": "55000000000000004\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Visa prefix but 15 digits (valid checksum)",
+      "run": {
+        "stdin": "411111111111116\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      },
+      "hint": "Visa has 13 or 16 digits, nothing in between."
+    },
+    {
+      "name": "Visa prefix but 19 digits (valid checksum)",
+      "run": {
+        "stdin": "4111111111111111110\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Visa prefix but 18 digits (valid checksum)",
+      "run": {
+        "stdin": "411111111111111118\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
     }
   ]
 }

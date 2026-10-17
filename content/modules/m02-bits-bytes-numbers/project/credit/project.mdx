@@ -24,6 +24,8 @@ Ask for the number with `get_ll("Number: ")`. If the number is not positive, ask
 | Mastercard | 16 | 51, 52, 53, 54 or 55 |
 | Visa | 13 or 16 | 4 |
 
+These are the rules of this project. (Mastercard also issues numbers starting 2221 to 2720 in real life; here they are not accepted.)
+
 A real card number has 13 to 16 digits, which is bigger than the largest 32-bit `int`. The compiler you run here makes `long` 32 bits wide too, so a card number stored in a `long` is silently cut short. Choose the type with care: that is the reason this project sits in a module about widths.
 
 The program's output begins with its prompt `Number: `, and what you type is not part of the output, so the result follows the prompt on the same line.
