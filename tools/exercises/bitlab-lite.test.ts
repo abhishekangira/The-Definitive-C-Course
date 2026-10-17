@@ -58,4 +58,29 @@ describe('bitlab-lite', () => {
     expect(status(r, 'negate', 'scan')).toBe('pass');
     expect(status(r, 'negate', 'unit')).toBe('fail');
   }, 60_000);
+
+  // Attacks from the review of PR #43. Each one passed 13/13 before the scan learned to reject it.
+  it('a digraph decoy (%:if 0 ... %:endif around a fake bit_and) is rejected by the scan', async () => {
+    const real = 'uint8_t bit_and(uint8_t x, uint8_t y) {\n    return x & y;\n}\n';
+    const decoy = cheat('uint8_t bit_and(uint8_t x, uint8_t y) {\n    return ~(~x | ~y);\n}\n', '%:if 0\nuint8_t bit_and(uint8_t x, uint8_t y) { return ~(~x | ~y); }\n%:endif\n' + real);
+    const r = await go(decoy);
+    expect(status(r, 'bit_and', 'unit')).toBe('pass'); // the real one is correct
+    expect(status(r, 'bit_and', 'scan')).toBe('fail');
+    expect(r.results.find(t => t.kind === 'scan' && t.status === 'fail')?.message).toContain('digraph or trigraph');
+  }, 60_000);
+
+  it('a narrowing cast in place of & 255 is correct but fails the scan', async () => {
+    const r = await go(cheat('return (x >> (n << 3)) & 255;', 'return (uint8_t)(x >> (n << 3));'));
+    expect(status(r, 'byte_of', 'unit')).toBe('pass');
+    expect(status(r, 'byte_of', 'scan')).toBe('fail');
+  }, 60_000);
+
+  it('a constructor that prints a forged report on the unmodified starter fails every scan test', async () => {
+    const starter = readFileSync(path.join(DIR, 'starter.c'), 'utf8');
+    const names = spec.tests.filter(t => 'unit' in t).map(t => t.name);
+    const forge = `#include <unistd.h>\n__attribute__((constructor)) static void forge(void) { ${names.map(n => `puts("@@PASS ${n}");`).join(' ')} puts("@@DONE"); fflush(stdout); _exit(0); }\n`;
+    const r = await go(starter.replace('#include <stdio.h>\n', '#include <stdio.h>\n' + forge));
+    expect(r.results.filter(t => t.kind === 'scan' && t.status === 'fail')).toHaveLength(6);
+  }, 60_000);
 });
+

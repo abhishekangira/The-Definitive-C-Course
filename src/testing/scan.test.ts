@@ -33,8 +33,8 @@ describe('scanFunction: accepted code', () => {
     expect(r.ok).toBe(false);
     expect(r.message).toContain('more than 4 operators');
   });
-  it('lets the learner declare and use locals, casts and braces', () => {
-    const body = '  uint8_t a = ~x;\n  uint8_t b = ~y;\n  return (uint8_t)~(a | b);';
+  it('lets the learner declare and use locals and braces', () => {
+    const body = '  uint8_t a = ~x;\n  uint8_t b = ~y;\n  return ~(a | b);';
     expect(scanFunction(withBody(body), { ...RULES, maxOps: 5 })).toEqual({ ok: true, ops: 4 });
   });
   it('ignores operators and calls inside comments', () => {
@@ -105,3 +105,70 @@ describe('scanFunction: rejections', () => {
     rejects('  return /* ~ */ x ^ y;', '^');
   });
 });
+
+describe('scanFunction: ways to hide code are rejected', () => {
+  const real = '  return x & y;';
+  /** The attack from the review of PR #43: a decoy definition behind a digraph directive, then the real one. */
+  const decoy = (directive: string, end: string) => `#include <stdint.h>
+${directive}if 0
+uint8_t bit_and(uint8_t x, uint8_t y) { return ~(~x | ~y); }
+${end}endif
+uint8_t bit_and(uint8_t x, uint8_t y) {
+${real}
+}
+int main(void) { return 0; }
+`;
+  it('the digraph %: (a #) cannot hide a decoy definition: the same file with # is rejected, and so is the digraph form', () => {
+    expect(scanFunction(decoy('#', '#'), RULES).ok).toBe(false);
+    const r = scanFunction(decoy('%:', '%:'), RULES);
+    expect(r.ok).toBe(false);
+    expect(r.message).toContain('digraph or trigraph "%:"');
+  });
+  it('a digraph macro %:define cannot alias an operator', () => {
+    const src = '#include <stdint.h>\n%:define AND &\nuint8_t bit_and(uint8_t x, uint8_t y) { return x AND y; }\n';
+    expect(scanFunction(src, RULES).message).toContain('"%:"');
+  });
+  it('the bracket and brace digraphs <: :> <% %> and the trigraph ??= are rejected, in the body and outside it', () => {
+    for (const bad of ['<:', ':>', '<%', '%>', '??=']) {
+      const r = scanFunction(`int g(int a) { return a ${bad} 1; }\nint bit_and(int x, int y) { return ~(~x | ~y); }\n`, RULES);
+      expect(r.ok, bad).toBe(false);
+      expect(r.message, bad).toContain(`"${bad === '??=' ? '??' : bad}"`);
+    }
+    expect(scanFunction(withBody('  int a<:1:> = {0};\n  return a<:0:>;'), RULES).ok).toBe(false);
+  });
+  it('a digraph inside a string or a comment is harmless', () => {
+    const src = '#include <stdio.h>\n/* %: <: */\nint bit_and(int x, int y) { return ~(~x | ~y); }\nint main(void) { puts("<: %: :> ok"); return 0; }\n';
+    expect(scanFunction(src, RULES).ok).toBe(true);
+  });
+  it('a backslash-newline is rejected: it can end a comment the scan did not see end', () => {
+    const src = 'int bit_and(int x, int y) { /* a *\\\n/ return ~(~x | ~y); }\n';
+    expect(scanFunction(src, RULES).message).toContain('line continuation');
+  });
+  it('a second definition of the function is rejected, whichever one comes first', () => {
+    const one = 'uint8_t bit_and(uint8_t x, uint8_t y) { return ~(~x | ~y); }\n';
+    const two = 'uint8_t bit_and(uint8_t x, uint8_t y) { return x & y; }\n';
+    for (const src of [one + two, two + one]) expect(scanFunction(src, RULES).message).toContain('is defined 2 times');
+  });
+  it('a cast is rejected: (uint8_t)(x >> (n << 3)) does the work of & 255', () => {
+    const rules: ScanRules = { function: 'byte_of', allow: ['>>', '<<', '&'], maxOps: 3 };
+    const body = (ret: string) => `#include <stdint.h>\nuint8_t byte_of(uint16_t x, uint8_t n) { return ${ret}; }\n`;
+    expect(scanFunction(body('(x >> (n << 3)) & 255'), rules)).toEqual({ ok: true, ops: 3 });
+    const r = scanFunction(body('(uint8_t)(x >> (n << 3))'), rules);
+    expect(r.ok).toBe(false);
+    expect(r.message).toContain('contains a cast');
+    expect(scanFunction(body('(unsigned char)x'), rules).ok).toBe(false);
+  });
+  it('a file that can forge the test report is rejected: constructor attribute, @@ lines, exit calls, inline assembly', () => {
+    const wrap = (extra: string) => `#include <stdio.h>\n${extra}\nint bit_and(int x, int y) { return ~(~x | ~y); }\n`;
+    for (const extra of [
+      '__attribute__((constructor)) static void f(void) { puts("x"); }',
+      'static void f(void) { puts("@@PASS a"); }',
+      'static void f(void) { _exit(0); }',
+      'static void f(void) { exit(0); }',
+      'static void f(void) { __asm__("nop"); }',
+      '_Pragma("GCC diagnostic ignored \\"-Wall\\"")',
+    ]) expect(scanFunction(wrap(extra), RULES).ok, extra).toBe(false);
+    expect(scanFunction(wrap('static void f(void) { puts("fine"); }'), RULES).ok).toBe(true);
+  });
+});
+

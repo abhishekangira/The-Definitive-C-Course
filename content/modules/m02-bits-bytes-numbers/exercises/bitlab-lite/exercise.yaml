@@ -5,7 +5,7 @@ prompt: |
   Six small puzzles, one function each, all in `bitlab.c`. Each function is checked against **every
   possible input** and also scanned for the operators it uses: a function may use only the operators
   listed, no more than the number shown, and nothing else. No `if`, no loops, no `?:`, no function
-  calls, no `#define`, and no integer constant above 255. Plain assignment `=`, parentheses, commas and
+  calls, no casts, no `#define`, and no integer constant above 255. Plain assignment `=`, parentheses, commas and
   semicolons are free (compound forms such as `|=` are not), and you may declare local variables.
 
   | function | job | allowed operators | at most |

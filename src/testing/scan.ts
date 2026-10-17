@@ -9,6 +9,14 @@
 // (assignment `=`, parentheses, braces, commas and semicolons are free). No calls, no control flow,
 // no `?:`, no `#`. Anywhere in the file, only `#include` lines are accepted (an alias such as
 // `#define AND &` would let a forbidden operator hide behind a name).
+//
+// Ways to hide code from this scan are rejected, wherever they appear in the file: the digraph `%:` (a `#`),
+// the other digraphs and trigraphs, a backslash-newline (line splicing can end a comment the scan did not see
+// end), a second definition of the scanned function (the compiler may build another one than the one scanned),
+// and casts inside the body (a narrowing cast is an AND in disguise). The unit tests of such an exercise print
+// their results to stdout, so the file may not contain `@`, `__attribute__`, inline assembly, `_Pragma`, or a
+// call to exit/_exit/abort: that blocks a constructor that prints a forged "all passed" report. This is a
+// mitigation inside the exercise (src/testing/harness.ts trusts stdout lines), not a proof.
 
 export interface ScanRules {
   /** Name of the function to scan. */
@@ -122,6 +130,26 @@ function integerValue(s: string): bigint | undefined {
   return BigInt(d);
 }
 
+/** Identifiers that no scanned exercise file may contain (see the header). */
+const BANNED_WORDS = new Set([
+  '__attribute__', '__attribute', 'asm', '__asm', '__asm__', '_Pragma', '__builtin_trap', 'exit', '_exit', '_Exit', 'quick_exit', 'abort', 'raise', 'kill', 'fork', 'execve', 'syscall',
+]);
+
+/** `src` with every string and character literal reduced to nothing, so a digraph inside one is not mistaken for code. */
+function withoutLiterals(clean: string): string {
+  let out = '';
+  for (let i = 0; i < clean.length; i++) {
+    const c = clean[i];
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < clean.length && clean[j] !== c && clean[j] !== '\n') { if (clean[j] === '\\') j++; j++; }
+      out += c + c;
+      i = j;
+    } else out += c;
+  }
+  return out;
+}
+
 const list = (ops: string[]) => (ops.length ? ops.join(' ') : 'none');
 
 /** Scans one function of `source` against `rules`. */
@@ -130,6 +158,19 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
   const maxLiteral = BigInt(rules.maxLiteral ?? DEFAULT_MAX_LITERAL);
   const toks = tokenize(blankComments(source));
   const fail = (message: string, line?: number, ops?: number): ScanResult => ({ ok: false, message, line, ops });
+
+  // Spellings that hide a directive or an operator from a token scan.
+  if (/\\\r?\n/.test(source)) return fail('a backslash at the end of a line (a line continuation) is not allowed in this exercise');
+  const bare = withoutLiterals(blankComments(source));
+  const alt = /\?\?|%:|<:|:>|<%|%>/.exec(bare);
+  if (alt) {
+    const line = bare.slice(0, alt.index).split('\n').length;
+    return fail(`line ${line}: the digraph or trigraph "${alt[0]}" is not allowed in this exercise (it could hide a "#" or an operator)`, line);
+  }
+  for (const tk of toks) {
+    if (tk.t === 'id' && BANNED_WORDS.has(tk.s)) return fail(`line ${tk.line}: "${tk.s}" is not allowed in this exercise`, tk.line);
+    if (tk.t === 'str' && tk.s.includes('@')) return fail(`line ${tk.line}: the character @ is not allowed in a string in this exercise (it is reserved for the test report)`, tk.line);
+  }
 
   // Only #include lines may exist anywhere in the file.
   for (let k = 0; k < toks.length; k++) {
@@ -143,7 +184,8 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
   let open = -1;
   let paramEnd = -1;
   let paramStart = -1;
-  for (let k = 0; k < toks.length && open < 0; k++) {
+  let defs = 0;
+  for (let k = 0; k < toks.length; k++) {
     const tk = toks[k];
     if (tk.t === 'op' && tk.s === '{') depth++;
     else if (tk.t === 'op' && tk.s === '}') depth--;
@@ -154,10 +196,14 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
         if (toks[j].s === '(' && toks[j].t === 'op') d++;
         else if (toks[j].s === ')' && toks[j].t === 'op') { d--; if (d === 0) break; }
       }
-      if (j < toks.length && toks[j + 1]?.s === '{') { paramStart = k + 2; paramEnd = j; open = j + 1; }
+      if (j < toks.length && toks[j + 1]?.s === '{') {
+        defs++;
+        if (open < 0) { paramStart = k + 2; paramEnd = j; open = j + 1; }
+      }
     }
   }
   if (open < 0) return fail(`the function ${fn}() was not found: define it with exactly that name`);
+  if (defs > 1) return fail(`the function ${fn}() is defined ${defs} times: define it once (the compiler might build a different one than the one checked)`);
 
   let close = -1;
   for (let k = open, d = 0; k < toks.length; k++) {
@@ -187,6 +233,7 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
     } else if (tk.t === 'id') {
       if (CONTROL_WORDS.has(tk.s)) return fail(`${at}: ${fn}() uses "${tk.s}", which is not allowed here (no loops, branches or sizeof)`, tk.line, ops);
       if (TYPE_WORDS.has(tk.s)) {
+        if (prev?.t === 'op' && prev.s === '(') return fail(`${at}: ${fn}() contains a cast; casts are not allowed here (a cast to a narrow type works like an AND)`, tk.line, ops);
         if (prev === undefined || (prev.t === 'op' && (prev.s === ';' || prev.s === '{' || prev.s === '}' || prev.s === '('))) inDecl = true;
       } else if (tk.s === 'return') {
         inDecl = false;

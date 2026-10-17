@@ -101,6 +101,11 @@ Output is deterministic: run it twice and `git status` stays clean.
 **Operator-restricted exercises (`scan` tests).** A hand-written `tests.json` may hold `{ "name": "...", "scan": { "function": "bit_and", "allow": ["~", "|"], "maxOps": 4 } }`
 next to `unit` tests (`src/testing/scan.ts`; rules in `tools/check/README.md`). The verifier needs nothing extra: the reference solution must pass the scan, and the
 starter must fail some check. Such a folder has no `cases.yaml`, so `exercises:expect` skips it.
+The scan rejects the ways to hide code from it: digraphs and trigraphs (`%:` is a `#`), a backslash-newline, a second definition of the scanned
+function, and casts in the body. Known limits: a `unit` test reports through plain `@@PASS` lines on stdout (`src/testing/harness.ts`), so a
+file-scope constructor could print a forged report; the scan blocks that for scan exercises by rejecting `@` in strings, `__attribute__`,
+inline assembly, `_Pragma` and `exit`-style calls, but it is a mitigation, not a proof (a per-run token in the report lines would close it).
+The implicit conversion to the return type (`uint8_t`) truncates like a mask; the scan cannot see it, and the puzzle text says so.
 
 Scope: single-file, stdin/args/stdout/exit cases (what Module 1 uses). Unit-harness and `make` tests, stderr expectations and
 multi-file sources are still written by hand; `exercises:expect` skips a folder without `cases.yaml` (reports it as skipped, exit 0)
