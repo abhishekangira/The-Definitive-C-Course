@@ -3,6 +3,7 @@ import {
   daysSinceExport, emptyProgress, exerciseProgress, getProgress, mergeProgress, markCard, migrate, summarise, update,
   type ExerciseProgress, type ProgressV1, type ProjectProgress, type QuizProgress, type SampleProgress,
 } from './store';
+import type { StreakData } from './streak';
 
 const SEED = '0123456789abcdef';
 const at = '2026-01-01T00:00:00.000Z';
@@ -45,6 +46,7 @@ describe('migrate', () => {
       },
       quizzes: { q1: { score: 3, total: 4, passed: false, at, answers: { a: 1, b: 'x' } } satisfies Required<QuizProgress> },
       projects: { p1: { passed: true, at, token: 'TDCC1-R1-p1-DONE-00000000' } satisfies Required<ProjectProgress> },
+      streak: { days: ['2026-01-01', '2026-01-02', '2026-01-04'], longest: 5 } satisfies StreakData,
     } satisfies ProgressV1;
     expect(migrate(structuredClone(full))).toEqual(full);
   });
@@ -59,6 +61,38 @@ describe('migrate', () => {
     ['an uppercase seed', { version: 1, seed: SEED.toUpperCase().replace('0X', 'F') }],
   ])('rejects %s with a readable message', (_name, raw) => {
     expect(() => migrate(raw)).toThrow(/progress|seed|version/i);
+  });
+});
+
+describe('streak in a progress document', () => {
+  it('a document from before the streak existed gets an empty one', () => {
+    expect(migrate({ version: 1, seed: SEED }).streak).toEqual({ days: [], longest: 0 });
+  });
+
+  it('keeps only real calendar days, sorted and unique, and a longest run that is at least what the days show', () => {
+    const p = migrate({ version: 1, seed: SEED, streak: { days: ['2026-02-03', '2026-02-02', '2026-02-02', '2026-02-30', 'yesterday', 7, null, '2026-2-3'], longest: -4 } });
+    expect(p.streak.days).toEqual(['2026-02-02', '2026-02-03']);
+    expect(p.streak.longest).toBe(2);
+  });
+
+  it.each([['a string', 'hello'], ['an array', [1, 2]], ['a number', 3], ['null', null]])('replaces %s with an empty streak', (_n, junk) => {
+    expect(migrate({ version: 1, seed: SEED, streak: junk }).streak).toEqual({ days: [], longest: 0 });
+  });
+
+  it('caps a hostile document: huge longest and a huge day list', () => {
+    const days = Array.from({ length: 20_000 }, (_, i) => `2025-01-${String((i % 28) + 1).padStart(2, '0')}`);
+    const p = migrate({ version: 1, seed: SEED, streak: { days, longest: 1e12 } });
+    expect(p.streak.longest).toBeLessThanOrEqual(100_000);
+    expect(p.streak.days.length).toBeLessThanOrEqual(400);
+  });
+
+  it('merge unions both histories and keeps the longest run from either side', () => {
+    const a = doc({ streak: { days: ['2026-03-01', '2026-03-02'], longest: 2 } });
+    const b = doc({ streak: { days: ['2026-03-03', '2026-04-10'], longest: 9 } });
+    const m = mergeProgress(a, b);
+    expect(m.streak.days).toEqual(['2026-03-01', '2026-03-02', '2026-03-03', '2026-04-10']);
+    expect(m.streak.longest).toBe(9);
+    expect(a.streak.days).toEqual(['2026-03-01', '2026-03-02']); // inputs untouched
   });
 });
 

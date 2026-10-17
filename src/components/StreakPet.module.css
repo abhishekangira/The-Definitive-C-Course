@@ -1,0 +1,47 @@
+/* Ember's colours: warm and bright when the streak is healthy, a cool grey when it is gone. Shapes carry the mood too
+   (face, posture, motion), so nothing depends on colour alone. */
+.pet { margin: 0; display: flex; align-items: center; gap: var(--space-4); --pet-body: #f7a23a; --pet-stroke: #a85a0a; }
+.pet[data-mood='sad'] { --pet-body: #98a4ba; --pet-stroke: #5c677d; }
+.pet[data-mood='worried'] { --pet-body: #eab05a; --pet-stroke: #9a6a1f; }
+.pet[data-mood='content'] { --pet-body: #f5a43a; }
+.pet[data-mood='happy'] { --pet-body: #f7931e; --pet-stroke: #b4560a; }
+.pet[data-mood='joyful'] { --pet-body: #ff7f1f; --pet-stroke: #b8420a; }
+.pet[data-mood='ecstatic'] { --pet-body: #ff5e2b; --pet-stroke: #a82a05; }
+
+.svg { width: var(--pet-size, 96px); height: auto; flex: none; overflow: visible; }
+.body { fill: var(--pet-body); stroke: var(--pet-stroke); stroke-width: 3; stroke-linejoin: round; }
+.shadow { fill: var(--border-strong); }
+.caption { font-size: 0.95rem; color: var(--text-muted); max-width: 32ch; }
+
+/* Every moving part turns on its own centre, so the SVG parts need their box, not the viewBox, as the origin. */
+.figure, .eyes, .tear, .sweat, .sparkle { transform-box: fill-box; transform-origin: center bottom; }
+.eyes, .sparkle { transform-origin: center; }
+.tear, .sweat { transform-origin: top center; }
+
+.pet[data-mood='sad'] .figure { animation: droop 3.6s ease-in-out infinite; }
+.pet[data-mood='worried'] .figure { animation: tremble 0.7s ease-in-out infinite; }
+.pet[data-mood='content'] .figure { animation: bob 2.6s ease-in-out infinite; }
+.pet[data-mood='happy'] .figure { animation: bounce 1.1s ease-in-out infinite; }
+.pet[data-mood='joyful'] .figure { animation: bounce 0.8s ease-in-out infinite; }
+.pet[data-mood='ecstatic'] .figure { animation: bounce 0.55s ease-in-out infinite; }
+.pet:not([data-mood='ecstatic']) .eyes { animation: blink 4.5s infinite; }
+.tear { animation: drip 2.4s ease-in infinite; }
+.sweat { animation: drip 1.6s ease-in infinite; }
+.sparkle { animation: twinkle 1.4s ease-in-out infinite; }
+
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes bounce {
+  0%, 100% { transform: translateY(0) scale(1.05, 0.93); }
+  45% { transform: translateY(-11px) scale(0.97, 1.05); }
+  70% { transform: translateY(0) scale(1, 1); }
+}
+@keyframes droop { 0%, 100% { transform: scale(1, 0.95) rotate(-1deg); } 50% { transform: scale(1, 0.92) rotate(1deg); } }
+@keyframes tremble { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+@keyframes drip { 0% { transform: translateY(0) scale(0.4); } 25% { transform: translateY(0) scale(1); } 100% { transform: translateY(16px) scale(0.8); } }
+@keyframes twinkle { 0%, 100% { transform: scale(0.2) rotate(0deg); } 50% { transform: scale(1) rotate(45deg); } }
+
+/* No motion: the pose and face still show the mood, and every part is drawn at full size. */
+@media (prefers-reduced-motion: reduce) {
+  .figure, .eyes, .tear, .sweat, .sparkle, .pet .figure, .pet .eyes { animation: none !important; }
+}

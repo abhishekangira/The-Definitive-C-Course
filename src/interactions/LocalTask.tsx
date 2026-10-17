@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { ExerciseEntry } from '../content-runtime/course';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { useCardDone } from '../lesson/LessonContext';
-import { update, useProgress } from '../progress/store';
+import { noteActivity, update, useProgress } from '../progress/store';
 import { formatCode, verifyCode } from '../testing/token';
 import { useFolder } from './Exercise';
 import { useExerciseProgress } from './useExerciseProgress';
@@ -30,6 +30,7 @@ export function LocalTask({ entry, onPassed, projectId }: { entry: ExerciseEntry
     const v = await verifyCode(code, progress.seed, { exercise: entry.id });
     if (!v.ok) { setMsg({ ok: false, text: v.message }); return; }
     const canonical = formatCode(v.code); // never store the pasted text: it may be huge or carry other content
+    update(p => noteActivity(p)); // a valid code is a submission: it counts for the streak
     const complete = v.code.type === 'completion';
     const run = v.code.type === 'progress' ? v.code.run : undefined;
     patch(e => {

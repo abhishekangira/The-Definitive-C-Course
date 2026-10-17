@@ -6,6 +6,7 @@ import { createElement, act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_IMPORT_BYTES, emptyProgress, getProgress, replaceProgress } from './progress/store';
+import { dayKey } from './progress/streak';
 import { encodeCompletionToken, encodeProgressCode } from './testing/token';
 import type { ExerciseEntry } from './content-runtime/course';
 import type { VideoEntry } from './content-model/types';
@@ -52,6 +53,7 @@ describe('LocalTask stores the canonical code, not the pasted text', () => {
     await paste(`Here: "${code.toUpperCase()}" ${'junk '.repeat(20000)}`);
     expect(getProgress().exercises['lt-demo'].codes).toEqual([code]);
     expect(getProgress().exercises['lt-demo'].passed).toBe(false);
+    expect(getProgress().streak.days, 'a valid pasted code is a submission').toEqual([dayKey()]);
   });
 
   it('completion token: the project token is the canonical token', async () => {
@@ -68,6 +70,7 @@ describe('LocalTask stores the canonical code, not the pasted text', () => {
     render(createElement(LocalTask, { entry }));
     await paste(code);
     expect(getProgress().exercises['lt-demo']).toBeUndefined();
+    expect(getProgress().streak.days, 'a refused code is not a submission').toEqual([]);
   });
 });
 

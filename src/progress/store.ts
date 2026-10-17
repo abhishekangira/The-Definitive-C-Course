@@ -6,6 +6,8 @@ import { useSyncExternalStore } from 'react';
 export const STORAGE_PREFIX = 'tdcc:v1:';
 const KEY = `${STORAGE_PREFIX}progress`;
 
+import { addDay, cleanDays, dayKey, emptyStreak, longestRun, mergeStreaks, type StreakData } from './streak';
+
 export type Platform = 'mac-arm' | 'mac-intel' | 'wsl' | 'linux-x86' | 'linux-arm';
 
 export interface SampleProgress { prediction: string; correct: boolean; predict64?: string; predict64Correct?: boolean; at: string }
@@ -43,6 +45,8 @@ export interface ProgressV1 {
   exercises: Record<string, ExerciseProgress>;
   quizzes: Record<string, QuizProgress>;
   projects: Record<string, ProjectProgress>;
+  /** Days with a submitted problem solution or quiz answer, for the daily streak (see streak.ts). */
+  streak: StreakData;
 }
 
 function randomSeed(): string {
@@ -52,7 +56,7 @@ function randomSeed(): string {
 }
 
 export function emptyProgress(): ProgressV1 {
-  return { version: 1, seed: randomSeed(), createdAt: new Date().toISOString(), settings: {}, cards: {}, lessons: {}, samples: {}, exercises: {}, quizzes: {}, projects: {} };
+  return { version: 1, seed: randomSeed(), createdAt: new Date().toISOString(), settings: {}, cards: {}, lessons: {}, samples: {}, exercises: {}, quizzes: {}, projects: {}, streak: emptyStreak() };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -71,6 +75,14 @@ function section<T>(v: unknown, one: (x: Record<string, unknown>) => T | undefin
     if (clean !== undefined) out[k] = clean;
   }
   return out;
+}
+
+/** The streak section of an imported or stored document: valid calendar days only, bounded, with a sane longest run. */
+function cleanStreak(v: unknown): StreakData {
+  if (!isRecord(v)) return emptyStreak();
+  const days = cleanDays(Array.isArray(v.days) ? v.days.slice(-5000) : []);
+  const longest = Number.isInteger(v.longest) && (v.longest as number) > 0 ? Math.min(v.longest as number, 100_000) : 0;
+  return { days, longest: Math.max(longest, longestRun(days)) };
 }
 
 const drop = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
@@ -126,6 +138,7 @@ export function migrate(raw: unknown): ProgressV1 {
     quizzes: section(o.quizzes, x => (num(x.score) !== undefined && num(x.total) !== undefined && typeof x.passed === 'boolean' && typeof x.at === 'string'
       ? { score: x.score as number, total: x.total as number, passed: x.passed, at: x.at, answers: isRecord(x.answers) ? Object.fromEntries(Object.entries(x.answers).filter(([k]) => k !== '__proto__')) : {} } : undefined)),
     projects: section(o.projects, x => (typeof x.passed === 'boolean' && typeof x.at === 'string' ? drop({ passed: x.passed, at: x.at, token: str(x.token) }) : undefined)),
+    streak: cleanStreak(o.streak),
   }) as ProgressV1;
 }
 
@@ -258,6 +271,7 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
     if (!cur || (v.passed && !cur.passed) || v.score > cur.score) out.quizzes[k] = { ...v, passed: v.passed || Boolean(cur?.passed) };
   }
   for (const [k, v] of Object.entries(b.projects)) if (!own(out.projects, k)?.passed) out.projects[k] = v;
+  out.streak = mergeStreaks(a.streak, b.streak);
   return out;
 }
 
@@ -270,6 +284,11 @@ export function daysSinceExport(p: ProgressV1, now = Date.now()): number | null 
 
 export function exerciseProgress(p: ProgressV1, id: string): ExerciseProgress {
   return (Object.hasOwn(p.exercises, id) ? p.exercises[id] : undefined) ?? { attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false };
+}
+
+/** Call inside an `update` when the learner submits a problem solution or a quiz answer: it counts for today's streak. */
+export function noteActivity(p: ProgressV1, now: Date = new Date()): void {
+  p.streak = addDay(p.streak, dayKey(now));
 }
 
 export function markCard(lessonId: string, index: number): void {

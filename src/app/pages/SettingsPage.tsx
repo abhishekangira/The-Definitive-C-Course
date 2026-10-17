@@ -7,6 +7,10 @@ import { useTheme, type ThemeChoice } from '../theme';
 import { PlatformPicker } from '../../interactions/PlatformPicker';
 import { downloadBlob } from '../../interactions/zip';
 import { detectStdinMode } from '../../runtime/CRuntime';
+import { Icon } from '../../components/Icon';
+import { StreakPet } from '../../components/StreakPet';
+import { useNow } from '../../components/StreakChip';
+import { dayWord, recentDays, streakStatus } from '../../progress/streak';
 import styles from './Pages.module.css';
 
 export function SettingsPage() {
@@ -16,6 +20,9 @@ export function SettingsPage() {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const days = daysSinceExport(progress);
+  const now = useNow();
+  const streak = streakStatus(progress.streak, now);
+  const week = recentDays(progress.streak, 14, now);
 
   const onFile = async (f: File | undefined) => {
     if (!f) return;
@@ -35,6 +42,34 @@ export function SettingsPage() {
   return (
     <div className={styles.narrow}>
       <h1>Progress &amp; settings</h1>
+
+      <section className={styles.panel} id="streak" aria-labelledby="streak-title">
+        <h2 id="streak-title">Your streak</h2>
+        <StreakPet size={96} />
+        <p>
+          {streak.state === 'none'
+            ? (streak.longest > 0
+              ? <>No streak is running. Your longest was <strong>{dayWord(streak.longest)}</strong>. Submit a problem solution or a quiz answer today to start a new one.</>
+              : <>It starts the first time you submit a problem solution or answer a quiz question, and grows by one for every day in a row you do it.</>)
+            : <>
+              <strong data-testid="streak-current">{dayWord(streak.current)}</strong> in a row; your longest is <strong>{dayWord(streak.longest)}</strong>.
+              {streak.state === 'active' ? ' You have submitted something today.' : ' Submit a problem solution or a quiz answer today to keep it going.'}
+            </>}
+        </p>
+        <ol className={styles.streakDays} aria-label="The last 14 days">
+          {week.map(d => (
+            <li key={d.key} className={d.done ? styles.dayDone : styles.dayEmpty}>
+              <span className={styles.dayBox} aria-hidden="true">{d.done && <Icon name="flame" />}</span>
+              <span className={styles.dayName} aria-hidden="true">{d.weekday.slice(0, 2)}</span>
+              <span className="visually-hidden">{`${d.weekday} ${d.key}: ${d.done ? 'submitted' : 'nothing submitted'}`}</span>
+            </li>
+          ))}
+        </ol>
+        <p className={styles.muted}>
+          A problem check (pass or fail), a quiz answer and a finished checkpoint count. Reading lessons, predictions and the playground don't.
+          Days follow this computer's clock and time zone. Ember, the flame pet, is sad without a streak, worried until you submit today, and gets happier at 3, 7 and 30 days in a row.
+        </p>
+      </section>
 
       <section className={styles.panel}>
         <h2>Back up your progress</h2>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTheme, type ThemeChoice } from './theme';
 import { useProgress, daysSinceExport, storageWorks } from '../progress/store';
 import { course } from '../content-runtime/course';
+import { StreakChip } from '../components/StreakChip';
 import styles from './Layout.module.css';
 
 const THEME_LABEL: Record<ThemeChoice, string> = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
@@ -52,6 +53,7 @@ export function Layout({ children }: { children?: ReactNode }) {
         <nav className={styles.nav} aria-label="Site">
           <NavLink to="/" end className={({ isActive }) => (isActive ? styles.active : undefined)}>Course</NavLink>
           <NavLink to="/playground" className={({ isActive }) => (isActive ? styles.active : undefined)}>Playground</NavLink>
+          <StreakChip className={styles.streak} riskClassName={styles.streakRisk} />
           <NavLink to="/settings" className={({ isActive }) => (isActive ? styles.active : undefined)}>Progress &amp; settings</NavLink>
           <button
             type="button"

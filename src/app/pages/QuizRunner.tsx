@@ -11,7 +11,7 @@ import { MemoryDiagram } from '../../interactions/MemoryDiagram';
 import { NumberDrill } from '../../interactions/NumberDrill';
 import { normOutput } from '../../interactions/platform';
 import { seededShuffle } from '../../interactions/hash';
-import { update, useProgress } from '../../progress/store';
+import { noteActivity, update, useProgress } from '../../progress/store';
 import { CHECKPOINT_PASS, quizKey } from '../../progress/gating';
 import { Icon, Mark } from '../../components/Icon';
 import ix from '../../interactions/Interaction.module.css';
@@ -134,6 +134,7 @@ export function QuizRunner({ moduleId, kind }: { moduleId: string; kind: 'retrie
   const finish = () => {
     setFinished(true);
     update(p => {
+      noteActivity(p);
       const key = quizKey(moduleId, kind);
       const better = !p.quizzes[key] || score >= p.quizzes[key].score || (pass && !p.quizzes[key].passed);
       if (better) p.quizzes[key] = { score, total: items.length, passed: pass || Boolean(p.quizzes[key]?.passed), at: new Date().toISOString(), answers: Object.fromEntries(Object.entries(results).map(([k, v]) => [k, v.correct])) };
@@ -145,7 +146,7 @@ export function QuizRunner({ moduleId, kind }: { moduleId: string; kind: 'retrie
       {prev && <p className={styles.muted}>Best so far: {prev.score}/{prev.total}{kind === 'checkpoint' ? (prev.passed ? ' (passed)' : ' (not yet passed)') : ''}.</p>}
       {items.map((item, i) => (
         <QuizItemView key={item.id} item={item} index={i} samples={samples} result={results[item.id]} assessment={kind === 'checkpoint'}
-          onResult={r => setResults(x => (x[item.id] ? x : { ...x, [item.id]: r }))} />
+          onResult={r => { update(p => noteActivity(p)); setResults(x => (x[item.id] ? x : { ...x, [item.id]: r })); }} />
       ))}
       <div className={styles.quizFooter}>
         {!finished ? (

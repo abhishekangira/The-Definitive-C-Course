@@ -22,6 +22,11 @@
 .nav a { color: var(--text-muted); text-decoration: none; padding: 6px 2px; border-bottom: 2px solid transparent; }
 .nav a:hover { color: var(--text); }
 .nav a.active { color: var(--text); border-bottom-color: var(--accent); }
+/* The streak chip is a link too, but a pill: the flame carries the warm colour, a dashed border says "submit today to keep it". */
+.nav a.streak { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 1px solid var(--warn); border-radius: 999px; color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.nav a.streak svg { color: var(--warn); }
+.nav a.streakRisk { border-style: dashed; border-color: var(--border-strong); }
+.nav a.streakRisk svg { color: var(--text-muted); }
 .themeBtn { font-size: 1.1rem; min-width: 36px; justify-content: center; }
 
 .banner {

@@ -1,6 +1,6 @@
 // Attempt/hint/solution bookkeeping shared by every exercise kind (PLAN.md §2.5).
 import { useCallback, useRef } from 'react';
-import { exerciseProgress, update, useProgress, type ExerciseProgress } from '../progress/store';
+import { exerciseProgress, noteActivity, update, useProgress, type ExerciseProgress } from '../progress/store';
 import { fnv1a } from './hash';
 
 export function useExerciseProgress(id: string, parentId?: string) {
@@ -37,6 +37,7 @@ export function useExerciseProgress(id: string, parentId?: string) {
         if (!e.solutionViewed) e.mastered = true;
       }
     });
+    update(p => noteActivity(p)); // a submitted solution counts for the streak, passing or not
     if (passed && parentId) {
       // Passing the assigned variant masters the parent exercise.
       update(p => { const parent = exerciseProgress(p, parentId); parent.mastered = true; p.exercises[parentId] = parent; });
