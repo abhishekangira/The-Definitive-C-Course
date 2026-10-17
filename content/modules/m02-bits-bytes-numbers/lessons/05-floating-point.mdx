@@ -1,0 +1,115 @@
+---
+id: m02-l5
+title: Floating point
+minutes: 45
+summary: How float and double store a number as sign, exponent and fraction, why 0.1 + 0.2 is not 0.3, and how to compare, round and handle NaN and infinity.
+---
+
+Whole numbers are easy to store in bits. Numbers with a fraction need a trick, and C uses the same one JavaScript does: the **IEEE 754** format, a kind of binary scientific notation. A number is stored as three fields: a **sign** bit, an **exponent** and a **fraction** (also called the mantissa). A `float` has 1 + 8 + 23 = 32 bits. A `double` has 1 + 11 + 52 = 64 bits, and it is exactly what JavaScript calls a `Number`.
+
+For a normal number, the value is (-1) to the power of the sign, times 1.fraction, times 2 to the power of (exponent minus a fixed bias). The bias is 127 for a `float`. The leading 1 is not stored.
+
+Toggle the bits below to see the three fields and the decoded value. Try turning on only the sign bit, and then the lowest fraction bit.
+
+<NumberPlayground mode="float" value={1} width={32} />
+
+Now try it by hand.
+
+<NumberDrill kind="float" value="0x40400000" from="hex" to="dec" />
+
+The bit pattern of a float can be read by copying it into an integer of the same size. `memcpy` does that copy (you will meet it again in Module 5). Predict the three patterns. Notice that `0.1f` does not look "round" in hex.
+
+```c id=float-bits
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+static uint32_t bits_of(float f) {
+    uint32_t u;
+    memcpy(&u, &f, sizeof u);
+    return u;
+}
+
+int main(void) {
+    printf("%08x\n", (unsigned)bits_of(1.0f));
+    printf("%08x\n", (unsigned)bits_of(-2.5f));
+    printf("%08x\n", (unsigned)bits_of(0.1f));
+    return 0;
+}
+```
+
+Why `0.1f` is not round: 0.1 is a repeating fraction in binary, just as 1/3 is in decimal, so only a close neighbour can be stored. That is why `0.1 + 0.2` is not exactly 0.3. `%.17g` prints enough digits to show the stored value. Compare with what JavaScript's `0.1 + 0.2` shows: the same number.
+
+```c id=point-one-plus
+#include <stdio.h>
+
+int main(void) {
+    double a = 0.1;
+    double b = 0.2;
+    double sum = a + b;
+    printf("%.17g\n", sum);
+    printf("%d\n", sum == 0.3);
+    return 0;
+}
+```
+
+A `float` has only 23 fraction bits, so past 2 to the power of 24 it cannot store every whole number. Predict what happens to 16777217.
+
+```c id=float-16777217
+#include <stdio.h>
+
+int main(void) {
+    float f = 16777217.0f;
+    float big = 16777216.0f;
+    printf("%.1f\n", f);
+    printf("%d\n", big + 1.0f == big);
+    return 0;
+}
+```
+
+Because of this, compare floats with a **tolerance**, never with `==`. An absolute tolerance such as `fabs(a - b) < 1e-9` suits numbers near 1. For very large or very small numbers use a **relative** tolerance: the difference compared with the size of the numbers. Predict the four results.
+
+```c id=epsilon-compare
+#include <math.h>
+#include <stdio.h>
+
+int main(void) {
+    double a = 0.1 + 0.2;
+    double b = 0.3;
+    double big1 = 1e15 + 0.3;
+    double big2 = 1e15 + 0.4;
+    printf("%d %d\n", a == b, fabs(a - b) < 1e-9);
+    printf("%d %d\n", fabs(big1 - big2) < 1e-9, fabs(big1 - big2) < fabs(big1) * 1e-9);
+    return 0;
+}
+```
+
+Two special families exist. **Infinity** is what a float operation gives when it overflows or divides by zero, and **NaN** (not a number) is the result of something like 0.0 / 0.0. A NaN is not equal to anything, **including itself**, so `x != x` is true only for NaN. Use `isnan` and `isinf` from `<math.h>`, and do not print a NaN with `%f`: its sign and spelling differ between systems. Predict the three results.
+
+```c id=nan-inf
+#include <math.h>
+#include <stdio.h>
+
+int main(void) {
+    volatile double zero = 0.0;
+    double inf = 1.0 / zero;
+    double nan_value = zero / zero;
+    printf("%d %d\n", isinf(inf) != 0, isnan(nan_value) != 0);
+    printf("%d %d\n", nan_value == nan_value, nan_value != nan_value);
+    return 0;
+}
+```
+
+Rounding differs from JavaScript too. C's `round` rounds halves **away from zero**. JavaScript's `Math.round` rounds halves toward positive infinity, so `Math.round(-2.5)` is -2 while C gives -3. Predict the output.
+
+```c id=round-halves
+#include <math.h>
+#include <stdio.h>
+
+int main(void) {
+    printf("%.0f %.0f %.0f\n", round(2.5), round(-2.5), round(3.5));
+    return 0;
+}
+```
+
+**What you know now:** a float is sign, exponent and fraction, most decimal fractions are only approximated, large floats lose whole numbers, equality needs a tolerance, NaN is unequal even to itself, and `round` goes away from zero on halves.

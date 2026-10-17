@@ -24,6 +24,7 @@ lessons:
   - 02-widths-and-sizeof
   - 03-unsigned-and-twos-complement
   - 04-bitwise-operators-and-masks
+  - 05-floating-point
 problemSet: []
 project: credit
 coreExercises:
