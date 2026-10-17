@@ -27,11 +27,14 @@ lessons:
   - 05-floating-point
   - 06-overflow-in-the-real-world
   - 07-characters-as-numbers
-problemSet: []
+problemSet:
+  - bitlab-lite
+  - hexcolor
 project: credit
 coreExercises:
   - unsigned-countdown
   - pack-rgba
   - fix-bit-test
+  - hexcolor
 retrieval:
   sources: [m01]
