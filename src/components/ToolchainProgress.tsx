@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { getRuntime } from '../runtime/CRuntime';
 import { useToolchainState } from '../runtime/useCRun';
+import { toolchainView } from './toolchain-view';
 import styles from './ToolchainProgress.module.css';
+
+const ERROR_TEXT = {
+  download: "The C compiler didn't finish downloading, so your program was not compiled. Your code is fine: check your internet connection, then press Retry.",
+  corrupt: 'The copy of the C compiler saved on this device was damaged, so your program was not compiled. Your code is fine. The damaged copy was removed: press Retry to download a fresh one.',
+  startup: "The C compiler couldn't start, so your program was not compiled. Your code is fine: press Retry, and if it fails again reload the page (this device may be low on memory).",
+} as const;
 
 /**
  * The compiler's download progress, or what went wrong with it. Renders nothing once it is ready (later visits load it from cache).
@@ -13,22 +20,18 @@ export function ToolchainProgress({ errorOnly = false }: { errorOnly?: boolean }
   const [retried, setRetried] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => { if (retried && s.status === 'loading') box.current?.focus(); }, [retried, s.status]);
-  if (s.status === 'error') {
+  const view = toolchainView(s, { errorOnly, retried });
+  if (view === 'error' && s.status === 'error') {
     return (
       <div className={styles.box} role="alert" data-toolchain="error">
-        <p className={styles.text}>
-          {s.kind === 'download'
-            ? "The C compiler didn't finish downloading, so your program was not compiled. Your code is fine: check your internet connection, then press Retry."
-            : "The C compiler couldn't start, so your program was not compiled. Your code is fine: press Retry, and if it fails again reload the page (this device may be low on memory)."}
-        </p>
+        <p className={styles.text}>{ERROR_TEXT[s.kind]}</p>
         <button type="button" className="btn btn-sm" onClick={() => { setRetried(true); getRuntime().prefetch(); }}>Retry</button>
         <p className={styles.detail}>Details: {s.message}</p>
       </div>
     );
   }
-  if (errorOnly && !retried) return null; // after Retry the same component shows progress and the ready note
-  if (s.status === 'ready' && retried) return <div className={styles.box} role="status" data-toolchain="ready" ref={box} tabIndex={-1}>The compiler is ready. Try again.</div>;
-  if (s.status !== 'loading') return null;
+  if (view === 'ready-note') return <div className={styles.box} role="status" data-toolchain="ready" ref={box} tabIndex={-1}>The compiler is ready. Try again.</div>;
+  if (view !== 'progress' || s.status !== 'loading') return null;
   const pct = s.total ? Math.min(100, Math.round((s.done / s.total) * 100)) : 0;
   return (
     <div className={styles.box} data-toolchain="loading" ref={box} tabIndex={-1}>

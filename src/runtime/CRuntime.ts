@@ -45,7 +45,7 @@ export type ToolchainState =
   | { status: 'idle' }
   | { status: 'loading'; done: number; total: number }
   | { status: 'ready'; ms: number; fromCache: boolean }
-  | { status: 'error'; kind: 'download' | 'startup'; message: string };
+  | { status: 'error'; kind: 'download' | 'corrupt' | 'startup'; message: string };
 
 export class CRuntime {
   private compiler: Worker;

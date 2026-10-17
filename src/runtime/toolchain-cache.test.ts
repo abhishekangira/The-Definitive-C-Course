@@ -1,7 +1,9 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { classifyLoadFailure, createToolchainFetch, describeLoadFailure, patchBundleSource, ToolchainDownloadError } from './toolchain-cache';
+import type { ToolchainState } from '../runtime/CRuntime';
+import { toolchainView } from '../components/toolchain-view';
+import { classifyLoadFailure, createToolchainFetch, describeLoadFailure, loadToolchain, patchBundleSource, ToolchainCorruptError, ToolchainDownloadError, ToolchainLoadError } from './toolchain-cache';
 
 const BASE = new URL('https://example.test/toolchain/clang-1/');
 const url = (name: string) => new URL(name, BASE).href;
@@ -73,10 +75,21 @@ describe('createToolchainFetch', () => {
     const gate = deferred();
     cache.gate = gate.p;
     await (await tf.fetch(url('new.wasm'))).text();
-    const discarding = tf.discardAttempt();
+    const discarding = tf.discardAttempt('stored');
     gate.release(); // the put finishes only now; discardAttempt must still remove it
     await discarding;
     expect([...cache.entries.keys()]).toEqual([url('good.wasm')]);
+  });
+
+  it("discardAttempt('all') also deletes a corrupt file that was only read from the cache; 'stored' keeps it", async () => {
+    for (const [scope, left] of [['stored', [url('bad.wasm')]], ['all', []]] as const) {
+      const { cache, tf } = setup({});
+      cache.entries.set(url('bad.wasm'), new Uint8Array([1, 2, 3]));
+      tf.beginAttempt();
+      await tf.fetch(url('bad.wasm'));
+      await tf.discardAttempt(scope);
+      expect([...cache.entries.keys()], scope).toEqual(left);
+    }
   });
 
   it('does not touch files outside the toolchain URL', async () => {
@@ -90,17 +103,86 @@ describe('createToolchainFetch', () => {
 describe('classifyLoadFailure', () => {
   it.each([
     [new TypeError('Failed to fetch'), 'download'],
-    [Object.assign(new Error('bad wasm'), { name: 'CompileError' }), 'download'],
     [new ToolchainDownloadError('HTTP 404'), 'download'],
+    [new TypeError('network error'), 'download'],
+    [new TypeError("Failed to execute 'compile' on 'WebAssembly': Incorrect response MIME type. Expected 'application/wasm'."), 'corrupt'],
+    [Object.assign(new Error('bad wasm'), { name: 'CompileError' }), 'corrupt'],
+    [Object.assign(new Error('bad import'), { name: 'LinkError' }), 'corrupt'],
+    [new ToolchainCorruptError('patch'), 'corrupt'],
+    [new Error('unexpected end of tar'), 'corrupt'],
     [new RangeError('WebAssembly.Memory(): could not allocate memory'), 'startup'],
-    [new Error('something else'), 'startup'],
+    [new Error('Out of memory'), 'startup'],
   ] as const)('%s -> %s', (err, kind) => {
     expect(classifyLoadFailure(err)).toBe(kind);
   });
 
   it('only a download failure tells the learner to check the connection', () => {
     expect(describeLoadFailure('download', 'x')).toMatch(/internet connection/);
+    expect(describeLoadFailure('corrupt', 'x')).not.toMatch(/internet connection/);
     expect(describeLoadFailure('startup', 'x')).not.toMatch(/internet connection/);
+  });
+});
+
+describe('loadToolchain', () => {
+  const bundle = (run: (fetchAll: () => Promise<void>) => Promise<void>, tf: ReturnType<typeof setup>['tf']) => async () => ({
+    runClang: (async () => { await run(async () => { await (await tf.fetch(url('big.wasm'))).text(); }); return {}; }) as never,
+  });
+
+  it('returns only after the cache is complete: a put still running holds it back', async () => {
+    const { cache, tf } = setup({ 'big.wasm': ok('data') });
+    const gate = deferred();
+    cache.gate = gate.p;
+    let finished = false;
+    const loading = loadToolchain({ tf, importBundle: bundle(f => f(), tf), onProgress: () => {} }).then(() => { finished = true; });
+    await new Promise(r => setTimeout(r, 20));
+    expect(finished, 'the compiler is compiled, but the cache is not complete yet').toBe(false);
+    gate.release();
+    await loading;
+    expect(cache.entries.has(url('big.wasm'))).toBe(true);
+  });
+
+  it('a corrupt cached file is evicted, so the next attempt fetches a good one', async () => {
+    const { cache, tf, requested } = setup({ 'big.wasm': ok('good') });
+    cache.entries.set(url('big.wasm'), new TextEncoder().encode('garbage'));
+    let bytes = '';
+    const importBundle = async () => ({
+      runClang: (async () => {
+        bytes = await (await tf.fetch(url('big.wasm'))).text();
+        if (bytes !== 'good') throw Object.assign(new Error('WebAssembly.compile(): expected magic word'), { name: 'CompileError' });
+        return {};
+      }) as never,
+    });
+    const first = await loadToolchain({ tf, importBundle, onProgress: () => {} }).catch(e => e);
+    expect(first).toBeInstanceOf(ToolchainLoadError);
+    expect((first as ToolchainLoadError).kind).toBe('corrupt');
+    expect(cache.entries.size, 'the garbage is gone').toBe(0);
+    await loadToolchain({ tf, importBundle, onProgress: () => {} });
+    expect(bytes).toBe('good');
+    expect(requested).toEqual([url('big.wasm')]);
+  });
+
+  it('an out-of-memory failure keeps the cache', async () => {
+    const { cache, tf } = setup({});
+    cache.entries.set(url('big.wasm'), new TextEncoder().encode('fine'));
+    const importBundle = async () => ({ runClang: (async () => { await tf.fetch(url('big.wasm')); throw new RangeError('could not allocate memory'); }) as never });
+    const err = await loadToolchain({ tf, importBundle, onProgress: () => {} }).catch(e => e);
+    expect((err as ToolchainLoadError).kind).toBe('startup');
+    expect(cache.entries.size).toBe(1);
+  });
+});
+
+describe('toolchainView', () => {
+  const loading: ToolchainState = { status: 'loading', done: 1, total: 2 };
+  const failed: ToolchainState = { status: 'error', kind: 'download', message: 'x' };
+  it('a terminal that only explains failures ignores a download it did not start', () => {
+    expect(toolchainView(loading, { errorOnly: true, retried: false })).toBeNull();
+    expect(toolchainView(loading, { errorOnly: false, retried: false })).toBe('progress');
+  });
+  it('shows the error everywhere, and progress and the ready note after Retry was pressed here', () => {
+    expect(toolchainView(failed, { errorOnly: true, retried: false })).toBe('error');
+    expect(toolchainView(loading, { errorOnly: true, retried: true })).toBe('progress');
+    expect(toolchainView({ status: 'ready', ms: 1, fromCache: false }, { errorOnly: true, retried: true })).toBe('ready-note');
+    expect(toolchainView({ status: 'ready', ms: 1, fromCache: false }, { errorOnly: false, retried: false })).toBeNull();
   });
 });
 
@@ -124,6 +206,8 @@ describe('patchBundleSource', () => {
     ['no use', 'export {}'],
     ['a bare use', 'const here = import.meta.url;'],
     ['another import.meta property', 'new URL("a", import.meta.url); import.meta.dirname;'],
+    ['a call that is not new URL', 'new URL("a", import.meta.url); String(base, import.meta.url)'],
+    ['import.meta.url inside another expression', 'new URL("a", import.meta.url); fileURLToPath(import.meta.url)'],
   ])('refuses a bundle with %s', (_, source) => {
     expect(() => patchBundleSource(source, 'u')).toThrow(/does not know/);
   });

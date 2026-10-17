@@ -7,7 +7,7 @@ import leakcheckH from './c/leakcheck.h?raw';
 import learncH from './c/learnc.h?raw';
 import { compileC, compileStage, type RunClang, type SupportFiles } from './compile-core';
 import type { CompilerIn, CompilerOut } from './protocol';
-import { classifyLoadFailure, createToolchainFetch, describeLoadFailure, patchBundleSource, ToolchainDownloadError, type LoadFailureKind, type ToolchainFetch } from './toolchain-cache';
+import { classifyLoadFailure, createToolchainFetch, describeLoadFailure, loadToolchain, patchBundleSource, ToolchainDownloadError, ToolchainLoadError, type ToolchainFetch } from './toolchain-cache';
 
 declare const self: DedicatedWorkerGlobalScope;
 const post = (m: CompilerOut, t: Transferable[] = []) => self.postMessage(m, t);
@@ -48,34 +48,29 @@ async function importBundle(): Promise<{ runClang: RunClang }> {
 }
 
 let clangP: Promise<RunClang> | null = null;
-let loadFailure: { kind: LoadFailureKind; detail: string } | null = null;
+let loadFailure: ToolchainLoadError | null = null;
 function loadClang(): Promise<RunClang> {
   return (clangP ??= (async () => {
     await initialised;
-    tf!.beginAttempt();
     const t0 = performance.now();
     if ('caches' in self) {
       for (const k of await caches.keys()) if (k.startsWith('tdcc-toolchain-') && k !== cacheName) await caches.delete(k);
     }
-    const mod = await importBundle();
     let lastPost = 0;
-    // args=null: only fetch and compile the wasm modules and unpack the sysroot.
-    await mod.runClang(null, {}, {
-      fetchProgress: ({ doneLength, totalLength }: { doneLength: number; totalLength: number }) => {
+    const { runClang } = await loadToolchain({
+      tf: tf!,
+      importBundle,
+      onProgress: (done, total) => {
         const now = performance.now();
-        if (now - lastPost > 100 || doneLength === totalLength) { lastPost = now; post({ type: 'progress', done: doneLength, total: totalLength }); }
+        if (now - lastPost > 100 || done === total) { lastPost = now; post({ type: 'progress', done, total }); }
       },
     });
-    // "Ready" means the cache is complete too: a learner who closes the tab right after the first Run must not lose the 75 MB file.
-    await tf!.settled();
     post({ type: 'ready', ms: performance.now() - t0, cacheHits: tf!.stats.cacheHits, networkFetches: tf!.stats.networkFetches });
-    return mod.runClang;
-  })().catch(async err => {
-    const kind = classifyLoadFailure(err);
-    if (kind === 'download') await tf!.discardAttempt(); // files stored by this attempt are not trusted; earlier good ones are kept
+    return runClang;
+  })().catch(err => {
     clangP = null;
-    loadFailure = { kind, detail: String(err?.message ?? err) };
-    post({ type: 'load-error', kind, message: loadFailure.detail });
+    loadFailure = err instanceof ToolchainLoadError ? err : new ToolchainLoadError(classifyLoadFailure(err), String(err?.message ?? err));
+    post({ type: 'load-error', kind: loadFailure.kind, message: loadFailure.detail });
     throw err;
   }));
 }
@@ -92,7 +87,7 @@ self.onmessage = async (e: MessageEvent<CompilerIn>) => {
   if (msg.type === 'prefetch') { loadClang().catch(() => {}); return; }
   let runClang: RunClang;
   try { runClang = await loadClang(); } catch (err) {
-    const raw = describeLoadFailure(loadFailure?.kind ?? 'download', loadFailure?.detail ?? String((err as Error)?.message ?? err));
+    const raw = loadFailure?.message ?? describeLoadFailure('download', String((err as Error)?.message ?? err));
     if (msg.type === 'stage') post({ type: 'staged', id: msg.id, ok: false, text: '', diagnostics: [], raw, ms: 0 });
     else post({ type: 'compiled', id: msg.id, ok: false, diagnostics: [], raw, ms: 0 });
     return;

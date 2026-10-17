@@ -269,3 +269,42 @@ test('8. in the pipeline explorer a failed stage shows the alert, and the same t
   await expect(explorer.getByRole('alert')).toHaveCount(0);
   await context.close();
 });
+
+for (const [file, garbage] of [['llvm.core3.wasm', 'same size'], ['llvm.core3.wasm', 'short'], ['bundle.js', 'same size']] as const) {
+  test(`9. a ${garbage} corrupt ${file} already in the cache is evicted, and Retry heals it`, async ({ browser }) => {
+    const { context, page } = await session(browser);
+    await page.goto('#/playground');
+    await expectRunWorks(page);
+    await page.evaluate(async ([name, kind]) => {
+      for (const k of await caches.keys()) {
+        const cache = await caches.open(k);
+        for (const r of await cache.keys()) {
+          if (!r.url.endsWith('/' + name)) continue;
+          const old = (await cache.match(r))!;
+          const size = (await old.clone().arrayBuffer()).byteLength;
+          // Same headers as the real entry (a wasm file keeps its MIME type); only the bytes are garbage.
+          await cache.put(r, new Response(new Uint8Array(kind === 'short' ? 100 : size).fill(7), { headers: old.headers }));
+        }
+      }
+    }, [file, garbage]);
+
+    // Hold the compiler worker's script until Run is pressed, so the failed load is the one this Run waits for. (Pressed after
+    // the page's own background load had failed, Run would simply start a fresh load, which heals silently.)
+    const worker = hold(context, /\/compiler\.worker-[^/]*\.js$/);
+    await page.reload();
+    await worker.first;
+    await runButton(page).click();
+    await worker.release('continue');
+    await expect(toolchainAlert(page)).toBeVisible({ timeout: RUN_TIMEOUT });
+    await expect(toolchainAlert(page)).toContainText(/damaged/);
+    await expect(toolchainAlert(page)).not.toContainText(/internet connection/);
+
+    await retryButton(page).click();
+    await expectRunWorks(page);
+    expect(await cachedFiles(page)).toEqual(MANIFEST_FILES());
+    // And it stays healed: a reload runs again.
+    await page.reload();
+    await expectRunWorks(page);
+    await context.close();
+  });
+}
