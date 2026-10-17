@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "sources": [
+    "bit.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "bit 0 of 5 is on",
+      "run": {
+        "stdin": "5\n0\n"
+      },
+      "expect": {
+        "stdout": "Flags: Bit: on\n",
+        "exit": 0
+      },
+      "hint": "Number the bits from 0 at the right. Which bit does `n + 1` select when n is 0?"
+    },
+    {
+      "name": "bit 1 of 5 is off",
+      "run": {
+        "stdin": "5\n1\n"
+      },
+      "expect": {
+        "stdout": "Flags: Bit: off\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "bit 2 of 5 is on",
+      "run": {
+        "stdin": "5\n2\n"
+      },
+      "expect": {
+        "stdout": "Flags: Bit: on\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "bit 3 of 0 is off",
+      "run": {
+        "stdin": "0\n3\n"
+      },
+      "expect": {
+        "stdout": "Flags: Bit: off\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "bit 7 of 255 is on",
+      "run": {
+        "stdin": "255\n7\n"
+      },
+      "expect": {
+        "stdout": "Flags: Bit: on\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "bit 4 of 16 is on",
+      "run": {
+        "stdin": "16\n4\n"
+      },
+      "expect": {
+        "stdout": "Flags: Bit: on\n",
+        "exit": 0
+      }
+    }
+  ]
+}

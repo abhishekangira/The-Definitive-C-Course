@@ -21,8 +21,14 @@ resources:
     url: https://beej.us/guide/bgc/html/split/
 lessons:
   - 01-binary-and-hex
+  - 02-widths-and-sizeof
+  - 03-unsigned-and-twos-complement
+  - 04-bitwise-operators-and-masks
 problemSet: []
 project: credit
-coreExercises: []
+coreExercises:
+  - unsigned-countdown
+  - pack-rgba
+  - fix-bit-test
 retrieval:
   sources: [m01]

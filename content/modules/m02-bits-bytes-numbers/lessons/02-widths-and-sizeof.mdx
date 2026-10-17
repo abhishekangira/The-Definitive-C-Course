@@ -1,0 +1,75 @@
+---
+id: m02-l2
+title: Widths and sizeof
+minutes: 40
+summary: Exact-width types from stdint.h, the limits in limits.h, size_t, and how type sizes differ from platform to platform.
+---
+
+In Module 1 you saw that `int` is "typically 4 bytes" and that `long` changes size between your browser and your computer. That vagueness is a problem when a file format, a network protocol or a hash needs exactly 32 bits. The fix is `<stdint.h>`, which names types by their **width**: `int8_t`, `int16_t`, `int32_t` and `int64_t` are signed, and `uint8_t` to `uint64_t` are unsigned. `int32_t` is 32 bits on every platform the course covers.
+
+<Analogy js="Uint8Array, Int32Array" c="uint8_t, int32_t" breaksDown="A typed array gives you fixed-width elements and checks every index: reading past the end gives `undefined`. A C array has no bounds checks, so reading past the end reads whatever sits next to it (Module 4). The widths carry over; the safety net does not." />
+
+Predict what this prints. Note that `%zu` is the format for the result of `sizeof`.
+
+```c id=fixed-widths
+#include <stdint.h>
+#include <stdio.h>
+
+int main(void) {
+    printf("%zu %zu %zu %zu\n", sizeof(int8_t), sizeof(uint8_t), sizeof(int32_t), sizeof(uint64_t));
+    printf("%d %d %u\n", INT8_MIN, INT8_MAX, UINT8_MAX);
+    return 0;
+}
+```
+
+The macros `INT8_MIN`, `UINT8_MAX` and friends come with `<stdint.h>`. The classic types have their limits in `<limits.h>`: `INT_MAX`, `INT_MIN`, `UINT_MAX`, `SHRT_MAX`, `CHAR_BIT` (the number of bits in a byte) and so on. Use the macro rather than typing 2147483647 yourself.
+
+A width decides the range. The playground shows both readings of the same bits; change the width and see which numbers still fit.
+
+<NumberPlayground value={200} width={8} signed={false} />
+
+```c id=int-limits
+#include <limits.h>
+#include <stdio.h>
+
+int main(void) {
+    printf("%d %d\n", CHAR_BIT, SHRT_MAX);
+    printf("%d %d %u\n", INT_MIN, INT_MAX, UINT_MAX);
+    return 0;
+}
+```
+
+Now the size table. `sizeof` reports how many bytes a type takes, and the answer depends on the platform, apart from `char` (always 1) and the exact-width types. `size_t` is the unsigned type that `sizeof` returns and that array sizes use. Your browser runs a 32-bit target (WebAssembly), so its `long`, its pointers and its `size_t` are narrower than on a 64-bit Mac or Linux machine. On 64-bit Windows `long` is 4 bytes like the browser's, while on 64-bit Linux and Mac it is 8, and `long double` differs between platforms too.
+
+The program below prints the whole table. The browser result is shown, then the result for your own platform, and before that you predict the 64-bit one.
+
+```c id=sizes-table platform predict64="On a 64-bit Linux or Mac (x86-64 or arm64) machine, which rows are different from the browser's table, and what do they print?"
+#include <stdio.h>
+
+int main(void) {
+    printf("char        %zu\n", sizeof(char));
+    printf("short       %zu\n", sizeof(short));
+    printf("int         %zu\n", sizeof(int));
+    printf("long        %zu\n", sizeof(long));
+    printf("long long   %zu\n", sizeof(long long));
+    printf("void *      %zu\n", sizeof(void *));
+    printf("size_t      %zu\n", sizeof(size_t));
+    printf("float       %zu\n", sizeof(float));
+    printf("double      %zu\n", sizeof(double));
+    printf("long double %zu\n", sizeof(long double));
+    return 0;
+}
+```
+
+Bytes are what memory is made of. The viewer below shows the four bytes of a 32-bit value in memory order, with their addresses. Each byte has two hex digits; the other columns repeat it in binary and ASCII.
+
+<ByteViewer value={1000000} width={32} />
+
+<Choice
+  question="You are writing a file format whose header has a field that must be exactly 32 bits wide and unsigned, on every platform. Which type do you use?"
+  options={["`unsigned long`", "`uint32_t`", "`size_t`", "`unsigned int`"]}
+  answer={1}
+  explain="`uint32_t` is 32 bits everywhere. `unsigned long` is 32 bits in the browser and on Windows but 64 bits on 64-bit Linux and Mac; `size_t` follows the pointer width; and `unsigned int` is only usually 32 bits."
+/>
+
+**What you know now:** `<stdint.h>` types have a fixed width, `<limits.h>` and `<stdint.h>` give the limits as macros, and every other type's size is up to the platform: `long`, pointers and `size_t` differ between your browser and a 64-bit machine. A TypedArray has fixed width too, but C has no bounds check.
