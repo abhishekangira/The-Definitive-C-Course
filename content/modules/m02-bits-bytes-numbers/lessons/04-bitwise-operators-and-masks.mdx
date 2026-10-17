@@ -1,0 +1,149 @@
+---
+id: m02-l4
+title: Bitwise operators and masks
+minutes: 45
+summary: The six bitwise operators, masks for setting, clearing, toggling and testing bits, packing a colour into one number, and the shift rules.
+---
+
+You have met `+` and `<` on whole numbers. C also has operators that work on each **bit** of a number separately. `&` (and) keeps a bit only where both sides have a 1, `|` (or) keeps it where either side has a 1, `^` (xor) keeps it where exactly one side has a 1, and `~` flips every bit. `<<` and `>>` slide all the bits left or right.
+
+The same operators exist in JavaScript, but there they always work on 32-bit signed values. In C they work at the width of the type you use.
+
+Predict what this prints. Everything is shown in hex, one digit per nibble. The `& 0xF` keeps only the low four bits of `~a`.
+
+```c id=bit-ops
+#include <stdio.h>
+
+int main(void) {
+    unsigned a = 0xC;
+    unsigned b = 0xA;
+    printf("%x %x %x\n", a & b, a | b, a ^ b);
+    printf("%x %x %x\n", ~a & 0xF, a << 2, a >> 2);
+    return 0;
+}
+```
+
+A **mask** is a number with 1s in the bits you care about. With it you can do the four jobs you need all the time:
+
+| job | code |
+|---|---|
+| test bit n | `(x & (1 << n)) != 0` |
+| set bit n | `x \|= (1 << n)` |
+| clear bit n | `x &= ~(1 << n)` |
+| toggle bit n | `x ^= (1 << n)` |
+
+Try these on the playground: toggle one bit at a time and see which of the four jobs you just did.
+
+<NumberPlayground value={37} width={8} signed={false} />
+
+A **flag word** keeps several yes/no options in one number, one bit each. Predict the final value and then whether the execute flag is on.
+
+```c id=flag-word
+#include <stdio.h>
+
+enum { READ = 1, WRITE = 2, EXEC = 4 };
+
+int main(void) {
+    unsigned perms = READ | WRITE;
+    perms |= EXEC;
+    perms &= ~WRITE;
+    perms ^= READ;
+    printf("%u %d\n", perms, (perms & EXEC) != 0);
+    return 0;
+}
+```
+
+Operator precedence has a trap. In C, `==` and `!=` bind **tighter** than `&`, `^` and `|`, so `x & 1 == 0` means `x & (1 == 0)`, which is `x & 0`, which is always 0. Compilers warn about it.
+
+<CompilerError
+  question="What does the compiler suggest?"
+  options={[
+    "Add `#include <stdbool.h>`",
+    "Put parentheses around the bitwise `&`, because `==` binds tighter",
+    "Declare `x` as `unsigned`",
+    "Replace `&` with `&&`"
+  ]}
+  answer={1}
+  explain="`x & 1 == 0` is parsed as `x & (1 == 0)`, so the test is never true and the program always says odd. Write `(x & 1) == 0`. When you mix bitwise operators with comparisons, always add the parentheses."
+>
+
+```c id=precedence-trap expect=warning warn=-Wparentheses
+#include <stdio.h>
+
+int main(void) {
+    int x = 6;
+    if (x & 1 == 0) {
+        printf("even\n");
+    } else {
+        printf("odd\n");
+    }
+    return 0;
+}
+```
+
+```c id=precedence-trap-fixed predict=none
+#include <stdio.h>
+
+int main(void) {
+    int x = 6;
+    if ((x & 1) == 0) {
+        printf("even\n");
+    } else {
+        printf("odd\n");
+    }
+    return 0;
+}
+```
+
+</CompilerError>
+
+Now **packing**. Four colour channels of one byte each fit in one `uint32_t`. This course uses the order `0xRRGGBBAA`: red in the top byte, alpha in the lowest. To pack, shift each channel to its place and `|` them together. To unpack, shift the channel down and mask with `0xFF`. Predict the packed value.
+
+```c id=pack-orange
+#include <stdint.h>
+#include <stdio.h>
+
+int main(void) {
+    uint32_t red = 255, green = 128, blue = 0, alpha = 64;
+    uint32_t c = (red << 24) | (green << 16) | (blue << 8) | alpha;
+    printf("%08x\n", (unsigned)c);
+    printf("%u %u\n", (unsigned)((c >> 16) & 0xFF), (unsigned)(c & 0xFF));
+    return 0;
+}
+```
+
+Your turn: write the pack and unpack functions yourself.
+
+<Exercise id="pack-rgba" />
+
+Shifts have rules. Shifting by an amount that is **negative or at least the width of the type** is undefined behaviour, and in C17 so is a left shift of a signed value whose result does not fit. So 32 is too much for a 32-bit `unsigned`. Do not predict a number: predict what happens.
+
+```c id=shift-too-far expect=ub predict=outcome guardrail
+#include <stdio.h>
+
+int main(void) {
+    volatile int s = 32;
+    unsigned x = 1;
+    unsigned y = x << s;
+    printf("%u\n", y);
+    return 0;
+}
+```
+
+Shifting a **negative** signed number to the right is not undefined, but the standard leaves the result to the implementation. All the compilers this course uses copy the sign bit in (an **arithmetic** shift), so `-16 >> 2` is -4. Do not rely on it in portable code. Predict the output.
+
+```c id=shift-negative
+#include <stdio.h>
+
+int main(void) {
+    int x = -16;
+    printf("%d %d\n", x >> 2, x >> 31);
+    return 0;
+}
+```
+
+The last exercise is a bug report about a bit test.
+
+<Exercise id="fix-bit-test" />
+
+**What you know now:** `& | ^ ~ << >>` work bit by bit. Masks test, set, clear and toggle bits, and parentheses are needed around them. Shift left to place a field, shift right and mask to take it out. Shifting by the width or more is undefined, and right shifts of negative values are arithmetic on every course target.
