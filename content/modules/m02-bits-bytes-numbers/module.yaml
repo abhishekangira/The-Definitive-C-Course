@@ -19,7 +19,8 @@ resources:
   - title: "Beej's Guide to C Programming (v0.11)"
     detail: 'Chapter 24 "Bitwise Operations" and chapter 37 "Fixed Width Integer Types"'
     url: https://beej.us/guide/bgc/html/split/
-lessons: []
+lessons:
+  - 01-binary-and-hex
 problemSet: []
 project: credit
 coreExercises: []
