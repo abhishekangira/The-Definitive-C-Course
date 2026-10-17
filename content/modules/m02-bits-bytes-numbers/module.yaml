@@ -21,6 +21,7 @@ resources:
     url: https://beej.us/guide/bgc/html/split/
 lessons:
   - 01-binary-and-hex
+  - 02-widths-and-sizeof
 problemSet: []
 project: credit
 coreExercises: []
