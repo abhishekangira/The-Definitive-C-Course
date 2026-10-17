@@ -1,0 +1,63 @@
+<template id="ff-01-decode-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #ff01-hex { position: absolute; left: 192px; top: 372px; font: 700 44px/1 var(--font-mono); color: var(--program); }
+    .ff01-f { top: 450px; height: 280px; padding: 24px 22px; }
+    #ff01-fs { left: 192px; width: 270px; border-color: var(--border-strong); }
+    #ff01-fe { left: 498px; width: 460px; border-color: var(--program); }
+    #ff01-ff { left: 996px; width: 732px; border-color: var(--warn); }
+    .ff01-l { font: 700 28px/1 var(--font-mono); color: var(--text-muted); }
+    .ff01-b { margin-top: 26px; font: 700 40px/1 var(--font-mono); color: var(--text); white-space: nowrap; }
+    .ff01-d { margin-top: 28px; font: 400 32px/1.35 var(--font-mono); color: var(--text); white-space: nowrap; }
+    .ff01-d i { font-style: normal; color: var(--text-muted); font-size: 28px; }
+    #ff01-res { position: absolute; left: 192px; top: 770px; width: 1536px; font: 800 48px/1.2 var(--font-mono); color: var(--text); }
+    #ff01-note { position: absolute; left: 192px; top: 870px; width: 1536px; font: 400 30px/1.3 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="ff-01-decode" data-width="1920" data-height="1080" data-duration="20"
+       data-steps='{"decode":{"label":"Decode","start":0,"end":19.45}}'>
+    <div class="ff-stage" id="ff01-stage">
+      <div class="ff-head" id="ff01-head">
+        <h1 class="ff-title" id="ff01-title">Three fields, one formula.</h1>
+        <p class="ff-sub" id="ff01-sub">Decode 0x3F800000.</p>
+      </div>
+      <div id="ff01-hex">0x3F800000 read as a float</div>
+      <div class="ff-card ff01-f" id="ff01-fs"><div class="ff01-l">sign (1 bit)</div><div class="ff01-b" id="ff01-sb">0</div><div class="ff01-d" id="ff01-sd">0 = positive</div></div>
+      <div class="ff-card ff01-f" id="ff01-fe"><div class="ff01-l">exponent (8 bits)</div><div class="ff01-b" id="ff01-eb">0111 1111</div><div class="ff01-d" id="ff01-ed">127 - 127 = 0<br /><i>scale 2^0</i></div></div>
+      <div class="ff-card ff01-f" id="ff01-ff"><div class="ff01-l">fraction (23 bits)</div><div class="ff01-b" id="ff01-fb">000 0000 0000 0000 0000 0000</div><div class="ff01-d" id="ff01-fd">1.0<br /><i>1 + 0 / 2^23</i></div></div>
+      <p id="ff01-res">(+1) x 1.0 x 2^0 = 1</p>
+      <p id="ff01-note">A float is not a number; it is a pattern that a formula turns into one.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("ff-01-decode", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 20;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      tl.addLabel("decode", S.decode.start);
+      tl.fromTo("#ff01-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#ff01-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#ff01-hex", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, 0.9);
+      tl.fromTo("#ff01-fs", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5 }, 1.8);
+      tl.fromTo("#ff01-fe", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5 }, 3.2);
+      tl.fromTo("#ff01-ff", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5 }, 4.6);
+      tl.fromTo("#ff01-sd", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 7.0);
+      tl.fromTo("#ff01-ed", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 8.6);
+      tl.fromTo("#ff01-fd", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 10.2);
+      tl.fromTo("#ff01-res", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 12.4);
+      tl.fromTo("#ff01-note", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 15.0);
+
+      tl.fromTo("#ff01-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["ff-01-decode"] = tl;
+    })();
+  </script>
+</template>

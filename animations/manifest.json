@@ -31,6 +31,34 @@
         "stills/source.webp": "5805a6a2755313a3366a0e5de277a60d21992a45b335010bf5df114f3acd4014",
         "transcript.txt": "d82a38bed78b86274ba8d725e5e0b87f730da3b604cb5b662b2712ad890b69ee"
       }
+    },
+    "a03-twos-complement-wheel": {
+      "sourceHash": "fed1d5350395ee7e15865ff462994e422d341bbf4dfc66b85088e3cb74cf38ea",
+      "browser": "Google Chrome 155.0.8059.84",
+      "outputs": {
+        "a03-twos-complement-wheel.mp4": "6d40c53b21b8b3d91dfbc674c3d9cfc85565723da40691e93bb079a2686ab287",
+        "a03-twos-complement-wheel.vtt": "9731dc4bfc66504ba771ecfec723b3146c54138ee54c6bb8286589291926d587",
+        "poster.webp": "125ca41206014c148e71b5033b5ad45fb8a8d2eecd0d722deb8f70e5d2e0964d",
+        "steps.json": "e6a9e2c56ee8d16885ce44b106a2e3fdbd5f6d4b960ae40e99d2e0fec7cc7fc3",
+        "stills/signed.webp": "bb5018b70d736da74816d2a09d7ee4d6e2397fc4c65f0e4db6a263414f616cad",
+        "stills/wheel.webp": "fd0076d4a558b62cbc2c7f417146a4c6a2ca60d8b84315841e4376d097216644",
+        "stills/wrap.webp": "54faf8b916f5ee7af9a7d5a6a8e30641e6c1bea0c87feff8691e398c922fdfa6",
+        "transcript.txt": "ff4c84d21643b7de818858055359efefcff3ca8acc18ef1de947072203ee59e2"
+      }
+    },
+    "a04-float-fields": {
+      "sourceHash": "c57f85d69880545b9a3b35d819bf47932e2307e50dce82d41fcfbb63c5f5e6ac",
+      "browser": "Google Chrome 155.0.8059.84",
+      "outputs": {
+        "a04-float-fields.mp4": "5418b6471eee1cbc172146c9b4c64219885c8ef1c33128e18c8fd962461e2918",
+        "a04-float-fields.vtt": "894cbf8d450f68cdeff6257b862bd13e98446a6a85fb015ade3d3b2a2ebe61a6",
+        "poster.webp": "b939a73965dd1df2a2a29ac578c146387a795b19027a58c119621f55e5ba5f58",
+        "steps.json": "c2523f7be9cb92c778688579a6e4edd442e0af130d578090025c81b3fc75eccf",
+        "stills/decode.webp": "833e42fb0232cd2e10f3e35b89bf685c5769e8cfdb9181590909a1adb2f13e91",
+        "stills/sum.webp": "f9175402bf1e701f5fabe9f88904d00000bc4df67920b63e3b42e555a1789eda",
+        "stills/tenth.webp": "f3753a15c5b80c1b8551b8db65b5b7435044bc089f5fbe119ec60534c13fa464",
+        "transcript.txt": "bc8715b6880a3c57c899089da2dcc70700e20035dbf839d475ede679bca97bee"
+      }
     }
   }
 }
