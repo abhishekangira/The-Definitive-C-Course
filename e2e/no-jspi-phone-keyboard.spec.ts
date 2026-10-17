@@ -124,10 +124,27 @@ test.describe.serial('lesson 1 with the keyboard only', () => {
   /** A focused element must show it: an outline or box-shadow on itself, its label, or (editor) the frame around CodeMirror (.editor:focus-within). */
   const hasFocusIndicator = (el: ElementHandle) => el.evaluate(node => {
     const e = node as Element;
+    // Computed colours come as rgb()/rgba() or, for color-mix(), as color(srgb r g b / a).
+    const COLOR = /(?:rgba?|color)\([^)]*\)/;
+    const alpha = (color: string) => {
+      const m = COLOR.exec(color);
+      if (!m) return 0;
+      const inner = m[0].slice(m[0].indexOf('(') + 1, -1);
+      if (inner.includes('/')) return Number(inner.split('/')[1]);
+      const parts = inner.split(/[ ,]+/).filter(Boolean);
+      return m[0].startsWith('rgba') && parts.length > 3 ? Number(parts[3]) : 1;
+    };
+    // Visible: a real outline (style, width, non-transparent colour) or a ring shadow (offset 0, spread >= 2px, not transparent).
+    // A decorative drop shadow (blur, no spread) does not count.
     const shown = (n: Element | null) => {
       if (!n) return false;
       const c = getComputedStyle(n);
-      return (c.outlineStyle !== 'none' && parseFloat(c.outlineWidth) > 0) || c.boxShadow !== 'none';
+      if (c.outlineStyle !== 'none' && parseFloat(c.outlineWidth) > 0 && alpha(c.outlineColor) >= 0.2) return true;
+      return c.boxShadow.split(/,(?![^(]*\))/).some(layer => {
+        const lengths = (layer.replace(COLOR, '').match(/-?[\d.]+px/g) ?? []).map(parseFloat);
+        const [x = 0, y = 0, blur = 0, spread = 0] = lengths;
+        return x === 0 && y === 0 && blur === 0 && spread >= 2 && alpha(layer) >= 0.2;
+      });
     };
     // A visually hidden control (1px, clipped) is not where the learner looks: its label must show the focus.
     const r = e.getBoundingClientRect();
@@ -145,7 +162,7 @@ test.describe.serial('lesson 1 with the keyboard only', () => {
     if (!el) throw new Error(`${what}: not in the page`);
     for (let presses = 0; presses < 150; presses++) {
       if (await el.evaluate(e => e === document.activeElement)) {
-        expect(await hasFocusIndicator(el), `${what}: focus must be visible (outline or box-shadow on it or its label)`).toBe(true);
+        expect(await hasFocusIndicator(el), `${what}: focus must be visible (a visible outline or ring shadow on it or its label)`).toBe(true);
         return;
       }
       await tab(back);
@@ -172,7 +189,7 @@ test.describe.serial('lesson 1 with the keyboard only', () => {
     await press(submit, `${what}: Check again`, 'Enter');
   }
 
-    test('every card of lesson 1 can be completed with Tab, Shift+Tab, Enter and Space', async () => {
+  test('every card of lesson 1 can be completed with Tab, Shift+Tab, Enter and Space', async () => {
     await warmUp(page); // with the mouse: the warm-up is not under test
     await page.goto(`#/m/${mod.id}/${lessonStem(1)}`);
     const first = page.locator('section[data-card="0"]');
