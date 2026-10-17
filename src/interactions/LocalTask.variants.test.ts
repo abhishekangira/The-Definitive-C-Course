@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parse } from 'yaml';
-import { emptyProgress, getProgress, replaceProgress, type ExerciseProgress } from '../progress/store';
+import { emptyProgress, getProgress, migrate, replaceProgress, type ExerciseProgress } from '../progress/store';
 import { encodeCompletionToken, encodeProgressCode } from '../testing/token';
 import type { ExerciseMeta } from '../content-model/types';
 import type { ExerciseEntry } from '../content-runtime/course';
@@ -163,6 +163,7 @@ describe('LT solution gate and variant on the fixture exercise', () => {
     await paste(task, code1);
     expect(getProgress().exercises['lt-free-list'].substantive).toBe(1);
     expect(getProgress().exercises['lt-free-list'].attempts).toBe(2);
+    expect(getProgress().exercises['lt-free-list'].codes).toEqual([code1]);
     expect(getProgress().streak.days.length).toBe(1);
     expect(findButton(task, /^Show the solution$/).disabled).toBe(true);
     expect(task.textContent).toContain('One more progress code from a changed program unlocks the solution.');
@@ -187,6 +188,7 @@ describe('LT solution gate and variant on the fixture exercise', () => {
     expect(v).not.toBeNull();
     expect(document.activeElement).toBe(host.querySelector('[aria-label="Variant: Count the nodes"]'));
     expect(host.querySelector('[data-variant-note]')?.textContent).toBe('Variant started: Count the nodes.');
+    expect(host.querySelector('[data-variant-note]')?.getAttribute('role')).toBe('status');
     expect(task.querySelector('label')?.textContent).toBe('Code printed by check.mjs for Free the whole list');
     expect(v.querySelector('label')?.textContent).toBe('Variant code printed by check.mjs for Count the nodes');
     expect(task.querySelector('button[type="submit"]')?.getAttribute('aria-label')).toBe('Submit code for Free the whole list');
@@ -233,6 +235,62 @@ describe('LT solution gate and variant on the fixture exercise', () => {
     expect(box('lt-free-list/variants/v1')).toBeNull();
     expect(host.textContent).not.toContain('V2_SOLUTION_HIDDEN');
     expect(host.textContent).not.toContain(variantMarker);
+  });
+
+  it('pasting the same code twice keeps one entry', async () => {
+    const code = await encodeProgressCode({ exercise: 'lt-free-list', bits: '100', run: 1, src: 'aaaaaaaa' }, getProgress().seed);
+    render(createElement(LocalTask, { entry: parent }));
+    const task = box('lt-free-list');
+    await paste(task, code);
+    await paste(task, code);
+    expect(getProgress().exercises['lt-free-list'].codes).toEqual([code]);
+    expect(getProgress().exercises['lt-free-list'].attempts).toBe(2);
+  });
+
+  it('does not say the solution is newly available once it is already on screen', async () => {
+    const seed = getProgress().seed;
+    const code1 = await encodeProgressCode({ exercise: 'lt-free-list', bits: '110', run: 1, src: 'aaaaaaaa' }, seed);
+    const code2 = await encodeProgressCode({ exercise: 'lt-free-list', bits: '111', run: 2, src: 'bbbbbbbb' }, seed);
+    const again = await encodeProgressCode({ exercise: 'lt-free-list', bits: '111', run: 3, src: 'cccccccc' }, seed);
+    render(createElement(LocalTask, { entry: parent }));
+    const task = box('lt-free-list');
+    await click(task, /^Stuck\? Show a hint$/);
+    await click(task, /^Show hint 2 \(concept\)$/);
+    await click(task, /^Show hint 3 \(partial code\)$/);
+    await paste(task, code1);
+    await paste(task, code2);
+    expect(task.textContent).toContain('The reference solution is now available.');
+    await click(task, /^Show the solution$/);
+    expect(task.textContent).toContain(parentSolution);
+    await paste(task, again);
+    expect(getProgress().exercises['lt-free-list'].solutionViewed).toBe(true);
+    expect(getProgress().exercises['lt-free-list'].substantive).toBe(3);
+    expect(task.textContent).toContain('Keep going and paste the final token.');
+    expect(task.textContent).not.toContain('The reference solution is now available.');
+  });
+
+  it('a document that counted code strings stays locked after it is loaded', async () => {
+    const seed = getProgress().seed;
+    const sameA = await encodeProgressCode({ exercise: 'lt-free-list', bits: '110', run: 1, src: 'aaaaaaaa' }, seed);
+    const sameB = await encodeProgressCode({ exercise: 'lt-free-list', bits: '110', run: 2, src: 'aaaaaaaa' }, seed);
+    const loaded = migrate({
+      ...getProgress(),
+      exercises: {
+        'lt-free-list': {
+          attempts: 2, substantive: 2, activeMs: 0, hintsViewed: 3, passed: false, solutionViewed: false, mastered: false,
+          codes: [sameA, sameB],
+        },
+      },
+    });
+    expect(loaded.exercises['lt-free-list'].substantive).toBe(1);
+    replaceProgress(loaded);
+    render(createElement(LocalTask, { entry: parent }));
+    const task = box('lt-free-list');
+    expect(findButton(task, /^Show the solution$/).disabled).toBe(true);
+    expect(task.textContent).toContain('One more progress code from a changed program unlocks the solution.');
+    await paste(task, sameB);
+    expect(getProgress().exercises['lt-free-list'].substantive).toBe(1);
+    expect(findButton(task, /^Show the solution$/).disabled).toBe(true);
   });
 
   it('a completion token without viewing the solution masters the exercise and hides the solution', async () => {

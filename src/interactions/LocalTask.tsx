@@ -68,7 +68,7 @@ export function LocalTask({ entry, onPassed, projectId, assessment, onGiveUp, pa
       onPassed?.();
     } else {
       const now = exerciseProgress(getProgress(), entry.id);
-      const unlocked = !isVariant && !assessment && offerSolution && solutionGate(now, false, 'codes').unlocked;
+      const unlocked = !isVariant && !assessment && offerSolution && !now.solutionViewed && solutionGate(now, false, 'codes').unlocked;
       const next = unlocked ? 'The reference solution is now available.' : 'Keep going and paste the final token.';
       setMsg({ ok: false, text: `Progress code accepted (${v.passed ?? '?'} of ${v.total ?? '?'} checks passing). ${next}` });
     }

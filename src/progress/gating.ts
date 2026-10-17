@@ -90,9 +90,8 @@ export function solutionGate(e: ExerciseProgress, isVariant: boolean, attempts: 
     };
   }
   const next = attempts === 'codes' ? 'One more progress code from a changed program' : 'One more changed attempt';
-  // A local task never adds activeMs, so with none stored the minutes clause would promise time this panel cannot record.
-  // Time that is already stored still unlocks above, and still explains the remainder below.
-  if (attempts === 'codes' && minutes <= 0) return { unlocked: false, reason: `${next} unlocks the solution.` };
+  // A local task never adds activeMs. Time already stored can still unlock above; the lock text must not promise minutes.
+  if (attempts === 'codes') return { unlocked: false, reason: `${next} unlocks the solution.` };
   const left = Math.ceil(20 - minutes);
   const unit = left === 1 ? 'minute' : 'minutes';
   return { unlocked: false, reason: `${next} (or ${left} more ${unit} of work) unlocks the solution.` };

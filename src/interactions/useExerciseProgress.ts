@@ -1,18 +1,7 @@
 // Attempt/hint/solution bookkeeping shared by every exercise kind (PLAN.md §2.5).
 import { useCallback, useRef } from 'react';
-import { exerciseProgress, noteActivity, update, useProgress, type ExerciseProgress } from '../progress/store';
-import { parseCode } from '../testing/token';
+import { distinctProgressSources, exerciseProgress, noteActivity, update, useProgress, type ExerciseProgress } from '../progress/store';
 import { fnv1a } from './hash';
-
-/** Distinct `src` values among pasted progress codes. Completion tokens have no source hash. */
-function distinctSourceCount(codes: string[]): number {
-  const srcs = new Set<string>();
-  for (const code of codes) {
-    const parsed = parseCode(code);
-    if (parsed.ok && parsed.code.type === 'progress') srcs.add(parsed.code.src);
-  }
-  return srcs.size;
-}
 
 export function useExerciseProgress(id: string, parentId?: string) {
   const progress = useProgress();
@@ -72,7 +61,7 @@ export function useExerciseProgress(id: string, parentId?: string) {
       const e = exerciseProgress(p, id);
       e.codes = [...new Set([...(e.codes ?? []), canonical])];
       e.attempts += 1;
-      e.substantive = distinctSourceCount(e.codes);
+      e.substantive = distinctProgressSources(e.codes) ?? 0;
       if (info.complete) {
         e.passed = true;
         if (!e.solutionViewed) e.mastered = true;

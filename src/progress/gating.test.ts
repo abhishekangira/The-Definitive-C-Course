@@ -134,7 +134,9 @@ describe('solutionGate for local tasks', () => {
     expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 0 }), false, 'codes').reason)
       .toBe('One more progress code from a changed program unlocks the solution.');
     expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 19 * MIN }), false, 'codes').unlocked).toBe(false);
-    expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 19 * MIN }), false, 'codes').reason).toContain('1 more minute of work');
+    // Stored time can still unlock at 20 minutes. The lock text never promises minutes: this panel does not add them.
+    expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 19 * MIN }), false, 'codes').reason)
+      .toBe('One more progress code from a changed program unlocks the solution.');
     expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 20 * MIN }), false, 'codes')).toEqual({ unlocked: true });
     expect(solutionGate(ex({ hintsViewed: 3, substantive: 2, activeMs: 0 }), false, 'codes')).toEqual({ unlocked: true });
   });
