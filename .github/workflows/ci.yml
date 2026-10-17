@@ -224,6 +224,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # The full check job installs ffmpeg with the native toolchain. animation.spec.ts needs it to make a WebM.
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: npx playwright install --with-deps chromium
       - name: Repeat end-to-end
         shell: bash
