@@ -1,28 +1,31 @@
 id: hello-its-me/variants/1
 kind: ct
 title: Next birthday
-prompt: 'Ask `Name? ` and then `Age? `, and print `<name>, next year you''ll be <age + 1>.`
+prompt: 'Ask `Age? ` and then `Name? `, and print `<name>, next year you''ll be <age + 1>.`
 
-  For example: `Ada, next year you''ll be 37.` Use `get_line` and `get_int`.
+  For example: `Ada, next year you''ll be 37.` Use `get_int` and `get_line`.
+
+  Read the age first: `get_line` hands back a pointer to one shared buffer that the next input overwrites,
+  so the name has to be the last thing you read.
 
   '
 runsIn: browser
 hints:
-- 'You need two inputs: one string, one int. Which `learnc.h` function returns each?'
-- Use `%s` for the name and `%d` for `age + 1` in a single `printf`.
+- 'You need two inputs: one int, one string. Which `learnc.h` function returns each? Read them in the order the prompt gives.'
+- Use `%s` for the name and `%d` for `age + 1` in a single `printf`, after both inputs have been read.
 - '```
 
-  const char *name = get_line("Name? ");
-
   int age = get_int("Age? ");
+
+  const char *name = get_line("Name? ");
 
   printf("%s, next year you''ll be %d.\n", name, age + 1);
 
   ```'
 file: birthday.c
 variants: []
-sampleStdin: 'Ada
+sampleStdin: '36
 
-  36
+  Ada
 
   '

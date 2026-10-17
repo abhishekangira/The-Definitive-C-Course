@@ -14,7 +14,7 @@
         "stdout": "10\n8\n6\n4\n2\nGo!\n",
         "exit": 0
       },
-      "hint": "Should 0 be printed?"
+      "hint": "Should 0 be printed, and does each number end with a newline?"
     }
   ]
 }

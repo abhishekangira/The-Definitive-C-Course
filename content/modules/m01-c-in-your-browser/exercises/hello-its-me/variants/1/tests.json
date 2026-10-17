@@ -8,20 +8,20 @@
     {
       "name": "Ada, 36",
       "run": {
-        "stdin": "Ada\n36\n"
+        "stdin": "36\nAda\n"
       },
       "expect": {
-        "stdout": "Name? Age? 36, next year you'll be 37.\n",
+        "stdout": "Age? Name? Ada, next year you'll be 37.\n",
         "exit": 0
       }
     },
     {
       "name": "Bo, 9",
       "run": {
-        "stdin": "Bo\n9\n"
+        "stdin": "9\nBo\n"
       },
       "expect": {
-        "stdout": "Name? Age? 9, next year you'll be 10.\n",
+        "stdout": "Age? Name? Bo, next year you'll be 10.\n",
         "exit": 0
       }
     }

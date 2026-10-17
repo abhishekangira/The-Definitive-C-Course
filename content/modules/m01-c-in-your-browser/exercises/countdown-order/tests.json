@@ -14,7 +14,7 @@
         "stdout": "3...\n2...\n1...\nLiftoff!\n",
         "exit": 0
       },
-      "hint": "Check the loop condition: should 0 be printed?"
+      "hint": "Compare the output and the exit code: should 0 be printed, and what should main return?"
     }
   ]
 }

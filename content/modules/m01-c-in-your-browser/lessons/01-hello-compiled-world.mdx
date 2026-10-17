@@ -5,9 +5,9 @@ minutes: 40
 summary: Your first C program, what each line does, and what actually happens when you press Run.
 ---
 
-In JavaScript you hand source code to an engine like V8, which reads it and runs it, compiling hot paths to machine code on the fly. C works differently: a **compiler** turns your source into a program *before* anything runs. The program is then run directly, with no engine underneath.
+In JavaScript you hand source code to an engine like V8, which reads it and runs it, compiling hot paths to machine code on the fly. C works differently: a **compiler** turns your source into a program *before* anything runs. On a real computer the program is then run directly by the OS and CPU, with no engine underneath (in your browser, a WebAssembly runtime plays that role).
 
-In this course the compiler is **clang**, the same compiler family that ships with macOS (Apple builds its own version of clang). It runs right here in your browser, so you can start without installing anything.
+In this course the compiler is **clang**, the same compiler family macOS developers use (Apple builds its own version of clang and installs it with Xcode or the Command Line Tools). It runs right here in your browser, so you can start without installing anything. Every program here is compiled with `-std=c17 -Wall -Wextra -pedantic` (C17 plus extra warnings), and the course also checks each one with gcc, the usual Linux compiler, so you will sometimes see its messages next to clang's.
 
 Here is a complete C program. Before you run it, commit to a prediction: what exactly will it print?
 
@@ -27,7 +27,7 @@ Line by line:
 - `int main(void)` is where every C program starts. It takes no arguments (`void`) and returns an `int`.
 - `printf` prints a **format string**. `\n` is a newline (nothing adds one for you), and each `%d` is replaced by the next argument, printed as a decimal integer.
 - `return 0;` ends `main` and hands **exit status** 0 back to whatever started the program. By convention 0 means success and anything else means failure.
-- Every statement ends with `;`. Unlike JavaScript there is no automatic semicolon insertion.
+- Every declaration and every statement like `printf(...);` or `return 0;` ends with `;`, but a `{ }` block doesn't. Unlike JavaScript there is no automatic semicolon insertion.
 
 <Analogy js="console.log(`${a} + ${b}`)" c={'printf("%d + %d\\n", a, b)'} breaksDown="`printf` trusts you: each `%` directive must match the type of its argument. Pass a `double` where `%d` expects an `int` and you get undefined behaviour, not a helpful conversion. The compiler warns you; you'll see that in lesson 2." />
 
@@ -40,7 +40,7 @@ Line by line:
     "The program won't compile",
   ]}
   answer={2}
-  explain="`main`'s return value becomes the process's **exit status**. Shells, `make` and CI pipelines read it: 0 means success, anything else failure. It's the same number you'd get from `process.exitCode` in Node."
+  explain="`main`'s return value becomes the process's **exit status**. Shells, `make` and CI pipelines read it: 0 means success, anything else failure. It's the same status a Node script sets with `process.exitCode = 1`."
 />
 
 So what happened when you pressed Run? Two separate programs did their jobs: clang compiled your code, then your compiled program ran.
@@ -109,7 +109,7 @@ int main(void) {
 </PipelineExplorer>
 
 <Choice
-  question="Your 6-line program turned into hundreds of lines after preprocessing. Why?"
+  question="Your 6-line program turned into dozens of lines after preprocessing. Why?"
   options={[
     "The compiler adds debugging code to every program",
     "`#include <stdio.h>` is replaced by the entire text of the header (declarations of `printf`, `FILE` and many more), which the compiler then reads as if you had typed it",

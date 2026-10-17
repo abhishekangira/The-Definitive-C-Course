@@ -134,7 +134,7 @@
   prompt: "A program declares `int get_total(void);` at the top and calls it in `main`, but no file defines `get_total`. Which message do you get, and from which stage?"
   choices:
     - "`call to undeclared function 'get_total'`, from the compiler"
-    - "`undefined reference to 'get_total'` (or `undefined symbol`), from the linker"
+    - "An `undefined reference` (or `undefined symbol`) error that names `get_total`, from the linker"
     - "No error: the function returns 0"
     - "A crash when the program reaches the call"
   answer: 1

@@ -1,4 +1,4 @@
 # Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
 cases:
   - name: "prints the countdown then Liftoff!"
-    hint: "Check the loop condition: should 0 be printed?"
+    hint: "Compare the output and the exit code: should 0 be printed, and what should main return?"

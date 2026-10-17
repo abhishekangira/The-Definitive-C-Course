@@ -5,10 +5,10 @@ minutes: 40
 summary: Reading input with the course helper learnc.h (whose source you can read), and why raw scanf needs care.
 ---
 
-Reading input safely in C takes more machinery than you've learned so far, so for now we use a tiny helper header, **`learnc.h`**. It's ordinary C (about 100 lines, MIT licence), not a library hiding magic: you'll write your own version in Module 6.
+You already used `get_int` in the pyramid and `max3` exercises. It comes from a tiny helper header, **`learnc.h`**, because reading input safely in C takes more machinery than you've learned so far. It's ordinary C (about 100 lines, MIT licence), not a library hiding magic: you'll write your own version in Module 6.
 
 - `int get_int(const char *prompt)` prints the prompt, reads a line, and **asks again** until the whole line is a valid `int`.
-- `const char *get_line(const char *prompt)` returns the line you typed, without the `\n`. For now, read `const char *` as "a string".
+- `const char *get_line(const char *prompt)` returns the line you typed, without the `\n`. For now, read `const char *` as "a string" (`printf` prints one with `%s`). It lasts only until your next `get_line` or `get_int`, which overwrite it: use the text before you read again.
 
 When a program reads input in this course, the input typed by the user is shown above the Run button. Input you type isn't part of the program's output, so it doesn't appear in what the program prints.
 

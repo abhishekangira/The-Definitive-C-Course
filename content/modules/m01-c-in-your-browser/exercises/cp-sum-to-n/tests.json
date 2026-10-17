@@ -44,6 +44,16 @@
         "stdout": "n: n: 6\n",
         "exit": 0
       }
+    },
+    {
+      "name": "rejects 1001",
+      "run": {
+        "stdin": "1001\n3\n"
+      },
+      "expect": {
+        "stdout": "n: n: 6\n",
+        "exit": 0
+      }
     }
   ]
 }

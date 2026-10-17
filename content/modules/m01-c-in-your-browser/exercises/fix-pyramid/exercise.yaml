@@ -22,15 +22,17 @@ prompt: '**Bug report:** "I asked for a pyramid of height 3. It printed **four**
   (The prompt `Height: ` has no newline, and the input you type isn''t part of the output, so the first
   `#` follows the prompt.)
 
-  Find the bug and fix it without rewriting the program.
+  Find the bug and fix it without rewriting the program. (`get_int`, which reads the height, comes from the
+  helper header `learnc.h` that comes with the course; lesson 5 opens it up.)
 
   '
 runsIn: browser
 hints:
 - Run it with height 1 and count the lines. An empty first line means the first time through the loop
   printed zero `#`s. What is `row` on that first pass?
-- This is an **off-by-one** error in the loop bounds. Either the loop should start at 1, or it should
-  stop one earlier and print `row + 1` hashes. Change one thing only.
+- 'This is an **off-by-one** error in the loop bounds. The smallest fix changes one thing: where the outer
+  loop starts. (Stopping one earlier also works, but then the inner loop must print `row + 1` hashes
+  too, so that route takes two edits.)'
 - 'Change `for (int row = 0; row <= height; row++)` to `for (int row = 1; row <= height; row++)`. The
   inner loop then prints `row` hashes: 1, 2, 3…'
 file: pyramid.c
