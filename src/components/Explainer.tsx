@@ -5,15 +5,24 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, Mark } from './Icon';
 import styles from './Explainer.module.css';
 
+/** The shape of public/animations/<id>/steps.json as tools/anim writes it. `end` is the settled frame just before the scene's exit fade. */
 interface StepsFile {
   id: string;
   title: string;
+  lesson?: string;
+  platform?: string;
+  description?: string;
   duration: number;
+  fps?: number;
   width: number;
   height: number;
-  steps: Array<{ key: string; label: string; time: number; end: number }>;
+  /** The MP4's file name; the deploy-time WebM has the same name with .webm. */
+  video: string;
+  /** Can be null (an animation without a poster). */
+  poster: string | null;
   captions: string;
-  poster: string;
+  transcript?: string;
+  steps: Array<{ key: string; label: string; time: number; end: number }>;
   stills?: Record<string, string>;
 }
 
@@ -33,8 +42,12 @@ export function Explainer({ id, pauses = [] }: { id: string; pauses?: PausePromp
 
   useEffect(() => {
     fetch(`${base}steps.json`).then(r => (r.ok ? r.json() : null)).then(setMeta).catch(() => setMeta(null));
-    fetch(`${base}transcript.txt`).then(r => (r.ok ? r.text() : '')).then(setTranscript).catch(() => {});
   }, [base]);
+  const transcriptFile = meta?.transcript ?? (meta ? 'transcript.txt' : null);
+  useEffect(() => {
+    if (!transcriptFile) return;
+    fetch(`${base}${transcriptFile}`).then(r => (r.ok ? r.text() : '')).then(setTranscript).catch(() => {});
+  }, [base, transcriptFile]);
 
   const pauseByStep = useMemo(() => new Map(pauses.map(p => [p.step, p])), [pauses]);
 
@@ -42,7 +55,8 @@ export function Explainer({ id, pauses = [] }: { id: string; pauses?: PausePromp
     const v = video.current;
     if (!v || !meta) return;
     const t = v.currentTime;
-    const cur = meta.steps.find(s => t >= s.time && t < s.end);
+    // The last step that has started: between a step's `end` and the next step's `time` (the exit fade) the chip stays on.
+    const cur = [...meta.steps].reverse().find(s => t >= s.time);
     setActiveStep(cur?.key ?? null);
     // Pause at the end of a step that has a prompt the learner hasn't answered yet.
     for (const s of meta.steps) {
@@ -61,9 +75,13 @@ export function Explainer({ id, pauses = [] }: { id: string; pauses?: PausePromp
 
   const seek = (time: number) => { const v = video.current; if (v) { v.currentTime = time + 0.01; void v.play(); } };
   const stillKeys = meta.steps.map(s => s.key);
+  const still = meta.stills?.[stillKeys[stillIndex]] ?? meta.poster;
+  const mp4 = meta.video;
+  const webm = mp4.replace(/\.mp4$/, '.webm');
 
   return (
-    <figure className={styles.box} aria-label={`Animation: ${meta.title}`}>
+    <figure className={styles.box} aria-label={`Animation: ${meta.title}`} aria-describedby={meta.description ? `${id}-desc` : undefined}>
+      {meta.description && <p id={`${id}-desc`} className="visually-hidden">{meta.description}</p>}
       <div className={styles.head}>
         <figcaption className={styles.title}>{meta.title}</figcaption>
         <span className={styles.dur}>{Math.round(meta.duration)} s · captions on</span>
@@ -72,9 +90,9 @@ export function Explainer({ id, pauses = [] }: { id: string; pauses?: PausePromp
 
       {!stills ? (
         <div className={styles.stage}>
-          <video ref={video} controls preload="metadata" playsInline poster={`${base}${meta.poster}`} onTimeUpdate={onTime} className={styles.video}>
-            <source src={`${base}${id}.mp4`} type='video/mp4; codecs="avc1.640028"' />
-            <source src={`${base}${id}.webm`} type='video/webm; codecs="vp9"' />
+          <video ref={video} controls preload="metadata" playsInline poster={meta.poster ? `${base}${meta.poster}` : undefined} onTimeUpdate={onTime} className={styles.video}>
+            <source src={`${base}${mp4}`} type='video/mp4; codecs="avc1.640028"' />
+            <source src={`${base}${webm}`} type='video/webm; codecs="vp9"' />
             <track kind="captions" src={`${base}${meta.captions}`} srcLang="en" label="English" default />
             Your browser can't play this video. Use the step-by-step stills instead.
           </video>
@@ -99,7 +117,7 @@ export function Explainer({ id, pauses = [] }: { id: string; pauses?: PausePromp
         </div>
       ) : (
         <div className={styles.stills}>
-          <img src={`${base}${meta.stills?.[stillKeys[stillIndex]] ?? meta.poster}`} alt={meta.steps[stillIndex]?.label ?? ''} className={styles.video} />
+          {still && <img src={`${base}${still}`} alt={meta.steps[stillIndex]?.label ?? ''} className={styles.video} />}
           <div className={styles.stillNav}>
             <button type="button" className="btn btn-sm" onClick={() => setStillIndex(i => Math.max(0, i - 1))} disabled={stillIndex === 0}><Icon name="arrow-left" /> Previous</button>
             <span aria-live="polite">Step {stillIndex + 1} of {meta.steps.length}: {meta.steps[stillIndex]?.label}</span>
