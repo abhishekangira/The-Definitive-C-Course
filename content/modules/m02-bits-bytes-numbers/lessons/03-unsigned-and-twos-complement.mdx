@@ -30,6 +30,12 @@ How do the signed labels work? In **two's complement** the top bit is worth minu
 
 <NumberDrill value={-1} from="dec" to="hex" width={32} signed />
 
+Here is the whole idea in motion: an 8-bit counter as a ring, the same bits read as signed, and the one case where signed arithmetic does not wrap. Watch it once, then try the smallest 32-bit signed value, which has only the top bit set.
+
+<Animation id="a03-twos-complement-wheel" />
+
+<NumberDrill value={-2147483648} from="dec" to="hex" width={32} signed />
+
 The bits do not change when you change the reading; only the type does. Converting a value that does not fit into a **signed** type is not undefined: the C standard calls the result implementation-defined (C17 6.3.1.3), and on every compiler this course uses, the bits are kept. Converting to **unsigned** is fully defined: the value is reduced modulo 2 to the power of the width.
 
 ```c id=same-bits

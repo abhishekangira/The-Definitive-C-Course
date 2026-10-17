@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>a03-twos-complement-wheel</title>
+    <!-- GSAP is vendored (synced from animations/_shared): no render-time network. -->
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      /* Fonts: shipped woff2 only (OFL, @fontsource 5.3.0, latin subset), synced from animations/_shared.
+         The latin subset has no arrows or math symbols: draw arrows as SVG, never type them. */
+      @font-face { font-family: "Inter"; font-weight: 400; font-style: normal; src: url("assets/fonts/inter-latin-400-normal.woff2") format("woff2"); }
+      @font-face { font-family: "Inter"; font-weight: 700; font-style: normal; src: url("assets/fonts/inter-latin-700-normal.woff2") format("woff2"); }
+      @font-face { font-family: "Inter"; font-weight: 800; font-style: normal; src: url("assets/fonts/inter-latin-800-normal.woff2") format("woff2"); }
+      @font-face { font-family: "JetBrains Mono"; font-weight: 400; font-style: normal; src: url("assets/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2"); }
+      @font-face { font-family: "JetBrains Mono"; font-weight: 700; font-style: normal; src: url("assets/fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2"); }
+
+      /* Palette = the app's dark theme (src/styles/tokens.css). One dark render, shown in both app themes.
+         Colour says WHO is acting: page (blue), program (green), native (orange). Warnings and undefined behaviour are amber. Every text/background pair is WCAG AA. */
+      :root {
+        --bg: #0f1216;
+        --bg-elev: #171b21;
+        --bg-sunken: #0b0d10;
+        --bg-code: #12161b;
+        --border: #2a3039;
+        --border-strong: #3d4552;
+        --text: #e7e9ec;
+        --text-muted: #a4abb6;
+        --text-faint: #8a929e;
+        --page: #7cb2ff;
+        --page-soft: #16233a;
+        --compiler: #c4a7ff;
+        --compiler-soft: #241a3d;
+        --program: #5fd08a;
+        --program-soft: #13291c;
+        --native: #ffa657;
+        --native-soft: #33210f;
+        --warn: #f0c060;
+        --warn-soft: #2d2412;
+        --on-accent: #0b1220;
+        --font-sans: "Inter", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0f1216; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #0f1216; }
+      /* Sub-composition hosts stretch to fill the root. */
+      #root > div[data-composition-src] { position: absolute; inset: 0; }
+
+      /* ---- Shared scene components (class prefix tw-; scene-specific ids are prefixed prNN-) ---- */
+      .tw-stage { position: absolute; inset: 0; }
+      .tw-head { position: absolute; left: 192px; top: 196px; width: 1536px; }
+      .tw-title { font: 800 64px/1.08 var(--font-sans); letter-spacing: -0.02em; color: var(--text); }
+      .tw-sub { margin-top: 14px; font: 400 32px/1.3 var(--font-sans); color: var(--text-muted); }
+      .tw-card { position: absolute; background: var(--bg-elev); border: 3px solid var(--border-strong); border-radius: 22px; }
+      .tw-mono { font-family: var(--font-mono); }
+      .tw-h { font: 700 36px/1.15 var(--font-sans); color: var(--text); }
+      .tw-p { font: 400 28px/1.3 var(--font-sans); color: var(--text-muted); }
+      .tw-lbl { font: 700 28px/1.2 var(--font-mono); }
+      /* Arrows: an SVG whose paths draw themselves (pathLength normalised to 1, so no measuring at tween time). */
+      .tw-arrow { position: absolute; overflow: visible; color: var(--c, var(--text-muted)); }
+      .tw-arrow path { fill: none; stroke: currentColor; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+      .tw-arrow .tw-draw { stroke-dasharray: 1 1.5; }
+      /* Actor colours (who is acting). Boxes, arrows and labels take --c / --c-soft from these. */
+      .tw-page { --c: var(--page); --c-soft: var(--page-soft); }
+      .tw-comp { --c: var(--compiler); --c-soft: var(--compiler-soft); }
+      .tw-prog { --c: var(--program); --c-soft: var(--program-soft); }
+      .tw-nat { --c: var(--native); --c-soft: var(--native-soft); }
+      .tw-warn { --c: var(--warn); --c-soft: var(--warn-soft); }
+      /* Value readouts. */
+      .tw-big { font: 800 140px/1 var(--font-mono); color: var(--text); }
+      .tw-bits { font: 700 56px/1 var(--font-mono); color: var(--program); }
+      /* A node in a diagram: mono label (b) over a sans sub-label (i). */
+      .tw-box { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px 16px; text-align: center; border: 3px solid var(--c, var(--border-strong)); border-radius: 18px; background: var(--c-soft, var(--bg-elev)); }
+      .tw-box b { font: 700 34px/1.1 var(--font-mono); color: var(--c, var(--text)); }
+      .tw-box i { font: 400 26px/1.2 var(--font-sans); font-style: normal; color: var(--text-muted); text-wrap: balance; }
+      /* A small flying packet (a message or bytes in transit). */
+      .tw-packet { position: absolute; display: grid; place-items: center; height: 44px; padding: 0 14px; border: 3px solid var(--c); border-radius: 10px; background: var(--c-soft); font: 700 26px/1 var(--font-mono); color: var(--text); }
+      /* Source listing (shared by the editor in scenes 1 and 2). */
+      .tw-code { font: 400 var(--code-size, 38px)/var(--code-lh, 56px) var(--font-mono); color: var(--text); }
+      .tw-line > span { white-space: pre; }
+      .tw-line { display: flex; align-items: baseline; }
+      .tw-ln { display: inline-block; width: 1.3em; margin-right: 0.6em; text-align: right; font-size: max(24px, 0.74em); color: var(--text-faint); }
+      .tw-kw { color: #ff9bd0; }
+      .tw-str { color: #7fe0d0; }
+      .tw-num { color: #ffc58a; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="a03-twos-complement-wheel" data-start="0" data-duration="45" data-width="1920" data-height="1080">
+      <div id="el-bg" data-composition-id="tw-00-bg" data-composition-src="compositions/tw-00-bg.html" data-track-kind="graphics" data-start="0" data-duration="45" data-track-index="0" data-width="1920" data-height="1080"></div>
+      <div id="el-wheel" data-composition-id="tw-01-wheel" data-composition-src="compositions/tw-01-wheel.html" data-track-kind="graphics" data-start="0" data-duration="15" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-signed" data-composition-id="tw-02-signed" data-composition-src="compositions/tw-02-signed.html" data-track-kind="graphics" data-start="15" data-duration="15" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-wrap" data-composition-id="tw-03-wrap" data-composition-src="compositions/tw-03-wrap.html" data-track-kind="graphics" data-start="30" data-duration="15" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-rail" data-composition-id="tw-00-rail" data-composition-src="compositions/tw-00-rail.html" data-track-kind="graphics" data-start="0" data-duration="45" data-track-index="2" data-width="1920" data-height="1080"></div>
+    </div>
+    <script>
+      // The guard is required when the composition is loaded by @hyperframes/player (runtime injected after load).
+      window.__timelines = window.__timelines || {};
+      // Root timeline is intentionally empty; every scene owns its motion.
+      window.__timelines["a03-twos-complement-wheel"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>
