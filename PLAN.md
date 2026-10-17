@@ -1,7 +1,7 @@
 # The Definitive C Course: Plan
 
 A self-paced, interactive web app that teaches C17 and low-level computer fundamentals to experienced front-end engineers.
-- It is a static site with no backend.
+- It is a static site with no backend. The optional AI tutor (§2.6) calls an AI provider straight from the browser with the learner's own API key; the course runs no server for it.
 - Learners write and run real C in the browser from the first lesson.
 - From Module 3 (weeks 5–6), they also use their own toolchain for debugging, sanitizers and projects.
 
@@ -27,6 +27,7 @@ A self-paced, interactive web app that teaches C17 and low-level computer fundam
 | Local projects | Starter zip (built client-side, with the learner's seed) → `make test` → `node check.mjs` (zero-dependency, check50-like) **[V on Linux]** | The audience has Node; the test format is shared with the in-browser runner |
 | Animations | HyperFrames source projects in `animations/`, rendered to H.264 MP4 + captions, played in our accessible `<Explainer>` with pause-at-step predictions | Deterministic, byte-identical renders; accessible native video; no runtime JS **[V]** |
 | YouTube | Only **2 short segments** so far (≈3 min each) that beat what the app can do, on `youtube-nocookie.com` with `start`/`end`; listed in `videos.json` | IDs confirmed via oEmbed; boundaries taken from YouTube transcripts **[V]** |
+| AI tutor (optional) | Bring your own key: the learner pastes a key for an OpenAI-compatible chat API (OpenRouter by default) and picks a model; the browser calls the provider directly (§2.6) | Keeps the site static and free to run; the learner chooses and pays for the model; nothing to proxy, rate-limit or secure on our side |
 | Hosting | GitHub Actions → GitHub Pages (works on any static host); toolchain copied from `node_modules` at build, never committed | Free; repeat visits load the compiler from cache |
 | Course size | **13 modules + capstone ≈ 200 h ≈ 40 weeks at 5 h/week**; CS50x C parity at ≈ week 24 | See §6; a fast lane of about 190 h is defined |
 
@@ -316,6 +317,35 @@ Short explanation of the wheel (≤ 250 words)…
 - **Analogies.** Every JS/browser analogy is an `<Analogy js="…" c="…" breaksDown="…">` callout. Lint rejects empty breakdowns, and flags "exactly" or "same" for review.
 
 ---
+
+### 2.6 Optional AI tutor (bring your own key)
+The tutor helps a learner whose code fails a check: it nudges them towards the next step without giving the answer, and it explains why *their* approach does not work. It is off until the learner sets it up, and the course works the same without it.
+
+- **Provider and key.**
+  - Any OpenAI-compatible chat-completions API, called with `fetch` (no SDK, no new dependency). The default base URL is OpenRouter's (`https://openrouter.ai/api/v1`); the learner can change it to another compatible provider.
+  - The learner pastes their own API key and types or picks a model ID; the app suggests a few, and the learner pays the provider.
+  - The key, base URL and model live in their own key `tdcc:v1:tutor`, outside the progress document, so export, import and "Reset all progress" never touch them (like `tdcc:v1:playground`). Settings has a "Remove key" button.
+  - Settings says plainly that the key is stored in this browser and readable by any script on the page, and recommends a key with a spending limit.
+  - The tutor sends the learner's code to the provider they chose. The first use shows a one-time notice that names the provider host; until the learner accepts it, nothing is sent.
+- **Where it appears.**
+  - Browser exercises (CT, FB, PA) in lessons and problem sets, after at least one failed check of a program the learner changed (a substantive attempt, §2.5).
+  - Never in checkpoints (assessment mode), retrieval quizzes or LT tasks, and never on a variant served after a solution view: variants are solved alone (§2.5).
+  - Not in the Playground in the first version (there is no exercise to ground it).
+- **Two questions.**
+  - "Give me a nudge": one next step, phrased as a question or a pointer to a concept or a line. No corrected code.
+  - "Why doesn't my approach work?": the learner writes a sentence about their idea, and the tutor explains, against the real results, where that idea breaks.
+- **What is sent.**
+  - The exercise statement, the learner's current code, the compiler diagnostics, and every failing test case with its input, expected output and the learner's real output.
+  - The hints the learner has already opened (never unopened tiers).
+  - The reference solution, as hidden context marked "never reveal". It adds no new exposure, because a static site already ships it in the bundle (§4.2).
+- **Grounded in real runs.** The tutor only receives outputs the app produced by running the learner's code with the browser compiler. The prompt requires it to quote those results for any claim about what the program prints, and to say "I'm not sure" rather than predict output it was not given. This keeps the course rule that outputs come from real runs, never from memory.
+- **Leak guard.** Before a reply is shown, the app compares it with the reference solution, ignoring whitespace and comments. If it contains a solution line that the learner's code doesn't already have, or a code block longer than a few lines, it is replaced by a short refusal and a pointer to the next unopened hint.
+- **Progress and gating.**
+  - Each answered question is recorded per exercise (`tutorAsks`), which needs the usual migrate, merge, round-trip and key-list changes (§2.5, AGENTS.md).
+  - It does not count towards the solution unlock and does not count as a submission for the streak.
+- **Failure handling.** A wrong key, an exhausted credit, a rate limit, a network error, a refusal or an empty reply each show a short, specific message; the exercise keeps working. The request has a timeout and a cap on output length.
+- **Accessibility.** The reply is announced through a polite live region. The panel works with the keyboard and passes axe in light and dark like the rest of the app.
+- **Testing.** No real key in CI. Unit tests cover prompt building, the leak guard and the error mapping. The e2e stubs the provider with `page.route` and checks the gating, the notice, both questions, the leak guard and the error messages.
 
 ## 3. Build-time verification pipeline
 
@@ -1217,6 +1247,8 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 | macOS/arm64/Windows outputs can't be produced on Linux | CI runners per target, with outputs committed through a manifest |
 | HyperFrames CLI is pre-1.0 and releases daily | Pin the version; MP4s committed; `check --strict` in CI |
 | Completion tokens can be forged | An honour system by design (no backend), stated openly |
+| The AI tutor is wrong, or gives the answer away | It only sees real run results and must quote them; replies pass a leak guard against the reference solution; it is off in checkpoints and on variants (§2.6) |
+| A learner's API key leaks from the browser | The key is the learner's own, kept in its own storage key, never exported; Settings recommends a key with a spending limit and offers "Remove key" (§2.6) |
 
 ---
 
@@ -1230,3 +1262,4 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 7. **Videos.** "Only when it clearly beats the app" is the bar.
 8. **Local toolchain timing.** Module 3 (weeks 5–6) stays.
 9. **Chromium only (2026-10-17).** The owner runs the course in Chromium-based browsers only. Firefox and Safari (including iOS) are not supported, tested or tracked: no cross-browser tickets, no WebKit or Firefox Playwright projects, no manual Safari check.
+10. **AI tutor (2026-10-17).** The owner chose bring-your-own-key over a server proxy: an optional tutor that calls an OpenAI-compatible chat API (OpenRouter by default) from the browser with the learner's own key and model. The site stays static and the course pays nothing for it (§2.6).
