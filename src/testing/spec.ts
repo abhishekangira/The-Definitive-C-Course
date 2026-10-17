@@ -1,14 +1,15 @@
 // tests.json / check.json (TestsSpec) helpers: type guards, hint tiers and validation.
 // Environment-neutral. Used by the runner, check.mjs (malformed check.json → a clear message) and
 // tools/exercises (authoring errors fail the build).
-import type { IoTest, MakeTest, TestsSpec, TextExpect, UnitTest } from '../content-model/types';
+import type { IoTest, MakeTest, ScanTest, TestsSpec, TextExpect, UnitTest } from '../content-model/types';
 import { compilePattern } from './compare';
 
-export type AnyTest = IoTest | UnitTest | MakeTest;
+export type AnyTest = IoTest | UnitTest | MakeTest | ScanTest;
 
 export const isIoTest = (t: AnyTest): t is IoTest => typeof (t as IoTest).run === 'object' && (t as IoTest).run !== null;
 export const isUnitTest = (t: AnyTest): t is UnitTest => typeof (t as UnitTest).unit === 'object' && (t as UnitTest).unit !== null;
 export const isMakeTest = (t: AnyTest): t is MakeTest => typeof (t as MakeTest).make === 'object' && (t as MakeTest).make !== null;
+export const isScanTest = (t: AnyTest): t is ScanTest => typeof (t as ScanTest).scan === 'object' && (t as ScanTest).scan !== null;
 
 /** Names of the checks the runner adds around spec.tests. */
 export const COMPILE_TEST_NAME = 'compiles without warnings';
@@ -100,8 +101,8 @@ export function validateTestsSpec(spec: unknown, opts: ValidateOptions = {}): Sp
     }
     if (t.hint !== undefined && typeof t.hint !== 'string') p.errors.push(`${label}: "hint" must be a string`);
     if (t.hints !== undefined && (!isStrArray(t.hints) || t.hints.some(h => !h.trim()))) p.errors.push(`${label}: "hints" must be a list of non-empty strings`);
-    const kinds = ['run', 'unit', 'make'].filter(k => t[k] !== undefined);
-    if (kinds.length !== 1) { p.errors.push(`${label}: needs exactly one of "run", "unit" or "make" (found ${kinds.length})`); return; }
+    const kinds = ['run', 'unit', 'make', 'scan'].filter(k => t[k] !== undefined);
+    if (kinds.length !== 1) { p.errors.push(`${label}: needs exactly one of "run", "unit", "make" or "scan" (found ${kinds.length})`); return; }
 
     if (kinds[0] === 'run') {
       unknownKeys(t, ['name', 'run', 'expect', 'hint', 'hints'], label, p.warnings);
@@ -130,6 +131,15 @@ export function validateTestsSpec(spec: unknown, opts: ValidateOptions = {}): Sp
       const u = t.unit;
       if (!isObj(u) || typeof u.harness !== 'string' || !u.harness) { p.errors.push(`${label}: unit.harness must name a C file`); return; }
       if (opts.exists && !opts.exists(u.harness)) p.errors.push(`${label}: harness file "${u.harness}" does not exist`);
+    } else if (kinds[0] === 'scan') {
+      unknownKeys(t, ['name', 'scan', 'hint', 'hints'], label, p.warnings);
+      const sc = t.scan;
+      if (!isObj(sc)) { p.errors.push(`${label}: "scan" must be an object`); return; }
+      unknownKeys(sc, ['function', 'allow', 'maxOps', 'maxLiteral'], `${label}.scan`, p.warnings);
+      if (typeof sc.function !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(sc.function)) p.errors.push(`${label}: scan.function must be a C identifier`);
+      if (!isStrArray(sc.allow) || sc.allow.some(o => !o.trim())) p.errors.push(`${label}: scan.allow must be a list of operator strings`);
+      if (!(Number.isInteger(sc.maxOps) && (sc.maxOps as number) > 0)) p.errors.push(`${label}: scan.maxOps must be a positive integer`);
+      if (sc.maxLiteral !== undefined && !(Number.isInteger(sc.maxLiteral) && (sc.maxLiteral as number) >= 0)) p.errors.push(`${label}: scan.maxLiteral must be a non-negative integer`);
     } else {
       unknownKeys(t, ['name', 'make', 'hint', 'hints'], label, p.warnings);
       const m = t.make;

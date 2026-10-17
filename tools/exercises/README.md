@@ -29,7 +29,7 @@ needs a harness keeps its own `tests/`. Its learner file is its own `tests.json`
   **exactly three non-empty hints**, `variants` is a list of folder names (quote numeric ones: `'1'`), `file`
   equals `tests.json`'s first source, LT and native rules (`lt` runs native, `pa` runs in the browser). Unknown
   keys are warnings with a "did you mean" for the usual typos (`runs-in`, `hint`).
-- `tests.json` / `check.json` (`validateTestsSpec`): names, one of `run`/`unit`/`make` per test, harness files exist,
+- `tests.json` / `check.json` (`validateTestsSpec`): names, one of `run`/`unit`/`make`/`scan` per test, harness files exist,
   negative tests supply stdin and assert on output, make tests only for native exercises.
 - Listed variants exist, and unlisted variant folders are warned about. A variant has `variants: []`, runs where its
   exercise runs, and passes the same checks.
@@ -97,6 +97,10 @@ with the real stdout and exit code. It **rejects** a solution that does not buil
 behaves differently under the sanitizers, or times out; nothing is written for a rejected folder.
 `--check` writes nothing and exits 1 when a file would change (use it to prove the committed files are current).
 Output is deterministic: run it twice and `git status` stays clean.
+
+**Operator-restricted exercises (`scan` tests).** A hand-written `tests.json` may hold `{ "name": "...", "scan": { "function": "bit_and", "allow": ["~", "|"], "maxOps": 4 } }`
+next to `unit` tests (`src/testing/scan.ts`; rules in `tools/check/README.md`). The verifier needs nothing extra: the reference solution must pass the scan, and the
+starter must fail some check. Such a folder has no `cases.yaml`, so `exercises:expect` skips it.
 
 Scope: single-file, stdin/args/stdout/exit cases (what Module 1 uses). Unit-harness and `make` tests, stderr expectations and
 multi-file sources are still written by hand; `exercises:expect` skips a folder without `cases.yaml` (reports it as skipped, exit 0)

@@ -1,0 +1,212 @@
+// Operator-restricted exercises: a token scan of ONE function in the learner's file.
+// Pure TypeScript (no DOM, no Node), so the browser runner, tools/exercises and check.mjs share it.
+//
+// Why not a regex: comments, strings and `#define` aliases defeat one. The scan first blanks comments
+// (newlines kept, so line numbers stay right), then tokenises, then walks the body of the named function.
+//
+// Rules for the body: only the function's parameters, the locals it declares, type names and `return`;
+// integer literals up to `maxLiteral`; only the operators in `allow`; at most `maxOps` operator tokens
+// (assignment `=`, parentheses, braces, commas and semicolons are free). No calls, no control flow,
+// no `?:`, no `#`. Anywhere in the file, only `#include` lines are accepted (an alias such as
+// `#define AND &` would let a forbidden operator hide behind a name).
+
+export interface ScanRules {
+  /** Name of the function to scan. */
+  function: string;
+  /** Operator tokens that may appear (for example ["~", "|"]). */
+  allow: string[];
+  /** Largest number of operator tokens in the body. */
+  maxOps: number;
+  /** Largest integer literal allowed (default 255). */
+  maxLiteral?: number;
+}
+
+export interface ScanResult {
+  ok: boolean;
+  /** One plain sentence when not ok. */
+  message?: string;
+  /** Line (1-based) of the offending token, when there is one. */
+  line?: number;
+  /** Operator tokens counted in the body (set when the function was found). */
+  ops?: number;
+}
+
+export const DEFAULT_MAX_LITERAL = 255;
+
+type Tok = { t: 'id' | 'num' | 'op' | 'str' | 'hash'; s: string; line: number };
+
+const TYPE_WORDS = new Set([
+  'void', 'char', 'short', 'int', 'long', 'signed', 'unsigned', 'const', '_Bool',
+  'int8_t', 'int16_t', 'int32_t', 'int64_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t', 'size_t', 'intmax_t', 'uintmax_t',
+]);
+const CONTROL_WORDS = new Set(['if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default', 'goto', 'break', 'continue', 'sizeof', '_Generic', 'asm']);
+/** Free tokens: they never count and never need to be in `allow`. */
+const FREE_OPS = new Set(['=', '(', ')', '{', '}', ',', ';']);
+const OPERATORS = [
+  '<<=', '>>=', '...', '<<', '>>', '<=', '>=', '==', '!=', '&&', '||', '++', '--', '+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '->',
+  '+', '-', '*', '/', '%', '&', '|', '^', '~', '!', '<', '>', '=', '?', ':', '.', '[', ']', '(', ')', '{', '}', ',', ';',
+];
+
+/** Replaces comments with spaces (newlines kept). String and character literals are kept as they are. */
+function blankComments(src: string): string {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    const n = src[i + 1];
+    if (c === '/' && n === '/') {
+      while (i < src.length && src[i] !== '\n') { out += ' '; i++; }
+    } else if (c === '/' && n === '*') {
+      out += '  '; i += 2;
+      while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) { out += src[i] === '\n' ? '\n' : ' '; i++; }
+      if (i < src.length) { out += '  '; i += 2; }
+    } else if (c === '"' || c === "'") {
+      const q = c;
+      out += c; i++;
+      while (i < src.length && src[i] !== q && src[i] !== '\n') {
+        if (src[i] === '\\' && i + 1 < src.length) { out += src[i]; i++; }
+        out += src[i]; i++;
+      }
+      if (i < src.length && src[i] === q) { out += q; i++; }
+    } else { out += c; i++; }
+  }
+  return out;
+}
+
+function tokenize(clean: string): Tok[] {
+  const toks: Tok[] = [];
+  let line = 1;
+  let i = 0;
+  const isIdStart = (c: string) => /[A-Za-z_]/.test(c);
+  while (i < clean.length) {
+    const c = clean[i];
+    if (c === '\n') { line++; i++; continue; }
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === '#') { toks.push({ t: 'hash', s: '#', line }); i++; continue; }
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < clean.length && clean[j] !== c && clean[j] !== '\n') { if (clean[j] === '\\') j++; j++; }
+      toks.push({ t: 'str', s: clean.slice(i, j + 1), line });
+      i = j + 1;
+      continue;
+    }
+    if (isIdStart(c)) {
+      let j = i + 1;
+      while (j < clean.length && /[A-Za-z0-9_]/.test(clean[j])) j++;
+      toks.push({ t: 'id', s: clean.slice(i, j), line });
+      i = j;
+      continue;
+    }
+    if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(clean[i + 1] ?? ''))) {
+      let j = i + 1;
+      while (j < clean.length && /[A-Za-z0-9_.]/.test(clean[j])) j++;
+      toks.push({ t: 'num', s: clean.slice(i, j), line });
+      i = j;
+      continue;
+    }
+    const op = OPERATORS.find(o => clean.startsWith(o, i));
+    if (op) { toks.push({ t: 'op', s: op, line }); i += op.length; continue; }
+    toks.push({ t: 'op', s: c, line });
+    i++;
+  }
+  return toks;
+}
+
+/** Value of a plain integer literal (decimal, hex, octal, binary, optional u/l suffixes), or undefined. */
+function integerValue(s: string): bigint | undefined {
+  const m = /^(0[xX][0-9a-fA-F]+|0[bB][01]+|[0-9]+)([uUlL]*)$/.exec(s);
+  if (!m) return undefined;
+  const d = m[1];
+  if (/^0[0-7]+$/.test(d)) return BigInt('0o' + d.slice(1));
+  if (/^0[0-9]+$/.test(d)) return undefined;
+  return BigInt(d);
+}
+
+const list = (ops: string[]) => (ops.length ? ops.join(' ') : 'none');
+
+/** Scans one function of `source` against `rules`. */
+export function scanFunction(source: string, rules: ScanRules): ScanResult {
+  const fn = rules.function;
+  const maxLiteral = BigInt(rules.maxLiteral ?? DEFAULT_MAX_LITERAL);
+  const toks = tokenize(blankComments(source));
+  const fail = (message: string, line?: number, ops?: number): ScanResult => ({ ok: false, message, line, ops });
+
+  // Only #include lines may exist anywhere in the file.
+  for (let k = 0; k < toks.length; k++) {
+    if (toks[k].t !== 'hash') continue;
+    const word = toks[k + 1]?.line === toks[k].line ? toks[k + 1].s : '';
+    if (word !== 'include') return fail(`line ${toks[k].line}: "#${word}" is not allowed in this exercise (only #include lines; a macro could hide an operator)`, toks[k].line);
+  }
+
+  // Find the definition `fn ( ... ) {` at brace depth 0.
+  let depth = 0;
+  let open = -1;
+  let paramEnd = -1;
+  let paramStart = -1;
+  for (let k = 0; k < toks.length && open < 0; k++) {
+    const tk = toks[k];
+    if (tk.t === 'op' && tk.s === '{') depth++;
+    else if (tk.t === 'op' && tk.s === '}') depth--;
+    else if (depth === 0 && tk.t === 'id' && tk.s === fn && toks[k + 1]?.s === '(') {
+      let d = 0;
+      let j = k + 1;
+      for (; j < toks.length; j++) {
+        if (toks[j].s === '(' && toks[j].t === 'op') d++;
+        else if (toks[j].s === ')' && toks[j].t === 'op') { d--; if (d === 0) break; }
+      }
+      if (j < toks.length && toks[j + 1]?.s === '{') { paramStart = k + 2; paramEnd = j; open = j + 1; }
+    }
+  }
+  if (open < 0) return fail(`the function ${fn}() was not found: define it with exactly that name`);
+
+  let close = -1;
+  for (let k = open, d = 0; k < toks.length; k++) {
+    if (toks[k].t !== 'op') continue;
+    if (toks[k].s === '{') d++;
+    else if (toks[k].s === '}') { d--; if (d === 0) { close = k; break; } }
+  }
+  if (close < 0) return fail(`the function ${fn}() has no closing brace`);
+
+  const names = new Set<string>();
+  for (let k = paramStart; k < paramEnd; k++) if (toks[k].t === 'id' && !TYPE_WORDS.has(toks[k].s)) names.add(toks[k].s);
+
+  const allow = new Set(rules.allow);
+  let ops = 0;
+  let inDecl = false;
+  let prev: Tok | undefined;
+  for (let k = open + 1; k < close; k++) {
+    const tk = toks[k];
+    const next = toks[k + 1];
+    const at = `line ${tk.line}`;
+    if (tk.t === 'hash') return fail(`${at}: "#" is not allowed inside ${fn}()`, tk.line, ops);
+    if (tk.t === 'str') return fail(`${at}: ${fn}() uses the literal ${tk.s}, which is not allowed here`, tk.line, ops);
+    if (tk.t === 'num') {
+      const v = integerValue(tk.s);
+      if (v === undefined) return fail(`${at}: ${fn}() uses the number ${tk.s}, which is not a plain integer`, tk.line, ops);
+      if (v > maxLiteral) return fail(`${at}: ${fn}() uses the constant ${tk.s}, but constants may be at most ${maxLiteral}`, tk.line, ops);
+    } else if (tk.t === 'id') {
+      if (CONTROL_WORDS.has(tk.s)) return fail(`${at}: ${fn}() uses "${tk.s}", which is not allowed here (no loops, branches or sizeof)`, tk.line, ops);
+      if (TYPE_WORDS.has(tk.s)) {
+        if (prev === undefined || (prev.t === 'op' && (prev.s === ';' || prev.s === '{' || prev.s === '}' || prev.s === '('))) inDecl = true;
+      } else if (tk.s === 'return') {
+        inDecl = false;
+      } else if (next?.t === 'op' && next.s === '(') {
+        return fail(`${at}: ${fn}() calls ${tk.s}(), and function calls are not allowed here`, tk.line, ops);
+      } else if (inDecl && prev && ((prev.t === 'id' && TYPE_WORDS.has(prev.s)) || (prev.t === 'op' && prev.s === ',') || (prev.t === 'op' && prev.s === '*'))) {
+        names.add(tk.s);
+      } else if (!names.has(tk.s)) {
+        return fail(`${at}: ${fn}() uses "${tk.s}", which is not one of its parameters or local variables`, tk.line, ops);
+      }
+    } else if (tk.t === 'op') {
+      if (tk.s === ';') inDecl = false;
+      if (!FREE_OPS.has(tk.s)) {
+        if (tk.s === '?' || tk.s === ':') return fail(`${at}: ${fn}() uses "${tk.s}" (the ?: operator), which is not allowed here`, tk.line, ops);
+        if (!allow.has(tk.s)) return fail(`${at}: ${fn}() uses ${tk.s}, which is not allowed here (allowed: ${list(rules.allow)})`, tk.line, ops);
+        ops++;
+        if (ops > rules.maxOps) return fail(`${at}: ${fn}() uses more than ${rules.maxOps} operators (the limit; = ( ) , ; and braces are free)`, tk.line, ops);
+      }
+    }
+    prev = tk;
+  }
+  return { ok: true, ops };
+}
