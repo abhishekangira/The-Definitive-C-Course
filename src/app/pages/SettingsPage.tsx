@@ -8,9 +8,11 @@ import { PlatformPicker } from '../../interactions/PlatformPicker';
 import { downloadBlob } from '../../interactions/zip';
 import { detectStdinMode } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
-import { StreakPet } from '../../components/StreakPet';
-import { useNow } from '../../components/StreakChip';
-import { dayWord, recentDays, streakStatus } from '../../progress/streak';
+import { SpiritBeans, StreakWarrior, WarriorGallery } from '../../components/StreakWarrior';
+import { BeanArt } from '../../components/WarriorArt';
+import { useNow } from '../../components/useNow';
+import { BEAN_EVERY, dayWord, MAX_BEANS, recentDays, START_BEANS, streakStatus } from '../../progress/streak';
+import { FORMS, WARRIOR_NAME } from '../../progress/warrior';
 import styles from './Pages.module.css';
 
 export function SettingsPage() {
@@ -23,6 +25,8 @@ export function SettingsPage() {
   const now = useNow();
   const streak = streakStatus(progress.streak, now);
   const week = recentDays(progress.streak, 14, now);
+  const thresholds = FORMS.slice(1).map(f => f.at);
+  const formDays = `${thresholds.slice(0, -1).join(', ')} and ${thresholds[thresholds.length - 1]}`;
 
   const onFile = async (f: File | undefined) => {
     if (!f) return;
@@ -45,7 +49,7 @@ export function SettingsPage() {
 
       <section className={styles.panel} id="streak" aria-labelledby="streak-title">
         <h2 id="streak-title">Your streak</h2>
-        <StreakPet size={96} />
+        <StreakWarrior size={224} />
         <p>
           {streak.state === 'none'
             ? (streak.longest > 0
@@ -56,18 +60,26 @@ export function SettingsPage() {
               {streak.state === 'active' ? ' You have submitted something today.' : ' Submit a problem solution or a quiz answer today to keep it going.'}
             </>}
         </p>
+        <SpiritBeans count={streak.beans} saving={streak.gapSaved} />
         <ol className={styles.streakDays} aria-label="The last 14 days">
           {week.map(d => (
-            <li key={d.key} className={d.done ? styles.dayDone : styles.dayEmpty}>
-              <span className={styles.dayBox} aria-hidden="true">{d.done && <Icon name="flame" />}</span>
+            <li key={d.key} className={d.mark === 'done' ? styles.dayDone : d.mark === 'saved' ? styles.daySaved : styles.dayEmpty}>
+              <span className={styles.dayBox} aria-hidden="true">{d.mark === 'done' ? <Icon name="flame" /> : d.mark === 'saved' ? <BeanArt className={styles.dayBean} /> : null}</span>
               <span className={styles.dayName} aria-hidden="true">{d.weekday.slice(0, 2)}</span>
-              <span className="visually-hidden">{`${d.weekday} ${d.key}: ${d.done ? 'submitted' : 'nothing submitted'}`}</span>
+              <span className="visually-hidden">{`${d.weekday} ${d.key}: ${d.mark === 'done' ? 'submitted' : d.mark === 'saved' ? 'missed, saved by a spirit bean' : 'nothing submitted'}`}</span>
             </li>
           ))}
         </ol>
+        <h3 className={styles.streakSub}>{WARRIOR_NAME}'s forms</h3>
+        <WarriorGallery current={streak.current} longest={streak.longest} />
         <p className={styles.muted}>
           A problem check (pass or fail), a quiz answer and a finished checkpoint count. Reading lessons, predictions and the playground don't.
-          Days follow this computer's clock and time zone. Ember, the flame pet, is sad without a streak, worried until you submit today, and gets happier at 3, 7 and 30 days in a row.
+          Days follow this computer's clock and time zone. {WARRIOR_NAME} transforms at {formDays} days in a row. A streak that ends sends {WARRIOR_NAME} back
+          to the kid, but every form you have reached stays in the gallery.
+        </p>
+        <p className={styles.muted}>
+          Spirit beans: you start with {START_BEANS === 1 ? 'one' : START_BEANS} and earn one on every {BEAN_EVERY}th day of a streak, up to {MAX_BEANS}.
+          A missed day uses a bean instead of ending your streak. A bean is only used up when it saves the streak, and a saved day doesn't add to it.
         </p>
       </section>
 

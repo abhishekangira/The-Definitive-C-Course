@@ -1,0 +1,146 @@
+/* Rio, the streak warrior. The art's colours are fixed (WarriorArt.tsx); this file lays it out and moves it.
+   Every looping animation is switched off by .still and under prefers-reduced-motion, and every part is drawn at full
+   size without it, so a still figure shows the same form and mood. */
+.warrior { margin: 0; display: flex; align-items: center; gap: var(--space-4); min-width: 0; }
+.stage { position: relative; flex: none; width: var(--warrior-size, 120px); aspect-ratio: 1; }
+.stage > .art { position: absolute; inset: 0; }
+.caption { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.formName { font-weight: 700; color: var(--text); }
+.message { font-size: 0.95rem; color: var(--text-muted); max-width: 44ch; }
+.news {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 10px; border-radius: 999px; border: 1px solid var(--warn); background: var(--warn-soft);
+  color: var(--text); font-size: 0.85rem; font-weight: 700;
+}
+.next { display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; color: var(--text-muted); max-width: 44ch; }
+.nextBar { height: 8px; border-radius: 999px; background: var(--bg-sunken); border: 1px solid var(--border); overflow: hidden; }
+.nextBar > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff8a1f, #ffc928); }
+@media (max-width: 480px) { .warrior { flex-direction: column; align-items: flex-start; } }
+
+/* ---------- the art: pixel sprites, so everything moves in whole pixels (steps) ---------- */
+.art { display: block; line-height: 0; --warrior-rim: transparent; }
+.svg { display: block; width: 100%; height: 100%; overflow: visible; shape-rendering: crispEdges; }
+/* A light rim keeps black hair and outlines visible on a dark page; a light page doesn't need it. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .art { --warrior-rim: #59627d; } }
+:root[data-theme='dark'] .art { --warrior-rim: #59627d; }
+.rim { fill: var(--warrior-rim); }
+.shadow { fill: var(--border-strong); }
+
+/* Frames that are off unless their animation shows them: the second aura frame and the blink. */
+.auraB, .blink { visibility: hidden; }
+
+.art[data-mood='ready'] .figure { animation: bob 1.6s steps(1) infinite; }
+.art[data-mood='ready'][data-form='golden'] .figure,
+.art[data-mood='ready'][data-form='mane'] .figure,
+.art[data-mood='ready'][data-form='crimson'] .figure { animation: hover 1.2s steps(1) infinite; }
+.art[data-mood='worried'] .figure { animation: tremble 0.36s steps(1) infinite; }
+.art[data-mood='defeated'] .figure { animation: slump 3s steps(1) infinite; }
+.blink { animation: blink 4.6s steps(1) infinite; }
+.auraA { animation: frameA 0.32s steps(1) infinite; }
+.auraB { animation: frameB 0.32s steps(1) infinite; }
+.art[data-mood='worried'] .aura { animation: sputter 1.6s steps(1) infinite; }
+.spark { animation: rise 1.6s steps(8) infinite; }
+.bolt { animation: zap 1.8s steps(1) infinite; }
+.stars { animation: twinkle 2.4s steps(1) infinite; }
+.sweat { animation: drip 1.2s steps(4) infinite; }
+
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+@keyframes hover { 0%, 100% { transform: translateY(0); } 25%, 75% { transform: translateY(-1px); } 50% { transform: translateY(-2px); } }
+@keyframes tremble { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(1px); } }
+@keyframes slump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
+@keyframes blink { 0%, 95% { visibility: hidden; } 96%, 99% { visibility: visible; } }
+@keyframes frameA { 0% { visibility: visible; } 50% { visibility: hidden; } }
+@keyframes frameB { 0% { visibility: hidden; } 50% { visibility: visible; } }
+@keyframes sputter { 0%, 30%, 62%, 100% { visibility: visible; } 20%, 55% { visibility: hidden; } }
+@keyframes rise { 0% { transform: translateY(0); visibility: visible; } 100% { transform: translateY(-24px); visibility: hidden; } }
+@keyframes zap { 0%, 18%, 100% { visibility: hidden; } 4%, 14% { visibility: visible; } }
+@keyframes twinkle { 0%, 100% { visibility: visible; } 50% { visibility: hidden; } }
+@keyframes drip { 0% { transform: translateY(0); } 100% { transform: translateY(4px); } }
+
+.still, .still * { animation: none !important; }
+
+/* ---------- the transformation: the old form charges up, a flash, and the new form bursts out ---------- */
+.stage { --burst: #ffd84a; }
+.stage[data-to='warrior'] { --burst: #9ed2ff; }
+.stage[data-to='crimson'] { --burst: #ff6a3d; }
+.stage[data-to='ape'] { --burst: #b48cff; }
+.oldLayer { animation: charge 1.25s ease-in both; }
+.newLayer { animation: emerge 1.95s ease-out both; }
+.glow, .flash, .rays { position: absolute; inset: -12%; border-radius: 50%; pointer-events: none; }
+.glow { background: radial-gradient(circle, color-mix(in srgb, var(--burst) 85%, #ffffff) 0 25%, var(--burst) 45%, transparent 68%); animation: gather 1.95s ease-in both; }
+.flash { background: radial-gradient(circle, #ffffff 0 30%, color-mix(in srgb, var(--burst) 70%, #ffffff) 50%, transparent 70%); animation: flash 1.95s ease-out both; }
+.rays {
+  background: repeating-conic-gradient(from 0deg, var(--burst) 0deg 7deg, transparent 7deg 20deg);
+  -webkit-mask: radial-gradient(circle, #000 0 22%, transparent 68%);
+  mask: radial-gradient(circle, #000 0 22%, transparent 68%);
+  animation: rays 1.95s ease-out both;
+}
+
+@keyframes charge {
+  0% { transform: translate(0, 0) scale(1); }
+  15%, 35%, 55%, 75% { transform: translate(-2px, 0) scale(1.02); }
+  25%, 45%, 65%, 85% { transform: translate(2px, -1px) scale(1.05); }
+  92% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0; }
+}
+@keyframes emerge {
+  0%, 58% { transform: scale(1.2); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  78% { transform: scale(0.94); }
+  90% { transform: scale(1.03); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes gather {
+  0% { transform: scale(0.3); opacity: 0; }
+  20% { transform: scale(0.55); opacity: 0.7; }
+  32% { transform: scale(0.5); }
+  44% { transform: scale(0.75); opacity: 0.9; }
+  52% { transform: scale(0.7); }
+  60% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.1); opacity: 0; }
+}
+@keyframes flash {
+  0%, 45% { transform: scale(0); opacity: 0; }
+  58% { transform: scale(0.9); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes rays {
+  0%, 52% { transform: scale(0.2) rotate(0deg); opacity: 0; }
+  64% { opacity: 1; }
+  100% { transform: scale(1.15) rotate(40deg); opacity: 0; }
+}
+
+/* ---------- gallery and spirit beans (Settings) ---------- */
+.gallery { list-style: none; margin: var(--space-3) 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-2); }
+.gallery li {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; text-align: center;
+  padding: var(--space-2) 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg);
+}
+.gallery li[data-state='current'] { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); background: var(--warn-soft); }
+.gallery .art { width: 100%; max-width: 112px; aspect-ratio: 1; }
+/* A form not reached yet is a flat silhouette (a filter, not opacity: the label beside it carries the meaning). */
+.locked .svg { filter: brightness(0) invert(0.72); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .locked .svg { filter: brightness(0) invert(0.32); } }
+:root[data-theme='dark'] .locked .svg { filter: brightness(0) invert(0.32); }
+.galleryName { font-size: 0.8rem; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.galleryDay { font-size: 0.75rem; color: var(--text-muted); }
+@media (max-width: 560px) { .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.beans { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-2) 0; }
+.beanRow { display: inline-flex; gap: 4px; }
+.bean { width: 22px; height: 22px; display: block; }
+.bean { image-rendering: pixelated; }
+.beanEmpty [data-bean-fill] { display: none; }
+.beanEmpty [data-bean-outline] path { fill: var(--border-strong); }
+
+/* ---------- the head in the header chip ---------- */
+.head { width: 1.6em; height: 1.6em; margin: -0.35em 0; flex: none; border-radius: 50%; overflow: hidden; background: var(--bg-elev); box-shadow: 0 0 0 1px var(--border-strong); }
+.head .svg { overflow: hidden; }
+.pop { animation: pop 0.7s ease-out both; }
+@keyframes pop { 0% { transform: scale(0.4) rotate(-20deg); } 60% { transform: scale(1.25) rotate(6deg); } 100% { transform: scale(1) rotate(0deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .art, .art * { animation: none !important; }
+  .oldLayer, .glow, .flash, .rays { display: none; }
+  .newLayer, .pop { animation: none; }
+}

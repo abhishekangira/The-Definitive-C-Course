@@ -1,6 +1,7 @@
-// The daily streak (a flame in the header, a panel and the pet Ember in Settings): it starts with the first submitted
-// problem solution or quiz answer and counts local calendar days. Clock tests use Playwright's fake clock and a
-// time zone far from UTC, and answer quiz questions only, so no program is compiled while the clock is faked.
+// The daily streak (Rio's head in the header, Rio the streak warrior on the course map and in Settings, spirit beans
+// that save a missed day). It starts with the first submitted problem solution or quiz answer and counts local calendar
+// days. Clock tests use Playwright's fake clock and a time zone far from UTC, and answer quiz questions only, so no
+// program is compiled while the clock is faked.
 import { test, expect, type Page } from '@playwright/test';
 import { answerQuiz, availableModules, expectAccessible, progressJson } from './lib';
 
@@ -10,7 +11,9 @@ const mod = availableModules()[0];
 const plain = mod.quiz('retrieval').filter(q => q.type === 'choice' && !q.code && q.answer !== undefined);
 
 const chip = (page: Page) => page.getByRole('navigation', { name: 'Site' }).getByRole('link', { name: /^Streak:/ });
-const pet = (page: Page) => page.locator('main [data-pet]').first();
+const rio = (page: Page) => page.locator('main [data-warrior]').first();
+const panel = (page: Page) => page.locator('#streak');
+const gallery = (page: Page) => panel(page).getByRole('list', { name: "Rio's forms" });
 
 async function answerOne(page: Page, n: number) {
   const item = plain[n];
@@ -25,7 +28,7 @@ async function answerOne(page: Page, n: number) {
 test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
   let page: Page;
   test.beforeAll(async ({ browser }, testInfo) => {
-    expect(plain.length, 'the warm-up has enough plain questions for this spec').toBeGreaterThanOrEqual(4);
+    expect(plain.length, 'the warm-up has enough plain questions for this spec').toBeGreaterThanOrEqual(5);
     const context = await browser.newContext({ timezoneId: 'Asia/Kolkata', baseURL: testInfo.project.use.baseURL });
     page = await context.newPage();
     page.on('pageerror', e => { throw e; });
@@ -34,12 +37,14 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
   });
   test.afterAll(async () => { await page.context().close(); });
 
-  test('before any submission there is no flame and Ember is sad', async () => {
+  test('before any submission there is no chip and Rio is a defeated kid', async () => {
     await page.goto('');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(chip(page)).toHaveCount(0);
-    await expect(pet(page)).toHaveAttribute('data-mood', 'sad');
-    await expect(pet(page)).toContainText('No streak yet');
+    await expect(rio(page)).toHaveAttribute('data-form', 'kid');
+    await expect(rio(page)).toHaveAttribute('data-mood', 'defeated');
+    await expect(rio(page)).toContainText('No streak yet');
+    await expect(rio(page).getByRole('img')).toHaveAccessibleName('Rio, your streak warrior, in the Kid form, looks defeated.');
     expect((await progressJson(page)).streak?.days ?? []).toEqual([]);
   });
 
@@ -47,10 +52,12 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
     await answerOne(page, 0);
     await expect(chip(page)).toHaveAccessibleName('Streak: 1 day. You have submitted something today.');
     await expect(chip(page)).toHaveAttribute('data-streak', 'active');
+    await expect(chip(page).locator('[data-form]')).toHaveAttribute('data-form', 'kid');
     await expect(page.getByRole('status').filter({ hasText: 'Streak started: 1 day.' })).toBeAttached();
     expect((await progressJson(page)).streak.days).toEqual(['2026-03-10']);
     await page.goto('');
-    await expect(pet(page)).toHaveAttribute('data-mood', 'content');
+    await expect(rio(page)).toHaveAttribute('data-mood', 'ready');
+    await expect(rio(page)).toContainText('Next form: Warrior in 2 days.');
   });
 
   test('a second submission on the same day does not add a day', async () => {
@@ -59,40 +66,70 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
     expect((await progressJson(page)).streak).toEqual({ days: ['2026-03-10'], longest: 1 });
   });
 
-  test('left open past midnight the flame turns dashed and Ember worried; the next submission makes it 2 days', async () => {
+  test('left open past midnight the chip turns dashed and Rio worried; the next submission makes it 2 days', async () => {
     await page.clock.fastForward('24:00:00');
     await expect(chip(page)).toHaveAttribute('data-streak', 'at-risk');
     await expect(chip(page)).toHaveAccessibleName('Streak: 1 day. Submit a problem solution or a quiz answer today to keep it going.');
     await page.goto('');
-    await expect(pet(page)).toHaveAttribute('data-mood', 'worried');
+    await expect(rio(page)).toHaveAttribute('data-mood', 'worried');
+    await expect(rio(page)).toContainText('If you miss it, a spirit bean will save it.');
     await answerOne(page, 2);
     await expect(chip(page)).toHaveAccessibleName('Streak: 2 days. You have submitted something today.');
     await expect(chip(page)).toHaveAttribute('data-streak', 'active');
     expect((await progressJson(page)).streak).toEqual({ days: ['2026-03-10', '2026-03-11'], longest: 2 });
   });
 
-  test('a missed day ends the streak: no flame, a sad Ember, then a new streak of 1 that keeps the longest', async () => {
-    await page.clock.fastForward('48:00:00');
-    await expect(chip(page)).toHaveCount(0);
+  test('a missed day uses the spirit bean; the next submission reaches 3 days and Rio transforms once', async () => {
+    await page.clock.fastForward('48:00:00'); // 13 March: the 12th was missed
+    await expect(chip(page)).toHaveAttribute('data-streak', 'at-risk');
     await page.goto('#/settings');
-    const panel = page.locator('#streak');
-    await expect(panel).toContainText('No streak is running. Your longest was 2 days.');
-    await expect(pet(page)).toHaveAttribute('data-mood', 'sad');
-    await expect(pet(page)).toContainText('Your streak ended');
+    await expect(rio(page)).toHaveAttribute('data-mood', 'worried');
+    await expect(rio(page)).toContainText('A spirit bean saved your 2-day streak.');
+    await expect(panel(page).getByTestId('spirit-beans')).toHaveText('0 of 3 spirit beans · one is saving your streak right now');
+    await expect(panel(page).getByRole('list', { name: 'The last 14 days' }).getByRole('listitem').nth(12)).toContainText('2026-03-12: missed, saved by a spirit bean');
+
     await answerOne(page, 3);
-    await expect(chip(page)).toHaveAccessibleName('Streak: 1 day. You have submitted something today.');
+    await expect(chip(page)).toHaveAccessibleName('Streak: 3 days. You have submitted something today.');
+    await expect(page.getByRole('status').filter({ hasText: 'Streak: 3 days. Rio reached a new form: Warrior.' })).toBeAttached();
+    await expect(chip(page).locator('[data-form]')).toHaveAttribute('data-form', 'warrior');
     await page.goto('#/settings');
-    await expect(panel.getByTestId('streak-current')).toHaveText('1 day');
-    await expect(panel).toContainText('your longest is 2 days');
-    const days = panel.getByRole('list', { name: 'The last 14 days' }).getByRole('listitem');
-    await expect(days).toHaveCount(14);
-    await expect(days.nth(13)).toContainText('2026-03-13: submitted');
-    await expect(days.nth(12)).toContainText('2026-03-12: nothing submitted');
-    await expect(days.nth(11)).toContainText('2026-03-11: submitted');
-    await expect(days.nth(10)).toContainText('2026-03-10: submitted');
+    await expect(rio(page)).toHaveAttribute('data-form', 'warrior');
+    await expect(rio(page).getByText('New form unlocked: Warrior')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Transformation! Rio reached a new form: Warrior.' })).toBeAttached();
+    await expect(panel(page).getByTestId('spirit-beans')).toHaveText('0 of 3 spirit beans');
+    // Shown once: the next visit shows the Warrior without the news.
+    await page.reload();
+    await expect(rio(page)).toHaveAttribute('data-form', 'warrior');
+    await expect(rio(page).getByText(/New form unlocked/)).toHaveCount(0);
+    await expect(gallery(page).locator('[data-gallery-form]')).toHaveCount(6);
+    await expect(gallery(page).locator('[data-gallery-form="warrior"]')).toHaveAttribute('data-state', 'current');
+    await expect(gallery(page).locator('[data-gallery-form="golden"]')).toHaveAttribute('data-state', 'locked');
   });
 
-  test('the settings panel and the pet pass axe in light and dark', async () => {
+  test('two missed days with no bean left end the streak: no chip, a defeated kid, then a new streak of 1', async () => {
+    await page.clock.fastForward(72 * 60 * 60 * 1000); // 16 March: the 14th and 15th were missed (a '72:00:00' string is rejected)
+    await expect(chip(page)).toHaveCount(0);
+    await page.goto('#/settings');
+    await expect(panel(page)).toContainText('No streak is running. Your longest was 3 days.');
+    await expect(rio(page)).toHaveAttribute('data-form', 'kid');
+    await expect(rio(page)).toHaveAttribute('data-mood', 'defeated');
+    await expect(rio(page)).toContainText('Your streak ended');
+    // The beans of a broken streak are kept; the gallery keeps the Warrior.
+    await expect(panel(page).getByTestId('spirit-beans')).toHaveText('0 of 3 spirit beans');
+    await expect(gallery(page).locator('[data-gallery-form="warrior"]')).toHaveAttribute('data-state', 'reached');
+    await answerOne(page, 4);
+    await expect(chip(page)).toHaveAccessibleName('Streak: 1 day. You have submitted something today.');
+    await page.goto('#/settings');
+    await expect(panel(page).getByTestId('streak-current')).toHaveText('1 day');
+    await expect(panel(page)).toContainText('your longest is 3 days');
+    const days = panel(page).getByRole('list', { name: 'The last 14 days' }).getByRole('listitem');
+    await expect(days).toHaveCount(14);
+    const marks = ['2026-03-10: submitted', '2026-03-11: submitted', '2026-03-12: missed, saved by a spirit bean', '2026-03-13: submitted',
+      '2026-03-14: nothing submitted', '2026-03-15: nothing submitted', '2026-03-16: submitted'];
+    for (const [i, text] of marks.entries()) await expect(days.nth(7 + i)).toContainText(text);
+  });
+
+  test('the settings panel and Rio pass axe in light and dark', async () => {
     for (const scheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await expectAccessible(page, `settings with a streak (${scheme})`);
@@ -100,16 +137,16 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
     await page.goto('');
     for (const scheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme: scheme });
-      await expectAccessible(page, `course map with the pet (${scheme})`);
+      await expectAccessible(page, `course map with Rio (${scheme})`);
     }
   });
 });
 
 // Real clock from here on: these tests use today's date, whatever it is, and a fresh browser each.
-async function setStreak(page: Page, days: string[], mode: 'Merge with my progress' | 'Replace my progress') {
+async function setStreak(page: Page, days: string[], mode: 'Merge with my progress' | 'Replace my progress', longest = days.length) {
   await page.goto('#/settings');
   const doc = await progressJson(page);
-  doc.streak = { days, longest: days.length };
+  doc.streak = { days, longest };
   await page.locator('input[type=file]').setInputFiles({ name: 'progress.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(doc)) });
   await page.getByRole('button', { name: mode }).click();
 }
@@ -122,8 +159,9 @@ const daysAgo = (page: Page, n: number) => page.evaluate(k => {
 }, n);
 const run = (page: Page, count: number) => Promise.all(Array.from({ length: count }, (_, i) => daysAgo(page, count - 1 - i)));
 
-test('an imported streak is merged, and Ember is happier the longer it is', async ({ browser }, testInfo) => {
+test('an imported streak is merged, and Rio takes the form of its length', async ({ browser }, testInfo) => {
   const page = await (await browser.newContext({ baseURL: testInfo.project.use.baseURL })).newPage();
+  page.on('pageerror', e => { throw e; });
   try {
     await page.goto('#/settings');
     await expect(chip(page)).toHaveCount(0);
@@ -132,19 +170,47 @@ test('an imported streak is merged, and Ember is happier the longer it is', asyn
     await setStreak(page, last3.slice(0, 2), 'Merge with my progress');
     await expect(page.getByText('Merged: you kept the furthest progress from both.')).toBeVisible();
     await expect(chip(page)).toHaveAttribute('data-streak', 'at-risk');
-    await expect(pet(page)).toHaveAttribute('data-mood', 'worried');
+    await expect(rio(page)).toHaveAttribute('data-mood', 'worried');
     // Merging keeps both histories: days from the file and from this browser are united.
     await setStreak(page, [last3[2]], 'Merge with my progress');
     await expect(chip(page)).toHaveAccessibleName('Streak: 3 days. You have submitted something today.');
-    await expect(pet(page)).toHaveAttribute('data-mood', 'happy');
-    for (const [length, mood] of [[7, 'joyful'], [30, 'ecstatic'], [2, 'content']] as const) {
+    await expect(rio(page)).toHaveAttribute('data-form', 'warrior');
+    for (const [length, form, name] of [[7, 'golden', 'Golden Warrior'], [14, 'mane', 'Golden Mane'], [30, 'crimson', 'Crimson Fur'], [50, 'ape', 'Great Ape']] as const) {
       await setStreak(page, await run(page, length), 'Replace my progress');
       await expect(chip(page)).toHaveAccessibleName(`Streak: ${length} days. You have submitted something today.`);
-      await expect(pet(page), `${length} days`).toHaveAttribute('data-mood', mood);
+      await expect(rio(page), `${length} days`).toHaveAttribute('data-form', form);
+      await expect(rio(page)).toHaveAttribute('data-mood', 'ready');
+      await expect(rio(page).getByText(`New form unlocked: ${name}`)).toBeVisible();
+      await expect(chip(page).locator('[data-form]')).toHaveAttribute('data-form', form);
     }
+    await expect(rio(page)).toContainText("Rio's final form.");
+    await expect(gallery(page).locator('[data-state="locked"]')).toHaveCount(0);
+    // A shorter streak (from a file whose longest streak was 50 days) sends Rio back without any news; the gallery keeps every form.
+    await setStreak(page, await run(page, 2), 'Replace my progress', 50);
+    await expect(rio(page)).toHaveAttribute('data-form', 'kid');
+    await expect(rio(page).getByText(/New form unlocked/)).toHaveCount(0);
+    await expect(gallery(page).locator('[data-gallery-form="ape"]')).toHaveAttribute('data-state', 'reached');
     await setStreak(page, [], 'Replace my progress');
     await expect(chip(page)).toHaveCount(0);
-    await expect(pet(page)).toHaveAttribute('data-mood', 'sad');
+    await expect(rio(page)).toHaveAttribute('data-mood', 'defeated');
+  } finally {
+    await page.context().close();
+  }
+});
+
+test('with reduced motion the new form appears without a transformation or any looping motion, and is still announced', async ({ browser }, testInfo) => {
+  const page = await (await browser.newContext({ baseURL: testInfo.project.use.baseURL, reducedMotion: 'reduce' })).newPage();
+  page.on('pageerror', e => { throw e; });
+  try {
+    await setStreak(page, await run(page, 30), 'Replace my progress');
+    await expect(rio(page)).toHaveAttribute('data-form', 'crimson');
+    await expect(rio(page).getByText('New form unlocked: Crimson Fur')).toBeVisible();
+    await expect(page.getByRole('status').filter({ hasText: 'Transformation! Rio reached a new form: Crimson Fur.' })).toBeAttached();
+    await expect(rio(page)).not.toHaveAttribute('data-transforming');
+    await expect(rio(page).locator('svg')).toHaveCount(1);
+    const moving = await page.locator('main').evaluate(main => [...main.querySelectorAll('[data-warrior] *, [data-gallery-form] *')]
+      .filter(el => getComputedStyle(el).animationName !== 'none').map(el => el.getAttribute('class')));
+    expect(moving, 'elements still animating').toEqual([]);
   } finally {
     await page.context().close();
   }
