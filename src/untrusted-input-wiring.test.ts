@@ -14,7 +14,10 @@ import type { VideoEntry } from './content-model/types';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const videos = vi.hoisted(() => ({ list: [] as unknown[] }));
-vi.mock('./content-runtime/course', () => ({ videoByKey: (k: string) => (videos.list as { key: string }[]).find(v => v.key === k) }));
+vi.mock('./content-runtime/course', () => ({
+  videoByKey: (k: string) => (videos.list as { key: string }[]).find(v => v.key === k),
+  exercises: {},
+}));
 vi.mock('./interactions/Exercise', () => ({ useFolder: () => ({ 'starter.c': 'int main(void){}' }) }));
 vi.mock('./lesson/LessonContext', () => ({ useCardDone: () => () => {} }));
 vi.mock('./runtime/CRuntime', () => ({ detectStdinMode: () => 'preset' }));

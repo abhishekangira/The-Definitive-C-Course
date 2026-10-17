@@ -46,6 +46,32 @@ export function useExerciseProgress(id: string, parentId?: string) {
 
   const viewHint = useCallback((tier: number) => patch(e => { e.hintsViewed = Math.max(e.hintsViewed, tier); }), [patch]);
   const viewSolution = useCallback(() => patch(e => { e.solutionViewed = true; }), [patch]);
+
+  /**
+   * A pasted local-task code. Distinct codes are the substantive attempts `solutionGate` counts
+   * (a local task has no editor, so it does not add active time). A completion token masters this
+   * exercise unless its solution was viewed, and masters the parent when this is the assigned variant.
+   */
+  const recordLocalCode = useCallback((canonical: string, info: { complete: boolean; run?: number }) => {
+    update(p => {
+      noteActivity(p);
+      const e = exerciseProgress(p, id);
+      e.codes = [...new Set([...(e.codes ?? []), canonical])];
+      e.attempts = Math.max(e.attempts, info.run ?? e.attempts + 1);
+      e.substantive = Math.max(e.substantive, e.codes.length);
+      if (info.complete) {
+        e.passed = true;
+        if (!e.solutionViewed) e.mastered = true;
+      }
+      p.exercises[id] = e;
+      if (info.complete && parentId) {
+        const parent = exerciseProgress(p, parentId);
+        parent.mastered = true;
+        p.exercises[parentId] = parent;
+      }
+    });
+  }, [id, parentId]);
+
   const assignVariant = useCallback((variants: string[]) => {
     patch(e => {
       const tried = new Set(e.variantsTried ?? []);
@@ -56,5 +82,5 @@ export function useExerciseProgress(id: string, parentId?: string) {
     });
   }, [patch]);
 
-  return { ep, touch, recordAttempt, viewHint, viewSolution, assignVariant, patch };
+  return { ep, touch, recordAttempt, recordLocalCode, viewHint, viewSolution, assignVariant, patch };
 }

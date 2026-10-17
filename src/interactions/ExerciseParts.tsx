@@ -3,7 +3,7 @@ import { Fragment, useState } from 'react';
 import { describeResult } from '../testing/format';
 import type { TestResult } from '../testing/runner';
 import type { ExerciseProgress } from '../progress/store';
-import { solutionGate } from '../progress/gating';
+import { solutionGate, type SolutionAttempts } from '../progress/gating';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { CodeEditor } from '../components/CodeEditor';
 import { Icon, Mark } from '../components/Icon';
@@ -64,7 +64,7 @@ export function Hints({ hints, viewed, onView, maxTier = 3 }: { hints: [string, 
   );
 }
 
-export function SolutionGatePanel({ ep, isVariant, solution, fileName, onView, onVariant, hasVariants }: {
+export function SolutionGatePanel({ ep, isVariant, solution, fileName, onView, onVariant, hasVariants, attempts = 'editor' }: {
   ep: ExerciseProgress;
   isVariant: boolean;
   solution: string | undefined;
@@ -72,9 +72,11 @@ export function SolutionGatePanel({ ep, isVariant, solution, fileName, onView, o
   onView: () => void;
   onVariant: () => void;
   hasVariants: boolean;
+  /** Local tasks count pasted progress codes; the variant is a second download. */
+  attempts?: SolutionAttempts;
 }) {
   if (ep.passed && !ep.solutionViewed) return null;
-  const gate = solutionGate(ep, isVariant);
+  const gate = solutionGate(ep, isVariant, attempts);
   if (isVariant) return <p className={styles.muted}>{gate.reason}</p>;
   if (!ep.solutionViewed) {
     return (
@@ -91,6 +93,7 @@ export function SolutionGatePanel({ ep, isVariant, solution, fileName, onView, o
       {hasVariants && (
         <div className={styles.note}>
           Study it, then prove the skill is yours: solve a <strong>variant</strong> on your own (no solution for variants).{' '}
+          {attempts === 'codes' && <>Download its zip, run <code>make test</code>, and paste that code. </>}
           <button type="button" className="btn btn-sm btn-primary" onClick={onVariant}>{ep.variant ? 'Give me a different variant' : 'Start the variant'}</button>
         </div>
       )}

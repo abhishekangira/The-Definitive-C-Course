@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "sources": ["count.c"],
+  "memory": true,
+  "tests": [
+    { "name": "counts 1 2 3", "run": { "stdin": "1 2 3\n" }, "expect": { "stdout": "count: 3\n" } },
+    { "name": "an empty input counts 0", "run": { "stdin": "" }, "expect": { "stdout": "count: 0\n" } }
+  ]
+}
