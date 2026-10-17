@@ -144,4 +144,13 @@ test.describe.serial('Module 2 views', () => {
     await expect(frame).toHaveAttribute('src', /^https:\/\/www\.youtube-nocookie\.com\/embed\/SlqjA04_dpk\?start=8531&end=8701/);
     expect(blocked.every(u => /youtube|ytimg|googlevideo/.test(u))).toBe(true);
   });
+
+  test('2.1 lesson and the Credit project page pass axe in both schemes', async () => {
+    await page.goto(`#/m/${mod!.id}/${stem(1)}`);
+    await expect(page.locator('section[data-card="0"]')).toBeVisible();
+    await bothSchemes(page, 'lesson 2.1');
+    await page.goto(`#/m/${mod!.id}/project`);
+    await expect(page.locator(`[data-exercise="project/${mod!.meta.project}"]`)).toBeVisible();
+    await bothSchemes(page, 'project page');
+  });
 });
