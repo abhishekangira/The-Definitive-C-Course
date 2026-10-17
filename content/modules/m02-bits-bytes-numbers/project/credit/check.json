@@ -1,0 +1,329 @@
+{
+  "version": 1,
+  "sources": [
+    "credit.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "Visa, 16 digits",
+      "run": {
+        "stdin": "4111111111111111\n"
+      },
+      "expect": {
+        "stdout": "Number: VISA\n",
+        "exit": 0
+      },
+      "hint": "A Visa number starts with 4 and has 13 or 16 digits."
+    },
+    {
+      "name": "Visa, 16 digits (second number)",
+      "run": {
+        "stdin": "4012888888881881\n"
+      },
+      "expect": {
+        "stdout": "Number: VISA\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Visa, 13 digits",
+      "run": {
+        "stdin": "4222222222222\n"
+      },
+      "expect": {
+        "stdout": "Number: VISA\n",
+        "exit": 0
+      },
+      "hint": "Visa numbers can have 13 digits too. Is your digit count right?"
+    },
+    {
+      "name": "Visa, 13 digits (second number)",
+      "run": {
+        "stdin": "4111111111119\n"
+      },
+      "expect": {
+        "stdout": "Number: VISA\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Mastercard, 16 digits",
+      "run": {
+        "stdin": "5555555555554444\n"
+      },
+      "expect": {
+        "stdout": "Number: MASTERCARD\n",
+        "exit": 0
+      },
+      "hint": "Mastercard: 16 digits starting with 51, 52, 53, 54 or 55."
+    },
+    {
+      "name": "Mastercard, 16 digits (second number)",
+      "run": {
+        "stdin": "5105105105105100\n"
+      },
+      "expect": {
+        "stdout": "Number: MASTERCARD\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Mastercard, prefix 52",
+      "run": {
+        "stdin": "5200000000000007\n"
+      },
+      "expect": {
+        "stdout": "Number: MASTERCARD\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Mastercard, prefix 55",
+      "run": {
+        "stdin": "5512345678901231\n"
+      },
+      "expect": {
+        "stdout": "Number: MASTERCARD\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex, 15 digits",
+      "run": {
+        "stdin": "378282246310005\n"
+      },
+      "expect": {
+        "stdout": "Number: AMEX\n",
+        "exit": 0
+      },
+      "hint": "American Express: 15 digits starting with 34 or 37."
+    },
+    {
+      "name": "Amex, prefix 37",
+      "run": {
+        "stdin": "371449635398431\n"
+      },
+      "expect": {
+        "stdout": "Number: AMEX\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex, prefix 34",
+      "run": {
+        "stdin": "340000000000009\n"
+      },
+      "expect": {
+        "stdout": "Number: AMEX\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Visa fails the checksum",
+      "run": {
+        "stdin": "4111111111111112\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      },
+      "hint": "The checksum must come out as a multiple of 10."
+    },
+    {
+      "name": "Visa, 13 digits, fails the checksum",
+      "run": {
+        "stdin": "4222222222223\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Mastercard fails the checksum",
+      "run": {
+        "stdin": "5555555555554445\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex fails the checksum",
+      "run": {
+        "stdin": "378282246310006\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Visa prefix but 12 digits (valid checksum)",
+      "run": {
+        "stdin": "411111111117\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      },
+      "hint": "Right prefix is not enough: the length must match too."
+    },
+    {
+      "name": "Visa prefix but 14 digits (valid checksum)",
+      "run": {
+        "stdin": "41111111111114\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex prefix but 14 digits (valid checksum)",
+      "run": {
+        "stdin": "37000000000007\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Mastercard prefix but 15 digits (valid checksum)",
+      "run": {
+        "stdin": "510000000000003\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Unknown prefix 60, valid checksum",
+      "run": {
+        "stdin": "6011111111111117\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      },
+      "hint": "Only the three networks above are accepted."
+    },
+    {
+      "name": "Unknown prefix 35, valid checksum",
+      "run": {
+        "stdin": "3530111333300000\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Prefix 50 is not Mastercard, valid checksum",
+      "run": {
+        "stdin": "5000000000000009\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Prefix 56 is not Mastercard, valid checksum",
+      "run": {
+        "stdin": "5600000000000003\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "A short number",
+      "run": {
+        "stdin": "1\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "A 17-digit number with a Visa prefix",
+      "run": {
+        "stdin": "41111111111111113\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "re-asks after text",
+      "run": {
+        "stdin": "abc\n4111111111111111\n"
+      },
+      "expect": {
+        "stdout": "Number: Number: VISA\n",
+        "exit": 0
+      },
+      "hint": "Non-numbers must be rejected: ask again."
+    },
+    {
+      "name": "re-asks after an empty line",
+      "run": {
+        "stdin": "\n378282246310005\n"
+      },
+      "expect": {
+        "stdout": "Number: Number: AMEX\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "re-asks after trailing junk",
+      "run": {
+        "stdin": "42x\n5555555555554444\n"
+      },
+      "expect": {
+        "stdout": "Number: Number: MASTERCARD\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "re-asks after a negative number",
+      "run": {
+        "stdin": "-5\n4222222222222\n"
+      },
+      "expect": {
+        "stdout": "Number: Number: VISA\n",
+        "exit": 0
+      },
+      "hint": "A card number must be positive."
+    },
+    {
+      "name": "re-asks after zero",
+      "run": {
+        "stdin": "0\n4012888888881881\n"
+      },
+      "expect": {
+        "stdout": "Number: Number: VISA\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "re-asks after a number too big for any integer",
+      "run": {
+        "stdin": "99999999999999999999\n4111111111111111\n"
+      },
+      "expect": {
+        "stdout": "Number: Number: VISA\n",
+        "exit": 0
+      },
+      "hint": "The number does not fit even in a long long: `get_ll` already asks again, so do not read it any other way."
+    }
+  ]
+}
