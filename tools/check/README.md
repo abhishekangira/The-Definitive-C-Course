@@ -43,7 +43,7 @@ path can be tested on Linux), `CHECK_NO_SANITIZERS=1` pretends no sanitizer runt
 
 1. `compiles without warnings` (`compiles` when `warnings: "allow"`). Builds the learner's *unmodified*
    sources with `-std=c17 -Wall -Wextra -pedantic -g -O0 -lm`. If this fails, every other check is skipped.
-2. Each entry of `tests`, in order: I/O tests, unit tests (harness), make tests.
+2. Each entry of `tests`, in order: I/O tests, unit tests (harness), make tests, scan tests.
 3. `no memory errors or leaks`, when `memory` (or `leakcheck`) is set.
 
 Memory check by platform: Linux and WSL use ASan + UBSan, with LeakSanitizer for leaks (a container that
@@ -70,7 +70,8 @@ compiler-rt) falls back to valgrind when it is installed; otherwise the check is
       "expect": { "stdout": "ciphertext: b\n", "exit": 0 },         // stdout/stderr: string = exact, or
       "hints": ["nudge", "concept", "partial code"] },              // { equals | contains[] | notContains[] | matches | trim }
     { "name": "rotate() unit tests", "unit": { "harness": "tests/test_rotate.c" }, "hint": "one hint" },
-    { "name": "make tracks the header", "make": { "target": "greet", "expectRebuild": ["greet.h"] } }
+    { "name": "make tracks the header", "make": { "target": "greet", "expectRebuild": ["greet.h"] } },
+    { "name": "bit_and uses only ~ and |", "scan": { "function": "bit_and", "allow": ["~", "|"], "maxOps": 4 } }
   ]
 }
 ```
@@ -87,6 +88,19 @@ compiler-rt) falls back to valgrind when it is installed; otherwise the check is
   (`src/testing/harness.ts`). A check that never reports counts as failed.
 - **Make tests** run `make <target>`; `expectRebuild` touches each listed file and checks that `make -q`
   then considers the target out of date, which verifies the Makefile's prerequisites.
+- **Scan tests** (`scan`) limit what one function of the learner's first source may contain, for
+  operator-restricted puzzles: only its parameters, its own locals, type names and `return`; integer
+  literals up to `maxLiteral` (default 255); only the operators in `allow`; at most `maxOps` operator
+  tokens (`=`, parentheses, braces, commas and semicolons are free); no calls, loops, `if`, `?:` or
+  `sizeof`; no casts (except `(void)`); and no `#` line anywhere in the file except `#include`. These
+  are also rejected anywhere in the file: digraphs and trigraphs (`%:`, `<:`, `:>`, `<%`, `%>`, `??`),
+  a backslash-newline, a second definition of the function, `@` in a string, and `__attribute__`, asm,
+  `_Pragma` or `exit`-style names. With `exclusive: [names]` the whole file may hold only
+  `#include <stdint.h>`, definitions of those functions and `main`, and no string or character literal
+  (this is what stops a learner file from redefining `printf` to forge a unit report). Comments are
+  blanked first, so they never count. It needs no compiler and runs the same code (`src/testing/scan.ts`) in the browser, in
+  `tools/exercises` and here. Pair it with a unit test that checks behaviour: the scan alone says nothing
+  about correctness.
 
 ## Progress codes and completion tokens
 

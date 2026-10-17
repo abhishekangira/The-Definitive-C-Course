@@ -1,0 +1,109 @@
+{
+  "duration": 45,
+  "assertions": [
+    {
+      "kind": "appearsBy",
+      "selector": "#tw01-ring",
+      "bySec": 1.2
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw01-card",
+      "bySec": 1.8
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw01-hand",
+      "bySec": 1.8
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw01-note",
+      "bySec": 10.4
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw02-c0",
+      "bySec": 16.4
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw02-c7",
+      "bySec": 17.4
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw02-sum",
+      "bySec": 19.6
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw02-sg",
+      "bySec": 21.4
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw02-note",
+      "bySec": 24.0
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw03-ok",
+      "bySec": 31.8
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw03-out",
+      "bySec": 33.2
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw03-ub",
+      "bySec": 35.6
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw03-msg",
+      "bySec": 37.4
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#tw03-note",
+      "bySec": 39.6
+    },
+    {
+      "kind": "before",
+      "a": "#tw01-card",
+      "b": "#tw02-c0"
+    },
+    {
+      "kind": "before",
+      "a": "#tw02-sg",
+      "b": "#tw03-ub"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#tw01-ring"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#tw01-card"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#tw02-sum"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#tw02-sg"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#tw03-ok"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#tw03-ub"
+    }
+  ]
+}

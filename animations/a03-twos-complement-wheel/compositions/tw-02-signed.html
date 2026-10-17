@@ -1,0 +1,89 @@
+<template id="tw-02-signed-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    .tw02-w { position: absolute; top: 372px; width: 150px; text-align: center; font: 700 30px/1 var(--font-mono); color: var(--text-muted); }
+    .tw02-top.tw-cell, #tw02-w0 { color: var(--warn); }
+    .tw-cell { position: absolute; top: 424px; width: 150px; height: 130px; display: grid; place-items: center; border: 4px solid var(--program); border-radius: 16px; background: var(--program-soft); font: 800 72px/1 var(--font-mono); color: var(--text); }
+    .tw-cell.tw02-top { border-color: var(--warn); background: var(--warn-soft); color: var(--text); }
+    #tw02-sum { position: absolute; left: 192px; top: 600px; width: 1536px; font: 700 42px/1.2 var(--font-mono); color: var(--text); }
+    #tw02-sum span { color: var(--program); }
+    .tw02-r { top: 690px; width: 360px; height: 130px; display: flex; flex-direction: column; justify-content: center; padding: 0 28px; }
+    .tw02-r b { font: 800 52px/1.1 var(--font-mono); color: var(--text); }
+    .tw02-r i { font: 400 28px/1.2 var(--font-sans); font-style: normal; color: var(--text-muted); }
+    #tw02-un { left: 192px; border-color: var(--border-strong); }
+    #tw02-sg { left: 592px; border-color: var(--program); }
+    #tw02-note { position: absolute; left: 192px; top: 860px; width: 1536px; font: 400 30px/1.3 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="tw-02-signed" data-width="1920" data-height="1080" data-duration="15"
+       data-steps='{"signed":{"label":"Signed","start":0,"end":14.45}}'>
+    <div class="tw-stage" id="tw02-stage">
+      <div class="tw-head" id="tw02-head">
+        <h1 class="tw-title" id="tw02-title">The same bits, read as signed.</h1>
+        <p class="tw-sub" id="tw02-sub">In two's complement the top bit is worth minus 128.</p>
+      </div>
+      <div class="tw02-w" id="tw02-w0" style="left:192px">-128</div>
+      <div class="tw-cell tw02-c tw02-top" id="tw02-c0" style="left:192px">1</div>
+      <div class="tw02-w" id="tw02-w1" style="left:358px">64</div>
+      <div class="tw-cell tw02-c" id="tw02-c1" style="left:358px">1</div>
+      <div class="tw02-w" id="tw02-w2" style="left:524px">32</div>
+      <div class="tw-cell tw02-c" id="tw02-c2" style="left:524px">1</div>
+      <div class="tw02-w" id="tw02-w3" style="left:690px">16</div>
+      <div class="tw-cell tw02-c" id="tw02-c3" style="left:690px">1</div>
+      <div class="tw02-w" id="tw02-w4" style="left:856px">8</div>
+      <div class="tw-cell tw02-c" id="tw02-c4" style="left:856px">1</div>
+      <div class="tw02-w" id="tw02-w5" style="left:1022px">4</div>
+      <div class="tw-cell tw02-c" id="tw02-c5" style="left:1022px">0</div>
+      <div class="tw02-w" id="tw02-w6" style="left:1188px">2</div>
+      <div class="tw-cell tw02-c" id="tw02-c6" style="left:1188px">1</div>
+      <div class="tw02-w" id="tw02-w7" style="left:1354px">1</div>
+      <div class="tw-cell tw02-c" id="tw02-c7" style="left:1354px">1</div>
+      <p id="tw02-sum">-128 + 64 + 32 + 16 + 8 + 2 + 1 = <span>-5</span></p>
+      <div class="tw-card tw02-r" id="tw02-un"><b>251</b><i>read as unsigned</i></div>
+      <div class="tw-card tw02-r" id="tw02-sg"><b>-5</b><i>read as signed</i></div>
+      <p id="tw02-note">The pattern 1000 0000 is 128 unsigned and -128 signed. The bits never change, only the reading.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("tw-02-signed", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 15;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      tl.addLabel("signed", S.signed.start);
+      tl.fromTo("#tw02-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#tw02-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#tw02-w0", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 1.00);
+      tl.fromTo("#tw02-c0", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 1.10);
+      tl.fromTo("#tw02-w1", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 1.12);
+      tl.fromTo("#tw02-c1", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 1.22);
+      tl.fromTo("#tw02-w2", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 1.24);
+      tl.fromTo("#tw02-c2", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 1.34);
+      tl.fromTo("#tw02-w3", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 1.36);
+      tl.fromTo("#tw02-c3", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 1.46);
+      tl.fromTo("#tw02-w4", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 1.48);
+      tl.fromTo("#tw02-c4", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 1.58);
+      tl.fromTo("#tw02-w5", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 1.60);
+      tl.fromTo("#tw02-c5", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 1.70);
+      tl.fromTo("#tw02-w6", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 1.72);
+      tl.fromTo("#tw02-c6", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 1.82);
+      tl.fromTo("#tw02-w7", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4 }, 1.84);
+      tl.fromTo("#tw02-c7", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.45 }, 1.94);
+      tl.fromTo("#tw02-sum", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 3.6);
+      tl.fromTo("#tw02-un", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5 }, 5.4);
+      tl.fromTo("#tw02-sg", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5 }, 6.2);
+      tl.fromTo("#tw02-note", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 8.4);
+
+      tl.fromTo("#tw02-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["tw-02-signed"] = tl;
+    })();
+  </script>
+</template>

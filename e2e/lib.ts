@@ -3,13 +3,13 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import type { ModuleMeta, SampleResult, SamplesFile, TraceFile } from '../src/content-model/types';
 import { nativeFor, normOutput } from '../src/interactions/platform';
 import { findVar } from '../src/visualizers/trace-format';
 import { correctAnswer } from '../src/interactions/memory-answers';
-import { binary, hex, parseNumber, toBits, type Width } from '../src/visualizers/numbers';
+import { binary, floatDrillBits, floatText, hex, parseNumber, toBits, type Width } from '../src/visualizers/numbers';
 
 export const ROOT = process.cwd();
 const RUN_TIMEOUT = Number(process.env.E2E_RUN_TIMEOUT ?? 180_000);
@@ -204,7 +204,16 @@ export async function completeStepper(box: Locator): Promise<void> {
 export async function completeNumberDrill(box: Locator): Promise<void> {
   const width = Number(await box.getAttribute('data-width')) as Width;
   const to = await box.getAttribute('data-to');
-  const bits = toBits(parseNumber((await box.getAttribute('data-value'))!)!, width);
+  const raw = (await box.getAttribute('data-value'))!;
+  if ((await box.getAttribute('data-kind')) === 'float') {
+    // A float drill: the value is "0x..." text to decode, or a number to encode (same helpers as the app).
+    const fbits = floatDrillBits(raw.startsWith('0x') ? raw : Number(raw));
+    await box.locator('input').first().fill(to === 'hex' ? hex(fbits, 32) : floatText(fbits, 32));
+    await box.getByRole('button', { name: 'Check', exact: true }).click();
+    await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
+    return;
+  }
+  const bits = toBits(parseNumber(raw)!, width);
   const answer = to === 'bin' ? binary(bits, width) : to === 'hex' ? hex(bits, width) : bits.toString();
   await box.locator('input').first().fill(answer);
   await box.getByRole('button', { name: 'Check', exact: true }).click();
@@ -245,6 +254,23 @@ export async function completeInteraction(page: Page, mod: ModuleInfo, box: Loca
     case 'parsons': return completeParsons(mod, box);
     default: throw new Error(`no e2e handler for interaction "${kind}"`);
   }
+}
+
+/**
+ * Opens a lesson and completes its cards, as a learner must, until one contains `selector`, and returns that card without
+ * touching what it asks. Cards before it are completed, so heavy interactions cost the same as in `completeLesson`.
+ */
+export async function reachCard(page: Page, mod: ModuleInfo, stem: string, selector: string): Promise<Locator> {
+  await page.goto(`#/m/${mod.id}/${stem}`);
+  for (let i = 0; i < 30; i++) {
+    const card = page.locator(`section[data-card="${i}"]`);
+    await expect(card, `card ${i + 1} of ${stem} appears`).toBeVisible();
+    await expect(card.locator('[data-loading="true"]')).toHaveCount(0);
+    if (await card.locator(selector).count()) return card;
+    await expect(topLevel(card).first(), `card ${i + 1} of ${stem} has its interaction`).toBeVisible();
+    for (const box of await topLevel(card).all()) await completeInteraction(page, mod, box);
+  }
+  throw new Error(`${stem}: no card contains ${selector}`);
 }
 
 /** Interactions that are not nested inside another interaction. */
@@ -290,6 +316,9 @@ export async function answerQuiz(page: Page, mod: ModuleInfo, kind: 'retrieval' 
 }
 
 export async function expectAccessible(page: Page, what: string): Promise<void> {
+  // A card fades in when it appears; axe measured contrast mid-fade on a slow runner (a false color-contrast failure on the
+  // last card of m02 lesson 1). Wait for the finite animations and transitions to end before measuring.
+  await page.evaluate(() => Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => undefined))));
   // @axe-core/playwright bundles its own playwright-core types, so the Page types are nominally different.
   const results = await new AxeBuilder({ page: page as unknown as ConstructorParameters<typeof AxeBuilder>[0]['page'] }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   const serious = results.violations.filter(v => v.impact === 'serious' || v.impact === 'critical');
@@ -298,6 +327,46 @@ export async function expectAccessible(page: Page, what: string): Promise<void> 
 
 export async function progressJson(page: Page): Promise<Record<string, any>> {
   return page.evaluate(() => JSON.parse(localStorage.getItem('tdcc:v1:progress') ?? '{}'));
+}
+
+/**
+ * Progress in which every module before `mod` (in course.yaml order) is complete: its retrieval quiz done, its
+ * checkpoint passed and its project passed, which is what `isModuleUnlocked` (src/progress/gating.ts) asks for.
+ * Module ids and project ids come from the content, never from a hand-kept list. `undefined` for the first module.
+ */
+export function priorModulesProgress(mod: ModuleInfo): Record<string, unknown> | undefined {
+  const all = availableModules();
+  const earlier = all.slice(0, all.findIndex(m => m.id === mod.id));
+  if (!earlier.length) return undefined;
+  const at = new Date().toISOString();
+  const quizzes: Record<string, unknown> = {};
+  const projects: Record<string, unknown> = {};
+  for (const m of earlier) {
+    quizzes[`${m.id}:retrieval`] = { score: 1, total: 1, passed: true, at, answers: {} };
+    quizzes[`${m.id}:checkpoint`] = { score: 1, total: 1, passed: true, at, answers: {} };
+    projects[m.meta.project] = { passed: true, at };
+  }
+  return { version: 1, seed: '00e2e00e2e00e2e0', createdAt: at, settings: {}, cards: {}, lessons: {}, samples: {}, exercises: {}, quizzes, projects, streak: { days: [], longest: 0 } };
+}
+
+/**
+ * Unlocks `mod` in a fresh browser context by writing the progress document of its predecessors into localStorage before
+ * the first page script runs. Does nothing for the first module. The script only writes when no progress exists yet, so
+ * the learner's own progress in the test is never overwritten on a reload.
+ */
+export async function seedPriorModules(context: BrowserContext, mod: ModuleInfo): Promise<void> {
+  const doc = priorModulesProgress(mod);
+  if (!doc) return;
+  await context.addInitScript(([key, json]) => {
+    try { if (!localStorage.getItem(key)) localStorage.setItem(key, json); } catch { /* an opaque frame (a blocked embed) has no storage */ }
+  }, ['tdcc:v1:progress', JSON.stringify(doc)] as const);
+}
+
+/** A problem-set exercise that has variants (the hint, solution and variant test needs one); `hello-world` is skipped. */
+export function exerciseWithVariants(mod: ModuleInfo): string {
+  const id = mod.meta.problemSet.find(x => x !== 'hello-world' && existsSync(join(ROOT, mod.dir, 'exercises', x, 'variants')));
+  if (!id) throw new Error(`${mod.id}: no problem-set exercise has variants`);
+  return id;
 }
 
 export { escapeRe };

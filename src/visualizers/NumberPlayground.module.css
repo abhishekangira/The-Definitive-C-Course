@@ -14,3 +14,22 @@
 .reads div { background: var(--bg-sunken); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); }
 .reads dt { font-size: 0.8rem; color: var(--text-muted); }
 .reads dd { margin: 0; font-size: 1.05rem; }
+
+/* wheel */
+.actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.wheel { width: min(100%, 300px); height: auto; align-self: center; }
+.arcPos, .arcNeg { fill: none; stroke-width: 10; }
+.arcPos { stroke: var(--ok); }
+.arcNeg { stroke: var(--err); }
+.marker { fill: var(--accent); stroke: var(--bg-elev); stroke-width: 2; }
+.tickU { fill: var(--text); font-size: 9px; font-family: var(--font-mono); }
+.tickS { fill: var(--text-muted); font-size: 9px; font-family: var(--font-mono); }
+.centre { fill: var(--text); font-size: 22px; font-weight: 700; font-family: var(--font-mono); }
+.centreS { fill: var(--text-muted); font-size: 11px; font-family: var(--font-mono); }
+
+/* float editor */
+.fields { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4); }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fieldName { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.smallBit { width: 22px; height: 30px; font-size: 0.85rem; }
+.smallBit:nth-child(4n) { margin-right: 0; }
