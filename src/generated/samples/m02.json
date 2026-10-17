@@ -1,0 +1,2321 @@
+{
+  "generatedBy": "tools/verify; gcc: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0; clang22: Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80); wasm: yowasp-clang 22.0.0-git20542-10",
+  "module": "m02",
+  "samples": {
+    "binary-literal": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "5\n"
+        },
+        "outcome": "runs",
+        "stdout": "5\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"%d\\n\", 0b101);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "5808781687853059",
+      "id": "binary-literal",
+      "lesson": "01-binary-and-hex",
+      "meta": {
+        "expect": "warning",
+        "id": "binary-literal",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 20,
+                "file": "main.c",
+                "flag": "-Wc23-extensions",
+                "line": 4,
+                "message": "binary integer literals are a C23 extension",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:4:20: warning: binary integer literals are a C23 extension [-Wc23-extensions]\n    4 |     printf(\"%d\\n\", 0b101);\n      |                    ^\n1 warning generated.\n"
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "5\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 20,
+                "file": "main.c",
+                "line": 4,
+                "message": "binary constants are a C2X feature or GCC extension",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c: In function 'main':\nmain.c:4:20: warning: binary constants are a C2X feature or GCC extension\n    4 |     printf(\"%d\\n\", 0b101);\n      |                    ^~~~~\n"
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "5\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 20,
+                "file": "main.c",
+                "flag": "-Wc23-extensions",
+                "line": 4,
+                "message": "binary integer literals are a C23 extension",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:4:20: warning: binary integer literals are a C23 extension [-Wc23-extensions]\n    4 |     printf(\"%d\\n\", 0b101);\n      |                    ^\n1 warning generated.\n"
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "5\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "binary-literal-fixed": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "5\n"
+        },
+        "outcome": "runs",
+        "stdout": "5\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"%d\\n\", 0x5);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "e65960df47b011a8",
+      "id": "binary-literal-fixed",
+      "lesson": "01-binary-and-hex",
+      "meta": {
+        "id": "binary-literal-fixed",
+        "predict": "none"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "5\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "5\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "5\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "bit-ops": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "8 e 6\n3 30 3\n"
+        },
+        "outcome": "runs",
+        "stdout": "8 e 6\n3 30 3\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned a = 0xC;\n    unsigned b = 0xA;\n    printf(\"%x %x %x\\n\", a & b, a | b, a ^ b);\n    printf(\"%x %x %x\\n\", ~a & 0xF, a << 2, a >> 2);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "1c4dbc0150c55856",
+      "id": "bit-ops",
+      "lesson": "04-bitwise-operators-and-masks",
+      "meta": {
+        "id": "bit-ops",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "8 e 6\n3 30 3\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "8 e 6\n3 30 3\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "8 e 6\n3 30 3\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "cp-bytes": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "48 252 15\n"
+        },
+        "outcome": "runs",
+        "stdout": "48 252 15\n"
+      },
+      "code": "#include <stdint.h>\n#include <stdio.h>\n\nint main(void) {\n    uint8_t a = 0xF0;\n    uint8_t b = 0x3C;\n    uint8_t both = a & b;\n    uint8_t any = a | b;\n    uint8_t flip = (uint8_t)~a;\n    printf(\"%u %u %u\\n\", both, any, flip);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "3ad733441baca8de",
+      "id": "cp-bytes",
+      "lesson": "quiz:checkpoint",
+      "meta": {
+        "id": "cp-bytes",
+        "predict": "none",
+        "trace": true
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "48 252 15\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "48 252 15\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "48 252 15\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "cp-float-compare": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "0 1\n"
+        },
+        "outcome": "runs",
+        "stdout": "0 1\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    float f = 0.1f;\n    double d = 0.1;\n    float h = 0.5f;\n    double e = 0.5;\n    printf(\"%d %d\\n\", f == d, h == e);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "5f8e99dd52339f4b",
+      "id": "cp-float-compare",
+      "lesson": "quiz:checkpoint",
+      "meta": {
+        "id": "cp-float-compare",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "0 1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "0 1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "0 1\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "cp-masks": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "30 fc cc\nf0\n"
+        },
+        "outcome": "runs",
+        "stdout": "30 fc cc\nf0\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned a = 0xF0;\n    unsigned b = 0x3C;\n    printf(\"%x %x %x\\n\", a & b, a | b, a ^ b);\n    printf(\"%x\\n\", (b << 2) & 0xFF);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "ae50d9d81c4c2449",
+      "id": "cp-masks",
+      "lesson": "quiz:checkpoint",
+      "meta": {
+        "id": "cp-masks",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "30 fc cc\nf0\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "30 fc cc\nf0\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "30 fc cc\nf0\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "cp-sign-warning": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "over\n"
+        },
+        "outcome": "runs",
+        "stdout": "over\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int balance = -5;\n    unsigned limit = 10;\n    if (balance < limit) {\n        printf(\"under\\n\");\n    } else {\n        printf(\"over\\n\");\n    }\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "83d0236a279ec55b",
+      "id": "cp-sign-warning",
+      "lesson": "quiz:checkpoint",
+      "meta": {
+        "choices": [
+          "`balance` is never used",
+          "`balance` is converted to unsigned before the comparison, so -5 becomes a huge number and the program prints `over`",
+          "`limit` must be declared `const`",
+          "`<` cannot compare an `int` with an `unsigned`"
+        ],
+        "expect": "warning",
+        "id": "cp-sign-warning",
+        "predict": "none"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 17,
+                "file": "main.c",
+                "flag": "-Wsign-compare",
+                "line": 6,
+                "message": "comparison of integers of different signs: 'int' and 'unsigned int'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:6:17: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]\n    6 |     if (balance < limit) {\n      |         ~~~~~~~ ^ ~~~~~\n1 warning generated.\n"
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "over\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 17,
+                "file": "main.c",
+                "flag": "-Wsign-compare",
+                "line": 6,
+                "message": "comparison of integer expressions of different signedness: 'int' and 'unsigned int'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c: In function 'main':\nmain.c:6:17: warning: comparison of integer expressions of different signedness: 'int' and 'unsigned int' [-Wsign-compare]\n    6 |     if (balance < limit) {\n      |                 ^\n"
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "over\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 17,
+                "file": "main.c",
+                "flag": "-Wsign-compare",
+                "line": 6,
+                "message": "comparison of integers of different signs: 'int' and 'unsigned int'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:6:17: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]\n    6 |     if (balance < limit) {\n      |         ~~~~~~~ ^ ~~~~~\n1 warning generated.\n"
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "over\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "cp-wrap": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "1 4294967295\n"
+        },
+        "outcome": "runs",
+        "stdout": "1 4294967295\n"
+      },
+      "code": "#include <stdint.h>\n#include <stdio.h>\n\nint main(void) {\n    uint16_t small = 65535;\n    small += 2;\n    unsigned int u = 0;\n    u--;\n    printf(\"%u %u\\n\", (unsigned)small, u);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "38f7d99cad24ff94",
+      "id": "cp-wrap",
+      "lesson": "quiz:checkpoint",
+      "meta": {
+        "id": "cp-wrap",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "1 4294967295\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "1 4294967295\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "1 4294967295\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "fixed-widths": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "1 1 4 8\n-128 127 255\n"
+        },
+        "outcome": "runs",
+        "stdout": "1 1 4 8\n-128 127 255\n"
+      },
+      "code": "#include <stdint.h>\n#include <stdio.h>\n\nint main(void) {\n    printf(\"%zu %zu %zu %zu\\n\", sizeof(int8_t), sizeof(uint8_t), sizeof(int32_t), sizeof(uint64_t));\n    printf(\"%d %d %u\\n\", INT8_MIN, INT8_MAX, UINT8_MAX);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "298ab99c6230a10f",
+      "id": "fixed-widths",
+      "lesson": "02-widths-and-sizeof",
+      "meta": {
+        "id": "fixed-widths",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "1 1 4 8\n-128 127 255\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "1 1 4 8\n-128 127 255\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "1 1 4 8\n-128 127 255\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "flag-word": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "4 1\n"
+        },
+        "outcome": "runs",
+        "stdout": "4 1\n"
+      },
+      "code": "#include <stdio.h>\n\nenum { READ = 1, WRITE = 2, EXEC = 4 };\n\nint main(void) {\n    unsigned perms = READ | WRITE;\n    perms |= EXEC;\n    perms &= ~WRITE;\n    perms ^= READ;\n    printf(\"%u %d\\n\", perms, (perms & EXEC) != 0);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "8c0fdd5e39ff317b",
+      "id": "flag-word",
+      "lesson": "04-bitwise-operators-and-masks",
+      "meta": {
+        "id": "flag-word",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "4 1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "4 1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "4 1\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "hex-print": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "255 ff FF 0xff\n[05] [ab] [  ab]\n31\n"
+        },
+        "outcome": "runs",
+        "stdout": "255 ff FF 0xff\n[05] [ab] [  ab]\n31\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int n = 255;\n    printf(\"%d %x %X %#x\\n\", n, n, n, n);\n    printf(\"[%02x] [%02x] [%4x]\\n\", 5, 171, 171);\n    printf(\"%d\\n\", 0x1F);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "7326625310b2b701",
+      "id": "hex-print",
+      "lesson": "01-binary-and-hex",
+      "meta": {
+        "id": "hex-print",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "255 ff FF 0xff\n[05] [ab] [  ab]\n31\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "255 ff FF 0xff\n[05] [ab] [  ab]\n31\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "255 ff FF 0xff\n[05] [ab] [  ab]\n31\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "int-limits": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "8 32767\n-2147483648 2147483647 4294967295\n"
+        },
+        "outcome": "runs",
+        "stdout": "8 32767\n-2147483648 2147483647 4294967295\n"
+      },
+      "code": "#include <limits.h>\n#include <stdio.h>\n\nint main(void) {\n    printf(\"%d %d\\n\", CHAR_BIT, SHRT_MAX);\n    printf(\"%d %d %u\\n\", INT_MIN, INT_MAX, UINT_MAX);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "5b9785fd22652da2",
+      "id": "int-limits",
+      "lesson": "02-widths-and-sizeof",
+      "meta": {
+        "id": "int-limits",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "8 32767\n-2147483648 2147483647 4294967295\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "8 32767\n-2147483648 2147483647 4294967295\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "8 32767\n-2147483648 2147483647 4294967295\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "int-overflow": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": ""
+        },
+        "outcome": "runs",
+        "stdout": ""
+      },
+      "code": "#include <limits.h>\n#include <stdio.h>\n\nint main(void) {\n    volatile int big = INT_MAX;\n    int next = big + 1;\n    printf(\"%d\\n\", next);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "bc67dc4c0834e9be",
+      "id": "int-overflow",
+      "lesson": "03-unsigned-and-twos-complement",
+      "meta": {
+        "expect": "ub",
+        "guardrail": true,
+        "id": "int-overflow",
+        "predict": "outcome"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "observed": [
+            {
+              "exit": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ],
+          "run": {
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          "sanitizer": {
+            "file": "main.c",
+            "kind": "signed-integer-overflow",
+            "line": 6,
+            "ok": false,
+            "report": "runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'"
+          },
+          "target": "linux-x86_64-clang22",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "observed": [
+            {
+              "exit": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ],
+          "run": {
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          "sanitizer": {
+            "file": "main.c",
+            "kind": "signed-integer-overflow",
+            "line": 6,
+            "ok": false,
+            "report": "runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'"
+          },
+          "target": "linux-x86_64-gcc13",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "guardrail": {
+            "exit": 1,
+            "signal": null,
+            "stderr": "main.c:6:20: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'\nSUMMARY: UndefinedBehaviorSanitizer: undefined-behavior main.c:6:20\n",
+            "stdout": ""
+          },
+          "observed": [
+            {
+              "exit": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ],
+          "run": {
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          "target": "wasm32-clang22",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
+        }
+      }
+    },
+    "minus-one-less": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "0\n"
+        },
+        "outcome": "runs",
+        "stdout": "0\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"%d\\n\", -1 < 0u);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "2dcd0be447cd3a95",
+      "id": "minus-one-less",
+      "lesson": "03-unsigned-and-twos-complement",
+      "meta": {
+        "id": "minus-one-less",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "0\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "0\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "0\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "pack-orange": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "ff800040\n128 64\n"
+        },
+        "outcome": "runs",
+        "stdout": "ff800040\n128 64\n"
+      },
+      "code": "#include <stdint.h>\n#include <stdio.h>\n\nint main(void) {\n    uint32_t red = 255, green = 128, blue = 0, alpha = 64;\n    uint32_t c = (red << 24) | (green << 16) | (blue << 8) | alpha;\n    printf(\"%08x\\n\", (unsigned)c);\n    printf(\"%u %u\\n\", (unsigned)((c >> 16) & 0xFF), (unsigned)(c & 0xFF));\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "608cb2c473f1b421",
+      "id": "pack-orange",
+      "lesson": "04-bitwise-operators-and-masks",
+      "meta": {
+        "id": "pack-orange",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "ff800040\n128 64\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "ff800040\n128 64\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "ff800040\n128 64\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "precedence-trap": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "odd\n"
+        },
+        "outcome": "runs",
+        "stdout": "odd\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int x = 6;\n    if (x & 1 == 0) {\n        printf(\"even\\n\");\n    } else {\n        printf(\"odd\\n\");\n    }\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "22f048be67948561",
+      "id": "precedence-trap",
+      "lesson": "04-bitwise-operators-and-masks",
+      "meta": {
+        "expect": "warning",
+        "id": "precedence-trap",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 11,
+                "file": "main.c",
+                "flag": "-Wparentheses",
+                "line": 5,
+                "message": "& has lower precedence than ==; == will be evaluated first",
+                "severity": "warning"
+              },
+              {
+                "col": 11,
+                "file": "main.c",
+                "line": 5,
+                "message": "place parentheses around the '==' expression to silence this warning",
+                "severity": "note"
+              },
+              {
+                "col": 11,
+                "file": "main.c",
+                "line": 5,
+                "message": "place parentheses around the & expression to evaluate it first",
+                "severity": "note"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:5:11: warning: & has lower precedence than ==; == will be evaluated first [-Wparentheses]\n    5 |     if (x & 1 == 0) {\n      |           ^~~~~~~~\nmain.c:5:11: note: place parentheses around the '==' expression to silence this warning\n    5 |     if (x & 1 == 0) {\n      |           ^       \n      |             (     )\nmain.c:5:11: note: place parentheses around the & expression to evaluate it first\n    5 |     if (x & 1 == 0) {\n      |           ^\n      |         (    )\n1 warning generated.\n"
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "odd\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 11,
+                "file": "main.c",
+                "flag": "-Wparentheses",
+                "line": 5,
+                "message": "suggest parentheses around comparison in operand of '&'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c: In function 'main':\nmain.c:5:11: warning: suggest parentheses around comparison in operand of '&' [-Wparentheses]\n    5 |     if (x & 1 == 0) {\n      |           ^\n"
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "odd\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 11,
+                "file": "main.c",
+                "flag": "-Wparentheses",
+                "line": 5,
+                "message": "& has lower precedence than ==; == will be evaluated first",
+                "severity": "warning"
+              },
+              {
+                "col": 11,
+                "file": "main.c",
+                "line": 5,
+                "message": "place parentheses around the '==' expression to silence this warning",
+                "severity": "note"
+              },
+              {
+                "col": 11,
+                "file": "main.c",
+                "line": 5,
+                "message": "place parentheses around the & expression to evaluate it first",
+                "severity": "note"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:5:11: warning: & has lower precedence than ==; == will be evaluated first [-Wparentheses]\n    5 |     if (x & 1 == 0) {\n      |           ^~~~~~~~\nmain.c:5:11: note: place parentheses around the '==' expression to silence this warning\n    5 |     if (x & 1 == 0) {\n      |           ^       \n      |             (     )\nmain.c:5:11: note: place parentheses around the & expression to evaluate it first\n    5 |     if (x & 1 == 0) {\n      |           ^\n      |         (    )\n1 warning generated.\n"
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "odd\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "precedence-trap-fixed": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "even\n"
+        },
+        "outcome": "runs",
+        "stdout": "even\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int x = 6;\n    if ((x & 1) == 0) {\n        printf(\"even\\n\");\n    } else {\n        printf(\"odd\\n\");\n    }\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "bb1c4b506f99ae1e",
+      "id": "precedence-trap-fixed",
+      "lesson": "04-bitwise-operators-and-masks",
+      "meta": {
+        "id": "precedence-trap-fixed",
+        "predict": "none"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "even\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "even\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "even\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "r-call-by-value": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "4\n"
+        },
+        "outcome": "runs",
+        "stdout": "4\n"
+      },
+      "code": "#include <stdio.h>\n\nvoid bump(int n) {\n    n = n + 1;\n}\n\nint main(void) {\n    int n = 4;\n    bump(n);\n    printf(\"%d\\n\", n);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "ac18a99334c444c1",
+      "id": "r-call-by-value",
+      "lesson": "quiz:retrieval",
+      "meta": {
+        "choices": [
+          "4",
+          "5",
+          "0",
+          "It does not compile"
+        ],
+        "id": "r-call-by-value",
+        "predict": "choice"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "4\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "4\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "4\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "r-int-division": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "3 -3 1\n"
+        },
+        "outcome": "runs",
+        "stdout": "3 -3 1\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"%d %d %d\\n\", 7 / 2, -7 / 2, 7 % 2);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "ff76061d2970d4b8",
+      "id": "r-int-division",
+      "lesson": "quiz:retrieval",
+      "meta": {
+        "choices": [
+          "3.5 -3.5 1",
+          "3 -3 1",
+          "4 -4 1",
+          "3 -4 1"
+        ],
+        "id": "r-int-division",
+        "predict": "choice"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "3 -3 1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "3 -3 1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "3 -3 1\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "r-reprompt": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "n: n: 10\n"
+        },
+        "outcome": "runs",
+        "stdout": "n: n: 10\n"
+      },
+      "code": "#include <stdio.h>\n#include \"learnc.h\"\n\nint main(void) {\n    int n = get_int(\"n: \");\n    printf(\"%d\\n\", n * 2);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "e110f5f6b629745f",
+      "id": "r-reprompt",
+      "lesson": "quiz:retrieval",
+      "meta": {
+        "id": "r-reprompt",
+        "predict": "output",
+        "stdin": "x\n5\n"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "n: n: 10\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "n: n: 10\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "n: n: 10\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "rgb-hex": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "#FF8009\n"
+        },
+        "outcome": "runs",
+        "stdout": "#FF8009\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int red = 255;\n    int green = 128;\n    int blue = 9;\n    printf(\"#%02X%02X%02X\\n\", red, green, blue);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "e961431a9d85d765",
+      "id": "rgb-hex",
+      "lesson": "01-binary-and-hex",
+      "meta": {
+        "id": "rgb-hex",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "#FF8009\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "#FF8009\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "#FF8009\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "same-bits": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "200 -56\n4294967295\n"
+        },
+        "outcome": "runs",
+        "stdout": "200 -56\n4294967295\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned char u = 200;\n    signed char s = (signed char)u;\n    unsigned int big = (unsigned int)-1;\n    printf(\"%d %d\\n\", u, s);\n    printf(\"%u\\n\", big);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "415a8580ac30fd1d",
+      "id": "same-bits",
+      "lesson": "03-unsigned-and-twos-complement",
+      "meta": {
+        "id": "same-bits",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "200 -56\n4294967295\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "200 -56\n4294967295\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "200 -56\n4294967295\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "shift-negative": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "-4 -1\n"
+        },
+        "outcome": "runs",
+        "stdout": "-4 -1\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int x = -16;\n    printf(\"%d %d\\n\", x >> 2, x >> 31);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "4642ba3b84deb546",
+      "id": "shift-negative",
+      "lesson": "04-bitwise-operators-and-masks",
+      "meta": {
+        "id": "shift-negative",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "-4 -1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "-4 -1\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "-4 -1\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "shift-too-far": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": ""
+        },
+        "outcome": "runs",
+        "stdout": ""
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    volatile int s = 32;\n    unsigned x = 1;\n    unsigned y = x << s;\n    printf(\"%u\\n\", y);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "48638fff60b7b6c3",
+      "id": "shift-too-far",
+      "lesson": "04-bitwise-operators-and-masks",
+      "meta": {
+        "expect": "ub",
+        "guardrail": true,
+        "id": "shift-too-far",
+        "predict": "outcome"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "observed": [
+            {
+              "exit": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ],
+          "run": {
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          "sanitizer": {
+            "file": "main.c",
+            "kind": "shift",
+            "line": 6,
+            "ok": false,
+            "report": "runtime error: shift exponent 32 is too large for 32-bit type 'unsigned int'"
+          },
+          "target": "linux-x86_64-clang22",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "observed": [
+            {
+              "exit": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ],
+          "run": {
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          "sanitizer": {
+            "file": "main.c",
+            "kind": "shift",
+            "line": 6,
+            "ok": false,
+            "report": "runtime error: shift exponent 32 is too large for 32-bit type 'unsigned int'"
+          },
+          "target": "linux-x86_64-gcc13",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "guardrail": {
+            "exit": 1,
+            "signal": null,
+            "stderr": "main.c:6:20: runtime error: shift exponent 32 is too large for 32-bit type 'unsigned int'\nSUMMARY: UndefinedBehaviorSanitizer: undefined-behavior main.c:6:20\n",
+            "stdout": ""
+          },
+          "observed": [
+            {
+              "exit": 0,
+              "stderr": "",
+              "stdout": ""
+            }
+          ],
+          "run": {
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          "target": "wasm32-clang22",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
+        }
+      }
+    },
+    "sign-compare": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "not smaller\n"
+        },
+        "outcome": "runs",
+        "stdout": "not smaller\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int a = -1;\n    unsigned b = 0;\n    if (a < b) {\n        printf(\"smaller\\n\");\n    } else {\n        printf(\"not smaller\\n\");\n    }\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "3b9cd9b2ef3df882",
+      "id": "sign-compare",
+      "lesson": "03-unsigned-and-twos-complement",
+      "meta": {
+        "expect": "warning",
+        "id": "sign-compare",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 11,
+                "file": "main.c",
+                "flag": "-Wsign-compare",
+                "line": 6,
+                "message": "comparison of integers of different signs: 'int' and 'unsigned int'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:6:11: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]\n    6 |     if (a < b) {\n      |         ~ ^ ~\n1 warning generated.\n"
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "not smaller\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 11,
+                "file": "main.c",
+                "flag": "-Wsign-compare",
+                "line": 6,
+                "message": "comparison of integer expressions of different signedness: 'int' and 'unsigned int'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c: In function 'main':\nmain.c:6:11: warning: comparison of integer expressions of different signedness: 'int' and 'unsigned int' [-Wsign-compare]\n    6 |     if (a < b) {\n      |           ^\n"
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "not smaller\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 11,
+                "file": "main.c",
+                "flag": "-Wsign-compare",
+                "line": 6,
+                "message": "comparison of integers of different signs: 'int' and 'unsigned int'",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c:6:11: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]\n    6 |     if (a < b) {\n      |         ~ ^ ~\n1 warning generated.\n"
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "not smaller\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "sign-compare-fixed": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "smaller\n"
+        },
+        "outcome": "runs",
+        "stdout": "smaller\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    int a = -1;\n    int b = 0;\n    if (a < b) {\n        printf(\"smaller\\n\");\n    } else {\n        printf(\"not smaller\\n\");\n    }\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "f766872f35197725",
+      "id": "sign-compare-fixed",
+      "lesson": "03-unsigned-and-twos-complement",
+      "meta": {
+        "id": "sign-compare-fixed",
+        "predict": "none"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "smaller\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "smaller\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "smaller\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "sizes-table": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "char        1\nshort       2\nint         4\nlong        8\nlong long   8\nvoid *      8\nsize_t      8\nfloat       4\ndouble      8\nlong double 16\n"
+        },
+        "outcome": "runs",
+        "stdout": "char        1\nshort       2\nint         4\nlong        4\nlong long   8\nvoid *      4\nsize_t      4\nfloat       4\ndouble      8\nlong double 16\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"char        %zu\\n\", sizeof(char));\n    printf(\"short       %zu\\n\", sizeof(short));\n    printf(\"int         %zu\\n\", sizeof(int));\n    printf(\"long        %zu\\n\", sizeof(long));\n    printf(\"long long   %zu\\n\", sizeof(long long));\n    printf(\"void *      %zu\\n\", sizeof(void *));\n    printf(\"size_t      %zu\\n\", sizeof(size_t));\n    printf(\"float       %zu\\n\", sizeof(float));\n    printf(\"double      %zu\\n\", sizeof(double));\n    printf(\"long double %zu\\n\", sizeof(long double));\n    return 0;\n}\n",
+      "diffs": [
+        {
+          "diff": "  outcome: runs\n  char        1\n  short       2\n  int         4\n- long        4\n+ long        8\n  long long   8\n- void *      4\n- size_t      4\n+ void *      8\n+ size_t      8\n  float       4\n  double      8\n  long double 16\n  ",
+          "target": "linux-x86_64-gcc13"
+        }
+      ],
+      "flagged": true,
+      "hash": "3984e7c6f57744fb",
+      "id": "sizes-table",
+      "lesson": "02-widths-and-sizeof",
+      "meta": {
+        "id": "sizes-table",
+        "platform": true,
+        "predict": "output",
+        "predict64": "On a 64-bit Linux or Mac (x86-64 or arm64) machine, which rows are different from the browser's table, and what do they print?"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "char        1\nshort       2\nint         4\nlong        8\nlong long   8\nvoid *      8\nsize_t      8\nfloat       4\ndouble      8\nlong double 16\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "char        1\nshort       2\nint         4\nlong        8\nlong long   8\nvoid *      8\nsize_t      8\nfloat       4\ndouble      8\nlong double 16\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "char        1\nshort       2\nint         4\nlong        4\nlong long   8\nvoid *      4\nsize_t      4\nfloat       4\ndouble      8\nlong double 16\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    },
+    "uchar-wrap": {
+      "answer": {
+        "native": {
+          "outcome": "runs",
+          "stdout": "4\n"
+        },
+        "outcome": "runs",
+        "stdout": "4\n"
+      },
+      "code": "#include <stdio.h>\n\nint main(void) {\n    unsigned char c = 250;\n    c += 10;\n    printf(\"%d\\n\", c);\n    return 0;\n}\n",
+      "flagged": false,
+      "hash": "556398fe93cacd5e",
+      "id": "uchar-wrap",
+      "lesson": "03-unsigned-and-twos-complement",
+      "meta": {
+        "id": "uchar-wrap",
+        "predict": "output"
+      },
+      "module": "m02",
+      "results": {
+        "linux-x86_64-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "4\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-clang22"
+        },
+        "linux-x86_64-gcc13": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "4\n"
+          },
+          "sanitizer": {
+            "ok": true
+          },
+          "target": "linux-x86_64-gcc13"
+        },
+        "wasm32-clang22": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "yowasp-clang 22.0.0-git20542-10",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "4\n"
+          },
+          "target": "wasm32-clang22"
+        }
+      }
+    }
+  }
+}
