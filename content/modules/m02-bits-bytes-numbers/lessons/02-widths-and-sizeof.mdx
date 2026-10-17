@@ -39,7 +39,7 @@ int main(void) {
 }
 ```
 
-Now the size table. `sizeof` reports how many bytes a type takes, and the answer depends on the platform, apart from `char` (always 1) and the exact-width types. `size_t` is the unsigned type that `sizeof` returns and that array sizes use. Your browser runs a 32-bit target (WebAssembly), so its `long`, its pointers and its `size_t` are narrower than on a 64-bit Mac or Linux machine. Windows differs again for `long`, and Apple's `long double` is not the same size as Linux's.
+Now the size table. `sizeof` reports how many bytes a type takes, and the answer depends on the platform, apart from `char` (always 1) and the exact-width types. `size_t` is the unsigned type that `sizeof` returns and that array sizes use. Your browser runs a 32-bit target (WebAssembly), so its `long`, its pointers and its `size_t` are narrower than on a 64-bit Mac or Linux machine. On 64-bit Windows `long` is 4 bytes like the browser's, while on 64-bit Linux and Mac it is 8, and `long double` differs between platforms too.
 
 The program below prints the whole table. The browser result is shown, then the result for your own platform, and before that you predict the 64-bit one.
 

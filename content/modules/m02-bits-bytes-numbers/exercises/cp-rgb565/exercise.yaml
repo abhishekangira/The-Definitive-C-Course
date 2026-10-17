@@ -7,7 +7,7 @@ prompt: |
   bits: red and blue are shifted right by 3, green by 2. To unpack, shift a channel back left by the same
   amount (the dropped bits become 0).
 
-  Fill in `pack565`, `red8`, `green8` and `blue8` using only shifts, masks and `|`. `main` reads red,
+  Fill in `pack565`, `red8`, `green8` and `blue8` using shifts, masks and `|` (the tests check the results, not which operators you used). `main` reads red,
   green and blue (0 to 255), packs them, prints the packed value in hex, then prints the three channels
   after unpacking. For red 255, green 128 and blue 8 it prints `0xfc01` and then `red=248 green=128 blue=8`.
 runsIn: browser

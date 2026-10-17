@@ -7,7 +7,7 @@ summary: The six bitwise operators, masks for setting, clearing, toggling and te
 
 You have met `+` and `<` on whole numbers. C also has operators that work on each **bit** of a number separately. `&` (and) keeps a bit only where both sides have a 1, `|` (or) keeps it where either side has a 1, `^` (xor) keeps it where exactly one side has a 1, and `~` flips every bit. `<<` and `>>` slide all the bits left or right.
 
-The same operators exist in JavaScript, but there they always work on 32-bit signed values. In C they work at the width of the type you use.
+The same operators exist in JavaScript, but there they work on 32-bit signed values (apart from `>>>`, which gives an unsigned result, and `BigInt`, which has no fixed width). In C they work at the width of the type you use.
 
 Predict what this prints. Everything is shown in hex, one digit per nibble. The `& 0xF` keeps only the low four bits of `~a`.
 
@@ -27,10 +27,10 @@ A **mask** is a number with 1s in the bits you care about. With it you can do th
 
 | job | code |
 |---|---|
-| test bit n | `(x & (1 << n)) != 0` |
-| set bit n | `x \|= (1 << n)` |
-| clear bit n | `x &= ~(1 << n)` |
-| toggle bit n | `x ^= (1 << n)` |
+| test bit n | `(x & (1u << n)) != 0` |
+| set bit n | `x \|= (1u << n)` |
+| clear bit n | `x &= ~(1u << n)` |
+| toggle bit n | `x ^= (1u << n)` |
 
 Try these on the playground: toggle one bit at a time and see which of the four jobs you just did.
 
@@ -59,7 +59,7 @@ Operator precedence has a trap. In C, `==` and `!=` bind **tighter** than `&`, `
   question="What does the compiler suggest?"
   options={[
     "Add `#include <stdbool.h>`",
-    "Put parentheses around the bitwise `&`, because `==` binds tighter",
+    "Put parentheses around one of the two operations, because `==` binds tighter than `&`",
     "Declare `x` as `unsigned`",
     "Replace `&` with `&&`"
   ]}

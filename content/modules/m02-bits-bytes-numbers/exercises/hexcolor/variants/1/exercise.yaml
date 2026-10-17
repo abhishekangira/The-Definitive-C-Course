@@ -3,8 +3,8 @@ kind: ct
 title: Dim and invert a colour
 prompt: |
   Write two functions on a colour stored as `0xRRGGBB`. `half` returns the colour at half brightness: each
-  of the three channels divided by 2, rounded down, with **one shift and one mask** for the whole
-  colour (no splitting into channels). `invert` returns the photographic negative: every channel
+  of the three channels divided by 2, rounded down, ideally with **one shift and one mask** for the whole
+  colour (no splitting into channels; the tests check the results, not how you got them). `invert` returns the photographic negative: every channel
   becomes 255 minus itself, which you can do with **one operator** on the whole colour, kept to 24 bits.
 
   `main` parses a `#RRGGBB` colour for you and prints both results.

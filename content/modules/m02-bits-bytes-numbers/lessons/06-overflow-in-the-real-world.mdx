@@ -60,4 +60,4 @@ int main(void) {
 }
 ```
 
-**What you know now:** a counter that is `n` bits wide wraps after 2 to the power of `n` steps, so you can work out when it fails by division. A wider type postpones the wrap, and an unsigned subtraction measures elapsed ticks correctly across a wrap.
+**What you know now:** an `n`-bit counter has 2 to the power of `n` patterns, so you can work out when it runs out by division (an unsigned one then wraps; a signed one overflowing is undefined, as lesson 2.3 showed). A wider type postpones the wrap, and an unsigned subtraction measures elapsed ticks correctly across a wrap.

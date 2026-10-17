@@ -6,7 +6,7 @@ prompt: |
   `uint32_t` as `0xRRGGBBAA`: red in the top byte, alpha in the lowest byte. For example red 255,
   green 128, blue 0 and alpha 64 is `0xFF800040`.
 
-  Fill in the five functions, using only shifts, masks and `|`. `main` is written for you: it reads the
+  Fill in the five functions, using shifts, masks and `|` (that is the intended way; the tests check the results, not which operators you used). `main` is written for you: it reads the
   four channels, packs them, prints the packed value in hex, then unpacks it again.
 
   ```
