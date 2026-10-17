@@ -1,0 +1,38 @@
+id: hexcolor
+kind: ct
+title: Blend two colours
+prompt: |
+  A semi-transparent colour is laid over a background. For each of the red, green and blue channels
+  the result is
+
+  ```
+  (fg * alpha + bg * (255 - alpha) + 127) / 255
+  ```
+
+  with integer division, where `fg` and `bg` are that channel of the foreground and background (0 to
+  255) and `alpha` is 0 (invisible) to 255 (solid). `main` reads the two colours as `#RRGGBB` text,
+  parses them for you, and reads the alpha. Write `blend`, which takes the two colours as `0xRRGGBB`
+  numbers and returns the blended colour in the same form. Use shifts and masks to take the channels
+  apart and to put the result together.
+
+  ```
+  Foreground: Background: Alpha: #804000
+  ```
+  (For foreground `#FF8000`, background `#000000` and alpha 128. The prompts have no newline and what you
+  type is not part of the output, so the result follows the last prompt.)
+runsIn: browser
+hints:
+- 'Take one channel at a time. Red is the top of the three bytes, so `(fg >> 16) & 0xFF` is the red of
+  the foreground. Write a small helper that blends two single channels, then call it three times.'
+- 'Blend each channel with `(f * alpha + b * (255 - alpha) + 127) / 255`. Put the results back with
+  shifts: red goes up by 16, green by 8, blue stays. Combine them with `|`.'
+- 'Use a helper `static unsigned mix(unsigned f, unsigned b, unsigned alpha) { return (f * alpha + b * (255 - alpha) + 127) / 255; }`
+  and return `(mix(fg >> 16 & 0xFF, ...) << 16) | (mix(...) << 8) | mix(...)`, with a `& 0xFF` on each
+  extracted channel.'
+file: hexcolor.c
+variants:
+- '1'
+sampleStdin: |
+  #FF8000
+  #000000
+  128
