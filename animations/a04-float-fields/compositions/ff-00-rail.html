@@ -1,0 +1,75 @@
+<template id="ff-00-rail-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #ff00-rail { position: absolute; left: 192px; top: 108px; width: 1536px; height: 56px; display: flex; gap: 16px; }
+    .ff00-chip {
+      flex: 1; display: flex; align-items: center; gap: 12px; padding: 0 14px;
+      border: 3px solid var(--border); border-radius: 14px; background: rgba(23, 27, 33, 0);
+      font: 700 28px/1 var(--font-mono); color: var(--text-faint);
+    }
+    .ff00-n {
+      display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 50%;
+      border: 3px solid var(--border-strong); background: rgba(61, 69, 82, 0);
+      font: 700 24px/1 var(--font-mono); color: var(--text-faint);
+    }
+  </style>
+  <!-- data-rail-steps mirrors the scenes' data-steps in GLOBAL seconds; tools/anim/check.mjs fails when they drift apart. -->
+  <div id="root" data-composition-id="ff-00-rail" data-width="1920" data-height="1080" data-duration="60"
+       data-rail-steps='{"decode":{"label":"Decode","start":0,"end":19.45},"tenth":{"label":"0.1","start":20,"end":39.45},"sum":{"label":"Sum","start":40,"end":59.45}}'>
+    <div id="ff00-rail">
+      <div class="ff00-chip" id="ff00-chip-decode"><span class="ff00-n">1</span>decode</div>
+      <div class="ff00-chip" id="ff00-chip-tenth"><span class="ff00-n">2</span>tenth</div>
+      <div class="ff00-chip" id="ff00-chip-sum"><span class="ff00-n">3</span>sum</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      // The runtime mounts this template into the host element (which carries data-composition-id) and moves the
+      // authored root's attributes onto an inner div, so look for the attribute on the host or inside it.
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("ff-00-rail", "data-rail-steps");
+      var S = JSON.parse(root.getAttribute("data-rail-steps"));
+      var keys = Object.keys(S);
+      // Colour = who is acting: page blue, compiler worker violet, program worker green, native orange.
+      var C = {
+        decode: ["#5fd08a", "#13291c"],
+        tenth: ["#5fd08a", "#13291c"],
+        sum: ["#f0c060", "#2d2412"],
+      };
+      function rgba(hex, a) {
+        var n = parseInt(hex.slice(1), 16);
+        return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+      }
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power2.out" } });
+      tl.fromTo("#ff00-rail", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.6 }, 0);
+      keys.forEach(function (k, i) {
+        var chip = "#ff00-chip-" + k;
+        var badge = chip + " .ff00-n";
+        var col = C[k][0], soft = C[k][1];
+        var t = S[k].start;
+        tl.addLabel(k, t);
+        // upcoming -> active
+        tl.fromTo(chip, { borderColor: "#2a3039", backgroundColor: "rgba(23,27,33,0)", color: "#8a929e" },
+                        { borderColor: col, backgroundColor: soft, color: "#e7e9ec", duration: 0.4 }, t + (i === 0 ? 0.3 : 0));
+        tl.fromTo(badge, { backgroundColor: "rgba(61,69,82,0)", borderColor: "#3d4552", color: "#8a929e" },
+                         { backgroundColor: col, borderColor: col, color: "#0b1220", duration: 0.4 }, t + (i === 0 ? 0.3 : 0));
+        // active -> done (when the next step starts; the last chip stays active)
+        if (i < keys.length - 1) {
+          var tn = S[keys[i + 1]].start;
+          tl.fromTo(chip, { borderColor: col, backgroundColor: soft, color: "#e7e9ec" },
+                          { borderColor: "#3d4552", backgroundColor: "rgba(23,27,33,0)", color: "#a4abb6", duration: 0.4, immediateRender: false }, tn);
+          tl.fromTo(badge, { backgroundColor: col, borderColor: col, color: "#0b1220" },
+                           { backgroundColor: rgba(col, 0.28), borderColor: rgba(col, 0.7), color: "#e7e9ec", duration: 0.4, immediateRender: false }, tn);
+        }
+      });
+      window.__timelines = window.__timelines || {};
+      window.__timelines["ff-00-rail"] = tl;
+    })();
+  </script>
+</template>

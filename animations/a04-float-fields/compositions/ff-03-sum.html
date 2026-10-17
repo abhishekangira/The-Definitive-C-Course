@@ -1,0 +1,55 @@
+<template id="ff-03-sum-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    .ff03-card { top: 400px; height: 380px; padding: 28px; }
+    #ff03-code { left: 192px; width: 840px; border-color: var(--border-strong); }
+    #ff03-out { left: 1072px; width: 656px; border-color: var(--warn); }
+    .ff03-h { font: 700 32px/1 var(--font-sans); color: var(--text-muted); }
+    .ff03-c { margin-top: 26px; font: 400 32px/1.5 var(--font-mono); color: var(--text); white-space: pre; }
+    .ff03-o { margin-top: 26px; font: 700 40px/1.3 var(--font-mono); color: var(--warn); }
+    .ff03-o i { font-style: normal; font-size: 26px; color: var(--text-muted); font-weight: 400; display: block; }
+    #ff03-note { position: absolute; left: 192px; top: 840px; width: 1536px; font: 400 30px/1.3 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="ff-03-sum" data-width="1920" data-height="1080" data-duration="20"
+       data-steps='{"sum":{"label":"Sum","start":0,"end":19.45}}'>
+    <div class="ff-stage" id="ff03-stage">
+      <div class="ff-head" id="ff03-head">
+        <h1 class="ff-title" id="ff03-title">Rounding shows up in the sums.</h1>
+        <p class="ff-sub" id="ff03-sub">In double precision, 0.1 + 0.2 is not 0.3.</p>
+      </div>
+      <div class="ff-card ff03-card" id="ff03-code"><div class="ff03-h">main.c</div><div class="ff03-c" id="ff03-src">double sum = 0.1 + 0.2;
+printf("%.17g\n", sum);
+printf("%d\n", sum == 0.3);</div></div>
+      <div class="ff-card ff03-card" id="ff03-out"><div class="ff03-h">output</div><div class="ff03-o"><span id="ff03-o1">0.30000000000000004</span><i>the sum</i><span id="ff03-o2">0</span><i>sum == 0.3 is false</i></div></div>
+      <p id="ff03-note">Compare floating-point numbers with a tolerance, never with ==.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("ff-03-sum", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 20;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      tl.addLabel("sum", S.sum.start);
+      tl.fromTo("#ff03-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#ff03-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#ff03-code", { opacity: 0, x: -40 }, { opacity: 1, x: 0, duration: 0.6 }, 1.0);
+      tl.fromTo("#ff03-out", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.6 }, 4.0);
+      tl.fromTo("#ff03-o1", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 6.0);
+      tl.fromTo("#ff03-o2", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 9.0);
+      tl.fromTo("#ff03-note", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 12.5);
+
+      tl.fromTo("#ff03-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["ff-03-sum"] = tl;
+    })();
+  </script>
+</template>
