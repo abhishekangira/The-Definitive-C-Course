@@ -1,0 +1,35 @@
+id: pack-rgba
+kind: ct
+title: Pack and unpack a colour
+prompt: |
+  A pixel has four channels, each from 0 to 255: red, green, blue and alpha. Store them in one
+  `uint32_t` as `0xRRGGBBAA`: red in the top byte, alpha in the lowest byte. For example red 255,
+  green 128, blue 0 and alpha 64 is `0xFF800040`.
+
+  Fill in the five functions, using shifts, masks and `|` (that is the intended way; the tests check the results, not which operators you used). `main` is written for you: it reads the
+  four channels, packs them, prints the packed value in hex, then unpacks it again.
+
+  ```
+  Red: Green: Blue: Alpha: packed: 0xff800040
+  red=255 green=128 blue=0 alpha=64
+  ```
+  (The four prompts have no newline and the numbers you type are not part of the output, so `packed:`
+  follows the last prompt on the same line.)
+runsIn: browser
+hints:
+- >-
+  Each channel is one byte, 8 bits. Red goes in bits 24 to 31, so it must be moved left by 24 places.
+  Unpacking is the reverse: move the byte right, then mask off everything above it.
+- 'Pack: shift each channel to its place and combine them with `|`. Unpack: `(color >> shift) & 0xFF`
+  with shift 24, 16, 8 and 0. Cast to `uint32_t` before shifting left by 24, so the top bit is not a
+  signed `int` bit.'
+- 'Pack with `return ((uint32_t)r << 24) | ((uint32_t)g << 16) | ((uint32_t)b << 8) | (uint32_t)a;`
+  and unpack with `return (c >> 24) & 0xFF;` for red, `(c >> 16) & 0xFF` for green, and so on.'
+file: pack.c
+variants:
+- '1'
+sampleStdin: |
+  255
+  128
+  0
+  64

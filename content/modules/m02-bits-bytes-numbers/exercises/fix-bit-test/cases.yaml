@@ -1,0 +1,15 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "bit 0 of 5 is on"
+    stdin: "5\n0\n"
+    hint: "Number the bits from 0 at the right. Which bit does `n + 1` select when n is 0?"
+  - name: "bit 1 of 5 is off"
+    stdin: "5\n1\n"
+  - name: "bit 2 of 5 is on"
+    stdin: "5\n2\n"
+  - name: "bit 3 of 0 is off"
+    stdin: "0\n3\n"
+  - name: "bit 7 of 255 is on"
+    stdin: "255\n7\n"
+  - name: "bit 4 of 16 is on"
+    stdin: "16\n4\n"
