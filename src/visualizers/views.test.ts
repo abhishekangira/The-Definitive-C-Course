@@ -114,3 +114,36 @@ describe('NumberDrill kind="float"', () => {
     expect(host.textContent).toContain('Correct.');
   });
 });
+
+describe('ByteViewer', () => {
+  it('shows 0x12345678 least significant byte first, and flips with the big-endian switch', async () => {
+    const { ByteViewer } = await import('./ByteViewer');
+    render(createElement(ByteViewer, { value: 0x12345678, width: 32 }));
+    expect(read('bytes')).toBe('78 56 34 12');
+    expect(read('ascii')).toBe('xV4.');
+    expect(host.querySelector('[data-byte="78"]')!.textContent).toContain('least significant');
+    click('Big-endian');
+    expect(read('bytes')).toBe('12 34 56 78');
+    expect(button('Big-endian').getAttribute('aria-pressed')).toBe('true');
+    expect(host.querySelector('[data-byte="78"]')!.textContent).toContain('least significant');
+  });
+  it('re-reads a typed value at a new width', async () => {
+    const { ByteViewer } = await import('./ByteViewer');
+    render(createElement(ByteViewer, { key: 'w', value: 258, width: 16 }));
+    expect(read('bytes')).toBe('02 01');
+    type(host.querySelector('input')!, '0x4142');
+    expect(read('bytes')).toBe('42 41');
+    expect(read('ascii')).toBe('BA');
+  });
+  it('UTF-8 mode: the euro sign is three bytes, and a typed code point changes them', async () => {
+    const { ByteViewer } = await import('./ByteViewer');
+    render(createElement(ByteViewer, { key: 'u', mode: 'utf8', text: '€' }));
+    expect(read('codepoint')).toBe('U+20AC');
+    expect(read('count')).toBe('3');
+    expect(read('bytes')).toBe('E2 82 AC');
+    type(host.querySelector('input')!, 'A');
+    expect(read('bytes')).toBe('41');
+    type(host.querySelector('input')!, 'U+D800');
+    expect(host.textContent).toContain('not a character UTF-8 can encode');
+  });
+});
