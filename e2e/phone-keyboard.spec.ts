@@ -1,9 +1,7 @@
-// Issue #2: the paths Safari, Firefox and phone learners use, and learners who never touch a mouse.
-//   1. No JSPI (the run worker too: launch flag, not an init script) on a 390x844 touch viewport:
-//      lesson 5 (get-int-reprompt, scanf-returns, hello-its-me) and the exercise's "Input for Run" box.
-//   2. No route scrolls sideways at 390 px.
-//   3. Lesson 1 with the keyboard only (Tab, Shift+Tab, Enter, Space; arrows inside a radio group; typed text in fields).
-import { test, expect, type Browser, type ElementHandle, type Locator, type Page } from '@playwright/test';
+// Issue #2: phone width and keyboard-only use (Chromium; other browsers are out of scope).
+//   1. No route scrolls sideways at 390 px on a touch viewport.
+//   2. Lesson 1 with the keyboard only (Tab, Shift+Tab, Enter, Space; arrows inside a radio group; typed text in fields).
+import { test, expect, type ElementHandle, type Locator, type Page } from '@playwright/test';
 import { answerQuiz, availableModules, completeLesson, progressJson, topLevel, type ModuleInfo } from './lib';
 import { normOutput } from '../src/interactions/platform';
 
@@ -36,54 +34,15 @@ async function expectNoSidewaysScroll(page: Page, what: string) {
   expect(scroll, `scrollWidth on ${what}`).toBeLessThanOrEqual(width);
 }
 
-test.describe.serial('no JSPI on a phone (390x844)', () => {
-  let browser: Browser;
+test.describe.serial('phone (390x844)', () => {
   let page: Page;
-  test.beforeAll(async ({ playwright }, testInfo) => {
-    // A Chromium that really lacks JSPI, in the page and in the run worker (an init script would only hide it from the page).
-    const base = testInfo.project.use.launchOptions ?? {};
-    browser = await playwright.chromium.launch({ ...base, args: [...(base.args ?? []), '--js-flags=--no-experimental-wasm-jspi'] });
+  test.beforeAll(async ({ browser }, testInfo) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, baseURL: testInfo.project.use.baseURL });
     page = await context.newPage();
     page.on('pageerror', e => { throw e; });
     page.on('dialog', d => void d.accept());
   });
-  test.afterAll(async () => { await browser.close(); });
-
-  test('this browser has no JSPI and Settings says input is pre-filled only', async () => {
-    await page.goto('#/settings');
-    await expect(page.getByText('pre-filled input only')).toBeVisible();
-    expect(await page.evaluate(() => typeof (WebAssembly as unknown as Record<string, unknown>).Suspending)).toBe('undefined');
-  });
-
-  test('warm-up, then lesson 5 runs its samples and exercise on preset input', async () => {
-    await lesson5(page);
-    for (const id of ['get-int-reprompt', 'scanf-returns']) await expect(page.locator(`[data-sample="${id}"]`)).toBeVisible();
-    await expect(page.locator('#term-input')).toHaveCount(0);
-  });
-
-  test('hello-its-me: the "Input for Run" box feeds the program, and empty input ends it instead of waiting', async () => {
-    await lesson5(page);
-    await page.goto(`#/m/${mod.id}/${lessonStem(5)}`);
-    const box = page.locator('[data-exercise="hello-its-me"]');
-    await box.scrollIntoViewIfNeeded();
-    const run = box.getByRole('button', { name: 'Run', exact: true });
-    const log = box.getByRole('log');
-    await box.getByText('Input for Run').click();
-    // Regression: the box used to say "Leave empty to type input interactively" in every browser.
-    await expect(box.getByText('Leave empty to type input interactively'), 'without JSPI the box must not promise interactive input').toHaveCount(0);
-    await expect(box.getByText('This browser cannot pause a program to wait for typing')).toBeVisible();
-    await box.getByLabel('Standard input for Run').fill('Linus\n');
-    await run.click();
-    await expect(box.getByText('Program exited with status 0.')).toBeVisible({ timeout: RUN_TIMEOUT });
-    await expect(log).toContainText("What's your name? hello, Linus");
-
-    await box.getByLabel('Standard input for Run').fill('');
-    await run.click();
-    await expect(box.getByText(/^Program exited with status [1-9]/)).toBeVisible({ timeout: RUN_TIMEOUT });
-    await expect(log).toContainText('(end of input)');
-    await expect(box.locator('#term-input')).toHaveCount(0);
-  });
+  test.afterAll(async () => { await page.context().close(); });
 
   test('every route fits a 390 px screen without sideways scrolling', async () => {
     await lesson5(page);

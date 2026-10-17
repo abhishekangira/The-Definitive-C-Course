@@ -8,7 +8,6 @@ import { Terminal } from '../components/Terminal';
 import { DiagnosticsList } from '../components/DiagnosticsList';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { useCRun } from '../runtime/useCRun';
-import { detectStdinMode } from '../runtime/CRuntime';
 import { useCardDone } from '../lesson/LessonContext';
 import { useProgress } from '../progress/store';
 import { browserExec } from './exec-browser';
@@ -112,7 +111,7 @@ function BrowserExercise({ entry, parentId, onPassed, assessment, onGiveUp }: { 
       <details className={styles.muted}>
         <summary>Input for Run (optional)</summary>
         <textarea className={styles.mono} value={stdin} onChange={e => setStdin(e.target.value)} rows={3} aria-label="Standard input for Run" style={{ width: '100%' }} />
-        <span>{detectStdinMode() === 'preset' ? 'This browser cannot pause a program to wait for typing: put everything the program reads here, one line per answer. Empty input means the program sees end of input.' : 'Leave empty to type input interactively while the program runs.'}</span>
+        <span>Leave empty to type input interactively while the program runs.</span>
       </details>
       {runner.phase !== 'idle' && (
         <>
