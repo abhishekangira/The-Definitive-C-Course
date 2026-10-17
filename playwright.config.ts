@@ -7,24 +7,20 @@ const localChromium = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].fin
 const executablePath = process.env.CHROMIUM_PATH ?? localChromium;
 const port = Number(process.env.E2E_PORT ?? 4173);
 
-// Default stays 1 while issue #45 measures other setups via E2E_WORKERS (CI bench).
-// fullyParallel stays false: several files share one page inside test.describe.serial.
-function workerCount(): number {
-  const raw = process.env.E2E_WORKERS;
-  if (raw === undefined || raw === '') return 1;
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n < 1 || n > 8) throw new Error(`E2E_WORKERS must be an integer from 1 to 8, got ${JSON.stringify(raw)}`);
-  return n;
-}
-const workers = workerCount();
-if (process.env.E2E_WORKERS) console.log(`playwright workers=${workers} (from E2E_WORKERS)`);
-
+// CI uses 4 workers. The file started at workers: 1 in 178daf8, with no comment.
+// fullyParallel stays false: test.describe.serial groups share one page.
+// On an idle 4-vCPU ubuntu-24.04 runner, 4 workers was the fastest setup that
+// stayed green (13/13 runs, 0 flakes, about 1.5–1.8 min vs about 3.0 min at
+// 1 worker; issue #45). 2 workers was about as fast but hit the existing
+// animation still-load flake. A heavy/light split was no faster than 2 workers.
+// The run watchdog is wall-clock (5 s) and did not fire. Outside CI the
+// machine is often shared, so stay at 1 worker.
 export default defineConfig({
   testDir: 'e2e',
   timeout: 10 * 60_000,
   expect: { timeout: 30_000 },
   fullyParallel: false,
-  workers,
+  workers: process.env.CI ? 4 : 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {

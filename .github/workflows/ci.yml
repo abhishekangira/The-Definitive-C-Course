@@ -7,35 +7,16 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-    inputs:
-      e2e_only:
-        description: '1 = build and run e2e only (timing bench for issue 45)'
-        required: false
-        default: '0'
-      e2e_workers:
-        description: 'E2E_WORKERS (ignored when e2e_split is 1)'
-        required: false
-        default: '1'
-      e2e_split:
-        description: '1 = heavy compiler specs and light UI specs in two processes'
-        required: false
-        default: '0'
-      e2e_repeats:
-        description: 'How many times to run the suite'
-        required: false
-        default: '1'
 
 permissions:
   contents: read
 
 concurrency:
-  # Bench dispatches must not cancel each other. Push and pull_request stay one run per ref.
-  group: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.e2e_only == '1' && format('e2e-bench-{0}', github.run_id) || format('ci-{0}', github.ref) }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   check:
-    if: github.event_name != 'workflow_dispatch' || github.event.inputs.e2e_only != '1'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     # This job runs PR-authored code (npm ci, tests, e2e), so it only ever gets a read-only token.
@@ -202,76 +183,6 @@ jobs:
           git commit -m "Regenerate samples and traces (CI)"
           git push origin "HEAD:refs/heads/$HEAD_REF"
           gh workflow run ci.yml --ref "$HEAD_REF"
-
-  # Temporary, for issue 45 only: time `npm run e2e` on ubuntu-24.04. Removed once a worker setup is chosen.
-  # Split runs the compiler specs (course, playground, phone-keyboard, toolchain-download) at 2 workers
-  # and the UI specs (animation, streak, editor-handoff, chunk-error, failure-artifacts) at 2 workers,
-  # at the same time, on two preview ports, so at most two browsers are compiling.
-  e2e-bench:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.e2e_only == '1'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    env:
-      LC_ALL: C
-      E2E_WORKERS: ${{ github.event.inputs.e2e_workers }}
-      E2E_SPLIT: ${{ github.event.inputs.e2e_split }}
-      E2E_REPEATS: ${{ github.event.inputs.e2e_repeats }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      # The full check job installs ffmpeg with the native toolchain. animation.spec.ts needs it to make a WebM.
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
-      - run: npx playwright install --with-deps chromium
-      - name: Repeat end-to-end
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "nproc=$(nproc) mem_mb=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)"
-          echo "E2E_BENCH_START workers=${E2E_WORKERS} split=${E2E_SPLIT} repeats=${E2E_REPEATS}"
-          fails=0
-          for i in $(seq 1 "$E2E_REPEATS"); do
-            echo "E2E_BENCH_RUN_START index=$i"
-            log=$(mktemp)
-            start=$(date +%s)
-            set +e
-            if [ "$E2E_SPLIT" = "1" ]; then
-              heavy=$(mktemp)
-              light=$(mktemp)
-              E2E_PORT=4173 npx playwright test \
-                e2e/course.spec.ts e2e/playground.spec.ts e2e/phone-keyboard.spec.ts e2e/toolchain-download.spec.ts \
-                --workers=2 --reporter=list --output=test-results/heavy >"$heavy" 2>&1 &
-              p1=$!
-              E2E_PORT=4174 npx playwright test \
-                e2e/animation.spec.ts e2e/streak.spec.ts e2e/editor-handoff.spec.ts e2e/chunk-error.spec.ts e2e/failure-artifacts.spec.ts \
-                --workers=2 --reporter=list --output=test-results/light >"$light" 2>&1 &
-              p2=$!
-              wait "$p1"; c1=$?
-              wait "$p2"; c2=$?
-              {
-                echo "----- heavy exit $c1 -----"
-                cat "$heavy"
-                echo "----- light exit $c2 -----"
-                cat "$light"
-              } >"$log"
-              if [ "$c1" -ne 0 ] || [ "$c2" -ne 0 ]; then code=1; else code=0; fi
-            else
-              npm run e2e >"$log" 2>&1
-              code=$?
-            fi
-            set -e
-            cat "$log"
-            dur=$(( $(date +%s) - start ))
-            summary=$(grep -E '^[[:space:]]*[0-9]+ (passed|failed|flaky|skipped|did not run)' "$log" | tr '\n' ';' || true)
-            echo "E2E_BENCH_RUN_END index=$i exit=$code seconds=$dur summary=${summary}"
-            if [ "$code" -ne 0 ]; then fails=$((fails + 1)); fi
-          done
-          echo "E2E_BENCH_DONE fails=$fails repeats=$E2E_REPEATS workers=${E2E_WORKERS} split=${E2E_SPLIT}"
-          if [ "$fails" -ne 0 ]; then exit 1; fi
 
   deploy:
     needs: check
