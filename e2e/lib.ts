@@ -9,7 +9,7 @@ import type { ModuleMeta, SampleResult, SamplesFile, TraceFile } from '../src/co
 import { nativeFor, normOutput } from '../src/interactions/platform';
 import { findVar } from '../src/visualizers/trace-format';
 import { correctAnswer } from '../src/interactions/memory-answers';
-import { binary, hex, parseNumber, toBits, type Width } from '../src/visualizers/numbers';
+import { binary, floatDrillBits, floatText, hex, parseNumber, toBits, type Width } from '../src/visualizers/numbers';
 
 export const ROOT = process.cwd();
 const RUN_TIMEOUT = Number(process.env.E2E_RUN_TIMEOUT ?? 180_000);
@@ -204,7 +204,16 @@ export async function completeStepper(box: Locator): Promise<void> {
 export async function completeNumberDrill(box: Locator): Promise<void> {
   const width = Number(await box.getAttribute('data-width')) as Width;
   const to = await box.getAttribute('data-to');
-  const bits = toBits(parseNumber((await box.getAttribute('data-value'))!)!, width);
+  const raw = (await box.getAttribute('data-value'))!;
+  if ((await box.getAttribute('data-kind')) === 'float') {
+    // A float drill: the value is "0x..." text to decode, or a number to encode (same helpers as the app).
+    const fbits = floatDrillBits(raw.startsWith('0x') ? raw : Number(raw));
+    await box.locator('input').first().fill(to === 'hex' ? hex(fbits, 32) : floatText(fbits, 32));
+    await box.getByRole('button', { name: 'Check', exact: true }).click();
+    await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
+    return;
+  }
+  const bits = toBits(parseNumber(raw)!, width);
   const answer = to === 'bin' ? binary(bits, width) : to === 'hex' ? hex(bits, width) : bits.toString();
   await box.locator('input').first().fill(answer);
   await box.getByRole('button', { name: 'Check', exact: true }).click();
