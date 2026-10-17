@@ -76,6 +76,9 @@ a.lessonLink:hover { border-color: var(--border); background: var(--bg-sunken); 
 .streakDays li { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
 .dayBox { width: 100%; max-width: 32px; aspect-ratio: 1; display: grid; place-items: center; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); }
 .dayDone .dayBox { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.daySaved .dayBox { background: var(--ok-soft); border-color: var(--ok); border-style: dashed; }
+.dayBean { width: 70%; height: 70%; }
+.streakSub { font-size: 1rem; margin: var(--space-4) 0 0; }
 .dayName { font-size: 0.7rem; color: var(--text-muted); }
 @media (max-width: 480px) { .streakDays { grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: var(--space-2); } }
 .importBox { margin-top: var(--space-3); padding: var(--space-3); border: 1px solid var(--accent); border-radius: var(--radius-sm); background: var(--accent-soft); }

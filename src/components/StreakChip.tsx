@@ -1,29 +1,27 @@
-// The header's streak: a flame and the number of days, once the learner has submitted a problem solution or a quiz answer.
-// It stays on the day after a submission (dashed, "at risk") and disappears when a whole day was missed.
+// The header's streak: Rio's head in the current form and the number of days, once the learner has submitted a problem
+// solution or a quiz answer. It stays while the streak can still be kept (dashed, "at risk") and disappears when it ended.
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
+import { useNow } from './useNow';
 import { useProgress } from '../progress/store';
 import { dayWord, streakStatus } from '../progress/streak';
-import { Icon } from './Icon';
-
-/** The current time, refreshed every minute, so the chip is right in a tab that stays open past midnight. */
-export function useNow(intervalMs = 60_000): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(new Date()), intervalMs);
-    return () => window.clearInterval(t);
-  }, [intervalMs]);
-  return now;
-}
+import { formFor, formRank, WARRIOR_NAME, warriorMood } from '../progress/warrior';
+import { WarriorHead } from './StreakWarrior';
 
 export function StreakChip({ className, riskClassName }: { className?: string; riskClassName?: string }) {
   const streak = useProgress().streak;
   const st = streakStatus(streak, useNow());
+  const form = formFor(st.current);
   const [announce, setAnnounce] = useState('');
   const seen = useRef(st.current);
+  // The head pops only for a form reached while the page is open, not on page load.
+  const firstForm = useRef(form.id);
   useEffect(() => {
     // Tell screen reader users when the streak grows (not on page load).
-    if (st.current > seen.current) setAnnounce(st.current === 1 ? 'Streak started: 1 day.' : `Streak: ${dayWord(st.current)}.`);
+    if (st.current > seen.current) {
+      const grown = formRank(formFor(st.current).id) > formRank(formFor(seen.current).id);
+      setAnnounce(`${st.current === 1 ? 'Streak started: 1 day.' : `Streak: ${dayWord(st.current)}.`}${grown ? ` ${WARRIOR_NAME} reached a new form: ${formFor(st.current).name}.` : ''}`);
+    }
     seen.current = st.current;
   }, [st.current]);
   const atRisk = st.state === 'at-risk';
@@ -35,7 +33,7 @@ export function StreakChip({ className, riskClassName }: { className?: string; r
     <>
       {st.state !== 'none' && (
         <Link to="/settings" className={`${className ?? ''} ${atRisk ? riskClassName ?? '' : ''}`.trim()} aria-label={label} title={label} data-streak={st.state}>
-          <Icon name="flame" />
+          <WarriorHead form={form.id} mood={warriorMood(st)} pop={form.id !== firstForm.current} />
           <span aria-hidden="true">{st.current}</span>
         </Link>
       )}

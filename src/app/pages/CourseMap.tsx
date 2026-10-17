@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { course, orderedModules } from '../../content-runtime/course';
 import { isModuleUnlocked, moduleStatus } from '../../progress/gating';
-import { StreakPet } from '../../components/StreakPet';
+import { StreakWarrior } from '../../components/StreakWarrior';
 import { useProgress } from '../../progress/store';
 import styles from './Pages.module.css';
 
@@ -19,7 +19,7 @@ export function CourseMap() {
           the CPU, memory hierarchy, linking and the operating system.
         </p>
         <p className={styles.muted}>Just want to try C? Open the <Link to="/playground">playground</Link>: a free editor and compiler, no quiz or progress needed.</p>
-        <StreakPet size={72} className={styles.heroPet} />
+        <StreakWarrior size={168} className={styles.heroPet} />
         <ul className={styles.facts}>
           <li><strong>{course.modules.length - 1} modules + capstone</strong></li>
           <li><strong>≈{Math.round(total)} hours</strong> · about {Math.round(total / course.hoursPerWeek)} weeks at {course.hoursPerWeek} h/week</li>

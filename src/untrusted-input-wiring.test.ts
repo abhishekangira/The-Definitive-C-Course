@@ -90,16 +90,16 @@ describe('SettingsPage import', () => {
     Object.defineProperty(big, 'size', { value: MAX_IMPORT_BYTES + 1 });
     const text = vi.spyOn(big, 'text');
     await importFile(big);
-    expect(host.querySelector('[role=status]')?.textContent).toMatch(/too large/);
+    expect(host.querySelector('p[role=status]')?.textContent).toMatch(/too large/);
     expect(text).not.toHaveBeenCalled();
   });
 
   it('reports invalid JSON and a bad version instead of throwing', async () => {
     render(createElement(SettingsPage));
     await importFile(new File(['{"version":1,'], 'p.json'));
-    expect(host.querySelector('[role=status]')?.textContent).toMatch(/not valid JSON/);
+    expect(host.querySelector('p[role=status]')?.textContent).toMatch(/not valid JSON/);
     await importFile(new File([JSON.stringify({ version: 2, seed: SEED })], 'p.json'));
-    expect(host.querySelector('[role=status]')?.textContent).toMatch(/Unsupported progress version: 2/);
+    expect(host.querySelector('p[role=status]')?.textContent).toMatch(/Unsupported progress version: 2/);
   });
 
   it('merges a file whose keys are inherited names (constructor, toString, hasOwnProperty, __proto__)', async () => {
@@ -109,7 +109,7 @@ describe('SettingsPage import', () => {
     await importFile(new File([doc], 'p.json'));
     expect(host.querySelector('[role=dialog]')).not.toBeNull();
     await act(async () => { button(/Merge with my progress/).click(); });
-    expect(host.querySelector('[role=status]')?.textContent).toMatch(/Merged/);
+    expect(host.querySelector('p[role=status]')?.textContent).toMatch(/Merged/);
     const p = getProgress();
     expect(p.cards.constructor).toEqual([1]);
     expect(p.exercises.toString).toMatchObject({ attempts: 3, passed: true });
