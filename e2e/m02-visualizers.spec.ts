@@ -135,14 +135,19 @@ test.describe.serial('Module 2 views', () => {
   test('2.6 YouTube clip: facade, accessibility in both schemes, and the embed address (YouTube is blocked)', async () => {
     const blocked: string[] = [];
     await page.context().route(/youtube(-nocookie)?\.com|ytimg\.com|googlevideo\.com/, route => { blocked.push(route.request().url()); return route.abort(); });
+    await page.reload(); // render the lesson again with the route in place
     const card = await cardWith(page, 6, 'figure button');
     const facade = card.getByRole('button', { name: /Watch a .*-minute clip/ });
     await expect(facade).toBeVisible();
+    // The privacy claim of the facade: nothing is requested from YouTube until the button is pressed.
+    await page.waitForLoadState('networkidle');
+    expect(blocked, 'no request to YouTube before the facade is pressed').toEqual([]);
     await bothSchemes(page, 'lesson 2.6 clip facade');
     await facade.click();
     const frame = page.locator('figure', { hasText: 'Why this clip' }).locator('iframe');
     await expect(frame).toHaveAttribute('src', /^https:\/\/www\.youtube-nocookie\.com\/embed\/SlqjA04_dpk\?start=8531&end=8701/);
-    expect(blocked.every(u => /youtube|ytimg|googlevideo/.test(u))).toBe(true);
+    // Pressing it makes the page ask YouTube for the embed (blocked here).
+    await expect.poll(() => blocked.some(u => u.startsWith('https://www.youtube-nocookie.com/embed/SlqjA04_dpk'))).toBe(true);
   });
 
   test('2.1 lesson and the Credit project page pass axe in both schemes', async () => {
