@@ -1,0 +1,69 @@
+<template id="tw-03-wrap-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    .tw03-card { top: 372px; width: 744px; height: 480px; padding: 28px; overflow: hidden; }
+    #tw03-ok { left: 192px; border-color: var(--program); }
+    #tw03-ub { left: 984px; border-color: var(--warn); }
+    .tw03-h { font: 700 36px/1.1 var(--font-sans); }
+    #tw03-ok .tw03-h { color: var(--program); }
+    #tw03-ub .tw03-h { color: var(--warn); }
+    .tw03-code { margin-top: 22px; font: 400 32px/1.45 var(--font-mono); color: var(--text); white-space: pre; }
+    #tw03-out { margin-top: 20px; font: 700 40px/1.1 var(--font-mono); color: var(--program); }
+    #tw03-msg { margin-top: 20px; font: 400 26px/1.35 var(--font-mono); color: var(--warn); overflow-wrap: anywhere; }
+    .tw03-tag { margin-top: 18px; font: 400 28px/1.3 var(--font-sans); color: var(--text-muted); }
+    #tw03-note { position: absolute; left: 192px; top: 880px; width: 1536px; font: 400 30px/1.3 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="tw-03-wrap" data-width="1920" data-height="1080" data-duration="15"
+       data-steps='{"wrap":{"label":"Wrap","start":0,"end":14.45}}'>
+    <div class="tw-stage" id="tw03-stage">
+      <div class="tw-head" id="tw03-head">
+        <h1 class="tw-title" id="tw03-title">Wrap-around, and the case that is not.</h1>
+        <p class="tw-sub" id="tw03-sub">The same idea with two different rules.</p>
+      </div>
+      <div class="tw-card tw03-card" id="tw03-ok">
+        <div class="tw03-h">unsigned: defined</div>
+        <div class="tw03-code">unsigned char c = 250;
+c += 10;
+printf("%d\n", c);</div>
+        <div id="tw03-out">4</div>
+        <div class="tw03-tag">The value wraps modulo 256.</div>
+      </div>
+      <div class="tw-card tw03-card" id="tw03-ub">
+        <div class="tw03-h">signed: undefined</div>
+        <div class="tw03-code">volatile int big = INT_MAX;
+int next = big + 1;</div>
+        <div id="tw03-msg">runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'</div>
+        <div class="tw03-tag">Not a wrap: the browser's checker stops the program here.</div>
+      </div>
+      <p id="tw03-note">Only unsigned arithmetic is defined to wrap. Signed overflow is undefined behaviour.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("tw-03-wrap", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 15;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      tl.addLabel("wrap", S.wrap.start);
+      tl.fromTo("#tw03-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#tw03-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#tw03-ok", { opacity: 0, x: -50 }, { opacity: 1, x: 0, duration: 0.6 }, 0.8);
+      tl.fromTo("#tw03-out", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.6)" }, 2.4);
+      tl.fromTo("#tw03-ub", { opacity: 0, x: 50 }, { opacity: 1, x: 0, duration: 0.6 }, 4.6);
+      tl.fromTo("#tw03-msg", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5 }, 6.6);
+      tl.fromTo("#tw03-note", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 8.8);
+
+      tl.fromTo("#tw03-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["tw-03-wrap"] = tl;
+    })();
+  </script>
+</template>
