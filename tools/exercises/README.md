@@ -114,4 +114,4 @@ Tests: `expect.test.ts`, fixtures in `fixtures/expect/`.
 | `parsons.ts` | accepted orderings and the scramble check |
 | `verify.ts` | the checks above (`verifyAll()`) |
 | `wasm-backend.ts`, `wasm-run-worker.ts` | `ExecBackend` for the browser toolchain in Node; programs run in a worker thread so a timeout can kill them |
-| `fixtures/` | one CT with a variant, an FB, a PA with a variant, an LT, a project (`npx vitest run tools/exercises`); `fixtures/expect/` has the `exercises:expect` fixtures |
+| `fixtures/` | one CT with a variant, an FB, a PA with a variant, an LT with a variant, a project (`npx vitest run tools/exercises`); `fixtures/expect/` has the `exercises:expect` fixtures |
