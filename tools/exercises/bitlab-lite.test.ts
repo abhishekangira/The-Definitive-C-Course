@@ -75,12 +75,38 @@ describe('bitlab-lite', () => {
     expect(status(r, 'byte_of', 'scan')).toBe('fail');
   }, 60_000);
 
-  it('a constructor that prints a forged report on the unmodified starter fails every scan test', async () => {
-    const starter = readFileSync(path.join(DIR, 'starter.c'), 'utf8');
-    const names = spec.tests.filter(t => 'unit' in t).map(t => t.name);
-    const forge = `#include <unistd.h>\n__attribute__((constructor)) static void forge(void) { ${names.map(n => `puts("@@PASS ${n}");`).join(' ')} puts("@@DONE"); fflush(stdout); _exit(0); }\n`;
-    const r = await go(starter.replace('#include <stdio.h>\n', '#include <stdio.h>\n' + forge));
-    expect(r.results.filter(t => t.kind === 'scan' && t.status === 'fail')).toHaveLength(6);
+  // The report-forging attacks. The unit harness trusts "@@PASS" lines on stdout, and the learner file is compiled with it, so the
+  // file must hold nothing but the puzzle functions: every scan test fails for each of these, whatever the spelling.
+  const starter = readFileSync(path.join(DIR, 'starter.c'), 'utf8');
+  const insert = (extra: string, includes = '') => starter.replace('#include <stdint.h>\n', `#include <stdint.h>\n${includes}${extra}\n`);
+  const names = spec.tests.filter(t => 'unit' in t).map(t => t.name);
+  const attacks: Array<[string, string]> = [
+    ['printf redefined to rewrite @@FAIL into @@PASS with \\x40 escapes (the review attack)',
+      insert(`int printf(const char *f, ...) { va_list a; va_start(a, f); if (f[1] == 64 && f[2] == 64 && f[3] == 70) { const char *n = va_arg(a, const char *); fputs("\\n\\x40\\x40PASS ", stdout); fputs(n, stdout); fputs("\\n", stdout); fflush(stdout); va_end(a); return 0; } int r = vprintf(f, a); va_end(a); return r; }`, '#include <stdarg.h>\n#include <stdio.h>\n')],
+    ['putchar overridden', insert('int putchar(int c) { return c; }')],
+    ['puts overridden', insert('int puts(const char *s) { (void)s; return 0; }', '#include <stdio.h>\n')],
+    ['fflush overridden', insert('int fflush(FILE *f) { (void)f; return 0; }', '#include <stdio.h>\n')],
+    ['write overridden', insert('ssize_t write(int fd, const void *b, size_t n) { (void)fd; (void)b; return (ssize_t)n; }', '#include <unistd.h>\n')],
+    ['a constructor attribute', insert(`__attribute__((constructor)) static void forge(void) { puts("@@PASS ${names[0]}"); }`, '#include <stdio.h>\n')],
+    ['a constructor attribute spelled with escapes and no @', insert('__attribute__((constructor)) static void forge(void) { puts("\\x40\\x40" "DONE"); exit(0); }', '#include <stdio.h>\n#include <stdlib.h>\n')],
+    ['a destructor attribute', insert('__attribute__((destructor)) void forge(void) { }')],
+    ['an atexit handler registered from main', starter.replace('#include <stdint.h>\n', '#include <stdint.h>\n#include <stdlib.h>\n').replace('int main(void) {\n    return 0;', 'int main(void) {\n    atexit(abort);\n    return 0;')],
+    ['a file-scope variable with an initialiser', insert('int hook = 1;')],
+    ['a macro that renames a library function', insert('#define fflush fclose')],
+    ['an extra helper function', insert('int helper(int a) { return a; }')],
+    ['a string in main', starter.replace('int main(void) {\n    return 0;', 'int main(void) {\n    return \"\\x40\"[0];')],
+  ];
+  it.each(attacks)('%s can not complete the exercise: no scan test passes', async (_n, code) => {
+    const r = await go(code);
+    // A forged report may still make a unit test "pass", but the exercise is only complete when every test passes.
+    expect(r.results.filter(t => t.status !== 'pass').length).toBeGreaterThan(0);
+    expect(r.results.filter(t => t.kind === 'scan' && t.status === 'pass')).toHaveLength(0);
+    expect(r.results.find(t => t.kind === 'compile')?.status, 'the attack compiles, so the scan is what stops it').toBe('pass');
+  }, 60_000);
+
+  it('the untouched starter passes all six scans (its (void) lines are not casts) and fails the unit tests', async () => {
+    const r = await go(starter);
+    expect(r.results.filter(t => t.kind === 'scan').map(t => t.status)).toEqual(Array(6).fill('pass'));
+    expect(r.results.filter(t => t.kind === 'unit' && t.status === 'pass')).toHaveLength(0);
   }, 60_000);
 });
-

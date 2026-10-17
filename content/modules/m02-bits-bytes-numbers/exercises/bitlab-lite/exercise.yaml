@@ -7,6 +7,9 @@ prompt: |
   listed, no more than the number shown, and nothing else. No `if`, no loops, no `?:`, no function
   calls, no casts, no `#define`, and no integer constant above 255. Plain assignment `=`, parentheses, commas and
   semicolons are free (compound forms such as `|=` are not), and you may declare local variables.
+  The file may hold only `#include <stdint.h>`, the six functions and `main`, with no strings or character
+  literals. A function's result is converted to its return type (`uint8_t` keeps only the low 8 bits), which
+  is part of each signature and is not counted as an operator.
 
   | function | job | allowed operators | at most |
   |---|---|---|---|

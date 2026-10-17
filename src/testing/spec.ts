@@ -135,10 +135,11 @@ export function validateTestsSpec(spec: unknown, opts: ValidateOptions = {}): Sp
       unknownKeys(t, ['name', 'scan', 'hint', 'hints'], label, p.warnings);
       const sc = t.scan;
       if (!isObj(sc)) { p.errors.push(`${label}: "scan" must be an object`); return; }
-      unknownKeys(sc, ['function', 'allow', 'maxOps', 'maxLiteral'], `${label}.scan`, p.warnings);
+      unknownKeys(sc, ['function', 'allow', 'maxOps', 'maxLiteral', 'exclusive'], `${label}.scan`, p.warnings);
       if (typeof sc.function !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(sc.function)) p.errors.push(`${label}: scan.function must be a C identifier`);
       if (!isStrArray(sc.allow) || sc.allow.some(o => !o.trim())) p.errors.push(`${label}: scan.allow must be a list of operator strings`);
       if (!(Number.isInteger(sc.maxOps) && (sc.maxOps as number) > 0)) p.errors.push(`${label}: scan.maxOps must be a positive integer`);
+      if (sc.exclusive !== undefined && !(isStrArray(sc.exclusive) && sc.exclusive.length > 0 && sc.exclusive.every(n => /^[A-Za-z_][A-Za-z0-9_]*$/.test(n)))) p.errors.push(`${label}: scan.exclusive must be a non-empty list of C identifiers`);
       if (sc.maxLiteral !== undefined && !(Number.isInteger(sc.maxLiteral) && (sc.maxLiteral as number) >= 0)) p.errors.push(`${label}: scan.maxLiteral must be a non-negative integer`);
     } else {
       unknownKeys(t, ['name', 'make', 'hint', 'hints'], label, p.warnings);

@@ -172,3 +172,33 @@ int main(void) { return 0; }
   });
 });
 
+describe('scanFunction: exclusive files', () => {
+  const EX: ScanRules = { ...RULES, exclusive: ['bit_and', 'other'] };
+  const file = (top: string) => `#include <stdint.h>\n${top}\nuint8_t bit_and(uint8_t x, uint8_t y) { return ~(~x | ~y); }\nint main(void) { return 0; }\n`;
+  it('accepts a file of only the puzzle functions and main, and a (void) statement', () => {
+    expect(scanFunction(file(''), EX).ok).toBe(true);
+    expect(scanFunction(file('uint8_t other(uint8_t a) { (void)a; return 1; }'), EX).ok).toBe(true);
+  });
+  it('rejects every other top-level item', () => {
+    for (const top of [
+      'int printf(const char *f, ...) { return 0; }', 'int helper(int a) { return a; }', 'int hook = 1;', 'typedef int t;', 'int other(int a);',
+      '__attribute__((constructor)) static void f(void) { }', 'static int s;', '_Static_assert(1, "x");',
+    ]) expect(scanFunction(file(top), EX).ok, top).toBe(false);
+  });
+  it('rejects any directive but #include <stdint.h>, and any string or character literal', () => {
+    expect(scanFunction(file('#include <stdio.h>'), EX).message).toContain('#include <stdint.h>');
+    expect(scanFunction(file('#define X 1'), EX).ok).toBe(false);
+    expect(scanFunction('#include <stdint.h>\nuint8_t bit_and(uint8_t x, uint8_t y) { return ~(~x | ~y); }\nint main(void) { return \'a\'; }\n', EX).ok).toBe(false);
+    expect(scanFunction(file('').replace('return 0;', 'return "\\x40"[0];'), EX).ok).toBe(false);
+  });
+  it('holds main to the body rules (no calls)', () => {
+    expect(scanFunction(file('').replace('return 0;', 'return abs(1);'), EX).message).toContain('calls abs()');
+  });
+  it('rejects a function whose parameters are not plain integer types and names', () => {
+    expect(scanFunction('#include <stdint.h>\nuint8_t bit_and(FOO x, uint8_t y) { return ~(~x | ~y); }\n', EX).ok).toBe(false);
+  });
+  it('does nothing unless the rule asks for it', () => {
+    expect(scanFunction('#include <stdio.h>\nint g = 1;\nint bit_and(int x, int y) { return ~(~x | ~y); }\n', RULES).ok).toBe(true);
+  });
+});
+

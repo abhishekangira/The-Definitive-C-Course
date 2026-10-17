@@ -12,7 +12,15 @@
           "~",
           "|"
         ],
-        "maxOps": 4
+        "maxOps": 4,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
       },
       "hint": "Allowed here: ~ |. The limit is 4 operator uses; = , ( ) and ; are free."
     },
@@ -30,7 +38,15 @@
           "~",
           "&"
         ],
-        "maxOps": 7
+        "maxOps": 7,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
       },
       "hint": "Allowed here: ~ &. The limit is 7 operator uses; = , ( ) and ; are free."
     },
@@ -49,7 +65,15 @@
           "<<",
           "&"
         ],
-        "maxOps": 3
+        "maxOps": 3,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
       },
       "hint": "Allowed here: >> << &. The limit is 3 operator uses; = , ( ) and ; are free."
     },
@@ -68,7 +92,15 @@
           "<<",
           "|"
         ],
-        "maxOps": 7
+        "maxOps": 7,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
       },
       "hint": "Allowed here: >> << |. The limit is 7 operator uses; = , ( ) and ; are free."
     },
@@ -86,7 +118,15 @@
           "~",
           "+"
         ],
-        "maxOps": 2
+        "maxOps": 2,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
       },
       "hint": "Allowed here: ~ +. The limit is 2 operator uses; = , ( ) and ; are free."
     },
@@ -106,7 +146,15 @@
           "!=",
           "=="
         ],
-        "maxOps": 5
+        "maxOps": 5,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
       },
       "hint": "Allowed here: & - != ==. The limit is 5 operator uses; = , ( ) and ; are free."
     },

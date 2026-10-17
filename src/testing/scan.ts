@@ -27,6 +27,13 @@ export interface ScanRules {
   maxOps: number;
   /** Largest integer literal allowed (default 255). */
   maxLiteral?: number;
+  /**
+   * Names of the only functions the file may define (the puzzle functions); `main` is allowed too. When set, the whole file is
+   * restricted: the only directive is `#include <stdint.h>`, every top-level item is a definition of one of these functions (or
+   * `main`) with plain integer types, and there are no strings or character literals anywhere. Nothing at file scope is left
+   * for the learner to redefine a library function or run code before `main`.
+   */
+  exclusive?: string[];
 }
 
 export interface ScanResult {
@@ -150,6 +157,51 @@ function withoutLiterals(clean: string): string {
   return out;
 }
 
+/** The whole-file rule behind `exclusive` (see ScanRules). Returns a failure, or undefined when the file only holds what it may. */
+function checkExclusive(toks: Tok[], names: string[]): ScanResult | undefined {
+  const allowed = new Set([...names, 'main']);
+  const bad = (line: number, message: string): ScanResult => ({ ok: false, message: `line ${line}: ${message}`, line });
+  for (const tk of toks) {
+    if (tk.t === 'str') return bad(tk.line, `a string or character literal (${tk.s}) is not allowed anywhere in this file`);
+  }
+  let k = 0;
+  while (k < toks.length) {
+    const tk = toks[k];
+    if (tk.t === 'hash') {
+      const rest = toks.slice(k, k + 7);
+      const ok = rest.length === 7 && rest.every(t => t.line === tk.line) && rest.map(t => t.s).join('') === '#include<stdint.h>';
+      if (!ok) return bad(tk.line, 'only the line #include <stdint.h> is allowed at the top of this file');
+      k += 7;
+      continue;
+    }
+    // type words, then the function name and its parameter list
+    const start = k;
+    while (k < toks.length && toks[k].t === 'id' && TYPE_WORDS.has(toks[k].s)) k++;
+    const name = toks[k];
+    if (k === start || name?.t !== 'id' || toks[k + 1]?.s !== '(') {
+      return bad(tk.line, `only the puzzle functions (${names.join(', ')}) and main may be defined in this file; "${tk.s}" starts something else`);
+    }
+    if (!allowed.has(name.s)) return bad(name.line, `${name.s}() is not one of the puzzle functions (${names.join(', ')}); this file may not define anything else`);
+    k += 2;
+    const params: Tok[] = [];
+    while (k < toks.length && toks[k].s !== ')') params.push(toks[k++]);
+    if (k >= toks.length) return bad(name.line, `the parameter list of ${name.s}() is not closed`);
+    k++;
+    const text = params.map(t => (t.t === 'id' && TYPE_WORDS.has(t.s) ? 'T' : t.t === 'id' ? 'N' : t.s)).join(' ');
+    const shape = /^(T )*T N( , (T )*T N)*$/.test(text) || text === 'T' && params[0].s === 'void' || text === '';
+    if (!shape) return bad(name.line, `the parameters of ${name.s}() must be plain integer types and names`);
+    if (toks[k]?.s !== '{') return bad(name.line, `${name.s}() must be defined here, with its body`);
+    let d = 0;
+    for (; k < toks.length; k++) {
+      if (toks[k].t !== 'op') continue;
+      if (toks[k].s === '{') d++;
+      else if (toks[k].s === '}' && --d === 0) { k++; break; }
+    }
+    if (d !== 0) return bad(name.line, `${name.s}() has no closing brace`);
+  }
+  return undefined;
+}
+
 const list = (ops: string[]) => (ops.length ? ops.join(' ') : 'none');
 
 /** Scans one function of `source` against `rules`. */
@@ -170,6 +222,11 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
   for (const tk of toks) {
     if (tk.t === 'id' && BANNED_WORDS.has(tk.s)) return fail(`line ${tk.line}: "${tk.s}" is not allowed in this exercise`, tk.line);
     if (tk.t === 'str' && tk.s.includes('@')) return fail(`line ${tk.line}: the character @ is not allowed in a string in this exercise (it is reserved for the test report)`, tk.line);
+  }
+
+  if (rules.exclusive) {
+    const r = checkExclusive(toks, rules.exclusive);
+    if (r) return r;
   }
 
   // Only #include lines may exist anywhere in the file.
@@ -233,7 +290,7 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
     } else if (tk.t === 'id') {
       if (CONTROL_WORDS.has(tk.s)) return fail(`${at}: ${fn}() uses "${tk.s}", which is not allowed here (no loops, branches or sizeof)`, tk.line, ops);
       if (TYPE_WORDS.has(tk.s)) {
-        if (prev?.t === 'op' && prev.s === '(') return fail(`${at}: ${fn}() contains a cast; casts are not allowed here (a cast to a narrow type works like an AND)`, tk.line, ops);
+        if (prev?.t === 'op' && prev.s === '(' && !(tk.s === 'void' && next?.s === ')')) return fail(`${at}: ${fn}() contains a cast; casts are not allowed here (a cast to a narrow type works like an AND)`, tk.line, ops);
         if (prev === undefined || (prev.t === 'op' && (prev.s === ';' || prev.s === '{' || prev.s === '}' || prev.s === '('))) inDecl = true;
       } else if (tk.s === 'return') {
         inDecl = false;
@@ -254,6 +311,11 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
       }
     }
     prev = tk;
+  }
+  // In an exclusive file `main` is held to the same body rules (no calls, no strings, no operators).
+  if (rules.exclusive && fn !== 'main' && toks.some((t, i) => t.t === 'id' && t.s === 'main' && toks[i + 1]?.s === '(')) {
+    const m = scanFunction(source, { function: 'main', allow: [], maxOps: 1, maxLiteral: rules.maxLiteral });
+    if (!m.ok) return { ...m, ops };
   }
   return { ok: true, ops };
 }

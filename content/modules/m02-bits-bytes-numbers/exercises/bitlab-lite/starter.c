@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <stdio.h>
 
 /* Puzzle 1: x & y, using only ~ and |. */
 uint8_t bit_and(uint8_t x, uint8_t y) {
@@ -38,6 +37,5 @@ int is_pow2(uint16_t x) {
 }
 
 int main(void) {
-    printf("bitlab: run the tests to check your puzzles\n");
     return 0;
 }

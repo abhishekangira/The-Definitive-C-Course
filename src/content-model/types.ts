@@ -128,7 +128,7 @@ export interface ScanTest {
    * Operator-restricted exercise: a token scan of one function of the learner's first source file
    * (see src/testing/scan.ts). Needs no compiler, so it also runs where only the file is known.
    */
-  scan: { function: string; allow: string[]; maxOps: number; maxLiteral?: number };
+  scan: { function: string; allow: string[]; maxOps: number; maxLiteral?: number; exclusive?: string[] };
   hint?: string;
   /** Tiered hints for this test, when one message is not enough (the checkpoint shows none). */
   hints?: string[];
