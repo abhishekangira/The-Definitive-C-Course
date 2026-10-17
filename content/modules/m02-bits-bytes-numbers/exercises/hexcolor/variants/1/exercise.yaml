@@ -1,0 +1,21 @@
+id: hexcolor/variants/1
+kind: ct
+title: Dim and invert a colour
+prompt: |
+  Write two functions on a colour stored as `0xRRGGBB`. `half` returns the colour at half brightness: each
+  of the three channels divided by 2, rounded down, with **one shift and one mask** for the whole
+  colour (no splitting into channels). `invert` returns the photographic negative: every channel
+  becomes 255 minus itself, which you can do with **one operator** on the whole colour, kept to 24 bits.
+
+  `main` parses a `#RRGGBB` colour for you and prints both results.
+runsIn: browser
+hints:
+- Shifting the whole number right by 1 halves every channel, but the lowest bit of each channel leaks
+  down into the top bit of the channel below it. What mask clears those leaked bits?
+- 'Halving: `(c >> 1) & 0x7F7F7F`, where each `7F` keeps the low seven bits of one byte. Inverting: 255
+  minus a byte just flips its 8 bits, so flip all 24 with `~c` and keep them with `& 0xFFFFFF`.'
+- Use `return (c >> 1) & 0x7F7F7F;` for `half` and `return ~c & 0xFFFFFF;` for `invert`.
+file: dim.c
+variants: []
+sampleStdin: |
+  #FF8000
