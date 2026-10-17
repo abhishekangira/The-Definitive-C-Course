@@ -59,5 +59,9 @@ describe('A4: what the animation shows is what C does', () => {
     const r = await run(`#include <stdio.h>\nint main(void) {\n${shown.split('\n').map(l => '  ' + l).join('\n')}\n  return 0;\n}\n`);
     expect(r.stdout.split('\n').slice(0, 2)).toEqual([text(s, 'ff03-o1'), text(s, 'ff03-o2')]);
     expect(r.stdout).toBe('0.30000000000000004\n0\n');
+    // The caption under the 0 says what the comparison gave: the printed 0 means false.
+    expect(shown).toContain('sum == 0.3');
+    const [, flag] = r.stdout.trim().split('\n');
+    expect(plain(s)).toContain(`sum == 0.3 is ${flag === '1' ? 'true' : 'false'}`);
   });
 });
