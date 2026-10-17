@@ -7,27 +7,16 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-    inputs:
-      e2e_only:
-        description: '1 = e2e bench only (temporary, for the #45 worker check)'
-        required: false
-        default: '0'
-      e2e_repeats:
-        description: 'How many times to run npm run e2e'
-        required: false
-        default: '1'
 
 permissions:
   contents: read
 
 concurrency:
-  # A bench dispatch must not cancel the pull_request check on the same ref.
-  group: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.e2e_only == '1' && format('e2e-bench-{0}', github.run_id) || format('ci-{0}', github.ref) }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   check:
-    if: github.event_name != 'workflow_dispatch' || github.event.inputs.e2e_only != '1'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     # This job runs PR-authored code (npm ci, tests, e2e), so it only ever gets a read-only token.
@@ -194,48 +183,6 @@ jobs:
           git commit -m "Regenerate samples and traces (CI)"
           git push origin "HEAD:refs/heads/$HEAD_REF"
           gh workflow run ci.yml --ref "$HEAD_REF"
-
-  # Temporary bench for the #45 worker check. Removed once the 2-worker repeats are recorded.
-  e2e-bench:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.e2e_only == '1'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    env:
-      LC_ALL: C
-      E2E_REPEATS: ${{ github.event.inputs.e2e_repeats }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
-      - run: npx playwright install --with-deps chromium
-      - name: Repeat end-to-end
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "nproc=$(nproc) mem_mb=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)"
-          echo "E2E_BENCH_START repeats=${E2E_REPEATS}"
-          fails=0
-          for i in $(seq 1 "$E2E_REPEATS"); do
-            echo "E2E_BENCH_RUN_START index=$i"
-            log=$(mktemp)
-            start=$(date +%s)
-            set +e
-            npm run e2e >"$log" 2>&1
-            code=$?
-            set -e
-            cat "$log"
-            dur=$(( $(date +%s) - start ))
-            summary=$(grep -E '^[[:space:]]*[0-9]+ (passed|failed|flaky|skipped|did not run)' "$log" | tr '\n' ';' || true)
-            echo "E2E_BENCH_RUN_END index=$i exit=$code seconds=$dur summary=${summary}"
-            if [ "$code" -ne 0 ]; then fails=$((fails + 1)); fi
-          done
-          echo "E2E_BENCH_DONE fails=$fails repeats=$E2E_REPEATS"
-          if [ "$fails" -ne 0 ]; then exit 1; fi
 
   deploy:
     needs: check
