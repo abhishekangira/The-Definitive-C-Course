@@ -1,7 +1,18 @@
 // Attempt/hint/solution bookkeeping shared by every exercise kind (PLAN.md §2.5).
 import { useCallback, useRef } from 'react';
 import { exerciseProgress, noteActivity, update, useProgress, type ExerciseProgress } from '../progress/store';
+import { parseCode } from '../testing/token';
 import { fnv1a } from './hash';
+
+/** Distinct `src` values among pasted progress codes. Completion tokens have no source hash. */
+function distinctSourceCount(codes: string[]): number {
+  const srcs = new Set<string>();
+  for (const code of codes) {
+    const parsed = parseCode(code);
+    if (parsed.ok && parsed.code.type === 'progress') srcs.add(parsed.code.src);
+  }
+  return srcs.size;
+}
 
 export function useExerciseProgress(id: string, parentId?: string) {
   const progress = useProgress();
@@ -48,23 +59,26 @@ export function useExerciseProgress(id: string, parentId?: string) {
   const viewSolution = useCallback(() => patch(e => { e.solutionViewed = true; }), [patch]);
 
   /**
-   * A pasted local-task code. Distinct codes are the substantive attempts `solutionGate` counts
-   * (a local task has no editor, so it does not add active time). A completion token masters this
-   * exercise unless its solution was viewed, and masters the parent when this is the assigned variant.
+   * A pasted local-task code. Substantive attempts are distinct source hashes (`src`): check.mjs
+   * puts a new run counter in every code, so the strings differ even when the program did not.
+   * `attempts` counts accepted pastes. A local task has no editor, so it does not add active time.
+   * A completion token masters this exercise unless its solution was viewed. It masters the parent
+   * only outside assessment, and only when this variant's own solution was not viewed. Assessment
+   * reports through the checkpoint's `onPassed` instead of mastering the lesson exercise.
    */
-  const recordLocalCode = useCallback((canonical: string, info: { complete: boolean; run?: number }) => {
+  const recordLocalCode = useCallback((canonical: string, info: { complete: boolean; assessment?: boolean }) => {
     update(p => {
       noteActivity(p);
       const e = exerciseProgress(p, id);
       e.codes = [...new Set([...(e.codes ?? []), canonical])];
-      e.attempts = Math.max(e.attempts, info.run ?? e.attempts + 1);
-      e.substantive = Math.max(e.substantive, e.codes.length);
+      e.attempts += 1;
+      e.substantive = distinctSourceCount(e.codes);
       if (info.complete) {
         e.passed = true;
         if (!e.solutionViewed) e.mastered = true;
       }
       p.exercises[id] = e;
-      if (info.complete && parentId) {
+      if (info.complete && parentId && !info.assessment && !e.solutionViewed) {
         const parent = exerciseProgress(p, parentId);
         parent.mastered = true;
         p.exercises[parentId] = parent;

@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parse } from 'yaml';
-import { emptyProgress, getProgress, replaceProgress } from '../progress/store';
+import { emptyProgress, getProgress, replaceProgress, type ExerciseProgress } from '../progress/store';
 import { encodeCompletionToken, encodeProgressCode } from '../testing/token';
 import type { ExerciseMeta } from '../content-model/types';
 import type { ExerciseEntry } from '../content-runtime/course';
@@ -108,7 +108,17 @@ function findButton(root: ParentNode, name: RegExp): HTMLButtonElement {
   if (!b) throw new Error(`no button matching ${name}`);
   return b as HTMLButtonElement;
 }
-const click = (root: ParentNode, name: RegExp) => act(() => { findButton(root, name).click(); });
+const click = (root: ParentNode, name: RegExp) => act(async () => { findButton(root, name).click(); });
+function saveExercises(partials: Record<string, Partial<ExerciseProgress>>) {
+  const blank = (): ExerciseProgress => ({
+    attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false,
+  });
+  const p = getProgress();
+  replaceProgress({
+    ...p,
+    exercises: Object.fromEntries(Object.entries(partials).map(([id, patch]) => [id, { ...blank(), ...patch }])),
+  });
+}
 function type(input: HTMLInputElement, value: string) {
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
   act(() => { input.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -152,22 +162,35 @@ describe('LT solution gate and variant on the fixture exercise', () => {
     await paste(task, code1);
     await paste(task, code1);
     expect(getProgress().exercises['lt-free-list'].substantive).toBe(1);
+    expect(getProgress().exercises['lt-free-list'].attempts).toBe(2);
     expect(getProgress().streak.days.length).toBe(1);
     expect(findButton(task, /^Show the solution$/).disabled).toBe(true);
-    expect(task.textContent).toContain('One more progress code from a changed program');
+    expect(task.textContent).toContain('One more progress code from a changed program unlocks the solution.');
+    expect(task.textContent).not.toMatch(/minute/);
+    expect(task.textContent).toContain('Keep going and paste the final token.');
 
     await paste(task, code2);
     expect(getProgress().exercises['lt-free-list'].substantive).toBe(2);
+    expect(getProgress().exercises['lt-free-list'].attempts).toBe(3);
+    expect(task.textContent).toContain('The reference solution is now available.');
+    expect(task.textContent).not.toContain('Keep going and paste the final token.');
     const unlocked = findButton(task, /^Show the solution$/);
     expect(unlocked.disabled).toBe(false);
     await click(task, /^Show the solution$/);
     expect(getProgress().exercises['lt-free-list'].solutionViewed).toBe(true);
+    expect(document.activeElement).toBe(task.querySelector('[aria-label="Reference solution for list.c"]'));
     expect(task.textContent).toContain(parentSolution);
     expect(host.textContent).not.toContain(variantMarker);
 
     await click(task, /^Start the variant$/);
     const v = box('lt-free-list/variants/v1');
     expect(v).not.toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('[aria-label="Variant: Count the nodes"]'));
+    expect(host.querySelector('[data-variant-note]')?.textContent).toBe('Variant started: Count the nodes.');
+    expect(task.querySelector('label')?.textContent).toBe('Code printed by check.mjs for Free the whole list');
+    expect(v.querySelector('label')?.textContent).toBe('Variant code printed by check.mjs for Count the nodes');
+    expect(task.querySelector('button[type="submit"]')?.getAttribute('aria-label')).toBe('Submit code for Free the whole list');
+    expect(v.querySelector('button[type="submit"]')?.getAttribute('aria-label')).toBe('Submit variant code for Count the nodes');
     expect(v.textContent).toContain('Count the nodes');
     expect(v.textContent).toContain('Variants are solved without a solution');
     expect(v.textContent).not.toContain(variantMarker);
@@ -204,6 +227,8 @@ describe('LT solution gate and variant on the fixture exercise', () => {
     expect(host.textContent).not.toContain('V2_SOLUTION_HIDDEN');
 
     await click(task, /^Give me a different variant$/);
+    expect(document.activeElement).toBe(host.querySelector('[aria-label="Variant: Count the other way"]'));
+    expect(host.querySelector('[data-variant-note]')?.textContent).toBe('Variant started: Count the other way.');
     expect(box('lt-free-list/variants/v2').textContent).toContain('Count the other way');
     expect(box('lt-free-list/variants/v1')).toBeNull();
     expect(host.textContent).not.toContain('V2_SOLUTION_HIDDEN');
@@ -236,5 +261,122 @@ describe('LT solution gate and variant on the fixture exercise', () => {
     expect(confirm).toHaveBeenCalled();
     expect(skipped).toBe(true);
     confirm.mockRestore();
+  });
+
+  it('two runs of the same source do not unlock the solution, and attempts counts pastes', async () => {
+    const seed = getProgress().seed;
+    const same1 = await encodeProgressCode({ exercise: 'lt-free-list', bits: '100', run: 7, src: 'aaaaaaaa' }, seed);
+    const same2 = await encodeProgressCode({ exercise: 'lt-free-list', bits: '110', run: 9, src: 'aaaaaaaa' }, seed);
+    const changed = await encodeProgressCode({ exercise: 'lt-free-list', bits: '111', run: 10, src: 'bbbbbbbb' }, seed);
+    render(createElement(LocalTask, { entry: parent }));
+    const task = box('lt-free-list');
+    await click(task, /^Stuck\? Show a hint$/);
+    await click(task, /^Show hint 2 \(concept\)$/);
+    await click(task, /^Show hint 3 \(partial code\)$/);
+    await paste(task, same1);
+    await paste(task, same2);
+    const saved = getProgress().exercises['lt-free-list'];
+    expect(saved.attempts).toBe(2);
+    expect(saved.substantive).toBe(1);
+    expect(saved.codes).toEqual([same1, same2]);
+    expect(findButton(task, /^Show the solution$/).disabled).toBe(true);
+    expect(task.textContent).toContain('Keep going and paste the final token.');
+    expect(task.textContent).not.toContain('The reference solution is now available.');
+    await paste(task, changed);
+    expect(getProgress().exercises['lt-free-list'].attempts).toBe(3);
+    expect(getProgress().exercises['lt-free-list'].substantive).toBe(2);
+    expect(findButton(task, /^Show the solution$/).disabled).toBe(false);
+    expect(task.textContent).toContain('The reference solution is now available.');
+    expect(task.textContent).not.toContain('Keep going and paste the final token.');
+  });
+
+  it('shows the saved solution and variant again after a remount, without moving focus', async () => {
+    saveExercises({
+      'lt-free-list': { hintsViewed: 3, substantive: 2, attempts: 2, solutionViewed: true, variant: 'v1', codes: ['saved-code'] },
+    });
+    render(createElement(LocalTask, { entry: parent }));
+    expect(box('lt-free-list').textContent).toContain(parentSolution);
+    expect(box('lt-free-list/variants/v1').textContent).toContain('Count the nodes');
+    expect(document.activeElement).toBe(document.body);
+    expect(host.querySelector('[data-variant-note]')).toBeNull();
+    await act(async () => { root.unmount(); });
+    root = createRoot(host);
+    render(createElement(LocalTask, { entry: parent }));
+    expect(box('lt-free-list').textContent).toContain(parentSolution);
+    expect(box('lt-free-list/variants/v1').textContent).toContain('Count the nodes');
+    expect(getProgress().exercises['lt-free-list'].codes).toEqual(['saved-code']);
+    expect(document.activeElement).toBe(document.body);
+    expect(host.querySelector('[data-variant-note]')).toBeNull();
+  });
+
+  it('rejects a variant completion token pasted into the parent box', async () => {
+    const seed = getProgress().seed;
+    const variantDone = await encodeCompletionToken({ exercise: 'lt-free-list/variants/v1' }, seed);
+    saveExercises({
+      'lt-free-list': { hintsViewed: 3, substantive: 2, attempts: 2, solutionViewed: true, variant: 'v1' },
+    });
+    render(createElement(LocalTask, { entry: parent }));
+    const task = box('lt-free-list');
+    expect(box('lt-free-list/variants/v1')).not.toBeNull();
+    await paste(task, variantDone);
+    expect(task.textContent).toMatch(/not "lt-free-list"/);
+    expect(task.textContent).not.toContain('Completion token accepted');
+    expect(getProgress().exercises['lt-free-list']).toMatchObject({ passed: false, mastered: false, attempts: 2 });
+    expect(getProgress().exercises['lt-free-list/variants/v1']).toBeUndefined();
+  });
+
+  it('assessment with a stored reveal hides the variant and reports the checkpoint through onPassed', async () => {
+    const onPassed = vi.fn();
+    saveExercises({
+      'lt-free-list': { hintsViewed: 3, substantive: 2, attempts: 2, solutionViewed: true, variant: 'v1' },
+    });
+    render(createElement(LocalTask, { entry: parent, assessment: true, onPassed, onGiveUp: () => {} }));
+    expect(host.querySelector('[data-exercise="lt-free-list/variants/v1"]')).toBeNull();
+    expect(host.textContent).not.toContain('Stuck? Show a hint');
+    expect(host.textContent).not.toContain('Show the solution');
+    expect(host.textContent).not.toContain('Count the nodes');
+    expect(host.textContent).not.toContain(variantMarker);
+    expect(onPassed).not.toHaveBeenCalled();
+    expect(getProgress().exercises['lt-free-list'].mastered).toBe(false);
+    const token = await encodeCompletionToken({ exercise: 'lt-free-list' }, getProgress().seed);
+    await paste(box('lt-free-list'), token);
+    expect(onPassed).toHaveBeenCalledTimes(1);
+    expect(getProgress().exercises['lt-free-list']).toMatchObject({ passed: true, solutionViewed: true, mastered: false });
+  });
+
+  it('a variant progress code does not master the parent', async () => {
+    const seed = getProgress().seed;
+    const progress = await encodeProgressCode({ exercise: 'lt-free-list/variants/v1', bits: '10', run: 4, src: 'cccccccc' }, seed);
+    saveExercises({
+      'lt-free-list': { hintsViewed: 3, substantive: 2, attempts: 2, solutionViewed: true, variant: 'v1' },
+    });
+    render(createElement(LocalTask, { entry: parent }));
+    await paste(box('lt-free-list/variants/v1'), progress);
+    expect(getProgress().exercises['lt-free-list'].mastered).toBe(false);
+    expect(getProgress().exercises['lt-free-list/variants/v1']).toMatchObject({ passed: false, mastered: false, attempts: 1, substantive: 1 });
+  });
+
+  it('a variant completion during assessment calls onPassed and does not master the parent', async () => {
+    const onPassed = vi.fn();
+    const token = await encodeCompletionToken({ exercise: 'lt-free-list/variants/v1' }, getProgress().seed);
+    render(createElement(LocalTask, { entry: variant, parentId: parent.id, assessment: true, onPassed }));
+    const task = box('lt-free-list/variants/v1');
+    expect(task.textContent).not.toContain('Stuck? Show a hint');
+    await paste(task, token);
+    expect(onPassed).toHaveBeenCalledTimes(1);
+    expect(getProgress().exercises['lt-free-list/variants/v1']).toMatchObject({ passed: true, mastered: true });
+    expect(getProgress().exercises['lt-free-list']?.mastered ?? false).toBe(false);
+  });
+
+  it('does not master the parent when that variant solution was viewed', async () => {
+    const token = await encodeCompletionToken({ exercise: 'lt-free-list/variants/v1' }, getProgress().seed);
+    saveExercises({
+      'lt-free-list': { hintsViewed: 3, substantive: 2, attempts: 2, solutionViewed: true, variant: 'v1', mastered: false },
+      'lt-free-list/variants/v1': { solutionViewed: true },
+    });
+    render(createElement(LocalTask, { entry: parent }));
+    await paste(box('lt-free-list/variants/v1'), token);
+    expect(getProgress().exercises['lt-free-list/variants/v1']).toMatchObject({ passed: true, solutionViewed: true, mastered: false });
+    expect(getProgress().exercises['lt-free-list'].mastered).toBe(false);
   });
 });

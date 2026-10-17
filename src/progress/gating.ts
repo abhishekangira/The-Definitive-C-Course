@@ -70,7 +70,8 @@ export interface SolutionGate { unlocked: boolean; reason?: string }
 
 /**
  * What a substantive attempt is. Browser exercises count a changed program that was tested.
- * Local tasks count a distinct pasted progress code (`codes`). The thresholds are the same.
+ * Local tasks count a distinct source hash (`src`), not a distinct code string: check.mjs
+ * bumps `run` on every full run. The thresholds are the same.
  */
 export type SolutionAttempts = 'editor' | 'codes';
 
@@ -88,8 +89,11 @@ export function solutionGate(e: ExerciseProgress, isVariant: boolean, attempts: 
         : 'Make a real attempt first: change the code and run the tests.',
     };
   }
+  const next = attempts === 'codes' ? 'One more progress code from a changed program' : 'One more changed attempt';
+  // A local task never adds activeMs, so with none stored the minutes clause would promise time this panel cannot record.
+  // Time that is already stored still unlocks above, and still explains the remainder below.
+  if (attempts === 'codes' && minutes <= 0) return { unlocked: false, reason: `${next} unlocks the solution.` };
   const left = Math.ceil(20 - minutes);
   const unit = left === 1 ? 'minute' : 'minutes';
-  const next = attempts === 'codes' ? 'One more progress code from a changed program' : 'One more changed attempt';
   return { unlocked: false, reason: `${next} (or ${left} more ${unit} of work) unlocks the solution.` };
 }

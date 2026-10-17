@@ -1,12 +1,14 @@
 // LT: work done on the learner's own machine. Download the starter (with the learner's seed),
 // run `make test`, paste the code it prints. The solution gate is the same as a browser exercise.
-// Attempts are distinct pasted progress codes. Viewing the solution assigns a variant: a second
+// Attempts count accepted pastes. The solution counts distinct source hashes, not code strings
+// (check.mjs bumps its run counter every full run). Viewing the solution assigns a variant: a second
 // zip and a second code, with hints 1–2 only and no solution.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { exercises, type ExerciseEntry } from '../content-runtime/course';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { useCardDone } from '../lesson/LessonContext';
-import { update, useProgress } from '../progress/store';
+import { solutionGate } from '../progress/gating';
+import { exerciseProgress, getProgress, update, useProgress } from '../progress/store';
 import { formatCode, verifyCode } from '../testing/token';
 import { useFolder } from './Exercise';
 import { useExerciseProgress } from './useExerciseProgress';
@@ -29,12 +31,24 @@ export function LocalTask({ entry, onPassed, projectId, assessment, onGiveUp, pa
   const { ep, viewHint, viewSolution, assignVariant, recordLocalCode } = useExerciseProgress(entry.id, parentId);
   const [code, setCode] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [variantNote, setVariantNote] = useState<string | null>(null);
+  const variantBox = useRef<HTMLDivElement>(null);
+  const seenVariant = useRef(ep.variant);
   const isVariant = Boolean(parentId);
   const name = entry.id.split('/').pop() ?? entry.id;
   const variants = entry.meta.variants ?? [];
   // Native projects keep today's download-and-paste flow. Only an LT exercise reveals a solution.
   const offerSolution = entry.meta.kind === 'lt' && !projectId;
-  const variantEntry = !isVariant && ep.solutionViewed && ep.variant ? exercises[`${entry.id}/variants/${ep.variant}`] : undefined;
+  // Checkpoints hide hints, the solution and the variant (AssessmentProps).
+  const variantEntry = !assessment && !isVariant && ep.solutionViewed && ep.variant ? exercises[`${entry.id}/variants/${ep.variant}`] : undefined;
+  const codeLabel = isVariant ? `Variant code printed by check.mjs for ${entry.meta.title}` : `Code printed by check.mjs for ${entry.meta.title}`;
+  const submitLabel = isVariant ? `Submit variant code for ${entry.meta.title}` : `Submit code for ${entry.meta.title}`;
+  useEffect(() => {
+    if (assessment || !variantEntry || !ep.variant || seenVariant.current === ep.variant) return;
+    seenVariant.current = ep.variant;
+    variantBox.current?.focus();
+    setVariantNote(`Variant started: ${variantEntry.meta.title}.`);
+  }, [assessment, variantEntry, ep.variant]);
 
   const download = async () => {
     if (!files) return;
@@ -46,15 +60,17 @@ export function LocalTask({ entry, onPassed, projectId, assessment, onGiveUp, pa
     if (!v.ok) { setMsg({ ok: false, text: v.message }); return; }
     const canonical = formatCode(v.code); // never store the pasted text: it may be huge or carry other content
     const complete = v.code.type === 'completion';
-    const run = v.code.type === 'progress' ? v.code.run : undefined;
-    recordLocalCode(canonical, { complete, run });
+    recordLocalCode(canonical, { complete, assessment: Boolean(assessment) });
     if (complete) {
       if (projectId) update(p => { p.projects[projectId] = { passed: true, at: new Date().toISOString(), token: canonical }; });
       setMsg({ ok: true, text: 'Completion token accepted: all checks passed on your machine.' });
       markDone();
       onPassed?.();
     } else {
-      setMsg({ ok: false, text: `Progress code accepted (${v.passed ?? '?'} of ${v.total ?? '?'} checks passing). Keep going and paste the final token.` });
+      const now = exerciseProgress(getProgress(), entry.id);
+      const unlocked = !isVariant && !assessment && offerSolution && solutionGate(now, false, 'codes').unlocked;
+      const next = unlocked ? 'The reference solution is now available.' : 'Keep going and paste the final token.';
+      setMsg({ ok: false, text: `Progress code accepted (${v.passed ?? '?'} of ${v.total ?? '?'} checks passing). ${next}` });
     }
   };
 
@@ -70,10 +86,10 @@ export function LocalTask({ entry, onPassed, projectId, assessment, onGiveUp, pa
           <li>Paste the code it prints at the end:</li>
         </ol>
         <form className={styles.actions} onSubmit={e => { e.preventDefault(); void submit(); }}>
-          <label className="visually-hidden" htmlFor={`lt-${entry.id}`}>Code printed by check.mjs</label>
+          <label className="visually-hidden" htmlFor={`lt-${entry.id}`}>{codeLabel}</label>
           <input id={`lt-${entry.id}`} className={styles.mono} value={code} onChange={e => setCode(e.target.value)} placeholder="TDCC1-…" spellCheck={false}
             style={{ flex: 1, minWidth: '16ch', padding: '6px 10px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg)' }} />
-          <button type="submit" className="btn btn-primary" disabled={!code.trim()}>Submit</button>
+          <button type="submit" className="btn btn-primary" disabled={!code.trim()} aria-label={submitLabel}>Submit</button>
         </form>
         {msg && <div className={msg.ok ? styles.good : styles.note} role="status">{msg.text}</div>}
         {assessment ? <GiveUp onGiveUp={onGiveUp} disabled={ep.passed} /> : ep.passed && <span className="badge badge-ok">Done</span>}
@@ -85,8 +101,9 @@ export function LocalTask({ entry, onPassed, projectId, assessment, onGiveUp, pa
         <p className={styles.muted}>Codes are tamper-evident, not tamper-proof: there is no server, so this works on the honour system.</p>
       </div>
       {variantEntry && (
-        <div className={styles.note}>
+        <div ref={variantBox} tabIndex={-1} className={styles.note} role="region" aria-label={`Variant: ${variantEntry.meta.title}`}>
           <strong>Variant: solve this one on your own.</strong>
+          {variantNote && <span className="visually-hidden" role="status" data-variant-note="">{variantNote}</span>}
           <LocalTask key={variantEntry.id} entry={variantEntry} parentId={entry.id} />
         </div>
       )}

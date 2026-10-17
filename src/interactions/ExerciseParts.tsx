@@ -1,5 +1,5 @@
 // Pieces shared by exercise kinds: test results, tiered hints, the solution gate.
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { describeResult } from '../testing/format';
 import type { TestResult } from '../testing/runner';
 import type { ExerciseProgress } from '../progress/store';
@@ -72,22 +72,30 @@ export function SolutionGatePanel({ ep, isVariant, solution, fileName, onView, o
   onView: () => void;
   onVariant: () => void;
   hasVariants: boolean;
-  /** Local tasks count pasted progress codes; the variant is a second download. */
+  /** Local tasks count distinct source hashes; the variant is a second download. */
   attempts?: SolutionAttempts;
 }) {
+  const solutionRef = useRef<HTMLDivElement>(null);
+  const focusSolution = useRef(false);
+  const revealed = ep.solutionViewed;
+  useEffect(() => {
+    if (!focusSolution.current || !revealed) return;
+    focusSolution.current = false;
+    solutionRef.current?.focus();
+  }, [revealed]);
   if (ep.passed && !ep.solutionViewed) return null;
   const gate = solutionGate(ep, isVariant, attempts);
   if (isVariant) return <p className={styles.muted}>{gate.reason}</p>;
   if (!ep.solutionViewed) {
     return (
       <div className={styles.actions}>
-        <button type="button" className="btn btn-ghost btn-sm" disabled={!gate.unlocked} onClick={onView}>Show the solution</button>
+        <button type="button" className="btn btn-ghost btn-sm" disabled={!gate.unlocked} onClick={() => { focusSolution.current = true; onView(); }}>Show the solution</button>
         {!gate.unlocked && <span className={styles.muted}>{gate.reason}</span>}
       </div>
     );
   }
   return (
-    <div className={styles.split}>
+    <div ref={solutionRef} tabIndex={-1} className={styles.split} role="region" aria-label={`Reference solution for ${fileName}`}>
       <strong>Reference solution</strong>
       {solution && <CodeEditor value={solution} readOnly label="Reference solution" fileName={fileName} />}
       {hasVariants && (

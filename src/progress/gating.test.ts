@@ -132,7 +132,7 @@ describe('solutionGate for local tasks', () => {
       reason: 'Make a real attempt first: paste a progress code from make test.',
     });
     expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 0 }), false, 'codes').reason)
-      .toBe('One more progress code from a changed program (or 20 more minutes of work) unlocks the solution.');
+      .toBe('One more progress code from a changed program unlocks the solution.');
     expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 19 * MIN }), false, 'codes').unlocked).toBe(false);
     expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 19 * MIN }), false, 'codes').reason).toContain('1 more minute of work');
     expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 20 * MIN }), false, 'codes')).toEqual({ unlocked: true });
