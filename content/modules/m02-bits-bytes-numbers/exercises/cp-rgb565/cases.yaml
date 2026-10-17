@@ -1,0 +1,18 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "black"
+    stdin: "0\n0\n0\n"
+  - name: "white"
+    stdin: "255\n255\n255\n"
+  - name: "red 255, green 128, blue 8"
+    stdin: "255\n128\n8\n"
+  - name: "only red"
+    stdin: "255\n0\n0\n"
+  - name: "only green"
+    stdin: "0\n255\n0\n"
+  - name: "only blue"
+    stdin: "0\n0\n255\n"
+  - name: "low bits are dropped"
+    stdin: "7\n3\n7\n"
+  - name: "a mixed colour"
+    stdin: "18\n52\n86\n"
