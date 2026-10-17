@@ -509,6 +509,26 @@
         "stdout": "Number: INVALID\n",
         "exit": 0
       }
+    },
+    {
+      "name": "Amex-like prefix 30, 15 digits, valid checksum",
+      "run": {
+        "stdin": "300000000000007\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "Amex-like prefix 32, 15 digits, valid checksum",
+      "run": {
+        "stdin": "320000000000003\n"
+      },
+      "expect": {
+        "stdout": "Number: INVALID\n",
+        "exit": 0
+      }
     }
   ]
 }

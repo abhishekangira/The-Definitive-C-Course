@@ -114,3 +114,7 @@ cases:
     stdin: "4111111111111111110\n"
   - name: "Visa prefix but 18 digits (valid checksum)"
     stdin: "411111111111111118\n"
+  - name: "Amex-like prefix 30, 15 digits, valid checksum"
+    stdin: "300000000000007\n"
+  - name: "Amex-like prefix 32, 15 digits, valid checksum"
+    stdin: "320000000000003\n"

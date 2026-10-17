@@ -45,7 +45,7 @@ describe('Credit and the 32-bit long of the browser toolchain', () => {
   const mutants: Array<[string, string, string]> = [
     ['checksum accepts any total divisible by 5', 'return sum % 10 == 0;', 'return sum % 5 == 0;'],
     ['checksum accepts any even total', 'return sum % 10 == 0;', 'return sum % 2 == 0;'],
-    ...[33, 35, 36, 38].map((p): [string, string, string] => [`Amex also accepts prefix ${p}`, 'prefix == 34 || prefix == 37', `prefix == 34 || prefix == 37 || prefix == ${p}`]),
+    ...[30, 32, 33, 35, 36, 38].map((p): [string, string, string] => [`Amex also accepts prefix ${p}`, 'prefix == 34 || prefix == 37', `prefix == 34 || prefix == 37 || prefix == ${p}`]),
     ['Amex also accepts 16 digits', 'digits == 15 && (prefix == 34', '(digits == 15 || digits == 16) && (prefix == 34'],
     ['Mastercard also accepts 17 digits', 'digits == 16 && prefix >= 51', '(digits == 16 || digits == 17) && prefix >= 51'],
     ['Visa also accepts 15 digits', '(digits == 13 || digits == 16) && prefix / 10', '(digits == 13 || digits == 15 || digits == 16) && prefix / 10'],
