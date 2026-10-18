@@ -1,0 +1,21 @@
+id: unsigned-countdown/variants/1
+kind: fb
+title: The gap that is never negative
+prompt: |
+  **Bug report:** "The program reads two non-negative numbers and prints how far apart they are. `9` and
+  `4` gives `Gap: 5`, but `4` and `9` gives `Gap: 4294967291`."
+
+  Find and fix the bug.
+runsIn: browser
+hints:
+- Work out `a - b` for `a = 4` and `b = 9` on paper, then think about what a variable declared `unsigned`
+  can hold.
+- 'An `unsigned` result can never be negative: `4 - 9` wraps around to a huge number, so the test
+  `gap < 0` is never true and the swap never happens. Compare the two numbers **before** subtracting.'
+- 'Replace the `gap` lines with `if (a >= b) gap = a - b; else gap = b - a;`, and keep `gap` unsigned: now
+  each subtraction starts from the larger number.'
+file: gap.c
+variants: []
+sampleStdin: |
+  4
+  9

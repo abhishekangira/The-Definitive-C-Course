@@ -1,0 +1,19 @@
+id: lt-free-list/variants/v1
+kind: lt
+title: Count the nodes
+prompt: |
+  `count.c` reads integers from standard input into a linked list and prints how many there were.
+  The count is right, but AddressSanitizer reports a leak. Download the project, run `make test`,
+  and free every node. Paste the progress code `make test` prints.
+runsIn: native
+file: count.c
+hints:
+  - "The count is already right. Which line allocated the blocks the sanitizer still sees?"
+  - "free on the head frees one node. The rest stay reachable only through the next pointers you dropped."
+  - |
+    while (head != NULL) {
+        Node *next = head->next;
+        free(head);
+        head = next;
+    }
+variants: []

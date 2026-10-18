@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "sources": [
+    "date.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "the day a file system epoch starts",
+      "run": {
+        "stdin": "1980\n1\n1\n"
+      },
+      "expect": {
+        "stdout": "Year: Month: Day: packed: 0x0021\n1980-1-1\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "2000-06-15",
+      "run": {
+        "stdin": "2000\n6\n15\n"
+      },
+      "expect": {
+        "stdout": "Year: Month: Day: packed: 0x28cf\n2000-6-15\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "last day of the year",
+      "run": {
+        "stdin": "2023\n12\n31\n"
+      },
+      "expect": {
+        "stdout": "Year: Month: Day: packed: 0x579f\n2023-12-31\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "largest year",
+      "run": {
+        "stdin": "2107\n12\n31\n"
+      },
+      "expect": {
+        "stdout": "Year: Month: Day: packed: 0xff9f\n2107-12-31\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "a day with only the low bits",
+      "run": {
+        "stdin": "1981\n1\n2\n"
+      },
+      "expect": {
+        "stdout": "Year: Month: Day: packed: 0x0222\n1981-1-2\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "a mid-year date",
+      "run": {
+        "stdin": "1999\n9\n9\n"
+      },
+      "expect": {
+        "stdout": "Year: Month: Day: packed: 0x2729\n1999-9-9\n",
+        "exit": 0
+      }
+    }
+  ]
+}

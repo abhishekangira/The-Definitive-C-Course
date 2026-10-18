@@ -1,0 +1,37 @@
+id: bitlab-lite
+kind: ct
+title: Bit puzzles
+prompt: |
+  Six small puzzles, one function each, all in `bitlab.c`. Each function is checked against **every
+  possible input** and also scanned for the operators it uses: a function may use only the operators
+  listed, no more than the number shown, and nothing else. No `if`, no loops, no `?:`, no function
+  calls, no casts, no `#define`, and no integer constant above 255. Plain assignment `=`, parentheses, commas and
+  semicolons are free (compound forms such as `|=` are not), and you may declare local variables.
+  The file may hold only `#include <stdint.h>`, the six functions and `main`, with no strings or character
+  literals. A function's result is converted to its return type (`uint8_t` keeps only the low 8 bits), which
+  is part of each signature and is not counted as an operator.
+
+  | function | job | allowed operators | at most |
+  |---|---|---|---|
+  | `bit_and(x, y)` | `x & y` | `~` `\|` | 4 |
+  | `bit_xor(x, y)` | `x ^ y` | `~` `&` | 7 |
+  | `byte_of(x, n)` | byte `n` of the 16-bit `x` (0 is the lowest byte, `n` is 0 or 1) | `>>` `<<` `&` | 3 |
+  | `spread_top(x)` | 255 if the top bit of the 8-bit `x` is set, otherwise 0 | `>>` `<<` `\|` | 7 |
+  | `negate(x)` | `256 - x`, wrapped to 8 bits | `~` `+` | 2 |
+  | `is_pow2(x)` | 1 if the 16-bit `x` is 1, 2, 4, 8, ... , otherwise 0 | `&` `-` `!=` `==` | 5 |
+
+  The operator limits are the size of the reference solution, so a shorter answer is possible only if you
+  find a cleverer one. The scan reports the first line that breaks a rule.
+runsIn: browser
+hints:
+- Start with the identity that links the operators. For `bit_and`, think of De Morgan's law, which says
+  that not (A or B) is the same as (not A) and (not B).
+- 'Work from the operators you are given. `x & y` is "both bits set": the complement of "either bit is
+  clear". `x ^ y` is "either but not both". `byte_of` shifts the wanted byte down, then masks it. A
+  power of two has a single 1 bit, and subtracting 1 from it flips every bit below that bit.'
+- 'Some of them: `~(~x | ~y)`, `(x >> (n << 3)) & 255`, `~x + 1`, `(x != 0) & ((x & (x - 1)) == 0)`.
+  For `bit_xor` combine "not both" and "not neither": `~(x & y) & ~(~x & ~y)`. For `spread_top`, take
+  the top bit down with `>> 7` and copy it upward with `|` and `<<`.'
+file: bitlab.c
+variants: []
+sampleStdin: ''

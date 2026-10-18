@@ -1,0 +1,14 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "the day a file system epoch starts"
+    stdin: "1980\n1\n1\n"
+  - name: "2000-06-15"
+    stdin: "2000\n6\n15\n"
+  - name: "last day of the year"
+    stdin: "2023\n12\n31\n"
+  - name: "largest year"
+    stdin: "2107\n12\n31\n"
+  - name: "a day with only the low bits"
+    stdin: "1981\n1\n2\n"
+  - name: "a mid-year date"
+    stdin: "1999\n9\n9\n"

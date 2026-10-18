@@ -127,6 +127,33 @@ describe('solutionGate', () => {
   });
 });
 
+describe('solutionGate for local tasks', () => {
+  it('keeps the editor wording when the attempt kind is omitted', () => {
+    expect(solutionGate(ex({ hintsViewed: 3, substantive: 0 }), false).reason).toBe('Make a real attempt first: change the code and run the tests.');
+  });
+
+  it('counts the same thresholds, and the reasons name pasted progress codes', () => {
+    expect(solutionGate(ex({ hintsViewed: 3, substantive: 0 }), false, 'codes')).toEqual({
+      unlocked: false,
+      reason: 'Make a real attempt first: paste a progress code from make test.',
+    });
+    expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 0 }), false, 'codes').reason)
+      .toBe('One more progress code from a changed program unlocks the solution.');
+    expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 19 * MIN }), false, 'codes').unlocked).toBe(false);
+    // Stored time can still unlock at 20 minutes. The lock text never promises minutes: this panel does not add them.
+    expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 19 * MIN }), false, 'codes').reason)
+      .toBe('One more progress code from a changed program unlocks the solution.');
+    expect(solutionGate(ex({ hintsViewed: 3, substantive: 1, activeMs: 20 * MIN }), false, 'codes')).toEqual({ unlocked: true });
+    expect(solutionGate(ex({ hintsViewed: 3, substantive: 2, activeMs: 0 }), false, 'codes')).toEqual({ unlocked: true });
+  });
+
+  it('still refuses a solution on a variant', () => {
+    const g = solutionGate(ex({ hintsViewed: 3, substantive: 4, activeMs: 60 * MIN }), true, 'codes');
+    expect(g.unlocked).toBe(false);
+    expect(g.reason).toMatch(/variant/i);
+  });
+});
+
 describe('isMastered', () => {
   it('is false for no progress and for an unpassed exercise', () => {
     expect(isMastered(undefined)).toBe(false);

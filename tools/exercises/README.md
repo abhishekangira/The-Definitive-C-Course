@@ -29,7 +29,7 @@ needs a harness keeps its own `tests/`. Its learner file is its own `tests.json`
   **exactly three non-empty hints**, `variants` is a list of folder names (quote numeric ones: `'1'`), `file`
   equals `tests.json`'s first source, LT and native rules (`lt` runs native, `pa` runs in the browser). Unknown
   keys are warnings with a "did you mean" for the usual typos (`runs-in`, `hint`).
-- `tests.json` / `check.json` (`validateTestsSpec`): names, one of `run`/`unit`/`make` per test, harness files exist,
+- `tests.json` / `check.json` (`validateTestsSpec`): names, one of `run`/`unit`/`make`/`scan` per test, harness files exist,
   negative tests supply stdin and assert on output, make tests only for native exercises.
 - Listed variants exist, and unlisted variant folders are warned about. A variant has `variants: []`, runs where its
   exercise runs, and passes the same checks.
@@ -98,6 +98,20 @@ behaves differently under the sanitizers, or times out; nothing is written for a
 `--check` writes nothing and exits 1 when a file would change (use it to prove the committed files are current).
 Output is deterministic: run it twice and `git status` stays clean.
 
+**Operator-restricted exercises (`scan` tests).** A hand-written `tests.json` may hold `{ "name": "...", "scan": { "function": "bit_and", "allow": ["~", "|"], "maxOps": 4 } }`
+next to `unit` tests (`src/testing/scan.ts`; rules in `tools/check/README.md`). The verifier needs nothing extra: the reference solution must pass the scan, and the
+starter must fail some check. Such a folder has no `cases.yaml`, so `exercises:expect` skips it.
+The scan rejects the ways to hide code from it: digraphs and trigraphs (`%:` is a `#`), a backslash-newline, a second definition of the scanned
+function, and casts in the body (`(void)x;` is allowed: it narrows nothing). Report forging: a `unit` test reports through plain `@@PASS`
+lines on stdout (`src/testing/harness.ts`) and the learner's file is compiled with it, so a file that may define anything at file scope can
+redefine `printf` (or `putchar`, `fflush`, ...) or run a constructor and forge the report, with escapes such as `\x40` hiding the `@`. For that reason
+a scan exercise sets `"exclusive": [<puzzle functions>]`: the file may then hold only `#include <stdint.h>`, definitions of those functions
+and `main` (with plain integer types), and no string or character literal anywhere, so there is nothing at file scope to redefine. Every
+puzzle body is still scanned by its own test. What remains: this protects only exercises that set `exclusive` (today only bitlab-lite;
+it is the only exercise with `unit` tests); the harness itself still trusts stdout, so any future `unit` exercise without `exclusive` is
+forgeable, and a per-run token in the report lines (a change to `harness.ts` and `check.h`) is the real fix.
+The implicit conversion to the return type (`uint8_t`) truncates like a mask and the scan cannot see it; bitlab-lite's puzzle text says so.
+
 Scope: single-file, stdin/args/stdout/exit cases (what Module 1 uses). Unit-harness and `make` tests, stderr expectations and
 multi-file sources are still written by hand; `exercises:expect` skips a folder without `cases.yaml` (reports it as skipped, exit 0)
 so those hand-written folders do not break `--check` in CI. A mistyped `--only` or `--module` that matches nothing exits 1.
@@ -114,4 +128,4 @@ Tests: `expect.test.ts`, fixtures in `fixtures/expect/`.
 | `parsons.ts` | accepted orderings and the scramble check |
 | `verify.ts` | the checks above (`verifyAll()`) |
 | `wasm-backend.ts`, `wasm-run-worker.ts` | `ExecBackend` for the browser toolchain in Node; programs run in a worker thread so a timeout can kill them |
-| `fixtures/` | one CT with a variant, an FB, a PA with a variant, an LT, a project (`npx vitest run tools/exercises`); `fixtures/expect/` has the `exercises:expect` fixtures |
+| `fixtures/` | one CT with a variant, an FB, a PA with a variant, an LT with a variant, a project (`npx vitest run tools/exercises`); `fixtures/expect/` has the `exercises:expect` fixtures |

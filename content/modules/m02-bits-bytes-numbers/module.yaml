@@ -1,0 +1,40 @@
+id: m02
+number: 2
+title: "Bits, Bytes & Numbers"
+why: >-
+  JavaScript hides everything behind one IEEE double. Pointers, files, hashing and assembly all assume
+  that you are fluent in widths, signedness and bytes, so you learn to read the same bits as a number,
+  a flag set, a colour or a character.
+hours: 10
+weeks: 2
+time: { lessons: 4.5, problemSet: 2, project: 2, variants: 0.5, quizCheckpoint: 1 }
+lessonsRunIn: browser
+projectRunsIn: browser
+successCriteria:
+  - { sc: SC7, level: A }
+  - { sc: SC3, level: D }
+resources:
+  - title: "Computer Systems: A Programmer's Perspective (3rd ed.), Bryant & O'Hallaron"
+    detail: "Chapter 2, sections 2.1 to 2.4"
+  - title: "Beej's Guide to C Programming (v0.11)"
+    detail: 'Chapter 24 "Bitwise Operations" and chapter 37 "Fixed Width Integer Types"'
+    url: https://beej.us/guide/bgc/html/split/
+lessons:
+  - 01-binary-and-hex
+  - 02-widths-and-sizeof
+  - 03-unsigned-and-twos-complement
+  - 04-bitwise-operators-and-masks
+  - 05-floating-point
+  - 06-overflow-in-the-real-world
+  - 07-characters-as-numbers
+problemSet:
+  - bitlab-lite
+  - hexcolor
+project: credit
+coreExercises:
+  - unsigned-countdown
+  - pack-rgba
+  - fix-bit-test
+  - hexcolor
+retrieval:
+  sources: [m01]

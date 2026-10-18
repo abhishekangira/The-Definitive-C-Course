@@ -7,6 +7,7 @@ export const STORAGE_PREFIX = 'tdcc:v1:';
 const KEY = `${STORAGE_PREFIX}progress`;
 
 import { addDay, cleanDays, dayKey, emptyStreak, longestRun, mergeStreaks, type StreakData } from './streak';
+import { parseCode } from '../testing/token';
 
 export type Platform = 'mac-arm' | 'mac-intel' | 'wsl' | 'linux-x86' | 'linux-arm';
 
@@ -95,11 +96,36 @@ function cleanStreak(v: unknown): StreakData {
 
 const drop = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
 
+/**
+ * Distinct `src` values among progress codes, or undefined when none of them is a progress code.
+ * Completion tokens have no source hash. An exercise with no progress codes keeps its stored count
+ * (browser exercises never store codes).
+ */
+export function distinctProgressSources(codes: readonly string[]): number | undefined {
+  const srcs = new Set<string>();
+  for (const code of codes) {
+    const parsed = parseCode(code);
+    if (parsed.ok && parsed.code.type === 'progress') srcs.add(parsed.code.src);
+  }
+  return srcs.size > 0 ? srcs.size : undefined;
+}
+
+/**
+ * A document saved when `substantive` was the number of code strings can be higher than the distinct
+ * sources. Lower it to what the codes support. Never raise it: a missing count must not unlock a solution.
+ */
+function substantiveForCodes(stored: number, codes: string[] | undefined): number {
+  if (!codes || codes.length === 0) return stored;
+  const counted = distinctProgressSources(codes);
+  return counted === undefined ? stored : Math.min(stored, counted);
+}
+
 function cleanExercise(x: Record<string, unknown>): ExerciseProgress {
   const d = exerciseProgress(emptyProgress(), '');
+  const codes = strList(x.codes);
   return drop({
     attempts: num(x.attempts) ?? d.attempts,
-    substantive: num(x.substantive) ?? d.substantive,
+    substantive: substantiveForCodes(num(x.substantive) ?? d.substantive, codes),
     lastCodeHash: str(x.lastCodeHash),
     code: str(x.code),
     activeMs: num(x.activeMs) ?? d.activeMs,
@@ -109,7 +135,7 @@ function cleanExercise(x: Record<string, unknown>): ExerciseProgress {
     variant: str(x.variant),
     variantsTried: strList(x.variantsTried),
     mastered: bool(x.mastered) ?? d.mastered,
-    codes: strList(x.codes),
+    codes,
     tutorAsks: countField(x.tutorAsks, d.tutorAsks),
   });
 }
@@ -261,18 +287,22 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
   for (const [k, v] of Object.entries(b.samples)) if (!Object.hasOwn(out.samples, k)) out.samples[k] = v;
   for (const [k, v] of Object.entries(b.exercises)) {
     const cur = own(out.exercises, k);
-    if (!cur) { out.exercises[k] = v; continue; }
+    if (!cur) {
+      out.exercises[k] = { ...v, substantive: substantiveForCodes(v.substantive, v.codes) };
+      continue;
+    }
+    const codes = [...new Set([...(cur.codes ?? []), ...(v.codes ?? [])])];
     out.exercises[k] = {
       ...cur,
       attempts: Math.max(cur.attempts, v.attempts),
-      substantive: Math.max(cur.substantive, v.substantive),
+      substantive: substantiveForCodes(Math.max(cur.substantive, v.substantive), codes),
       activeMs: Math.max(cur.activeMs, v.activeMs),
       hintsViewed: Math.max(cur.hintsViewed, v.hintsViewed),
       passed: cur.passed || v.passed,
       solutionViewed: cur.solutionViewed || v.solutionViewed,
       mastered: cur.mastered || v.mastered,
       variant: cur.variant ?? v.variant,
-      codes: [...new Set([...(cur.codes ?? []), ...(v.codes ?? [])])],
+      codes,
       tutorAsks: Math.max(cur.tutorAsks, v.tutorAsks),
     };
   }
