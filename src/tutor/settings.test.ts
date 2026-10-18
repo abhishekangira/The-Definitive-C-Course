@@ -21,6 +21,7 @@ describe('tutor base URL', () => {
     expect(parseTutorBaseUrl('https://openrouter.ai/api/v1/')).toBe(DEFAULT_TUTOR_BASE_URL);
     expect(parseTutorBaseUrl('https://openrouter.ai/api/v1/chat/completions')).toBe(DEFAULT_TUTOR_BASE_URL);
     expect(tutorChatUrl(DEFAULT_TUTOR_BASE_URL)).toBe('https://openrouter.ai/api/v1/chat/completions');
+    expect(tutorChatUrl('https://example.com/openai/v1?api-version=2024-10-01')).toBe('https://example.com/openai/v1/chat/completions?api-version=2024-10-01');
     expect(tutorHost(DEFAULT_TUTOR_BASE_URL)).toBe('openrouter.ai');
   });
 

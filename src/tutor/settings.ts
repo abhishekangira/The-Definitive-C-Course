@@ -96,9 +96,14 @@ export function parseTutorBaseUrl(raw: string): string | null {
 export function tutorChatUrl(baseUrl: string): string | null {
   const base = parseTutorBaseUrl(baseUrl);
   if (!base) return null;
+  // Append to the path. A slash joined onto the whole string would land inside the query
+  // (`/v1?x=1` + `/` becomes a query of `x=1/`) and the last path segment would be replaced.
+  const root = new URL(base);
+  if (!root.pathname.endsWith('/')) root.pathname = `${root.pathname}/`;
   let endpoint: URL;
-  try { endpoint = new URL('chat/completions', `${base}/`); } catch { return null; }
-  const root = new URL(`${base}/`);
+  try { endpoint = new URL('chat/completions', root); } catch { return null; }
+  // A relative resolution drops the base query. Put it back so ?api-version= stays on the request.
+  endpoint.search = root.search;
   if (endpoint.protocol !== root.protocol || endpoint.host !== root.host || endpoint.username || endpoint.password) return null;
   return endpoint.toString();
 }
