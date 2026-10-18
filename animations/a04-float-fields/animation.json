@@ -1,0 +1,7 @@
+{
+  "id": "a04-float-fields",
+  "title": "Inside a float",
+  "lesson": "2.5",
+  "platform": "Any platform with IEEE 754 binary32 and binary64 (every target in this course); values were produced by the in-browser toolchain (wasm32).",
+  "description": "A 32-bit float is three bit fields: 1 sign bit, 8 exponent bits and 23 fraction bits. The pattern 0x3F800000 has sign 0, exponent 127 and fraction 0, so its value is 1.0 times 2 to the power 127 minus 127, which is 1. The float nearest to 0.1 is 0x3DCCCCCD: exponent 123 means a scale of 2 to the minus 4, and the fraction 5033165 over 2 to the 23 gives a significand of about 1.600000024, so the stored value is 0.10000000149011612 and not exactly one tenth. In double precision, 0.1 plus 0.2 prints as 0.30000000000000004 and does not compare equal to 0.3, so floats are compared with a tolerance."
+}

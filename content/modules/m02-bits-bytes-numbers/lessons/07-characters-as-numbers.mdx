@@ -1,0 +1,80 @@
+---
+id: m02-l7
+title: Characters as numbers
+minutes: 30
+summary: A char is a small integer, ASCII gives each character a number, char may be signed or unsigned, and bytes sit in memory in a particular order.
+---
+
+C has no separate "character" type. A `char` is a small integer, and a character literal such as `'A'` is just a number: its code in the **ASCII** table, where `'A'` is 65, `'a'` is 97 and `'0'` is 48. The letters and digits sit in runs, so arithmetic on them works. `%c` prints a number as the character with that code, and `%d` prints the number itself. Predict the output.
+
+```c id=char-arith
+#include <stdio.h>
+
+int main(void) {
+    printf("%d %c\n", 'A', 'A' + 1);
+    printf("%d %d\n", 'a' - 'A', '7' - '0');
+    return 0;
+}
+```
+
+The distance from a lower-case letter to its upper-case partner is the same for every letter, and a digit's value is its code minus the code of `'0'`. Those two tricks are all that most character code needs.
+
+Now a surprise. Is `char` signed or unsigned? The C standard does not say: it depends on the platform. On x86-64 Linux, macOS and Windows it is signed. On Linux for ARM64 it is unsigned. The same program can print different numbers, so never rely on `char` for arithmetic with values above 127. Use `unsigned char` or `uint8_t` when you mean a byte.
+
+```c id=char-signed platform predict64=none reason="the answer depends on the CPU family (x86 or Arm), not on 32 versus 64 bits, so there is no useful 64-bit prediction step"
+#include <stdio.h>
+
+int main(void) {
+    char c = (char)200;
+    printf("%d\n", c);
+    return 0;
+}
+```
+
+Look closely at how a number sits in memory. A 32-bit value takes four bytes, and the question is which byte comes first. A machine that stores the **least** significant byte first is **little-endian**, and all the course targets (x86-64, Arm and WebAssembly) do. Its opposite is **big-endian**, and network protocols use it.
+
+<Analogy js="DataView" c="reading bytes" breaksDown="`DataView` methods such as `getUint32` default to big-endian unless you pass `true`. C on x86, Arm and WebAssembly is little-endian, and C has no default to pass: the byte order is simply what the machine does." />
+
+The viewer shows the value `0x41424344` as four bytes. The ASCII column shows each byte as a character. Switch the byte order and watch both columns.
+
+<ByteViewer value="0x41424344" width={32} />
+
+<Choice
+  question="On a little-endian machine, which byte of the 32-bit value `0x41424344` is stored first (at the lowest address)?"
+  options={["`0x41`", "`0x42`", "`0x43`", "`0x44`"]}
+  answer={3}
+  explain="Little-endian stores the least significant byte first, so the bytes in memory order are 44, 43, 42, 41. Their ASCII reading is D, C, B, A."
+/>
+
+Letters beyond ASCII need more than one byte. **UTF-8** is the common encoding: a code point from U+0000 to U+007F is one byte (the same as ASCII), and higher ones take two, three or four. Strings are the subject of Module 4, so here you only look at the bytes of one code point. Try the euro sign, then a letter, then an emoji.
+
+<ByteViewer mode="utf8" text="€" />
+
+<Choice
+  question="How many bytes does the euro sign (U+20AC) take in UTF-8?"
+  options={["1", "2", "3", "4"]}
+  answer={2}
+  explain="U+20AC is above U+07FF and below U+FFFF, so UTF-8 uses three bytes for it: E2 82 AC. The viewer shows the same three bytes."
+/>
+
+Last, fill in the byte values of a small program. It stores one-byte numbers, and arithmetic on them wraps at 256.
+
+<MemoryDiagram ask={['main.sum', 'main.mask']} line={9}>
+
+```c id=byte-cells trace predict=none
+#include <stdint.h>
+#include <stdio.h>
+
+int main(void) {
+    uint8_t low = 0x4A;
+    uint8_t high = 0xC8;
+    uint8_t sum = (uint8_t)(low + high);
+    uint8_t mask = high & 0x0F;
+    printf("%u %u\n", sum, mask);
+    return 0;
+}
+```
+
+</MemoryDiagram>
+
+**What you know now:** a `char` is a small integer and `'A'` is 65. `c - '0'` turns a digit into its value, plain `char` may be signed or unsigned depending on the platform, and a multi-byte number is stored least significant byte first on every course target. UTF-8 spends one to four bytes per code point.

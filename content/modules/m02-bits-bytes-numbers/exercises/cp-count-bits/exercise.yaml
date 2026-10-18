@@ -1,0 +1,17 @@
+id: cp-count-bits
+kind: ct
+title: Count the set bits
+prompt: |
+  Ask for a non-negative number with `get_int("Number: ")`, re-asking while it is negative. Print how many
+  of its bits are 1 when it is written in binary, for example `13` (binary `1101`) prints `3`.
+
+  Use shifts and masks: look at the lowest bit, then shift the number right, until nothing is left.
+runsIn: browser
+hints:
+- The expression `n & 1` is 1 when the lowest bit of `n` is set.
+- Loop while `n` is not 0. Each time round, add `n & 1` to a counter and shift `n` right by one place.
+- 'Declare `int ones = 0;` and write `while (n > 0) { ones += n & 1; n >>= 1; }`.'
+file: bits.c
+variants: []
+sampleStdin: |
+  13

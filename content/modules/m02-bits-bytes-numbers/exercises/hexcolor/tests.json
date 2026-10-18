@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "sources": [
+    "hexcolor.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "#FF8000 over #000000 at alpha 128",
+      "run": {
+        "stdin": "#FF8000\n#000000\n128\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #804000\n",
+        "exit": 0
+      },
+      "hint": "Blend each channel on its own: red, green and blue are separate bytes."
+    },
+    {
+      "name": "#FF8000 over #000000 at alpha 0 shows only the background",
+      "run": {
+        "stdin": "#FF8000\n#000000\n0\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #000000\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#FF8000 over #000000 at alpha 255 shows only the foreground",
+      "run": {
+        "stdin": "#FF8000\n#000000\n255\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #FF8000\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#000000 over #000000 at alpha 200",
+      "run": {
+        "stdin": "#000000\n#000000\n200\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #000000\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#FFFFFF over #FFFFFF at alpha 77",
+      "run": {
+        "stdin": "#FFFFFF\n#FFFFFF\n77\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #FFFFFF\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#FFFFFF over #000000 at alpha 128",
+      "run": {
+        "stdin": "#FFFFFF\n#000000\n128\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #808080\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#000000 over #FFFFFF at alpha 128",
+      "run": {
+        "stdin": "#000000\n#FFFFFF\n128\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #7F7F7F\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#102030 over #A0B0C0 at alpha 64",
+      "run": {
+        "stdin": "#102030\n#A0B0C0\n64\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #7C8C9C\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#FF0000 over #0000FF at alpha 128",
+      "run": {
+        "stdin": "#FF0000\n#0000FF\n128\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #80007F\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#00FF00 over #FF00FF at alpha 191",
+      "run": {
+        "stdin": "#00FF00\n#FF00FF\n191\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #40BF40\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#123456 over #654321 at alpha 1",
+      "run": {
+        "stdin": "#123456\n#654321\n1\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #654321\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#123456 over #654321 at alpha 254",
+      "run": {
+        "stdin": "#123456\n#654321\n254\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #123456\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#FF0000 over #00FF00 at alpha 10",
+      "run": {
+        "stdin": "#FF0000\n#00FF00\n10\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #0AF500\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#0A0B0C over #F0E0D0 at alpha 100",
+      "run": {
+        "stdin": "#0A0B0C\n#F0E0D0\n100\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #968C83\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#808080 over #808080 at alpha 128",
+      "run": {
+        "stdin": "#808080\n#808080\n128\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #808080\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "#7F7F7F over #FEFEFE at alpha 3",
+      "run": {
+        "stdin": "#7F7F7F\n#FEFEFE\n3\n"
+      },
+      "expect": {
+        "stdout": "Foreground: Background: Alpha: #FDFDFD\n",
+        "exit": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,801 @@
+{
+  "generatedBy": "tools/verify --target-run; Apple clang version 15.0.0 (clang-1500.3.9.4)",
+  "module": "m02",
+  "samples": {
+    "binary-literal": {
+      "hash": "5808781687853059",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 20,
+              "file": "main.c",
+              "flag": "-Wgnu-binary-literal",
+              "line": 4,
+              "message": "binary integer literals are a GNU extension",
+              "severity": "warning"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c:4:20: warning: binary integer literals are a GNU extension [-Wgnu-binary-literal]\n    printf(\"%d\\n\", 0b101);\n                   ^\n1 warning generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "5\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "binary-literal-fixed": {
+      "hash": "e65960df47b011a8",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "5\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "bit-ops": {
+      "hash": "1c4dbc0150c55856",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "8 e 6\n3 30 3\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "byte-cells": {
+      "hash": "31428def0ef89f9d",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "18 8\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "char-arith": {
+      "hash": "ed0142b41655951a",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "65 B\n32 7\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "char-signed": {
+      "hash": "4fcac74dcadb9965",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "-56\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-bytes": {
+      "hash": "3ad733441baca8de",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "48 252 15\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-float-compare": {
+      "hash": "5f8e99dd52339f4b",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "0 1\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-masks": {
+      "hash": "ae50d9d81c4c2449",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "30 fc cc\nf0\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-sign-warning": {
+      "hash": "83d0236a279ec55b",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 17,
+              "file": "main.c",
+              "flag": "-Wsign-compare",
+              "line": 6,
+              "message": "comparison of integers of different signs: 'int' and 'unsigned int'",
+              "severity": "warning"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c:6:17: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]\n    if (balance < limit) {\n        ~~~~~~~ ^ ~~~~~\n1 warning generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "over\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "cp-wrap": {
+      "hash": "38f7d99cad24ff94",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "1 4294967295\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "epsilon-compare": {
+      "hash": "1bfd63da1dc05d16",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "0 1\n0 1\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "fixed-widths": {
+      "hash": "298ab99c6230a10f",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "1 1 4 8\n-128 127 255\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "flag-word": {
+      "hash": "8c0fdd5e39ff317b",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "4 1\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "float-16777217": {
+      "hash": "7ad40feddb896f5c",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "16777216.0\n1\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "float-bits": {
+      "hash": "599cc31a75adb574",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "3f800000\nc0200000\n3dcccccd\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "hex-print": {
+      "hash": "7326625310b2b701",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "255 ff FF 0xff\n[05] [ab] [  ab]\n31\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "int-limits": {
+      "hash": "5b9785fd22652da2",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "8 32767\n-2147483648 2147483647 4294967295\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "int-overflow": {
+      "hash": "bc67dc4c0834e9be",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "observed": [
+          {
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          }
+        ],
+        "run": {
+          "exit": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "target": "macos-arm64-appleclang",
+        "ub": {
+          "outcomes": [
+            "runs"
+          ],
+          "runs": 3
+        }
+      }
+    },
+    "level-wrap": {
+      "hash": "e5e68c86a9ad6f1e",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "0\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "minus-one-less": {
+      "hash": "2dcd0be447cd3a95",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "0\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "nan-inf": {
+      "hash": "98ad2a16411afd2d",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "1 1\n0 1\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "pack-orange": {
+      "hash": "608cb2c473f1b421",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "ff800040\n128 64\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "point-one-plus": {
+      "hash": "b1a26f25bfbb353a",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "0.30000000000000004\n0\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "precedence-trap": {
+      "hash": "22f048be67948561",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 11,
+              "file": "main.c",
+              "flag": "-Wparentheses",
+              "line": 5,
+              "message": "& has lower precedence than ==; == will be evaluated first",
+              "severity": "warning"
+            },
+            {
+              "col": 11,
+              "file": "main.c",
+              "line": 5,
+              "message": "place parentheses around the '==' expression to silence this warning",
+              "severity": "note"
+            },
+            {
+              "col": 11,
+              "file": "main.c",
+              "line": 5,
+              "message": "place parentheses around the & expression to evaluate it first",
+              "severity": "note"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c:5:11: warning: & has lower precedence than ==; == will be evaluated first [-Wparentheses]\n    if (x & 1 == 0) {\n          ^~~~~~~~\nmain.c:5:11: note: place parentheses around the '==' expression to silence this warning\n    if (x & 1 == 0) {\n          ^\n            (     )\nmain.c:5:11: note: place parentheses around the & expression to evaluate it first\n    if (x & 1 == 0) {\n          ^\n        (    )\n1 warning generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "odd\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "precedence-trap-fixed": {
+      "hash": "bb1c4b506f99ae1e",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "even\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "r-call-by-value": {
+      "hash": "ac18a99334c444c1",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "4\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "r-int-division": {
+      "hash": "ff76061d2970d4b8",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "3 -3 1\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "r-reprompt": {
+      "hash": "e110f5f6b629745f",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "n: n: 10\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "rgb-hex": {
+      "hash": "e961431a9d85d765",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "#FF8009\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "round-halves": {
+      "hash": "0a4eb1957ef95846",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "3 -3 4\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "same-bits": {
+      "hash": "415a8580ac30fd1d",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "200 -56\n4294967295\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "shift-negative": {
+      "hash": "4642ba3b84deb546",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "-4 -1\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "shift-too-far": {
+      "hash": "48638fff60b7b6c3",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "observed": [
+          {
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          }
+        ],
+        "run": {
+          "exit": 0,
+          "stderr": "",
+          "stdout": ""
+        },
+        "target": "macos-arm64-appleclang",
+        "ub": {
+          "outcomes": [
+            "runs"
+          ],
+          "runs": 3
+        }
+      }
+    },
+    "sign-compare": {
+      "hash": "3b9cd9b2ef3df882",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 11,
+              "file": "main.c",
+              "flag": "-Wsign-compare",
+              "line": 6,
+              "message": "comparison of integers of different signs: 'int' and 'unsigned int'",
+              "severity": "warning"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c:6:11: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]\n    if (a < b) {\n        ~ ^ ~\n1 warning generated.\n"
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "not smaller\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "sign-compare-fixed": {
+      "hash": "f766872f35197725",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "smaller\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "sizes-table": {
+      "hash": "3984e7c6f57744fb",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "char        1\nshort       2\nint         4\nlong        8\nlong long   8\nvoid *      8\nsize_t      8\nfloat       4\ndouble      8\nlong double 8\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "tick-days": {
+      "hash": "378c24f65851df32",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "tenths of a second: 2485.51 days\nhundredths of a second: 248.55 days\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "uchar-wrap": {
+      "hash": "556398fe93cacd5e",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "4\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    },
+    "wrap-safe-diff": {
+      "hash": "dc7c5a6c6290e836",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "11\n"
+        },
+        "target": "macos-arm64-appleclang"
+      }
+    }
+  },
+  "target": "macos-arm64-appleclang"
+}

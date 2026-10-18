@@ -1,0 +1,63 @@
+---
+id: m02-l6
+title: Overflow in the real world
+minutes: 25
+summary: Why a counter that is too narrow fails after a fixed time or count, how to work out when, and how to subtract counters safely.
+---
+
+An integer type has a fixed number of bits, so a counter built on it has a fixed number of steps before it wraps. If the counter stores a level number, a score or a clock, that is a real bug waiting for its day. Here is the smallest version: a level counter stored in one byte.
+
+The wheel makes the wrap visible. Press "Add 1" until it rolls over.
+
+<NumberPlayground mode="wheel" value={254} width={8} />
+
+Predict what this prints.
+
+```c id=level-wrap
+#include <stdio.h>
+
+int main(void) {
+    unsigned char level = 255;
+    level++;
+    printf("%d\n", level);
+    return 0;
+}
+```
+
+Two real failures come from a counter that is too narrow: a Boeing 787 that had to be powered off every 248 days, and the Pac-Man level 256 bug. Watch the short clip, then work out when a 32-bit counter fails.
+
+<YouTube video="yt-1" />
+
+Bigger counters only postpone the day. A 32-bit signed counter that ticks at a fixed rate runs out after 2 to the power of 31 ticks. How long is that? Which tick rate gives about 248 days? The program below works out two candidates, one for ticks of a tenth of a second and one for ticks of a hundredth of a second. Predict both, then see which one gives a figure near 248 days.
+
+```c id=tick-days
+#include <stdio.h>
+
+int main(void) {
+    double ticks = 2147483648.0;  /* 2 to the power of 31 */
+    double seconds_per_day = 86400.0;
+    printf("tenths of a second: %.2f days\n", ticks / 10.0 / seconds_per_day);
+    printf("hundredths of a second: %.2f days\n", ticks / 100.0 / seconds_per_day);
+    return 0;
+}
+```
+
+The pattern for the moment a 32-bit signed counter runs out is 2 to the power of 31, which sets only the top bit. Write it in hex.
+
+<NumberDrill value={2147483648} from="dec" to="hex" width={32} />
+
+Careful code survives a wrap. Subtracting two unsigned counters gives the right elapsed time even when the counter wrapped between the two readings, because unsigned arithmetic wraps by definition. Predict how many ticks passed.
+
+```c id=wrap-safe-diff
+#include <stdint.h>
+#include <stdio.h>
+
+int main(void) {
+    uint32_t start = 4294967290u;
+    uint32_t now = 5u;
+    printf("%u\n", (unsigned)(now - start));
+    return 0;
+}
+```
+
+**What you know now:** an `n`-bit counter has 2 to the power of `n` patterns, so you can work out when it runs out by division (an unsigned one then wraps; a signed one overflowing is undefined, as lesson 2.3 showed). A wider type postpones the wrap, and an unsigned subtraction measures elapsed ticks correctly across a wrap.

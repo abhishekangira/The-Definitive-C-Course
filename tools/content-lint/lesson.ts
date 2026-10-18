@@ -15,6 +15,7 @@ import { visit } from 'unist-util-visit';
 import type { Code, Root, RootContent } from 'mdast';
 import { countWords, groupCards, INTERACTIONS, MEDIA, NEUTRAL } from '../../src/content-model/cards';
 import type { SampleMeta } from '../../src/content-model/types';
+import { floatDrillBits, floatFromBits, hasExactDecimal } from '../../src/visualizers/numbers';
 import { lowerCodeFence } from '../mdx/remark-course';
 import { parseFenceMeta } from '../verify/meta';
 import type { ModuleCtx, SiteCtx } from './context';
@@ -268,12 +269,38 @@ function checkNumberDrill(node: JsxNode, r: FileReporter): void {
   if (!value.present && !hasSpread(node)) r.error(line(node), 'interaction-props', '<NumberDrill> needs `value` (or `exercise`)');
   const from = attr(node, 'from').value;
   const to = attr(node, 'to').value;
+  const kind = attr(node, 'kind').value;
+  if (typeof kind === 'string' && kind !== 'int' && kind !== 'float') r.error(line(node), 'interaction-props', '<NumberDrill> `kind` must be int or float');
+  if (kind === 'float') { checkFloatDrill(node, value.value, from, to, attr(node, 'width').value, r); return; }
   for (const [name, v] of [['from', from], ['to', to]] as const) {
     if (typeof v === 'string' && !BASES.has(v)) r.error(line(node), 'interaction-props', `<NumberDrill> \`${name}\` must be dec, bin or hex`);
   }
   if (typeof from === 'string' && from === to) r.error(line(node), 'interaction-props', '<NumberDrill> converts a number to another base: `from` and `to` are the same');
   const width = attr(node, 'width').value;
   if (typeof width === 'number' && !WIDTHS.has(width)) r.error(line(node), 'interaction-props', '<NumberDrill> `width` must be 8, 16, 32 or 64');
+}
+
+/** `<NumberDrill kind="float">`: a 32-bit float, decoded (hex to dec) or encoded (dec to hex). */
+function checkFloatDrill(node: JsxNode, value: Literal | undefined, from: Literal | undefined, to: Literal | undefined, width: Literal | undefined, r: FileReporter): void {
+  const at = line(node);
+  if (width !== undefined && width !== 32) r.error(at, 'interaction-props', '<NumberDrill kind="float"> is 32-bit: leave out `width` or use 32');
+  const decode = from === 'hex' && to === 'dec';
+  const encode = from === 'dec' && to === 'hex';
+  if (typeof from === 'string' && typeof to === 'string' && !decode && !encode) {
+    r.error(at, 'interaction-props', '<NumberDrill kind="float"> decodes (`from="hex" to="dec"`) or encodes (`from="dec" to="hex"`)');
+    return;
+  }
+  if (decode && typeof value === 'string') {
+    if (!/^0x[0-9a-f]{8}$/i.test(value)) r.error(at, 'interaction-props', `<NumberDrill kind="float"> decode \`value\` must be 0x followed by 8 hex digits, not "${value}"`);
+    else if (!hasExactDecimal(floatFromBits(floatDrillBits(value), 32))) {
+      r.error(at, 'interaction-props', `<NumberDrill kind="float"> ${value} has no exact short decimal form (like 0.1f, it is not a value a learner can type); choose one such as 0x3F800000`);
+    }
+  } else if (decode && typeof value === 'number') r.error(at, 'interaction-props', '<NumberDrill kind="float"> decode `value` is a string such as "0x3F800000"');
+  if (encode && typeof value !== 'number' && value !== undefined && value !== UNKNOWN) r.error(at, 'interaction-props', '<NumberDrill kind="float"> encode `value` is a number such as {0.5}');
+  if (encode && typeof value === 'number' && !Number.isFinite(value)) r.error(at, 'interaction-props', '<NumberDrill kind="float"> encode `value` must be a finite number');
+  if (encode && typeof value === 'number' && !hasExactDecimal(floatFromBits(floatDrillBits(value), 32))) {
+    r.error(at, 'interaction-props', `<NumberDrill kind="float"> ${value} is not exactly a float (the nearest float is not ${value}); choose a value such as 0.5 or -2.5`);
+  }
 }
 
 function checkAnimation(node: JsxNode, site: SiteCtx, r: FileReporter): void {

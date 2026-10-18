@@ -1,0 +1,37 @@
+<template id="tw-00-bg-template">
+  <style>
+    #root { position: absolute; inset: 0; overflow: hidden; background: var(--bg); }
+    #tw00-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(231, 233, 236, 0.07) 2px, transparent 2px),
+        linear-gradient(90deg, rgba(231, 233, 236, 0.07) 2px, transparent 2px);
+      background-size: 120px 120px;
+    }
+    #tw00-glow {
+      position: absolute; left: 960px; top: -420px; width: 1500px; height: 1500px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 178, 255, 0.17) 0%, rgba(124, 178, 255, 0) 62%);
+    }
+    #tw00-glow2 {
+      position: absolute; left: -620px; top: 520px; width: 1300px; height: 1300px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(196, 167, 255, 0.11) 0%, rgba(196, 167, 255, 0) 62%);
+    }
+  </style>
+  <div id="root" data-composition-id="tw-00-bg" data-width="1920" data-height="1080" data-duration="45">
+    <div id="tw00-grid" data-layout-ignore></div>
+    <div id="tw00-glow" data-layout-ignore></div>
+    <div id="tw00-glow2" data-layout-ignore></div>
+  </div>
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+      // Ambient motion across the whole film so the background is never a static frame. Only the soft glows move:
+      // a drifting grid (thin lines shifting a sub-pixel per frame) costs about 30% more video bytes at CRF 30,
+      // while moving gradients cost nothing measurable (measured: 617 KB vs 444 KB for the first 12 s).
+      tl.fromTo("#tw00-glow", { x: 0, y: 0, scale: 1 }, { x: -140, y: 90, scale: 1.12, duration: 22.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      tl.fromTo("#tw00-glow2", { x: 0, y: 0, scale: 1.08 }, { x: 160, y: -80, scale: 0.94, duration: 22.5, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["tw-00-bg"] = tl;
+    })();
+  </script>
+</template>

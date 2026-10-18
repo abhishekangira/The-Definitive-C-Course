@@ -35,7 +35,7 @@ export function useFolder(entry: ExerciseEntry | undefined) {
 export function Exercise({ id, onPassed, assessment, onGiveUp, allowTutor = true }: { id: string; onPassed?: () => void; allowTutor?: boolean } & AssessmentProps) {
   const entry = exercises[id];
   if (!entry) return <p className={styles.warn} role="alert">Unknown exercise “{id}”.</p>;
-  if (entry.meta.kind === 'lt') return <LocalTask entry={entry} onPassed={onPassed} />;
+  if (entry.meta.kind === 'lt') return <LocalTask entry={entry} onPassed={onPassed} assessment={assessment} onGiveUp={onGiveUp} />;
   if (assessment) return <BrowserExercise entry={entry} onPassed={onPassed} assessment onGiveUp={onGiveUp} allowTutor={allowTutor} />;
   return <ExerciseWithVariants entry={entry} onPassed={onPassed} allowTutor={allowTutor} />;
 }

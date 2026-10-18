@@ -1,0 +1,20 @@
+[
+  {
+    "step": "wheel",
+    "start": 0.4,
+    "end": 13.4,
+    "text": "An 8-bit unsigned counter is a ring of 256 patterns. Add 1 at 255 and it wraps to 0. C defines this for unsigned types."
+  },
+  {
+    "step": "signed",
+    "start": 15.4,
+    "end": 28.4,
+    "text": "The same patterns can be read as signed numbers. In two's complement the top bit is worth minus 128, so 1111 1011 is minus 5, not 251."
+  },
+  {
+    "step": "wrap",
+    "start": 30.4,
+    "end": 43.4,
+    "text": "Unsigned char 250 plus 10 wraps to 4. Adding 1 to the largest signed int is undefined behaviour: the browser's checker reports it instead of wrapping."
+  }
+]
