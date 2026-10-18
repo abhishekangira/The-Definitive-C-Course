@@ -1,0 +1,43 @@
+---
+id: credit
+title: "Credit"
+minutes: 120
+summary: Check a card number with the Luhn checksum and name its network, where a 32-bit long is too small.
+---
+
+# Credit
+
+Payment forms catch most typing mistakes before a card is even sent anywhere. They do it with a short checksum and by looking at the first digits and the length. Your program does both.
+
+Ask for the number with `get_ll("Number: ")`. If the number is not positive, ask again, as many times as it takes. (`get_ll` already asks again for text, an empty line, trailing characters such as `42x`, and numbers too big for a `long long`.) Then print exactly one line:
+
+- `VISA`, `AMEX` or `MASTERCARD` when the number passes the checksum **and** matches the shape of that network below.
+- `INVALID` in every other case, including a number that matches a network but fails the checksum.
+
+**The checksum (Luhn).** Number the digits from the right, starting at 0. Leave the even positions alone. Double each digit at an odd position, and if the result is 10 or more, add its two digits together (for example 14 counts as 1 + 4 = 5). Add up all the numbers. The card passes when the total ends in 0.
+
+**The networks.**
+
+| network | digits | starts with |
+|---|---|---|
+| American Express | 15 | 34 or 37 |
+| Mastercard | 16 | 51, 52, 53, 54 or 55 |
+| Visa | 13 or 16 | 4 |
+
+These are the rules of this project. (Mastercard also issues numbers starting 2221 to 2720 in real life; here they are not accepted.)
+
+A real card number has 13 to 16 digits, which is bigger than the largest 32-bit `int`. The compiler you run here makes `long` 32 bits wide too, so a card number stored in a `long` is silently cut short. Choose the type with care: that is the reason this project sits in a module about widths.
+
+The program's output begins with its prompt `Number: `, and what you type is not part of the output, so the result follows the prompt on the same line.
+
+<TestExample exercise="project/credit" test="Visa, 16 digits" caption="A valid Visa number" />
+
+<TestExample exercise="project/credit" test="Visa fails the checksum" caption="Right shape, wrong checksum" />
+
+<Callout kind="tip" title="How to approach it">
+Write the checksum as its own function that takes the number and returns 1 or 0, and test it before you add the network rules. Counting digits and finding the first two digits are both loops with `/ 10`. Keep the function and `main` separate: a later module takes this program apart into several files.
+</Callout>
+
+**What the tests check:** numbers of each network, a checksum failure for each, the right start with the wrong length, an unknown start with a valid checksum, numbers longer than 13 digits that do not fit in a 32-bit integer, text, an empty line, `42x`, a negative number, zero and a number too large for any integer being asked again, and that the build has no warnings with `-Wall -Wextra -pedantic`.
+
+The hints follow the same rules as the exercises: a nudge, then the concept, then partial code. The reference solution unlocks only after real attempts.

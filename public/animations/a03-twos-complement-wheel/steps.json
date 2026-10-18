@@ -1,0 +1,40 @@
+{
+  "id": "a03-twos-complement-wheel",
+  "title": "An 8-bit counter, two readings",
+  "lesson": "2.3",
+  "platform": "Any platform for unsigned wrap-around; the signed overflow message is from the in-browser toolchain (wasm32) with its undefined-behaviour checker on.",
+  "description": "An 8-bit unsigned counter is a ring of 256 patterns. Adding 1 at 255 wraps to 0, which C defines for unsigned types. The same patterns can be read as signed numbers in two's complement, where the top bit is worth minus 128: 1111 1011 is minus 128 plus 123, which is minus 5 (251 when read as unsigned). An unsigned char holding 250 plus 10 wraps to 4, but adding 1 to the largest signed int is undefined behaviour, and the browser's checker reports a signed integer overflow instead of wrapping.",
+  "duration": 45,
+  "fps": 30,
+  "width": 1920,
+  "height": 1080,
+  "video": "a03-twos-complement-wheel.mp4",
+  "poster": "poster.webp",
+  "captions": "a03-twos-complement-wheel.vtt",
+  "transcript": "transcript.txt",
+  "steps": [
+    {
+      "key": "wheel",
+      "label": "Wheel",
+      "time": 0,
+      "end": 14.45
+    },
+    {
+      "key": "signed",
+      "label": "Signed",
+      "time": 15,
+      "end": 29.45
+    },
+    {
+      "key": "wrap",
+      "label": "Wrap",
+      "time": 30,
+      "end": 44.45
+    }
+  ],
+  "stills": {
+    "wheel": "stills/wheel.webp",
+    "signed": "stills/signed.webp",
+    "wrap": "stills/wrap.webp"
+  }
+}

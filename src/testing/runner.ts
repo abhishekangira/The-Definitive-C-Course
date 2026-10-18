@@ -4,16 +4,17 @@
 //
 // Order of checks (this order is also the progress code's pass bitmap):
 //   0. "compiles without warnings" (or "compiles" when spec.warnings is "allow");
-//   1…n. spec.tests in order (I/O, unit and make tests);
+//   1…n. spec.tests in order (I/O, unit, make and scan tests);
 //   n+1. "no memory errors or leaks" when spec.leakcheck or spec.memory is set.
 // If the learner's code does not compile, every check after the first is skipped.
-import type { Diagnostic, IoTest, MakeTest, TestsSpec, UnitTest } from '../content-model/types';
+import type { Diagnostic, IoTest, MakeTest, ScanTest, TestsSpec, UnitTest } from '../content-model/types';
 import { checkExit, checkText, commandLine, describeCrash, findRuntimeError, type FirstDiff, type MatchHow } from './compare';
 import type { CompileOutcome, ExecBackend, ExecOutcome } from './exec';
 import { buildHarness, CHECK_H, CHECK_H_FILE, extractCheckNames, HARNESS_FILE, NEVER_REPORTED, parseHarnessOutput, type SubtestResult } from './harness';
 import { dedupeIssues, leakEventsToIssues, type MemoryIssue } from './memory';
+import { scanFunction } from './scan';
 import {
-  COMPILE_ALLOW_WARNINGS_TEST_NAME, COMPILE_TEST_NAME, hintsOf, isIoTest, isMakeTest, isUnitTest, MEMORY_TEST_NAME, type AnyTest,
+  COMPILE_ALLOW_WARNINGS_TEST_NAME, COMPILE_TEST_NAME, hintsOf, isIoTest, isMakeTest, isScanTest, isUnitTest, MEMORY_TEST_NAME, type AnyTest,
 } from './spec';
 
 // The backend contract lives in exec.ts; it is re-exported so callers need only one import.
@@ -23,7 +24,7 @@ export type { SubtestResult } from './harness';
 export type { MemoryIssue } from './memory';
 
 export type TestStatus = 'pass' | 'fail' | 'skip';
-export type TestKind = 'compile' | 'io' | 'unit' | 'make' | 'memory';
+export type TestKind = 'compile' | 'io' | 'unit' | 'make' | 'scan' | 'memory';
 
 export interface TestResult {
   name: string;
@@ -103,7 +104,7 @@ const baseName = (p: string) => p.replace(/^.*[\\/]/, '');
 /** The checks a spec produces, in report (and bitmap) order. */
 export function plannedTests(spec: TestsSpec): PlannedTest[] {
   const plan: PlannedTest[] = [{ name: spec.warnings === 'allow' ? COMPILE_ALLOW_WARNINGS_TEST_NAME : COMPILE_TEST_NAME, kind: 'compile' }];
-  for (const t of spec.tests) plan.push({ name: t.name, kind: isIoTest(t) ? 'io' : isUnitTest(t) ? 'unit' : 'make' });
+  for (const t of spec.tests) plan.push({ name: t.name, kind: isIoTest(t) ? 'io' : isUnitTest(t) ? 'unit' : isScanTest(t) ? 'scan' : 'make' });
   if (spec.leakcheck || spec.memory) plan.push({ name: MEMORY_TEST_NAME, kind: 'memory' });
   return plan;
 }
@@ -299,8 +300,10 @@ export async function runTests<A>(
       r = { ...res, name: t.name, ...(res.status === 'fail' && hintsOf(t).length ? hintFields(t) : {}) };
     } else if (isMakeTest(t)) {
       r = await makeTest(t);
+    } else if (isScanTest(t)) {
+      r = scanTest(t);
     } else {
-      r = { name: (t as AnyTest).name, kind: plan[i].kind, status: 'fail', message: 'this test has no "run", "unit" or "make" section (the tests file is malformed)' };
+      r = { name: (t as AnyTest).name, kind: plan[i].kind, status: 'fail', message: 'this test has no "run", "unit", "make" or "scan" section (the tests file is malformed)' };
     }
     if (silentForMemory) r = skip(plan[i], `not selected (only "${options.only}")`);
     emit(i, { ...r, ms: now() - ts });
@@ -344,6 +347,16 @@ export async function runTests<A>(
     if (failed === 0 && parsed.done) return { ...base, status: 'pass', subtests, note: `${subtests.length} checks` };
     const message = stopped && parsed.missing.length ? stopped : `${failed} of ${subtests.length} checks failed`;
     return { ...base, status: 'fail', message, subtests };
+  }
+
+  /** The operator scan reads the learner's first source file; it needs no compiler. */
+  function scanTest(t: ScanTest): TestResult {
+    const base = { name: t.name, kind: 'scan' as const };
+    const source = files[sources[0]];
+    if (source === undefined) return { ...base, status: 'fail', message: `${sources[0]} is missing` };
+    const r = scanFunction(source, t.scan);
+    if (r.ok) return { ...base, status: 'pass', note: `${r.ops} of ${t.scan.maxOps} operators used` };
+    return { ...base, status: 'fail', message: r.message, ...hintFields(t) };
   }
 
   async function makeTest(t: MakeTest): Promise<TestResult> {

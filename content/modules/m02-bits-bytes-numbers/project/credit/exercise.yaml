@@ -1,0 +1,26 @@
+id: project/credit
+kind: ct
+title: Credit
+prompt: |
+  Write `credit.c` so it asks for a card number, checks it, and prints `VISA`, `AMEX`, `MASTERCARD` or
+  `INVALID`, as described on the project page. The number is too big for a 32-bit `long`, so pick the type
+  with care. Your output must match byte for byte.
+runsIn: browser
+hints:
+- 'Read the whole number with `get_ll("Number: ")` and keep asking while it is not positive. Then split the
+  problem: one function that says whether the digits pass the checksum, and `main` that reads, counts the
+  digits and looks at the first digits.'
+- 'Walk the digits from the right with `n % 10` and `n /= 10`. Every second digit (starting with the one
+  next to the last) is doubled, and a doubled digit above 9 contributes the sum of its two digits, which is
+  the doubled value minus 9. The number passes when the total ends in 0. Count the digits as you go, and
+  after the loop divide by 10 until two digits remain to get the prefix.'
+- >-
+  Use `long long` everywhere a card number is stored. A checksum function can look like
+  `int luhn_ok(long long n)` with `int sum = 0; int position = 0;` and a `while (n > 0)` loop that adds
+  `d` or the adjusted doubled `d` depending on whether `position` is odd. Then Visa is 13 or 16 digits
+  starting with 4, American Express is 15 digits starting with 34 or 37, and Mastercard is 16 digits
+  starting with 51 to 55.
+file: credit.c
+variants: []
+sampleStdin: |
+  4111111111111111

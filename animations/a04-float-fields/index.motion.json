@@ -1,0 +1,114 @@
+{
+  "duration": 60,
+  "assertions": [
+    {
+      "kind": "appearsBy",
+      "selector": "#ff01-fs",
+      "bySec": 2.6
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff01-fe",
+      "bySec": 4.0
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff01-ff",
+      "bySec": 5.4
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff01-res",
+      "bySec": 13.4
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff01-note",
+      "bySec": 16.0
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff02-fs",
+      "bySec": 22.6
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff02-fe",
+      "bySec": 24.0
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff02-ff",
+      "bySec": 25.4
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff02-res",
+      "bySec": 33.4
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff02-note",
+      "bySec": 36.0
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff03-code",
+      "bySec": 42.0
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff03-out",
+      "bySec": 45.0
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff03-o1",
+      "bySec": 47.0
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff03-o2",
+      "bySec": 50.0
+    },
+    {
+      "kind": "appearsBy",
+      "selector": "#ff03-note",
+      "bySec": 53.5
+    },
+    {
+      "kind": "before",
+      "a": "#ff01-fs",
+      "b": "#ff01-ff"
+    },
+    {
+      "kind": "before",
+      "a": "#ff02-res",
+      "b": "#ff03-code"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#ff01-ff"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#ff01-res"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#ff02-ff"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#ff02-res"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#ff03-code"
+    },
+    {
+      "kind": "staysInFrame",
+      "selector": "#ff03-out"
+    }
+  ]
+}

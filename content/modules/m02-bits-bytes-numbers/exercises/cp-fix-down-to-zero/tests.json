@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "sources": [
+    "positions.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "no items",
+      "run": {
+        "stdin": "0\n"
+      },
+      "expect": {
+        "stdout": "Items: none\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "one item",
+      "run": {
+        "stdin": "1\n",
+        "timeoutMs": 2000
+      },
+      "expect": {
+        "stdout": "Items: 0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "three items",
+      "run": {
+        "stdin": "3\n",
+        "timeoutMs": 2000
+      },
+      "expect": {
+        "stdout": "Items: 2\n1\n0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "ten items",
+      "run": {
+        "stdin": "10\n",
+        "timeoutMs": 2000
+      },
+      "expect": {
+        "stdout": "Items: 9\n8\n7\n6\n5\n4\n3\n2\n1\n0\n",
+        "exit": 0
+      }
+    }
+  ]
+}

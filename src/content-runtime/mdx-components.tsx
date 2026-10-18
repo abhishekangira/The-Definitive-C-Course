@@ -30,6 +30,7 @@ const MemoryDiagram = lazyInteraction(async () => (await import('../interactions
 const Exercise = lazyInteraction(async () => (await import('../interactions/Exercise')).Exercise, 'exercise');
 const Stepper = lazyInteraction(async () => (await import('../visualizers/Stepper')).Stepper, 'stepper');
 const NumberPlayground = lazyInteraction(async () => (await import('../visualizers/NumberPlayground')).NumberPlayground, 'number playground');
+const ByteViewer = lazyInteraction(async () => (await import('../visualizers/ByteViewer')).ByteViewer, 'byte viewer');
 const PipelineExplorer = lazyInteraction(async () => (await import('../visualizers/PipelineExplorer')).PipelineExplorer, 'pipeline explorer');
 
 function Table(props: ComponentProps<'table'>) {
@@ -47,6 +48,7 @@ export const mdxComponents = {
   Exercise,
   Stepper,
   NumberPlayground,
+  ByteViewer,
   PipelineExplorer,
   Analogy,
   Callout,

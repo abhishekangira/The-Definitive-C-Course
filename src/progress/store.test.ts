@@ -4,6 +4,7 @@ import {
   type ExerciseProgress, type ProgressV1, type ProjectProgress, type QuizProgress, type SampleProgress,
 } from './store';
 import type { StreakData } from './streak';
+import { encodeProgressCode } from '../testing/token';
 
 const SEED = '0123456789abcdef';
 const at = '2026-01-01T00:00:00.000Z';
@@ -49,6 +50,22 @@ describe('migrate', () => {
       streak: { days: ['2026-01-01', '2026-01-02', '2026-01-04'], longest: 5 } satisfies StreakData,
     } satisfies ProgressV1;
     expect(migrate(structuredClone(full))).toEqual(full);
+  });
+
+  it('lowers a source count that was the number of code strings, and does not raise one', async () => {
+    const sameA = await encodeProgressCode({ exercise: 'lt-free-list', bits: '110', run: 1, src: 'aaaaaaaa' }, SEED);
+    const sameB = await encodeProgressCode({ exercise: 'lt-free-list', bits: '111', run: 2, src: 'aaaaaaaa' }, SEED);
+    const other = await encodeProgressCode({ exercise: 'lt-free-list', bits: '111', run: 3, src: 'bbbbbbbb' }, SEED);
+    const fields = { attempts: 2, activeMs: 0, hintsViewed: 3, passed: false, solutionViewed: false, mastered: false };
+    const lowered = migrate({ version: 1, seed: SEED, exercises: { lt: { ...fields, substantive: 2, codes: [sameA, sameB] } } });
+    expect(lowered.exercises.lt.substantive).toBe(1);
+    expect(lowered.exercises.lt.codes).toEqual([sameA, sameB]);
+    const kept = migrate({ version: 1, seed: SEED, exercises: { lt: { ...fields, substantive: 2, codes: [sameA, other] } } });
+    expect(kept.exercises.lt.substantive).toBe(2);
+    const untouched = migrate({ version: 1, seed: SEED, exercises: { ed: { ...fields, substantive: 2 } } });
+    expect(untouched.exercises.ed.substantive).toBe(2);
+    const notRaised = migrate({ version: 1, seed: SEED, exercises: { lt: { ...fields, substantive: 0, codes: [sameA, other] } } });
+    expect(notRaised.exercises.lt.substantive).toBe(0);
   });
 
   it.each([
@@ -101,6 +118,18 @@ describe('mergeProgress', () => {
     const a = doc({ cards: { l1: [0, 2] } });
     const b = doc({ cards: { l1: [1, 2], l2: [0] } });
     expect(mergeProgress(a, b).cards).toEqual({ l1: [0, 1, 2], l2: [0] });
+  });
+
+  it('does not keep an inflated source count once the merged codes name fewer sources', async () => {
+    const sameA = await encodeProgressCode({ exercise: 'lt-free-list', bits: '110', run: 1, src: 'aaaaaaaa' }, SEED);
+    const sameB = await encodeProgressCode({ exercise: 'lt-free-list', bits: '111', run: 2, src: 'aaaaaaaa' }, SEED);
+    const merged = mergeProgress(
+      doc({ exercises: { lt: ex({ substantive: 2, hintsViewed: 3, codes: [sameA, sameB] }) } }),
+      doc({ exercises: { lt: ex({ substantive: 2, hintsViewed: 3, codes: [sameA] }) } }),
+    );
+    expect(merged.exercises.lt.substantive).toBe(1);
+    expect(merged.exercises.lt.codes).toEqual([sameA, sameB]);
+    expect(merged.exercises.lt.hintsViewed).toBe(3);
   });
 
   it('keeps the furthest exercise progress from both sides', () => {

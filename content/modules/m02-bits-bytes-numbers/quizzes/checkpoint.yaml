@@ -1,0 +1,119 @@
+# Module 2 checkpoint. Code questions are verified samples (tools/verify discovers items with `code`);
+# their answers come from running them. Exercise items are graded by their tests. 80% to pass.
+- id: cp-hex-to-bin
+  type: np
+  prompt: "Write 0xB6 as an 8-bit binary number."
+  items: ["0xB6", "hex", "bin", "8"]
+- id: cp-masks
+  type: predict
+  prompt: "What exactly does this program print?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        unsigned a = 0xF0;
+        unsigned b = 0x3C;
+        printf("%x %x %x\n", a & b, a | b, a ^ b);
+        printf("%x\n", (b << 2) & 0xFF);
+        return 0;
+    }
+  explain: "In binary `a` is 1111 0000 and `b` is 0011 1100. AND keeps the bits both have (0011 0000, which is 30), OR keeps the bits either has (1111 1100, which is fc) and XOR keeps the bits exactly one has (1100 1100, which is cc). Shifting `b` left by 2 gives 1111 0000 after the mask: f0."
+- id: cp-twos-reading
+  type: choice
+  prompt: "In 8 bits, what number does the pattern `1111 1011` mean when it is read as a signed two's-complement value?"
+  choices:
+    - "-123"
+    - "-5"
+    - "-4"
+    - "251"
+  answer: 1
+  explain: "In two's complement the top bit is worth -128 and the other bits keep their normal values. 1111 1011 is -128 + 123 = -5. Another way is to flip the bits (0000 0100) and add 1 (0000 0101, which is 5) to get the size, with a minus sign. 251 is the unsigned reading of the same bits."
+- id: cp-wrap
+  type: predict
+  prompt: "What exactly does this program print?"
+  code: |
+    #include <stdint.h>
+    #include <stdio.h>
+
+    int main(void) {
+        uint16_t small = 65535;
+        small += 2;
+        unsigned int u = 0;
+        u--;
+        printf("%u %u\n", (unsigned)small, u);
+        return 0;
+    }
+  explain: "Unsigned arithmetic wraps modulo 2 to the power of the width, and that is defined. 65535 + 2 in 16 bits is 65537 - 65536 = 1. Subtracting 1 from an unsigned 0 gives the largest unsigned int, 4294967295."
+- id: cp-fix-down-to-zero
+  type: exercise
+  exercise: cp-fix-down-to-zero
+  prompt: "A bug report. Fix the program so all its tests pass."
+- id: cp-float-compare
+  type: predict
+  prompt: "What exactly does this program print?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        float f = 0.1f;
+        double d = 0.1;
+        float h = 0.5f;
+        double e = 0.5;
+        printf("%d %d\n", f == d, h == e);
+        return 0;
+    }
+  explain: "The `float` 0.1f and the `double` 0.1 are both approximations of one tenth, but to different precisions, so they are different numbers: the comparison is 0. 0.5 is exactly representable in both, so those compare equal: 1."
+- id: cp-sign-warning
+  type: ce
+  prompt: "The compiler warns about the comparison. What is the problem?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        int balance = -5;
+        unsigned limit = 10;
+        if (balance < limit) {
+            printf("under\n");
+        } else {
+            printf("over\n");
+        }
+        return 0;
+    }
+  meta: expect=warning warn=-Wsign-compare
+  choices:
+    - "`balance` is never used"
+    - "`balance` is converted to unsigned before the comparison, so -5 becomes a huge number and the program prints `over`"
+    - "`limit` must be declared `const`"
+    - "`<` cannot compare an `int` with an `unsigned`"
+  answer: 1
+  explain: "When an `int` and an `unsigned` meet in one expression, the `int` is converted to unsigned. -5 becomes 4294967291, which is bigger than 10, so the test is false. `-Wsign-compare` points at the comparison. Make both sides the same signedness."
+- id: cp-count-bits
+  type: exercise
+  exercise: cp-count-bits
+  prompt: "Write the program described below. It's graded by its tests: pass them all to get this question right."
+- id: cp-bytes
+  type: md
+  sample: cp-bytes
+  line: 10
+  items: ["main.both", "main.any", "main.flip"]
+  prompt: "The program is paused just before `printf` runs. Fill in the missing byte values (as decimal numbers)."
+  code: |
+    #include <stdint.h>
+    #include <stdio.h>
+
+    int main(void) {
+        uint8_t a = 0xF0;
+        uint8_t b = 0x3C;
+        uint8_t both = a & b;
+        uint8_t any = a | b;
+        uint8_t flip = (uint8_t)~a;
+        printf("%u %u %u\n", both, any, flip);
+        return 0;
+    }
+  meta: trace predict=none
+  explain: "Each variable is one byte. `a & b` is 0011 0000 (48), `a | b` is 1111 1100 (252) and `~a` flipped within a byte is 0000 1111 (15)."
+- id: cp-rgb565
+  type: exercise
+  exercise: cp-rgb565
+  transfer: true
+  prompt: "A problem in a new situation: the bit layout is given in the description."

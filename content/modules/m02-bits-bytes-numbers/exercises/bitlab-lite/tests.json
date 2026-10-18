@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "sources": [
+    "bitlab.c"
+  ],
+  "tests": [
+    {
+      "name": "bit_and() uses only the allowed operators, at most 4 of them",
+      "scan": {
+        "function": "bit_and",
+        "allow": [
+          "~",
+          "|"
+        ],
+        "maxOps": 4,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
+      },
+      "hint": "Allowed here: ~ |. The limit is 4 operator uses; = , ( ) and ; are free."
+    },
+    {
+      "name": "bit_and(x, y) is correct for every input",
+      "unit": {
+        "harness": "tests/test_bit_and.c"
+      }
+    },
+    {
+      "name": "bit_xor() uses only the allowed operators, at most 7 of them",
+      "scan": {
+        "function": "bit_xor",
+        "allow": [
+          "~",
+          "&"
+        ],
+        "maxOps": 7,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
+      },
+      "hint": "Allowed here: ~ &. The limit is 7 operator uses; = , ( ) and ; are free."
+    },
+    {
+      "name": "bit_xor(x, y) is correct for every input",
+      "unit": {
+        "harness": "tests/test_bit_xor.c"
+      }
+    },
+    {
+      "name": "byte_of() uses only the allowed operators, at most 3 of them",
+      "scan": {
+        "function": "byte_of",
+        "allow": [
+          ">>",
+          "<<",
+          "&"
+        ],
+        "maxOps": 3,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
+      },
+      "hint": "Allowed here: >> << &. The limit is 3 operator uses; = , ( ) and ; are free."
+    },
+    {
+      "name": "byte_of(x, n) is correct for every input",
+      "unit": {
+        "harness": "tests/test_byte_of.c"
+      }
+    },
+    {
+      "name": "spread_top() uses only the allowed operators, at most 7 of them",
+      "scan": {
+        "function": "spread_top",
+        "allow": [
+          ">>",
+          "<<",
+          "|"
+        ],
+        "maxOps": 7,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
+      },
+      "hint": "Allowed here: >> << |. The limit is 7 operator uses; = , ( ) and ; are free."
+    },
+    {
+      "name": "spread_top(x) is correct for every input",
+      "unit": {
+        "harness": "tests/test_spread_top.c"
+      }
+    },
+    {
+      "name": "negate() uses only the allowed operators, at most 2 of them",
+      "scan": {
+        "function": "negate",
+        "allow": [
+          "~",
+          "+"
+        ],
+        "maxOps": 2,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
+      },
+      "hint": "Allowed here: ~ +. The limit is 2 operator uses; = , ( ) and ; are free."
+    },
+    {
+      "name": "negate(x) is correct for every input",
+      "unit": {
+        "harness": "tests/test_negate.c"
+      }
+    },
+    {
+      "name": "is_pow2() uses only the allowed operators, at most 5 of them",
+      "scan": {
+        "function": "is_pow2",
+        "allow": [
+          "&",
+          "-",
+          "!=",
+          "=="
+        ],
+        "maxOps": 5,
+        "exclusive": [
+          "bit_and",
+          "bit_xor",
+          "byte_of",
+          "spread_top",
+          "negate",
+          "is_pow2"
+        ]
+      },
+      "hint": "Allowed here: & - != ==. The limit is 5 operator uses; = , ( ) and ; are free."
+    },
+    {
+      "name": "is_pow2(x) is correct for every input",
+      "unit": {
+        "harness": "tests/test_is_pow2.c"
+      }
+    }
+  ]
+}

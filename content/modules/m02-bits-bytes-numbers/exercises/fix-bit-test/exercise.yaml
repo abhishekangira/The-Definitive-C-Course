@@ -1,0 +1,29 @@
+id: fix-bit-test
+kind: fb
+title: The bit test is one place off
+prompt: |
+  **Bug report:** "I store feature flags in one number. Bit 0 is the lowest bit. The program should say
+  whether bit `n` is on. For the flags `5` (binary `101`) it says bit 0 is **off**, and bit 1 is **on**.
+  It looks at the wrong bit."
+
+  Expected for flags 5 and bit 0:
+  ```
+  Flags: Bit: on
+  ```
+  (The prompts have no newline and the numbers you type are not part of the output, so `on` follows the
+  second prompt.)
+
+  Find the bug and fix it without rewriting the program.
+runsIn: browser
+hints:
+- Write 5 in binary and number the bits from the right, starting at 0. Then work out by hand what
+  `(flags >> (n + 1)) & 1` looks at for `n = 0`.
+- 'Shifting right by `k` brings bit `k` down to the lowest place. The code shifts by `n + 1`, so it
+  tests bit `n + 1`: an **off-by-one** in the shift count.'
+- Shift by `n` instead of `n + 1`, so the line reads `int on = (flags >> n) & 1;`.
+file: bit.c
+variants:
+- '1'
+sampleStdin: |
+  5
+  0

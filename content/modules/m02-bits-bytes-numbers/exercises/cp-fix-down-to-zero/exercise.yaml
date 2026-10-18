@@ -1,0 +1,18 @@
+id: cp-fix-down-to-zero
+kind: fb
+title: Counting down the positions
+prompt: |
+  **Bug report:** "The program reads how many items there are and should print their positions from the
+  last to the first, one per line: for 3 items it prints `2`, `1`, `0`. Instead it prints those and then
+  carries on with enormous numbers until it is killed. With no items it should print `none`."
+
+  Fix the bug.
+runsIn: browser
+hints:
+- What is the smallest value an `unsigned` variable can hold, and what does `i--` do at that value?
+- A loop condition `i >= 0` is true for every unsigned value, so this loop cannot stop.
+- Declare the loop variable as `int` instead of `unsigned`, and start it at `count - 1`.
+file: positions.c
+variants: []
+sampleStdin: |
+  3
