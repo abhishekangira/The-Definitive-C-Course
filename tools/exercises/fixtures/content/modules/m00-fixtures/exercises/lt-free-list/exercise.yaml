@@ -16,4 +16,4 @@ hints:
         free(head);
         head = next;
     }
-variants: []
+variants: [v1]

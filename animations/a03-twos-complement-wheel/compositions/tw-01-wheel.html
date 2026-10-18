@@ -1,0 +1,113 @@
+<template id="tw-01-wheel-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #tw01-ring { position: absolute; left: 192px; top: 360px; width: 700px; height: 640px; overflow: visible; }
+    #tw01-circle { fill: none; stroke: var(--border-strong); stroke-width: 6; }
+    .tw01-tick { stroke: var(--text-muted); stroke-width: 4; }
+    .tw01-lbl { font: 700 26px/1 var(--font-mono); fill: var(--text-muted); }
+    #tw01-hand { position: absolute; left: 192px; top: 360px; width: 700px; height: 660px; }
+    #tw01-bar { position: absolute; left: 346px; top: 140px; width: 8px; height: 190px; border-radius: 4px; background: var(--program); }
+    #tw01-dot { position: absolute; left: 334px; top: 124px; width: 32px; height: 32px; border-radius: 50%; background: var(--program); }
+    #tw01-card { left: 960px; top: 372px; width: 768px; height: 360px; border-color: var(--program); }
+    #tw01-cap { position: absolute; left: 40px; top: 30px; font: 700 30px/1 var(--font-mono); color: var(--text-muted); }
+    .tw01-v { position: absolute; left: 40px; top: 90px; }
+    .tw01-b { position: absolute; left: 40px; top: 260px; }
+    .tw01-p { left: 960px; top: 770px; width: 190px; height: 56px; --c: var(--program); --c-soft: var(--program-soft); }
+    #tw01-p3 { width: 330px; --c: var(--warn); --c-soft: var(--warn-soft); }
+    #tw01-note { position: absolute; left: 960px; top: 852px; width: 768px; font: 400 28px/1.3 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="tw-01-wheel" data-width="1920" data-height="1080" data-duration="15"
+       data-steps='{"wheel":{"label":"Wheel","start":0,"end":14.45}}'>
+    <div class="tw-stage" id="tw01-stage">
+      <div class="tw-head" id="tw01-head">
+        <h1 class="tw-title" id="tw01-title">An 8-bit counter is a ring.</h1>
+        <p class="tw-sub" id="tw01-sub">256 patterns, 0 to 255, and then it starts again.</p>
+      </div>
+      <svg id="tw01-ring" viewBox="0 0 700 640" role="img" aria-label="A ring of the 256 values of an 8-bit counter">
+        <circle id="tw01-circle" cx="350" cy="330" r="190" />
+          <line class="tw01-tick" x1="350.0" y1="140.0" x2="350.0" y2="122.0" />
+          <line class="tw01-tick" x1="484.4" y1="195.6" x2="497.1" y2="182.9" />
+          <line class="tw01-tick" x1="540.0" y1="330.0" x2="558.0" y2="330.0" />
+          <line class="tw01-tick" x1="484.4" y1="464.4" x2="497.1" y2="477.1" />
+          <line class="tw01-tick" x1="350.0" y1="520.0" x2="350.0" y2="538.0" />
+          <line class="tw01-tick" x1="215.6" y1="464.4" x2="202.9" y2="477.1" />
+          <line class="tw01-tick" x1="160.0" y1="330.0" x2="142.0" y2="330.0" />
+          <line class="tw01-tick" x1="215.6" y1="195.6" x2="202.9" y2="182.9" />
+          <text class="tw01-lbl" x="350.0" y="80.0" text-anchor="middle" dominant-baseline="central">0</text>
+          <text class="tw01-lbl" x="526.8" y="153.2" text-anchor="middle" dominant-baseline="central">32</text>
+          <text class="tw01-lbl" x="600.0" y="330.0" text-anchor="middle" dominant-baseline="central">64</text>
+          <text class="tw01-lbl" x="526.8" y="506.8" text-anchor="middle" dominant-baseline="central">96</text>
+          <text class="tw01-lbl" x="350.0" y="580.0" text-anchor="middle" dominant-baseline="central">128</text>
+          <text class="tw01-lbl" x="173.2" y="506.8" text-anchor="middle" dominant-baseline="central">160</text>
+          <text class="tw01-lbl" x="100.0" y="330.0" text-anchor="middle" dominant-baseline="central">192</text>
+          <text class="tw01-lbl" x="173.2" y="153.2" text-anchor="middle" dominant-baseline="central">224</text>
+        </svg>
+      <div id="tw01-hand" data-layout-ignore><div id="tw01-bar"></div><div id="tw01-dot"></div></div>
+      <div class="tw-card" id="tw01-card">
+        <div id="tw01-cap">unsigned char c</div>
+        <div class="tw-big tw01-v" id="tw01-v0">253</div>
+        <div class="tw-bits tw01-b" id="tw01-b0">1111 1101</div>
+        <div class="tw-big tw01-v" id="tw01-v1">254</div>
+        <div class="tw-bits tw01-b" id="tw01-b1">1111 1110</div>
+        <div class="tw-big tw01-v" id="tw01-v2">255</div>
+        <div class="tw-bits tw01-b" id="tw01-b2">1111 1111</div>
+        <div class="tw-big tw01-v" id="tw01-v3">0</div>
+        <div class="tw-bits tw01-b" id="tw01-b3">0000 0000</div>
+      </div>
+      <div class="tw-packet tw01-p" id="tw01-p1">Add 1</div>
+      <div class="tw-packet tw01-p" id="tw01-p2">Add 1</div>
+      <div class="tw-packet tw01-p" id="tw01-p3">Add 1: wraps</div>
+      <p id="tw01-note">Unsigned arithmetic wraps by definition: the result is taken modulo 256.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("tw-01-wheel", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 15;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      tl.addLabel("wheel", S.wheel.start);
+      tl.fromTo("#tw01-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#tw01-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#tw01-ring", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "none" }, 0.6);
+      tl.fromTo("#tw01-card", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.6 }, 0.9);
+      tl.fromTo("#tw01-hand", { opacity: 0, rotation: 355.78 }, { opacity: 1, rotation: 355.78, duration: 0.5 }, 1.1);
+      tl.fromTo("#tw01-v0", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 1.2);
+      tl.fromTo("#tw01-b0", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 1.2);
+      tl.fromTo("#tw01-p1", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.35 }, 2.8);
+      tl.fromTo("#tw01-hand", { rotation: 355.78 }, { rotation: 357.19, duration: 0.8, ease: "power2.inOut", immediateRender: false }, 3.0999999999999996);
+      tl.fromTo("#tw01-v0", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "none", immediateRender: false }, 3.0999999999999996);
+      tl.fromTo("#tw01-b0", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "none", immediateRender: false }, 3.0999999999999996);
+      tl.fromTo("#tw01-v1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 3.5);
+      tl.fromTo("#tw01-b1", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 3.5);
+      tl.fromTo("#tw01-p1", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "none", immediateRender: false }, 4.4);
+      tl.fromTo("#tw01-p2", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.35 }, 4.8);
+      tl.fromTo("#tw01-hand", { rotation: 357.19 }, { rotation: 358.59, duration: 0.8, ease: "power2.inOut", immediateRender: false }, 5.1);
+      tl.fromTo("#tw01-v1", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "none", immediateRender: false }, 5.1);
+      tl.fromTo("#tw01-b1", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "none", immediateRender: false }, 5.1);
+      tl.fromTo("#tw01-v2", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 5.5);
+      tl.fromTo("#tw01-b2", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 5.5);
+      tl.fromTo("#tw01-p2", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "none", immediateRender: false }, 6.4);
+      tl.fromTo("#tw01-p3", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.35 }, 6.8);
+      tl.fromTo("#tw01-hand", { rotation: 358.59 }, { rotation: 360.00, duration: 0.8, ease: "power2.inOut", immediateRender: false }, 7.1);
+      tl.fromTo("#tw01-v2", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "none", immediateRender: false }, 7.1);
+      tl.fromTo("#tw01-b2", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "none", immediateRender: false }, 7.1);
+      tl.fromTo("#tw01-v3", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 7.5);
+      tl.fromTo("#tw01-b3", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "none" }, 7.5);
+      tl.fromTo("#tw01-p3", { opacity: 1 }, { opacity: 0, duration: 0.3, ease: "none", immediateRender: false }, 8.4);
+      tl.fromTo("#tw01-note", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 9.6);
+
+      tl.fromTo("#tw01-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["tw-01-wheel"] = tl;
+    })();
+  </script>
+</template>

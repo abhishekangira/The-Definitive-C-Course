@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "sources": [
+    "gap.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "9 and 4 are 5 apart",
+      "run": {
+        "stdin": "9\n4\n"
+      },
+      "expect": {
+        "stdout": "a: b: Gap: 5\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "equal numbers are 0 apart",
+      "run": {
+        "stdin": "7\n7\n"
+      },
+      "expect": {
+        "stdout": "a: b: Gap: 0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "4 and 9 are 5 apart",
+      "run": {
+        "stdin": "4\n9\n"
+      },
+      "expect": {
+        "stdout": "a: b: Gap: 5\n",
+        "exit": 0
+      },
+      "hint": "Which of the two numbers is bigger? Subtract the smaller from the bigger."
+    },
+    {
+      "name": "0 and 1 are 1 apart",
+      "run": {
+        "stdin": "0\n1\n"
+      },
+      "expect": {
+        "stdout": "a: b: Gap: 1\n",
+        "exit": 0
+      }
+    }
+  ]
+}
