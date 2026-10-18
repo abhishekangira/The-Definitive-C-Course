@@ -97,6 +97,11 @@ describe('scanFunction: rejections', () => {
     expect(scanFunction(withBody('  return ~x | 255;'), RULES).ok).toBe(true);
     expect(scanFunction(withBody('  return ~x | 0x1ff;'), { ...RULES, maxLiteral: 511 }).ok).toBe(true);
   });
+  it('a name is declared only at a declarator: not inside parentheses (a macro would hide a big constant), not after a multiplication', () => {
+    rejects('  uint32_t big = (x, UINT32_MAX);\n  return ~(~x | ~y);', '"UINT32_MAX", which is not one of its parameters');
+    rejects('  uint8_t a = x * g;\n  return ~a;', '"g", which is not one of its parameters', { ...RULES, allow: ['~', '|', '*'] });
+    expect(scanFunction(withBody('  uint8_t a = x, b = ~y;\n  return ~(~a | ~b);'), { ...RULES, maxOps: 5 }).ok).toBe(true);
+  });
   it('a missing function', () => {
     const r = scanFunction('int main(void) { return 0; }\n', RULES);
     expect(r.message).toBe('the function bit_and() was not found: define it with exactly that name');

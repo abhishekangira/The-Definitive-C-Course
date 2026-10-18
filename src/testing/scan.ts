@@ -204,6 +204,18 @@ function checkExclusive(toks: Tok[], names: string[]): ScanResult | undefined {
 
 const list = (ops: string[]) => (ops.length ? ops.join(' ') : 'none');
 
+/**
+ * Whether an identifier that follows `prev` (and `prev2`) declares a name: right after a type word, after a comma, or after
+ * the `*` of a pointer declarator (`unsigned *p`, `, *q`). A name after any other operator is a use, not a declaration.
+ */
+function declaresName(prev: Tok, prev2: Tok | undefined): boolean {
+  const typeOrComma = (t: Tok | undefined) => t !== undefined && ((t.t === 'id' && TYPE_WORDS.has(t.s)) || (t.t === 'op' && t.s === ','));
+  if (prev.t === 'id') return TYPE_WORDS.has(prev.s);
+  if (prev.t !== 'op') return false;
+  if (prev.s === ',') return true;
+  return prev.s === '*' && typeOrComma(prev2);
+}
+
 /** Scans one function of `source` against `rules`. */
 export function scanFunction(source: string, rules: ScanRules): ScanResult {
   const fn = rules.function;
@@ -276,7 +288,11 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
   const allow = new Set(rules.allow);
   let ops = 0;
   let inDecl = false;
+  // Brackets open around the body: a declaration's comma or `*` declares a name only at the depth it started at.
+  let nest = 0;
+  let declNest = 0;
   let prev: Tok | undefined;
+  let prev2: Tok | undefined;
   for (let k = open + 1; k < close; k++) {
     const tk = toks[k];
     const next = toks[k + 1];
@@ -291,17 +307,19 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
       if (CONTROL_WORDS.has(tk.s)) return fail(`${at}: ${fn}() uses "${tk.s}", which is not allowed here (no loops, branches or sizeof)`, tk.line, ops);
       if (TYPE_WORDS.has(tk.s)) {
         if (prev?.t === 'op' && prev.s === '(' && !(tk.s === 'void' && next?.s === ')')) return fail(`${at}: ${fn}() contains a cast; casts are not allowed here (a cast to a narrow type works like an AND)`, tk.line, ops);
-        if (prev === undefined || (prev.t === 'op' && (prev.s === ';' || prev.s === '{' || prev.s === '}' || prev.s === '('))) inDecl = true;
+        if (prev === undefined || (prev.t === 'op' && (prev.s === ';' || prev.s === '{' || prev.s === '}' || prev.s === '('))) { inDecl = true; declNest = nest; }
       } else if (tk.s === 'return') {
         inDecl = false;
       } else if (next?.t === 'op' && next.s === '(') {
         return fail(`${at}: ${fn}() calls ${tk.s}(), and function calls are not allowed here`, tk.line, ops);
-      } else if (inDecl && prev && ((prev.t === 'id' && TYPE_WORDS.has(prev.s)) || (prev.t === 'op' && prev.s === ',') || (prev.t === 'op' && prev.s === '*'))) {
+      } else if (inDecl && prev && nest === declNest && declaresName(prev, prev2)) {
         names.add(tk.s);
       } else if (!names.has(tk.s)) {
         return fail(`${at}: ${fn}() uses "${tk.s}", which is not one of its parameters or local variables`, tk.line, ops);
       }
     } else if (tk.t === 'op') {
+      if (tk.s === '(' || tk.s === '[' || tk.s === '{') nest++;
+      else if (tk.s === ')' || tk.s === ']' || tk.s === '}') nest--;
       if (tk.s === ';') inDecl = false;
       if (!FREE_OPS.has(tk.s)) {
         if (tk.s === '?' || tk.s === ':') return fail(`${at}: ${fn}() uses "${tk.s}" (the ?: operator), which is not allowed here`, tk.line, ops);
@@ -310,6 +328,7 @@ export function scanFunction(source: string, rules: ScanRules): ScanResult {
         if (ops > rules.maxOps) return fail(`${at}: ${fn}() uses more than ${rules.maxOps} operators (the limit; = ( ) , ; and braces are free)`, tk.line, ops);
       }
     }
+    prev2 = prev;
     prev = tk;
   }
   // In an exclusive file `main` is held to the same body rules (no calls, no strings, no operators).
