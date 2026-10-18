@@ -44,11 +44,39 @@ describe('tutor base URL', () => {
       'https://example.com/v1?api_key=sk-live',
       'https://example.com/v1?token=abc',
       'https://example.com/v1?turkey=1&secret=no',
+      'https://example.com/v1?sk=abc',
+      'https://example.com/v1?SK=abc',
+      'https://example.com/v1?auth=abc',
+      'https://example.com/v1?bearer=abc',
+      'https://example.com/v1?authorization=abc',
+      'https://example.com/v1?accesskey=abc',
+      'https://example.com/v1?access_key=abc',
+      'https://example.com/v1?api.key=abc',
+      'https://example.com/v1?my-sk=abc',
       'not a url',
       '',
     ]) expect(parseTutorBaseUrl(bad), bad).toBeNull();
-    // `turkey` alone is not a key parameter.
+    // Ordinary names that merely contain those letters stay. `api-version` is a date, not a key.
     expect(parseTutorBaseUrl('https://example.com/v1?turkey=1')).toBe('https://example.com/v1?turkey=1');
+    expect(parseTutorBaseUrl('https://example.com/v1?ask=1')).toBe('https://example.com/v1?ask=1');
+    expect(parseTutorBaseUrl('https://example.com/v1?author=ada')).toBe('https://example.com/v1?author=ada');
+    expect(parseTutorBaseUrl('https://example.com/v1?skill=1')).toBe('https://example.com/v1?skill=1');
+    expect(parseTutorBaseUrl('https://example.com/v1?monkey=1')).toBe('https://example.com/v1?monkey=1');
+  });
+
+  it('rejects loopback lookalikes that a prefix check would allow', () => {
+    // isLoopback is an exact host match. startsWith('localhost') / startsWith('127.0.0.1') would accept these.
+    for (const bad of [
+      'http://localhost.evil.com/v1',
+      'http://127.0.0.1.evil.com/v1',
+      'http://localhost./v1',
+      'http://localhost.localdomain/v1',
+      'http://127.0.0.10/v1',
+      'http://localhostextra/v1',
+      'http://evil.localhost/v1',
+    ]) expect(parseTutorBaseUrl(bad), bad).toBeNull();
+    expect(parseTutorBaseUrl('http://LOCALHOST/v1')).toBe('http://localhost/v1');
+    expect(parseTutorBaseUrl('http://127.0.0.1./v1')).toBe('http://127.0.0.1/v1');
   });
 
   it('will not build a chat URL whose host differs from the base', () => {
@@ -157,5 +185,29 @@ describe('commitTutorDraft', () => {
     expect(getTutorSettings().apiKey).toBe('');
     expect(getTutorSettings().consentedHost).toBe('');
     expect(getTutorSettings().baseUrl).toBe(DEFAULT_TUTOR_BASE_URL);
+  });
+
+  it('clears host consent when the key is cleared or replaced, and keeps it when the key is unchanged', () => {
+    replaceTutorSettings(parseTutorSettings({
+      version: 1, apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, model: 'm', consentedHost: 'openrouter.ai',
+    }));
+    const same = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, model: 'm' });
+    expect(same.problems).toEqual([]);
+    expect(same.settings.consentedHost).toBe('openrouter.ai');
+    expect(consentCovers(same.settings)).toBe(true);
+
+    const replaced = commitTutorDraft({ apiKey: 'sk-new-value', baseUrl: DEFAULT_TUTOR_BASE_URL, model: 'm' });
+    expect(replaced.problems).toEqual([]);
+    expect(replaced.settings.apiKey).toBe('sk-new-value');
+    expect(replaced.settings.consentedHost).toBe('');
+    expect(consentCovers(replaced.settings)).toBe(false);
+
+    acceptTutorHost('openrouter.ai');
+    expect(consentCovers(getTutorSettings())).toBe(true);
+    const cleared = commitTutorDraft({ apiKey: '', baseUrl: DEFAULT_TUTOR_BASE_URL, model: 'm' });
+    expect(cleared.problems).toEqual([]);
+    expect(cleared.settings.apiKey).toBe('');
+    expect(cleared.settings.consentedHost).toBe('');
+    expect(consentCovers(cleared.settings)).toBe(false);
   });
 });
