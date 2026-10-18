@@ -6,6 +6,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyTutorSettings, replaceTutorSettings } from './settings';
 import { TutorPanel } from './TutorPanel';
 
+const consentGate = vi.hoisted(() => ({ covers: true }));
+
+vi.mock('./settings', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./settings')>();
+  return {
+    ...actual,
+    consentCovers: (s: Parameters<typeof actual.consentCovers>[0]) => consentGate.covers && actual.consentCovers(s),
+  };
+});
+
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const KEY = 'sk-panel-secret';
@@ -44,6 +54,7 @@ describe('TutorPanel renders model output as text', () => {
     host.remove();
     vi.unstubAllGlobals();
     replaceTutorSettings(emptyTutorSettings());
+    consentGate.covers = true;
   });
 
   const flush = () => act(async () => { for (let i = 0; i < 20; i++) await new Promise(r => setTimeout(r, 0)); });
@@ -83,5 +94,46 @@ describe('TutorPanel renders model output as text', () => {
     expect(host.textContent).toContain('rejected (401)');
     expect(host.textContent).not.toContain(KEY);
     expect(asks).toBe(0);
+  });
+
+  it('does not send when ask() sees consent that no longer covers the host', async () => {
+    const fetchImpl = vi.fn(async () => reply('a hint'));
+    vi.stubGlobal('fetch', fetchImpl);
+    act(() => { root.render(createElement(TutorPanel, baseProps)); });
+    const nudge = button(/Give me a nudge/);
+    expect(nudge).toBeTruthy();
+    consentGate.covers = false;
+    await act(async () => { nudge.click(); });
+    await flush();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(host.textContent).not.toContain('a hint');
+  });
+
+  it('disables both Ask buttons while a request is in flight', async () => {
+    let release: (response: Response) => void = () => {};
+    const gate = new Promise<Response>(resolve => { release = resolve; });
+    vi.stubGlobal('fetch', vi.fn(() => gate));
+    act(() => { root.render(createElement(TutorPanel, baseProps)); });
+    const askButtons = () => [...host.querySelectorAll('[data-tutor="ask"] button')];
+    expect(askButtons().map(b => (b as HTMLButtonElement).disabled)).toEqual([false, false]);
+    await act(async () => { button(/Give me a nudge/).click(); });
+    expect(askButtons().map(b => (b as HTMLButtonElement).disabled)).toEqual([true, true]);
+    expect(askButtons().every(b => b.textContent === 'Asking…')).toBe(true);
+    expect(document.activeElement).toBe(host.querySelector('[data-tutor-reply]'));
+    await act(async () => { release(reply('try a newline')); });
+    await flush();
+    expect(askButtons().map(b => (b as HTMLButtonElement).disabled)).toEqual([false, false]);
+    expect(host.textContent).toContain('try a newline');
+  });
+
+  it('moves focus to the nudge after accept and to the refusal after decline', () => {
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '' });
+    act(() => { root.render(createElement(TutorPanel, baseProps)); });
+    act(() => { button(/Don't send/).click(); });
+    const refused = [...host.querySelectorAll('p')].find(p => p.textContent?.includes('Nothing was sent.'));
+    expect(document.activeElement).toBe(refused);
+    act(() => { button(/Show the permission notice/).click(); });
+    act(() => { button(/Send to tutor\.test/).click(); });
+    expect(document.activeElement).toBe(button(/Give me a nudge/));
   });
 });

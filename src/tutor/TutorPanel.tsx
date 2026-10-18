@@ -1,5 +1,5 @@
 // "Ask the tutor" after a failed check. Model text is rendered as Markdown, never as HTML.
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { requestTutorReply } from './client';
 import { ConsentNotice } from './ConsentNotice';
@@ -28,7 +28,24 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [declined, setDeclined] = useState(false);
+  const nudgeRef = useRef<HTMLButtonElement>(null);
+  const declinedRef = useRef<HTMLParagraphElement>(null);
+  const replyRef = useRef<HTMLDivElement>(null);
+  const moveFocus = useRef<'nudge' | 'declined' | null>(null);
   const host = tutorHost(settings.baseUrl);
+
+  useEffect(() => {
+    const target = moveFocus.current;
+    if (!target) return;
+    const node = target === 'nudge' ? nudgeRef.current : declinedRef.current;
+    if (!node) return;
+    moveFocus.current = null;
+    node.focus();
+  }, [settings.consentedHost, declined]);
+
+  useEffect(() => {
+    if (busy) replyRef.current?.focus();
+  }, [busy]);
 
   const ask = async (question: TutorQuestion) => {
     if (busy) return;
@@ -71,26 +88,26 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
       <h4>Ask the tutor</h4>
       {!settings.apiKey && <p className={styles.muted}>Add an API key in <a href="#/settings">Settings</a> to ask the tutor.</p>}
       {settings.apiKey && !consentCovers(settings) && host && !declined && (
-        <ConsentNotice host={host} onAccept={() => { acceptTutorHost(host); setDeclined(false); }} onDecline={() => setDeclined(true)} />
+        <ConsentNotice host={host} onAccept={() => { moveFocus.current = 'nudge'; acceptTutorHost(host); setDeclined(false); }} onDecline={() => { moveFocus.current = 'declined'; setDeclined(true); }} />
       )}
       {settings.apiKey && !consentCovers(settings) && declined && (
-        <p className={styles.muted}>Nothing was sent. <button type="button" className="btn btn-sm" onClick={() => setDeclined(false)}>Show the permission notice</button></p>
+        <p ref={declinedRef} tabIndex={-1} className={styles.muted}>Nothing was sent. <button type="button" className="btn btn-sm" onClick={() => setDeclined(false)}>Show the permission notice</button></p>
       )}
       {consentCovers(settings) && stale && <p>Check again before asking: the tutor uses the code you last checked.</p>}
       {consentCovers(settings) && !stale && (
         <>
           <div className={styles.actions}>
-            <button type="button" className="btn" onClick={() => void ask('nudge')}>{busy ? 'Asking…' : 'Give me a nudge'}</button>
+            <button type="button" ref={nudgeRef} className="btn" disabled={busy} onClick={() => void ask('nudge')}>{busy ? 'Asking…' : 'Give me a nudge'}</button>
           </div>
           <label className={styles.field} htmlFor={approachId}>What were you trying to do?
             <textarea id={approachId} rows={3} value={approach} onChange={e => setApproach(e.target.value)} />
           </label>
           <div className={styles.actions}>
-            <button type="button" className="btn" onClick={() => void ask('why')}>{busy ? 'Asking…' : 'Ask about my approach'}</button>
+            <button type="button" className="btn" disabled={busy} onClick={() => void ask('why')}>{busy ? 'Asking…' : 'Ask about my approach'}</button>
           </div>
         </>
       )}
-      <div role="status" aria-live="polite" data-tutor-reply>
+      <div ref={replyRef} tabIndex={-1} role="status" aria-live="polite" data-tutor-reply>
         {error && <p className={styles.bad}>{error}</p>}
         {reply && <div className={styles.reply}><MiniMarkdown text={reply} /></div>}
       </div>
