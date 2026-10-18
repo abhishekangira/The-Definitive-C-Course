@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "sources": [
+    "countdown.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "a negative start prints nothing to count",
+      "run": {
+        "stdin": "-4\n"
+      },
+      "expect": {
+        "stdout": "Start: Nothing to count.\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "start 0 prints 0 and lifts off",
+      "run": {
+        "stdin": "0\n",
+        "timeoutMs": 2000
+      },
+      "expect": {
+        "stdout": "Start: 0\nLiftoff!\n",
+        "exit": 0
+      },
+      "hint": "After the 0 is printed, what does `i--` do to an unsigned 0?"
+    },
+    {
+      "name": "start 3 counts 3, 2, 1, 0",
+      "run": {
+        "stdin": "3\n",
+        "timeoutMs": 2000
+      },
+      "expect": {
+        "stdout": "Start: 3\n2\n1\n0\nLiftoff!\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "start 10 counts down to 0",
+      "run": {
+        "stdin": "10\n",
+        "timeoutMs": 2000
+      },
+      "expect": {
+        "stdout": "Start: 10\n9\n8\n7\n6\n5\n4\n3\n2\n1\n0\nLiftoff!\n",
+        "exit": 0
+      }
+    }
+  ]
+}

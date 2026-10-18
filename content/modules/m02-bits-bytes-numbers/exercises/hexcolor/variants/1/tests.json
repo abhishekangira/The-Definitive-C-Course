@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "sources": [
+    "dim.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "orange",
+      "run": {
+        "stdin": "#FF8000\n"
+      },
+      "expect": {
+        "stdout": "Colour: half:   #7F4000\ninvert: #007FFF\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "black",
+      "run": {
+        "stdin": "#000000\n"
+      },
+      "expect": {
+        "stdout": "Colour: half:   #000000\ninvert: #FFFFFF\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "white",
+      "run": {
+        "stdin": "#FFFFFF\n"
+      },
+      "expect": {
+        "stdout": "Colour: half:   #7F7F7F\ninvert: #000000\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "odd channel values lose their lowest bit when halved",
+      "run": {
+        "stdin": "#010305\n"
+      },
+      "expect": {
+        "stdout": "Colour: half:   #000102\ninvert: #FEFCFA\n",
+        "exit": 0
+      },
+      "hint": "After `c >> 1`, the lowest bit of red has moved into the top of green. Mask it off."
+    },
+    {
+      "name": "a mixed colour",
+      "run": {
+        "stdin": "#123456\n"
+      },
+      "expect": {
+        "stdout": "Colour: half:   #091A2B\ninvert: #EDCBA9\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "only the blue channel",
+      "run": {
+        "stdin": "#0000FF\n"
+      },
+      "expect": {
+        "stdout": "Colour: half:   #00007F\ninvert: #FFFF00\n",
+        "exit": 0
+      }
+    }
+  ]
+}

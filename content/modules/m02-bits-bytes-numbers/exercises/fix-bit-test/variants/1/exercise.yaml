@@ -1,0 +1,19 @@
+id: fix-bit-test/variants/1
+kind: fb
+title: Clearing a bit clears the rest too
+prompt: |
+  **Bug report:** "The program reads some flags and a bit number `n`, and should turn bit `n` off and
+  leave every other bit alone. For flags `7` and bit 1 it prints `2`, but it should print `5`."
+
+  Find and fix the bug.
+runsIn: browser
+hints:
+- Write 7 in binary (`111`) and the mask `1 << n` for n = 1 (`010`). Work out what `flags & mask` gives.
+- 'And-ing with the mask keeps **only** bit `n` and clears everything else. To clear just one bit you
+  need a mask that has every bit set except that one: the complement of `1 << n`.'
+- Use `flags & ~(1 << n)` instead of `flags & (1 << n)`.
+file: clear.c
+variants: []
+sampleStdin: |
+  7
+  1

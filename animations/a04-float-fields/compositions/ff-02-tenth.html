@@ -1,0 +1,63 @@
+<template id="ff-02-tenth-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #ff02-hex { position: absolute; left: 192px; top: 372px; font: 700 44px/1 var(--font-mono); color: var(--program); }
+    .ff02-f { top: 450px; height: 280px; padding: 24px 22px; }
+    #ff02-fs { left: 192px; width: 270px; border-color: var(--border-strong); }
+    #ff02-fe { left: 498px; width: 460px; border-color: var(--program); }
+    #ff02-ff { left: 996px; width: 732px; border-color: var(--warn); }
+    .ff02-l { font: 700 28px/1 var(--font-mono); color: var(--text-muted); }
+    .ff02-b { margin-top: 26px; font: 700 40px/1 var(--font-mono); color: var(--text); white-space: nowrap; }
+    .ff02-d { margin-top: 28px; font: 400 32px/1.35 var(--font-mono); color: var(--text); white-space: nowrap; }
+    .ff02-d i { font-style: normal; color: var(--text-muted); font-size: 28px; }
+    #ff02-res { position: absolute; left: 192px; top: 770px; width: 1536px; font: 800 48px/1.2 var(--font-mono); color: var(--text); }
+    #ff02-note { position: absolute; left: 192px; top: 870px; width: 1536px; font: 400 30px/1.3 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="ff-02-tenth" data-width="1920" data-height="1080" data-duration="20"
+       data-steps='{"tenth":{"label":"0.1","start":0,"end":19.45}}'>
+    <div class="ff-stage" id="ff02-stage">
+      <div class="ff-head" id="ff02-head">
+        <h1 class="ff-title" id="ff02-title">The float nearest to 0.1.</h1>
+        <p class="ff-sub" id="ff02-sub">It is close, and it is not exactly one tenth.</p>
+      </div>
+      <div id="ff02-hex">0x3DCCCCCD read as a float</div>
+      <div class="ff-card ff02-f" id="ff02-fs"><div class="ff02-l">sign (1 bit)</div><div class="ff02-b" id="ff02-sb">0</div><div class="ff02-d" id="ff02-sd">0 = positive</div></div>
+      <div class="ff-card ff02-f" id="ff02-fe"><div class="ff02-l">exponent (8 bits)</div><div class="ff02-b" id="ff02-eb">0111 1011</div><div class="ff02-d" id="ff02-ed">123 - 127 = -4<br /><i>scale 2^-4</i></div></div>
+      <div class="ff-card ff02-f" id="ff02-ff"><div class="ff02-l">fraction (23 bits)</div><div class="ff02-b" id="ff02-fb">100 1100 1100 1100 1100 1101</div><div class="ff02-d" id="ff02-fd">1.600000024<br /><i>implied 1 + 5033165 / 2^23</i></div></div>
+      <p id="ff02-res">1.600000024 x 2^-4 = 0.10000000149011612</p>
+      <p id="ff02-note">0.1 has no finite binary expansion, so the nearest float is stored instead.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("ff-02-tenth", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 20;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      tl.addLabel("tenth", S.tenth.start);
+      tl.fromTo("#ff02-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#ff02-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#ff02-hex", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 }, 0.9);
+      tl.fromTo("#ff02-fs", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5 }, 1.8);
+      tl.fromTo("#ff02-fe", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5 }, 3.2);
+      tl.fromTo("#ff02-ff", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5 }, 4.6);
+      tl.fromTo("#ff02-sd", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 7.0);
+      tl.fromTo("#ff02-ed", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 8.6);
+      tl.fromTo("#ff02-fd", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "none" }, 10.2);
+      tl.fromTo("#ff02-res", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 12.4);
+      tl.fromTo("#ff02-note", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.6 }, 15.0);
+
+      tl.fromTo("#ff02-stage", { opacity: 1 }, { opacity: 0, duration: 0.35, ease: "power1.in" }, D - 0.5);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["ff-02-tenth"] = tl;
+    })();
+  </script>
+</template>

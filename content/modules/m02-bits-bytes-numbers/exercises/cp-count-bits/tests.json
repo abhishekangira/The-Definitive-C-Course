@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "sources": [
+    "bits.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "zero has no set bits",
+      "run": {
+        "stdin": "0\n"
+      },
+      "expect": {
+        "stdout": "Number: 0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "13 has three",
+      "run": {
+        "stdin": "13\n"
+      },
+      "expect": {
+        "stdout": "Number: 3\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "255 has eight",
+      "run": {
+        "stdin": "255\n"
+      },
+      "expect": {
+        "stdout": "Number: 8\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "a power of two has one",
+      "run": {
+        "stdin": "1024\n"
+      },
+      "expect": {
+        "stdout": "Number: 1\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "the largest int has thirty-one",
+      "run": {
+        "stdin": "2147483647\n"
+      },
+      "expect": {
+        "stdout": "Number: 31\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "a negative number is asked again",
+      "run": {
+        "stdin": "-4\n7\n"
+      },
+      "expect": {
+        "stdout": "Number: Number: 3\n",
+        "exit": 0
+      }
+    }
+  ]
+}

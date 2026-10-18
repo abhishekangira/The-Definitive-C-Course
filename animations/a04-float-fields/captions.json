@@ -1,0 +1,20 @@
+[
+  {
+    "step": "decode",
+    "start": 0.5,
+    "end": 18.5,
+    "text": "A 32-bit float is three bit fields: a sign bit, eight exponent bits and 23 fraction bits. The pattern 3F800000 has exponent 127 and fraction 0, so it is exactly 1."
+  },
+  {
+    "step": "tenth",
+    "start": 20.5,
+    "end": 38.5,
+    "text": "The float nearest to 0.1 is 3DCCCCCD. Exponent 123 scales by 2 to the minus 4, and the fraction gives about 1.6, so the stored value is 0.10000000149011612, not one tenth."
+  },
+  {
+    "step": "sum",
+    "start": 40.5,
+    "end": 58.5,
+    "text": "In double precision, 0.1 plus 0.2 prints as 0.30000000000000004, and comparing it with 0.3 with double equals is false. Compare floats with a tolerance."
+  }
+]

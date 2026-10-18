@@ -1,9 +1,9 @@
 // Pieces shared by exercise kinds: test results, tiered hints, the solution gate.
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { describeResult } from '../testing/format';
 import type { TestResult } from '../testing/runner';
 import type { ExerciseProgress } from '../progress/store';
-import { solutionGate } from '../progress/gating';
+import { solutionGate, type SolutionAttempts } from '../progress/gating';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { CodeEditor } from '../components/CodeEditor';
 import { Icon, Mark } from '../components/Icon';
@@ -64,7 +64,7 @@ export function Hints({ hints, viewed, onView, maxTier = 3 }: { hints: [string, 
   );
 }
 
-export function SolutionGatePanel({ ep, isVariant, solution, fileName, onView, onVariant, hasVariants }: {
+export function SolutionGatePanel({ ep, isVariant, solution, fileName, onView, onVariant, hasVariants, attempts = 'editor' }: {
   ep: ExerciseProgress;
   isVariant: boolean;
   solution: string | undefined;
@@ -72,25 +72,36 @@ export function SolutionGatePanel({ ep, isVariant, solution, fileName, onView, o
   onView: () => void;
   onVariant: () => void;
   hasVariants: boolean;
+  /** Local tasks count distinct source hashes; the variant is a second download. */
+  attempts?: SolutionAttempts;
 }) {
+  const solutionRef = useRef<HTMLDivElement>(null);
+  const focusSolution = useRef(false);
+  const revealed = ep.solutionViewed;
+  useEffect(() => {
+    if (!focusSolution.current || !revealed) return;
+    focusSolution.current = false;
+    solutionRef.current?.focus();
+  }, [revealed]);
   if (ep.passed && !ep.solutionViewed) return null;
-  const gate = solutionGate(ep, isVariant);
+  const gate = solutionGate(ep, isVariant, attempts);
   if (isVariant) return <p className={styles.muted}>{gate.reason}</p>;
   if (!ep.solutionViewed) {
     return (
       <div className={styles.actions}>
-        <button type="button" className="btn btn-ghost btn-sm" disabled={!gate.unlocked} onClick={onView}>Show the solution</button>
+        <button type="button" className="btn btn-ghost btn-sm" disabled={!gate.unlocked} onClick={() => { focusSolution.current = true; onView(); }}>Show the solution</button>
         {!gate.unlocked && <span className={styles.muted}>{gate.reason}</span>}
       </div>
     );
   }
   return (
-    <div className={styles.split}>
+    <div ref={solutionRef} tabIndex={-1} className={styles.split} role="region" aria-label={`Reference solution for ${fileName}`}>
       <strong>Reference solution</strong>
       {solution && <CodeEditor value={solution} readOnly label="Reference solution" fileName={fileName} />}
       {hasVariants && (
         <div className={styles.note}>
           Study it, then prove the skill is yours: solve a <strong>variant</strong> on your own (no solution for variants).{' '}
+          {attempts === 'codes' && <>Download its zip, run <code>make test</code>, and paste that code. </>}
           <button type="button" className="btn btn-sm btn-primary" onClick={onVariant}>{ep.variant ? 'Give me a different variant' : 'Start the variant'}</button>
         </div>
       )}

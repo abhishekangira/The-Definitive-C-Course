@@ -1,6 +1,6 @@
 // Attempt/hint/solution bookkeeping shared by every exercise kind (PLAN.md §2.5).
 import { useCallback, useRef } from 'react';
-import { exerciseProgress, noteActivity, update, useProgress, type ExerciseProgress } from '../progress/store';
+import { distinctProgressSources, exerciseProgress, noteActivity, update, useProgress, type ExerciseProgress } from '../progress/store';
 import { fnv1a } from './hash';
 
 export function useExerciseProgress(id: string, parentId?: string) {
@@ -48,6 +48,35 @@ export function useExerciseProgress(id: string, parentId?: string) {
   const recordTutorAsk = useCallback(() => patch(e => { e.tutorAsks += 1; }), [patch]);
   const viewHint = useCallback((tier: number) => patch(e => { e.hintsViewed = Math.max(e.hintsViewed, tier); }), [patch]);
   const viewSolution = useCallback(() => patch(e => { e.solutionViewed = true; }), [patch]);
+
+  /**
+   * A pasted local-task code. Substantive attempts are distinct source hashes (`src`): check.mjs
+   * puts a new run counter in every code, so the strings differ even when the program did not.
+   * `attempts` counts accepted pastes. A local task has no editor, so it does not add active time.
+   * A completion token masters this exercise unless its solution was viewed. It masters the parent
+   * only outside assessment, and only when this variant's own solution was not viewed. Assessment
+   * reports through the checkpoint's `onPassed` instead of mastering the lesson exercise.
+   */
+  const recordLocalCode = useCallback((canonical: string, info: { complete: boolean; assessment?: boolean }) => {
+    update(p => {
+      noteActivity(p);
+      const e = exerciseProgress(p, id);
+      e.codes = [...new Set([...(e.codes ?? []), canonical])];
+      e.attempts += 1;
+      e.substantive = distinctProgressSources(e.codes) ?? 0;
+      if (info.complete) {
+        e.passed = true;
+        if (!e.solutionViewed) e.mastered = true;
+      }
+      p.exercises[id] = e;
+      if (info.complete && parentId && !info.assessment && !e.solutionViewed) {
+        const parent = exerciseProgress(p, parentId);
+        parent.mastered = true;
+        p.exercises[parentId] = parent;
+      }
+    });
+  }, [id, parentId]);
+
   const assignVariant = useCallback((variants: string[]) => {
     patch(e => {
       const tried = new Set(e.variantsTried ?? []);
@@ -58,5 +87,5 @@ export function useExerciseProgress(id: string, parentId?: string) {
     });
   }, [patch]);
 
-  return { ep, touch, recordAttempt, recordTutorAsk, viewHint, viewSolution, assignVariant, patch };
+  return { ep, touch, recordAttempt, recordLocalCode, recordTutorAsk, viewHint, viewSolution, assignVariant, patch };
 }
