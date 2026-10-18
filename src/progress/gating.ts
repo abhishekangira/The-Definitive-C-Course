@@ -68,13 +68,31 @@ export function isCheckpointUnlocked(p: ProgressV1, moduleId: string): boolean {
 
 export interface SolutionGate { unlocked: boolean; reason?: string }
 
-/** Solution unlock (PLAN §2.5): H3 viewed AND (≥2 substantive attempts OR ≥1 attempt + 20 min active). */
-export function solutionGate(e: ExerciseProgress, isVariant: boolean): SolutionGate {
+/**
+ * What a substantive attempt is. Browser exercises count a changed program that was tested.
+ * Local tasks count a distinct source hash (`src`), not a distinct code string: check.mjs
+ * bumps `run` on every full run. The thresholds are the same.
+ */
+export type SolutionAttempts = 'editor' | 'codes';
+
+/** Solution unlock (PLAN §2.5): H3 viewed AND (≥2 substantive attempts OR ≥1 attempt + 20 min active). A variant never unlocks. */
+export function solutionGate(e: ExerciseProgress, isVariant: boolean, attempts: SolutionAttempts = 'editor'): SolutionGate {
   if (isVariant) return { unlocked: false, reason: 'Variants are solved without a solution, so the skill counts as yours.' };
   if (e.hintsViewed < 3) return { unlocked: false, reason: 'Open all three hints first.' };
   const minutes = e.activeMs / 60000;
   if (e.substantive >= 2 || (e.substantive >= 1 && minutes >= 20)) return { unlocked: true };
-  if (e.substantive === 0) return { unlocked: false, reason: 'Make a real attempt first: change the code and run the tests.' };
+  if (e.substantive === 0) {
+    return {
+      unlocked: false,
+      reason: attempts === 'codes'
+        ? 'Make a real attempt first: paste a progress code from make test.'
+        : 'Make a real attempt first: change the code and run the tests.',
+    };
+  }
+  const next = attempts === 'codes' ? 'One more progress code from a changed program' : 'One more changed attempt';
+  // A local task never adds activeMs. Time already stored can still unlock above; the lock text must not promise minutes.
+  if (attempts === 'codes') return { unlocked: false, reason: `${next} unlocks the solution.` };
   const left = Math.ceil(20 - minutes);
-  return { unlocked: false, reason: `One more changed attempt (or ${left} more ${left === 1 ? 'minute' : 'minutes'} of work) unlocks the solution.` };
+  const unit = left === 1 ? 'minute' : 'minutes';
+  return { unlocked: false, reason: `${next} (or ${left} more ${unit} of work) unlocks the solution.` };
 }

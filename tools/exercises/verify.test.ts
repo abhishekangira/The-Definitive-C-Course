@@ -34,13 +34,14 @@ const run = (contentRoot: string, only?: string) => verifyAll({ contentRoot, onl
 const item = (items: ItemReport[], id: string) => items.find(i => i.id === id)!;
 
 describe('verify:exercises on the fixtures', () => {
-  it('passes a CT with a variant, an FB, a PA with a variant, an LT and a project', async () => {
+  it('passes a CT with a variant, an FB, a PA with a variant, an LT with a variant and a project', async () => {
     const s = await run(FIXTURES);
     expect(s.items.map(i => [i.id, i.kind, i.runsIn, i.ok, i.problems])).toEqual([
       ['ct-sum-digits', 'ct', 'browser', true, []],
       ['ct-sum-digits/variants/v1', 'ct', 'browser', true, []],
       ['fb-reverse-word', 'fb', 'browser', true, []],
       ['lt-free-list', 'lt', 'native', true, []],
+      ['lt-free-list/variants/v1', 'lt', 'native', true, []],
       ['pa-swap', 'pa', 'browser', true, []],
       ['pa-swap/variants/p1', 'pa', 'browser', true, []],
       ['project/p0-greet', 'project', 'native', true, []],
@@ -48,6 +49,7 @@ describe('verify:exercises on the fixtures', () => {
     expect(item(s.items, 'ct-sum-digits').summary).toEqual(['solution 5/5', 'starter 3/5']);
     expect(item(s.items, 'fb-reverse-word').summary).toEqual(['solution 4/4', 'starter 3/4']);
     expect(item(s.items, 'lt-free-list').summary).toEqual(['solution 4/4', 'token verified', 'starter 3/4']);
+    expect(item(s.items, 'lt-free-list/variants/v1').summary).toEqual(['solution 4/4', 'token verified', 'starter 3/4']);
     expect(item(s.items, 'pa-swap').summary).toEqual(['2 accepted orderings pass', '13 lines', 'starter scramble is rejected']);
     expect(item(s.items, 'pa-swap/variants/p1').summary).toEqual(['1 accepted ordering pass', '8 lines', 'no starter.c (the app scrambles)']);
     expect(item(s.items, 'project/p0-greet').summary).toEqual(['solution 5/5', 'token verified', 'starter 2/5']);
