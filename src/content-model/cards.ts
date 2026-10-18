@@ -11,7 +11,7 @@ export const INTERACTIONS = new Set([
 /** Elements that count as "one animation or video clip". */
 export const MEDIA = new Set(['Animation', 'YouTube']);
 /** Elements that are neither prose nor interaction (rendered as-is, zero words). */
-export const NEUTRAL = new Set(['Analogy', 'CodeBlock', 'NumberPlayground', 'PipelineExplorer', 'Callout', 'Figure']);
+export const NEUTRAL = new Set(['Analogy', 'CodeBlock', 'NumberPlayground', 'ByteViewer', 'PipelineExplorer', 'Callout', 'Figure']);
 
 export function elementName(node: RootContent): string | null {
   const n = node as { type: string; name?: string | null };

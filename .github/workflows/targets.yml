@@ -21,6 +21,7 @@ on:
       - 'tools/ci/verify-project-run.ts'
       - 'src/testing/**'
       - 'content/modules/m01-c-in-your-browser/project/mario-more/**'
+      - 'content/modules/m02-bits-bytes-numbers/project/credit/**'
       - '.github/workflows/targets.yml'
 
 permissions:
@@ -73,11 +74,18 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-14, ubuntu-24.04-arm]
+        project: [mario-more, credit]
+        include:
+          - project: mario-more
+            path: content/modules/m01-c-in-your-browser/project/mario-more
+          - project: credit
+            path: content/modules/m02-bits-bytes-numbers/project/credit
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
-      EXERCISE: project/mario-more
-      PROJECT: content/modules/m01-c-in-your-browser/project/mario-more
+      EXERCISE: project/${{ matrix.project }}
+      PROJECT: ${{ matrix.path }}
+      NAME: ${{ matrix.project }}
       SEED: 0123456789abcdef
     steps:
       - uses: actions/checkout@v4
@@ -101,7 +109,7 @@ jobs:
           node tools/check/build.mjs --zip "$PROJECT" --out work/starter.zip --seed "$SEED"
           unzip -q work/starter.zip -d work/starter
           set +e
-          (cd work/starter/mario-more && make test) 2>&1 | tee work/starter.log
+          (cd "work/starter/$NAME" && make test) 2>&1 | tee work/starter.log
           code=${PIPESTATUS[0]}
           set -e
           echo "make test exit status: $code"
@@ -112,7 +120,7 @@ jobs:
           node tools/check/build.mjs --zip "$PROJECT" --out work/solution.zip --solution --seed "$SEED"
           unzip -q work/solution.zip -d work/solution
           set +e
-          (cd work/solution/mario-more && make test) 2>&1 | tee work/solution.log
+          (cd "work/solution/$NAME" && make test) 2>&1 | tee work/solution.log
           code=${PIPESTATUS[0]}
           set -e
           echo "make test exit status: $code"

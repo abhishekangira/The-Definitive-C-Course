@@ -1,0 +1,24 @@
+id: pack-rgba/variants/1
+kind: ct
+title: Pack a date into 16 bits
+prompt: |
+  Old file systems store a date in 16 bits: the year since 1980 in the top 7 bits, the month (1 to 12)
+  in the next 4 bits and the day (1 to 31) in the lowest 5 bits. For example 2000-06-15 is year 20,
+  month 6 and day 15, packed as `0x28CF`.
+
+  Fill in the four functions, using only shifts, masks and `|`. `main` reads the year (1980 to 2107),
+  month and day, packs them, prints the packed value in hex, and unpacks it again.
+runsIn: browser
+hints:
+- 'The day takes the lowest 5 bits, so it needs no shift. The month sits above it: move it left by 5.
+  The year, counted from 1980, sits above both: move it left by 9.'
+- 'Pack: `((year - 1980) << 9) | (month << 5) | day`. Unpack with a shift to bring the field down and a
+  mask as wide as the field: 5 bits is `0x1F`, 4 bits is `0xF`, 7 bits is `0x7F`.'
+- 'Day: `d & 0x1F`. Month: `(d >> 5) & 0xF`. Year: `((d >> 9) & 0x7F) + 1980`. Pack with
+  `(unsigned)(((year - 1980) << 9) | (month << 5) | day)`.'
+file: date.c
+variants: []
+sampleStdin: |
+  2000
+  6
+  15

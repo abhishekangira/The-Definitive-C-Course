@@ -2,7 +2,7 @@ title: The Definitive C Course
 hoursPerWeek: 5
 modules:
   - { id: m01, dir: m01-c-in-your-browser, number: 1, title: "C in Your Browser: From JS to C", hours: 10, available: true }
-  - { id: m02, dir: m02-bits-bytes-numbers, number: 2, title: "Bits, Bytes & Numbers", hours: 10, available: false }
+  - { id: m02, dir: m02-bits-bytes-numbers, number: 2, title: "Bits, Bytes & Numbers", hours: 10, available: true }
   - { id: m03, dir: m03-going-native, number: 3, title: "Going Native: Toolchain, Debugger, Sanitizers & Make", hours: 10, available: false }
   - { id: m04, dir: m04-arrays-strings-cli, number: 4, title: "Arrays, Strings & the Command Line", hours: 10, available: false }
   - { id: m05, dir: m05-algorithms, number: 5, title: "Algorithms, Recursion, Structs & Big-O", hours: 18, available: false }

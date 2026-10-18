@@ -3,7 +3,7 @@
 // complete. Separate tests cover the hint/solution/variant gates, export/import and accessibility.
 import { test, expect, type Page } from '@playwright/test';
 import {
-  answerQuiz, availableModules, courseTitle, completeExercise, completeLesson, expectAccessible, progressJson, setEditor, solutionOf, starterOf,
+  answerQuiz, availableModules, courseTitle, completeExercise, completeLesson, exerciseWithVariants, expectAccessible, progressJson, reachCard, seedPriorModules, setEditor, solutionOf, starterOf,
 } from './lib';
 
 // E2E_MODULE=m01 limits the run to one module (used by `npm run dod`); default is every available module.
@@ -16,7 +16,9 @@ for (const mod of modules) {
     let page: Page;
     test.beforeAll(async ({ browser }) => {
       // AxeBuilder needs a page that came from a browser context, not browser.newPage().
-      page = await (await browser.newContext()).newPage();
+      const context = await browser.newContext();
+      await seedPriorModules(context, mod); // modules after the first stay locked until the earlier ones are complete
+      page = await context.newPage();
       page.on('pageerror', e => { throw e; });
       page.on('dialog', d => void d.accept());
     });
@@ -94,12 +96,13 @@ for (const mod of modules) {
 
 test('hint tiers, solution gate and variants', async ({ page }) => {
   const mod = modules[0];
+  await seedPriorModules(page.context(), mod);
   page.on('dialog', d => void d.accept());
   await page.goto(`#/m/${mod.id}/retrieval`);
   await answerQuiz(page, mod, 'retrieval');
   await page.getByRole('button', { name: 'Finish warm-up' }).click();
 
-  const id = mod.meta.problemSet.find(x => x !== 'hello-world') ?? mod.meta.problemSet[0];
+  const id = exerciseWithVariants(mod);
   await page.goto(`#/m/${mod.id}`);
   const details = page.locator('details', { has: page.locator(`[data-exercise="${id}"]`) });
   await details.locator(':scope > summary').click();
@@ -142,14 +145,16 @@ test('hint tiers, solution gate and variants', async ({ page }) => {
 test('low-memory mode shows stored output without downloading the compiler', async ({ page }) => {
   const mod = modules[0];
   const toolchainRequests: string[] = [];
+  await seedPriorModules(page.context(), mod);
   page.on('request', r => { if (/toolchain\/clang-/.test(r.url())) toolchainRequests.push(r.url()); });
   await page.goto('#/settings');
   await page.getByLabel(/Low-memory mode/).check();
   await page.goto(`#/m/${mod.id}/retrieval`);
   await answerQuiz(page, mod, 'retrieval');
   await page.getByRole('button', { name: 'Finish warm-up' }).click();
-  await page.goto(`#/m/${mod.id}/${mod.lessons[0].stem}`);
-  const box = page.locator('[data-interaction="predict"]').first();
+  // The first prediction of the module's first lesson (Module 2's comes after two drills, which need no compiler).
+  const card = await reachCard(page, mod, mod.lessons[0].stem, '[data-interaction="predict"]');
+  const box = card.locator('[data-interaction="predict"]').first();
   const id = (await box.getAttribute('data-sample'))!;
   await box.locator('textarea').first().fill('anything');
   await box.getByRole('button', { name: 'Lock in my prediction' }).click();
