@@ -8,6 +8,8 @@ import type { TutorMessage } from './prompt';
 export const TUTOR_TIMEOUT_MS = 30_000;
 export const TUTOR_MAX_OUTPUT_CHARS = 4_000;
 export const TUTOR_MAX_TOKENS = 700;
+/** Stop reading a provider body past this. The displayed reply is capped much lower. */
+export const TUTOR_MAX_RESPONSE_BYTES = 1_000_000;
 const MAX_BODY_CHARS = 500_000;
 
 export type TutorErrorCode = 'unauthorized' | 'payment' | 'rate-limit' | 'network' | 'provider' | 'empty' | 'bad-url';
@@ -69,7 +71,58 @@ function keyInUrl(url: URL, apiKey: string): boolean {
   if (!apiKey) return false;
   if (url.hash.includes(apiKey)) return true;
   for (const value of url.searchParams.values()) if (value.includes(apiKey)) return true;
-  return false;
+  return keyInPathOrHost(url, apiKey);
+}
+
+/** A key in a host label or a path segment. Short keys match a whole label or segment only, so `v1` is not every path. */
+function keyInPathOrHost(url: URL, apiKey: string): boolean {
+  const needle = apiKey.toLowerCase();
+  const matches = (part: string) => part === needle || (needle.length >= 8 && part.includes(needle));
+  if (url.hostname.toLowerCase().split('.').some(matches)) return true;
+  let path = url.pathname;
+  try { path = decodeURIComponent(url.pathname); } catch { /* keep the raw path */ }
+  return path.toLowerCase().split('/').filter(Boolean).some(matches);
+}
+
+function redactKey(text: string, apiKey: string): string {
+  if (!apiKey) return text;
+  return text.split(apiKey).join('[redacted]');
+}
+
+/** Read at most `maxBytes`. A longer body, or a declared Content-Length over the cap, is refused. */
+async function readLimited(response: Response, maxBytes: number): Promise<string | null> {
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) return null;
+  const body = response.body;
+  if (!body) {
+    const text = await response.text();
+    return text.length > maxBytes ? null : text;
+  }
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return null;
+  }
+  const buf = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buf.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(buf);
 }
 
 export interface TutorRequest {
@@ -83,8 +136,8 @@ export interface TutorRequest {
 }
 
 /**
- * POST {base}/chat/completions. The returned text is capped. Error messages never include
- * the key or the response body (a provider might echo the key).
+ * POST {base}/chat/completions. The returned text is capped and the key is redacted from it.
+ * Error messages never include the key or the response body (a provider might echo the key).
  */
 export async function requestTutorReply(req: TutorRequest): Promise<TutorResult> {
   const endpoint = tutorChatUrl(req.baseUrl);
@@ -110,6 +163,7 @@ export async function requestTutorReply(req: TutorRequest): Promise<TutorResult>
       method: 'POST',
       redirect: 'error',
       credentials: 'omit',
+      referrerPolicy: 'no-referrer',
       headers: {
         Authorization: `Bearer ${req.apiKey}`,
         'Content-Type': 'application/json',
@@ -124,12 +178,15 @@ export async function requestTutorReply(req: TutorRequest): Promise<TutorResult>
   }
 
   if (!response.ok) return statusToError(response.status);
+  const raw = await readLimited(response, TUTOR_MAX_RESPONSE_BYTES);
+  if (raw === null) return fail('empty');
   let body: unknown;
-  try { body = await response.json(); } catch { return fail('empty'); }
+  try { body = JSON.parse(raw); } catch { return fail('empty'); }
   const text = textFromChatBody(body);
   if (text === null || text.trim() === '') return fail('empty');
+  const redacted = redactKey(text, req.apiKey);
   const max = req.maxOutputChars ?? TUTOR_MAX_OUTPUT_CHARS;
-  const capped = text.length > max ? `${text.slice(0, max)}\n[Reply shortened.]` : text;
+  const capped = redacted.length > max ? `${redacted.slice(0, max)}\n[Reply shortened.]` : redacted;
   return { ok: true, text: capped };
 }
 
