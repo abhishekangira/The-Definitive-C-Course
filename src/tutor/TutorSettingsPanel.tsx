@@ -1,6 +1,6 @@
 // Settings → AI tutor. The key stays in tdcc:v1:tutor. Nothing is fetched until the learner
 // accepts the host named in the notice (including "Test connection").
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { requestTutorReply, tutorPingMessages } from './client';
 import { ConsentNotice } from './ConsentNotice';
 import {
@@ -22,6 +22,21 @@ export function TutorSettingsPanel() {
   const [notice, setNotice] = useState<string | null>(null);
   const [askConsent, setAskConsent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
+  const testButtonRef = useRef<HTMLButtonElement>(null);
+  // Accept and decline remove the focused consent button. Point the keyboard at the
+  // result once it exists, and at Test connection while the check is still running.
+  const moveFocus = useRef(false);
+
+  useEffect(() => {
+    if (!moveFocus.current) return;
+    if (notice && noticeRef.current) {
+      moveFocus.current = false;
+      noticeRef.current.focus();
+      return;
+    }
+    if (!askConsent) testButtonRef.current?.focus();
+  }, [notice, askConsent]);
 
   const commit = () => {
     const result = commitTutorDraft(draft);
@@ -60,6 +75,7 @@ export function TutorSettingsPanel() {
     const host = tutorHost(getTutorSettings().baseUrl);
     if (!host) return;
     acceptTutorHost(host);
+    moveFocus.current = true;
     setAskConsent(false);
     void ping(getTutorSettings());
   };
@@ -96,18 +112,18 @@ export function TutorSettingsPanel() {
         {SUGGESTED_TUTOR_MODELS.map(model => <option key={model} value={model} />)}
       </datalist>
       {problems.length > 0 && (
-        <ul className={`${styles.warn} ${styles.problems}`}>
+        <ul className={`${styles.warn} ${styles.problems}`} role="alert">
           {problems.map(p => <li key={p}>{PROBLEM_TEXT[p]}</li>)}
         </ul>
       )}
       <div className={styles.actions}>
-        <button type="button" className="btn btn-primary" onClick={() => void testConnection()}>{busy ? 'Testing…' : 'Test connection'}</button>
+        <button type="button" ref={testButtonRef} className="btn btn-primary" onClick={() => void testConnection()}>{busy ? 'Testing…' : 'Test connection'}</button>
         <button type="button" className="btn" onClick={remove}>Remove key</button>
       </div>
       {askConsent && host && (
-        <ConsentNotice host={host} onAccept={accept} onDecline={() => { setAskConsent(false); setNotice('Nothing was sent.'); }} />
+        <ConsentNotice host={host} onAccept={accept} onDecline={() => { moveFocus.current = true; setAskConsent(false); setNotice('Nothing was sent.'); }} />
       )}
-      {notice && <p className={notice.startsWith('Connected') ? styles.reply : styles.bad} role="status">{notice}</p>}
+      {notice && <p ref={noticeRef} tabIndex={-1} className={notice.startsWith('Connected') ? styles.reply : styles.bad} role="status">{notice}</p>}
     </section>
   );
 }
