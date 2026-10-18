@@ -255,6 +255,19 @@ describe('MiniMarkdown (prompts, hints, explanations)', () => {
   it('still renders links, including text that has no brackets inside', () => {
     expect(html('see [the docs](https://example.com/x) now')).toContain('<a href="https://example.com/x"');
   });
+
+  it('writes the href host when the link text names a different host', () => {
+    const mismatch = html('[https://good.com](https://evil.com/phish)');
+    expect(mismatch).toContain('href="https://evil.com/phish"');
+    expect(mismatch).toContain('https://good.com (host: evil.com)');
+    expect(mismatch).toContain('rel="noreferrer"');
+    expect(html('[the docs](https://example.com/x)')).not.toContain('(host:');
+    expect(html('[https://example.com/a](https://example.com/b)')).not.toContain('(host:');
+    expect(html('[https://GOOD.com/a](https://good.com/b)')).not.toContain('(host:');
+    const wide = 'https://' + 'evil.com'.replace(/[a-z.]/g, ch => ch === '.' ? '.' : String.fromCodePoint(ch.charCodeAt(0) + 0xFEE0));
+    expect(html(`[https://good.com](${wide})`)).toContain('(host: evil.com)');
+    expect(html(`[https://go\u200bod.com](https://evil.com)`)).toContain('(host: evil.com)');
+  });
 });
 
 describe('YouTube embed parameters', () => {

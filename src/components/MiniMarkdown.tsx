@@ -2,6 +2,22 @@
 // Supports paragraphs, bullet/numbered lists, fenced code blocks, `code`, **bold**, *italic*, [links](url).
 import { Fragment, type ReactNode } from 'react';
 
+const INVISIBLE = /[\u00ad\u180e\u200b-\u200d\ufeff\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+
+function httpHost(raw: string): string | null {
+  const cleaned = raw.normalize('NFKC').replace(INVISIBLE, '').trim();
+  if (!/^https?:/i.test(cleaned)) return null;
+  try { return new URL(cleaned).host.toLowerCase(); } catch { return null; }
+}
+
+/** Link text that names a different host than the href gets that host written out. */
+function linkText(label: string, href: string): string {
+  const hrefHost = httpHost(href);
+  const labelHost = httpHost(label);
+  if (!hrefHost || !labelHost || hrefHost === labelHost) return label;
+  return `${label} (host: ${hrefHost})`;
+}
+
 function inline(text: string, keyBase: string): ReactNode[] {
   const out: ReactNode[] = [];
   const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[[^\][]+\]\([^)\s[]+\))/g;
@@ -18,7 +34,7 @@ function inline(text: string, keyBase: string): ReactNode[] {
     else {
       const lm = /^\[([^\][]+)\]\(([^)\s[]+)\)$/.exec(tok)!;
       const safe = /^(https?:|#|\.\/)/.test(lm[2]) ? lm[2] : '#';
-      out.push(<a key={key} href={safe} target={safe.startsWith('http') ? '_blank' : undefined} rel="noreferrer">{lm[1]}</a>);
+      out.push(<a key={key} href={safe} target={safe.startsWith('http') ? '_blank' : undefined} rel="noreferrer">{linkText(lm[1], safe)}</a>);
     }
     last = m.index + tok.length;
   }

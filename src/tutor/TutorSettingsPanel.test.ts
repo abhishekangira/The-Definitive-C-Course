@@ -57,6 +57,7 @@ describe('TutorSettingsPanel', () => {
     await flush();
     expect(fetchImpl, 'declining sends nothing').not.toHaveBeenCalled();
     expect(host.textContent).toContain('Nothing was sent.');
+    expect(document.activeElement?.textContent).toContain('Nothing was sent.');
 
     await act(async () => { button(/Test connection/)!.click(); });
     await flush();
@@ -68,6 +69,7 @@ describe('TutorSettingsPanel', () => {
     expect(url).toBe('https://tutor.test/v1/chat/completions');
     expect(String(init.body)).not.toContain(KEY);
     expect(host.textContent).toContain('Connected. The key works.');
+    expect(document.activeElement?.textContent).toContain('Connected. The key works.');
     expect(host.textContent, 'the model reply is not shown').not.toContain('bananas');
     expect(host.textContent).not.toContain(KEY);
 
@@ -76,5 +78,25 @@ describe('TutorSettingsPanel', () => {
     expect(stored.apiKey).toBe('');
     expect(stored.consentedHost).toBe('');
     expect(JSON.stringify(stored)).not.toContain(KEY);
+  });
+
+  it('keeps the API key field as a password with autocomplete off', () => {
+    render();
+    const input = host.querySelector('#tutor-key') as HTMLInputElement;
+    expect(input.type).toBe('password');
+    expect(input.autocomplete).toBe('off');
+  });
+
+  it('announces a rejected URL in an alert', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ choices: [{ message: { content: 'nope' } }] }));
+    vi.stubGlobal('fetch', fetchImpl);
+    render();
+    type('tutor-key', KEY);
+    type('tutor-base', 'http://localhost.evil.com/v1');
+    type('tutor-model', 'test-model');
+    await act(async () => { button(/Test connection/)!.click(); });
+    const alert = host.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('That URL is not allowed');
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });
