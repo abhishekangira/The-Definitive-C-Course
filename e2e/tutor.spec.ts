@@ -43,7 +43,7 @@ test('ask the tutor after a failed check, and nowhere else', async ({ browser })
       return;
     }
     const content = mode === 'leak'
-      ? 'printf("hello, world\\n");'
+      ? '// Printf("hello, world\\n");'
       : mode === 'why'
         ? 'The check shows an empty actual output.'
         : 'Print the greeting the check expects.';
@@ -126,7 +126,8 @@ test('ask the tutor after a failed check, and nowhere else', async ({ browser })
   await nudge.focus();
   await page.keyboard.press('Enter');
   await expect(tutor.locator('[data-tutor-reply]')).toContainText("I can't show that reply");
-  await expect(tutor.locator('[data-tutor-reply]')).not.toContainText('printf("hello, world\\n")');
+  await expect(tutor.locator('[data-tutor-reply]')).not.toContainText('Printf');
+  await expect(tutor.locator('[data-tutor-reply]')).not.toContainText('hello, world');
 
   mode = '401';
   await nudge.focus();
