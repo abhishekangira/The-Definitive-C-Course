@@ -1,12 +1,23 @@
 // Leak guard (PLAN.md §2.6). Runs on the model reply before it is shown.
-// Whitespace and comments are ignored. A solution line the learner's code does not already
-// contain, or a code block longer than three lines, replaces the reply with a refusal.
-// Comparison uses String.includes on normalised text, never a RegExp built from the reply.
+//
+// Both sides are normalised the same way: NFKC, zero-width and bidi marks removed, case-folded,
+// markdown emphasis and backticks dropped, quotes removed, whitespace collapsed away.
+// Comments are handled twice, because stripping them to compare and then showing the original
+// reply is how a commented solution line used to get through. One pass keeps comment text (it is
+// visible) and one pass drops terminated comment bodies (so a comment inside a line cannot hide
+// the code). `://` is not a comment, and an unterminated `/*` does not swallow the rest.
+// The reply is refused when a solution line the learner does not already have appears as a whole
+// line, as a token window, or as a multi-line window, or when a code block is longer than three
+// lines. A miss is a refusal: the original reply is not shown.
 
 export const MAX_CODE_BLOCK_LINES = 3;
 const MAX_REPLY_CHARS = 8_000;
-/** Short lines (`{`, `i++`) match too much prose. Eight characters is `return 0;`. */
-const MIN_FINGERPRINT = 8;
+/** `x;` is worth refusing. Brackets alone are not. */
+const MIN_LINE = 2;
+/** A partial window shorter than this matches too much ordinary prose. Whole lines can be shorter. */
+const MIN_WINDOW = 8;
+
+const ZERO_WIDTH = /[\u00AD\u180E\u200B-\u200D\u2060\uFEFF\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
 
 export type LeakReason = 'solution-line' | 'code-block';
 
@@ -16,24 +27,40 @@ export interface GuardedReply {
   reason?: LeakReason;
 }
 
-/** Drop // and block comments. A comment marker inside a string is kept. Linear in the input. */
+/**
+ * Drop `//` and terminated block comments. A comment marker inside a string is kept.
+ * `://` is a URL, not a comment. An unterminated block comment drops only the marker,
+ * so the rest of the text is still visible to the comparison. Linear in the input.
+ */
 export function stripCComments(src: string): string {
+  return scanComments(src, false);
+}
+
+function scanComments(src: string, keepBody: boolean): string {
   let out = '';
   let i = 0;
   const n = src.length;
   while (i < n) {
     const c = src[i];
     const d = src[i + 1];
-    if (c === '/' && d === '/') {
+    if (c === '/' && d === '/' && src[i - 1] !== ':') {
       i += 2;
+      const start = i;
       while (i < n && src[i] !== '\n') i++;
+      if (keepBody) out += src.slice(start, i);
       continue;
     }
     if (c === '/' && d === '*') {
-      i += 2;
-      while (i < n && !(src[i] === '*' && src[i + 1] === '/')) i++;
-      i = Math.min(n, i + 2);
-      out += ' ';
+      const start = i + 2;
+      let j = start;
+      while (j < n && !(src[j] === '*' && src[j + 1] === '/')) j++;
+      if (j >= n) {
+        i += 2;
+        out += ' ';
+        continue;
+      }
+      out += keepBody ? src.slice(start, j) : ' ';
+      i = j + 2;
       continue;
     }
     if (c === '"' || c === "'") {
@@ -55,19 +82,60 @@ export function stripCComments(src: string): string {
   return out;
 }
 
-function fingerprint(line: string): string {
-  return stripCComments(line).replace(/\s+/g, '');
+function prep(src: string): string {
+  return src.normalize('NFKC').replace(ZERO_WIDTH, '').toLowerCase();
 }
 
-function significantLines(src: string): string[] {
-  const seen: string[] = [];
-  for (const line of stripCComments(src).split('\n')) {
-    const fp = line.replace(/\s+/g, '');
-    if (fp.length < MIN_FINGERPRINT) continue;
-    if (/^[{}()[\];,]+$/.test(fp)) continue;
-    seen.push(fp);
+function dropMarkdown(src: string): string {
+  // `*`, backticks and `~~` are emphasis. Underscores between identifier characters stay (`my_var`).
+  return src
+    .replace(/[`*~]+/g, '')
+    .replace(/__/g, '')
+    .replace(/(^|[^a-z0-9])_+/g, '$1')
+    .replace(/_+($|[^a-z0-9])/g, '$1');
+}
+
+function compact(src: string): string {
+  return dropMarkdown(src).replace(/["']/g, '').replace(/\s+/g, '');
+}
+
+function isSignal(line: string): boolean {
+  return line.length >= MIN_LINE && /[a-z0-9]/.test(line) && !/^[{}()[\];,]+$/.test(line);
+}
+
+function solutionLines(src: string): string[] {
+  return scanComments(prep(src), false).split('\n').map(compact).filter(isSignal);
+}
+
+function haystacks(src: string): string[] {
+  const ready = prep(src);
+  return [compact(scanComments(ready, true)), compact(scanComments(ready, false))];
+}
+
+function tokenWindows(line: string): string[] {
+  const tokens = line.match(/[a-z_][a-z0-9_]*|\\n|\d+|[^a-z0-9_\\]/g);
+  if (!tokens || tokens.length < 2) return [];
+  const windows: string[] = [];
+  for (let n = 2; n < tokens.length; n++) {
+    for (let i = 0; i + n <= tokens.length; i++) {
+      const w = tokens.slice(i, i + n).join('');
+      if (w.length >= MIN_WINDOW && /[;{}()=]/.test(w)) windows.push(w);
+    }
   }
-  return seen;
+  return windows;
+}
+
+function multiLineWindows(lines: string[]): string[] {
+  const windows: string[] = [];
+  for (let n = 2; n <= 3; n++) {
+    for (let i = 0; i + n <= lines.length; i++) windows.push(lines.slice(i, i + n).join(''));
+  }
+  return windows;
+}
+
+function isFence(line: string): boolean {
+  const t = line.trimStart();
+  return t.startsWith('```') || t.startsWith('~~~');
 }
 
 function fencedCounts(reply: string): number[] {
@@ -75,7 +143,7 @@ function fencedCounts(reply: string): number[] {
   let open = false;
   let count = 0;
   for (const line of reply.split('\n')) {
-    if (line.trimStart().startsWith('```')) {
+    if (isFence(line)) {
       if (open) counts.push(count);
       open = !open;
       count = 0;
@@ -87,17 +155,26 @@ function fencedCounts(reply: string): number[] {
   return counts;
 }
 
-/** A run of more than three lines that each end like a C statement, outside a fence. */
+function looksLikeCode(rawLine: string): boolean {
+  const marked = scanComments(rawLine, true).trim();
+  if (!marked) return false;
+  if (/[;{}]\s*$/.test(marked)) return true;
+  const indented = rawLine.startsWith('\t') || /^\s{2,}\S/.test(rawLine);
+  return indented && /[=()]/.test(marked);
+}
+
+/** A run of more than three code lines. Blank lines do not break the run. */
 function hasLongStatementRun(reply: string): boolean {
   let run = 0;
-  let open = false;
+  let fence = false;
   for (const line of reply.split('\n')) {
-    if (line.trimStart().startsWith('```')) { open = !open; run = 0; continue; }
-    if (open) { run = 0; continue; }
-    const t = line.trim();
-    if (t !== '' && /[;{}]\s*$/.test(t) && !t.startsWith('//') && !t.startsWith('*')) run++;
-    else run = 0;
-    if (run > MAX_CODE_BLOCK_LINES) return true;
+    if (isFence(line)) { fence = !fence; run = 0; continue; }
+    if (fence) { run = 0; continue; }
+    if (line.trim() === '') continue;
+    if (looksLikeCode(line)) {
+      run++;
+      if (run > MAX_CODE_BLOCK_LINES) return true;
+    } else run = 0;
   }
   return false;
 }
@@ -116,11 +193,18 @@ export function guardReply(input: { reply: string; solution: string; learnerCode
   if (fencedCounts(reply).some(n => n > MAX_CODE_BLOCK_LINES) || hasLongStatementRun(reply)) {
     return { show: leakRefusal(input.hintsViewed), blocked: true, reason: 'code-block' };
   }
-  const known = new Set(significantLines(input.learnerCode));
-  const flat = fingerprint(reply);
-  for (const line of significantLines(input.solution)) {
-    if (known.has(line)) continue;
-    if (flat.includes(line)) return { show: leakRefusal(input.hintsViewed), blocked: true, reason: 'solution-line' };
+  const known = new Set(solutionLines(input.learnerCode));
+  const secret = solutionLines(input.solution).filter(line => !known.has(line));
+  const hays = haystacks(reply);
+  const seen = (needle: string) => hays.some(hay => hay.includes(needle));
+  for (const line of secret) {
+    if (seen(line)) return { show: leakRefusal(input.hintsViewed), blocked: true, reason: 'solution-line' };
+    for (const window of tokenWindows(line)) {
+      if (seen(window)) return { show: leakRefusal(input.hintsViewed), blocked: true, reason: 'solution-line' };
+    }
+  }
+  for (const window of multiLineWindows(secret)) {
+    if (seen(window)) return { show: leakRefusal(input.hintsViewed), blocked: true, reason: 'solution-line' };
   }
   return { show: reply, blocked: false };
 }

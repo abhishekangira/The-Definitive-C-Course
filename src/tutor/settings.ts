@@ -35,7 +35,7 @@ export interface TutorSettings {
   /** Canonical base URL, no trailing slash. */
   baseUrl: string;
   model: string;
-  /** `url.host` the learner agreed to send requests to. Empty until they accept, and after the host changes. */
+  /** `url.host` the learner agreed to send requests to. Empty until they accept, and after the host or the key changes. */
   consentedHost: string;
 }
 
@@ -69,8 +69,12 @@ function isLoopback(hostname: string): boolean {
   return host === 'localhost' || host === '127.0.0.1' || host === '::1';
 }
 
-/** Query names that would put a secret in the URL (and in logs). `turkey` does not match; `api_key` does. */
-const KEY_PARAM = /(^|[_\-])(api[_-]?key|key|token|secret|password|credential)($|[_\-])/i;
+/**
+ * Query names that would put a secret in the URL (and in logs). A name matches when a segment is
+ * `key`, `token`, `secret`, `sk`, `auth`, `bearer`, or similar (`api.key`, `access_key`).
+ * `turkey`, `ask`, `author`, `skill` and `api-version` do not match.
+ */
+const KEY_PARAM = /(^|[_\-.])(api[_\-.]?key|access[_\-.]?key|authorization|bearer|credential|password|secret|token|auth|key|sk)($|[_\-.])/i;
 
 /**
  * Canonical tutor base URL, or null when the string must not be sent a key.
@@ -184,7 +188,7 @@ export function getTutorSettings(): TutorSettings { return current; }
 
 export function replaceTutorSettings(next: TutorSettings): void { write(next); }
 
-/** Keeps the URL, model and consent; drops the key and asks for consent again before the next send. */
+/** Drops the key and host consent. The next key asks for permission again. The URL and model stay. */
 export function removeTutorKey(): void {
   write({ ...current, apiKey: '', consentedHost: '' });
 }
@@ -221,8 +225,10 @@ export function commitTutorDraft(draft: TutorDraft): DraftCommit {
     model = prev.model;
   }
   const host = tutorHost(baseUrl);
-  // A new host forgets the old consent. A rejected URL keeps the previous base, and its consent.
-  const consentedHost = host && prev.consentedHost === host ? prev.consentedHost : '';
+  // Consent is for this key on this host. Clearing or replacing the key asks again.
+  // A rejected key or URL keeps the previous value, and its consent.
+  const sameKey = apiKey !== '' && apiKey === prev.apiKey;
+  const consentedHost = sameKey && host && prev.consentedHost === host ? prev.consentedHost : '';
   write({ apiKey, baseUrl, model, consentedHost });
   return { settings: current, problems };
 }
