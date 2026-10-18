@@ -405,7 +405,13 @@
         "stdout": "-56\n"
       },
       "code": "#include <stdio.h>\n\nint main(void) {\n    char c = (char)200;\n    printf(\"%d\\n\", c);\n    return 0;\n}\n",
-      "flagged": false,
+      "diffs": [
+        {
+          "diff": "  outcome: runs\n- -56\n+ 200\n  ",
+          "target": "linux-aarch64-gcc"
+        }
+      ],
+      "flagged": true,
       "hash": "4fcac74dcadb9965",
       "id": "char-signed",
       "lesson": "07-characters-as-numbers",
@@ -418,6 +424,21 @@
       },
       "module": "m02",
       "results": {
+        "linux-aarch64-gcc": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "200\n"
+          },
+          "target": "linux-aarch64-gcc"
+        },
         "linux-x86_64-clang22": {
           "compile": {
             "diagnostics": [],
@@ -454,6 +475,21 @@
           },
           "target": "linux-x86_64-gcc13"
         },
+        "macos-arm64-appleclang": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "-56\n"
+          },
+          "target": "macos-arm64-appleclang"
+        },
         "wasm32-clang22": {
           "compile": {
             "diagnostics": [],
@@ -468,6 +504,30 @@
             "stdout": "-56\n"
           },
           "target": "wasm32-clang22"
+        },
+        "windows-x64-msvc": {
+          "compile": {
+            "diagnostics": [
+              {
+                "col": 0,
+                "file": "main.c",
+                "flag": "C4310",
+                "line": 4,
+                "message": "cast truncates constant value",
+                "severity": "warning"
+              }
+            ],
+            "ok": true,
+            "raw": "main.c(4): warning C4310: cast truncates constant value\r\n"
+          },
+          "compiler": "Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "-56\n"
+          },
+          "target": "windows-x64-msvc"
         }
       }
     },
@@ -2911,6 +2971,18 @@
         {
           "diff": "  outcome: runs\n  char        1\n  short       2\n  int         4\n- long        4\n+ long        8\n  long long   8\n- void *      4\n- size_t      4\n+ void *      8\n+ size_t      8\n  float       4\n  double      8\n  long double 16\n  ",
           "target": "linux-x86_64-gcc13"
+        },
+        {
+          "diff": "  outcome: runs\n  char        1\n  short       2\n  int         4\n- long        4\n+ long        8\n  long long   8\n- void *      4\n- size_t      4\n+ void *      8\n+ size_t      8\n  float       4\n  double      8\n- long double 16\n+ long double 8\n  ",
+          "target": "macos-arm64-appleclang"
+        },
+        {
+          "diff": "  outcome: runs\n  char        1\n  short       2\n  int         4\n- long        4\n+ long        8\n  long long   8\n- void *      4\n- size_t      4\n+ void *      8\n+ size_t      8\n  float       4\n  double      8\n  long double 16\n  ",
+          "target": "linux-aarch64-gcc"
+        },
+        {
+          "diff": "  outcome: runs\n  char        1\n  short       2\n  int         4\n  long        4\n  long long   8\n- void *      4\n- size_t      4\n+ void *      8\n+ size_t      8\n  float       4\n  double      8\n- long double 16\n+ long double 8\n  ",
+          "target": "windows-x64-msvc"
         }
       ],
       "flagged": true,
@@ -2925,6 +2997,21 @@
       },
       "module": "m02",
       "results": {
+        "linux-aarch64-gcc": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "char        1\nshort       2\nint         4\nlong        8\nlong long   8\nvoid *      8\nsize_t      8\nfloat       4\ndouble      8\nlong double 16\n"
+          },
+          "target": "linux-aarch64-gcc"
+        },
         "linux-x86_64-clang22": {
           "compile": {
             "diagnostics": [],
@@ -2961,6 +3048,21 @@
           },
           "target": "linux-x86_64-gcc13"
         },
+        "macos-arm64-appleclang": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "char        1\nshort       2\nint         4\nlong        8\nlong long   8\nvoid *      8\nsize_t      8\nfloat       4\ndouble      8\nlong double 8\n"
+          },
+          "target": "macos-arm64-appleclang"
+        },
         "wasm32-clang22": {
           "compile": {
             "diagnostics": [],
@@ -2975,6 +3077,21 @@
             "stdout": "char        1\nshort       2\nint         4\nlong        4\nlong long   8\nvoid *      4\nsize_t      4\nfloat       4\ndouble      8\nlong double 16\n"
           },
           "target": "wasm32-clang22"
+        },
+        "windows-x64-msvc": {
+          "compile": {
+            "diagnostics": [],
+            "ok": true,
+            "raw": ""
+          },
+          "compiler": "Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64",
+          "run": {
+            "exit": 0,
+            "signal": null,
+            "stderr": "",
+            "stdout": "char        1\nshort       2\nint         4\nlong        4\nlong long   8\nvoid *      8\nsize_t      8\nfloat       4\ndouble      8\nlong double 8\n"
+          },
+          "target": "windows-x64-msvc"
         }
       }
     },
