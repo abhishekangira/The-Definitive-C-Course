@@ -257,6 +257,53 @@ describe('runTests', () => {
   });
 });
 
+describe('scan tests', () => {
+  const SCAN_SPEC: TestsSpec = {
+    version: 1,
+    sources: ['bitlab.c'],
+    tests: [
+      { name: 'bit_and works', unit: { harness: 'tests/test_and.c' } },
+      { name: 'bit_and uses only ~ and |', scan: { function: 'bit_and', allow: ['~', '|'], maxOps: 4 }, hint: 'Use De Morgan.' },
+    ],
+  };
+  const EX = { 'tests/test_and.c': 'int main(void) {\n  CHECK(1, "all inputs");\n}\n' };
+  const unitPass = (a: Artifact): Partial<ExecOutcome> => (a.sources[0] === HARNESS_FILE ? { stdout: '\n@@PASS all inputs\n\n@@DONE\n' } : {});
+  const good = { 'bitlab.c': 'int bit_and(int x, int y) { return ~(~x | ~y); }\nint main(void) { return 0; }\n' };
+  const cheat = { 'bitlab.c': 'int bit_and(int x, int y) { return x & y; }\nint main(void) { return 0; }\n' };
+
+  it('plans a scan check in order, and passes a conforming solution', async () => {
+    expect(plannedTests(SCAN_SPEC).map(p => `${p.kind}:${p.name}`)).toEqual(['compile:compiles without warnings', 'unit:bit_and works', 'scan:bit_and uses only ~ and |']);
+    const { backend, calls } = fake({ run: unitPass });
+    const r = await runTests(SCAN_SPEC, good, EX, backend);
+    expect(r.bits).toBe('111');
+    expect(r.results[2]).toMatchObject({ kind: 'scan', status: 'pass', note: '4 of 4 operators used' });
+    expect(calls.compile).toHaveLength(2); // the learner build and the harness build: the scan compiles nothing
+  });
+  it('fails a cheat that passes the unit test, with the plain sentence and the hint', async () => {
+    const { backend } = fake({ run: unitPass });
+    const r = await runTests(SCAN_SPEC, cheat, EX, backend);
+    expect(r.results[1].status).toBe('pass');
+    expect(r.results[2]).toMatchObject({
+      kind: 'scan', status: 'fail', hint: 'Use De Morgan.',
+      message: 'line 1: bit_and() uses &, which is not allowed here (allowed: ~ |)',
+    });
+    expect(r.bits).toBe('110');
+  });
+  it('is skipped with the rest when the code does not compile, and honours --only', async () => {
+    const { backend } = fake({ compile: () => ({ ok: false }), run: unitPass });
+    expect((await runTests(SCAN_SPEC, good, EX, backend)).results[2].status).toBe('skip');
+    const { backend: b2 } = fake({ run: unitPass });
+    const only = await runTests(SCAN_SPEC, cheat, EX, b2, { only: 'bit_and works' });
+    expect(only.results.map(x => x.status)).toEqual(['pass', 'pass', 'skip']);
+  });
+  it('leaves specs without scan tests exactly as before (kinds and progress bitmap)', async () => {
+    expect(plannedTests(SPEC).map(p => p.kind)).toEqual(['compile', 'io', 'io', 'unit']);
+    const { backend } = fake({ run: (a, o) => (o.stdin ? { stdout: 'wrong\n' } : goodRun(a, o)) });
+    const r = await runTests(SPEC, LEARNER, EXERCISE, backend);
+    expect(r.bits).toBe('1011');
+  });
+});
+
 describe('outcomeFromWasi', () => {
   it('maps every RunResult kind', () => {
     expect(outcomeFromWasi({ kind: 'exit', exitCode: 3, ms: 1 }, 'o', 'e')).toMatchObject({ stdout: 'o', stderr: 'e', exit: 3, trap: null, timedOut: false });

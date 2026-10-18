@@ -1,0 +1,15 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "clear bit 1 of 7"
+    stdin: "7\n1\n"
+    hint: "Which bits survive `flags & (1 << n)`? Only bit n itself."
+  - name: "clearing a bit that is already off changes nothing"
+    stdin: "5\n1\n"
+  - name: "clear bit 0 of 1"
+    stdin: "1\n0\n"
+  - name: "clear bit 7 of 255"
+    stdin: "255\n7\n"
+  - name: "clear bit 3 of 0"
+    stdin: "0\n3\n"
+  - name: "clear bit 2 of 14"
+    stdin: "14\n2\n"

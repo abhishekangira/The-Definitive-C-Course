@@ -1,0 +1,52 @@
+{
+  "generatedBy": "tools/verify --target-run; Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64",
+  "module": "m02",
+  "samples": {
+    "char-signed": {
+      "hash": "4fcac74dcadb9965",
+      "result": {
+        "compile": {
+          "diagnostics": [
+            {
+              "col": 0,
+              "file": "main.c",
+              "flag": "C4310",
+              "line": 4,
+              "message": "cast truncates constant value",
+              "severity": "warning"
+            }
+          ],
+          "ok": true,
+          "raw": "main.c(4): warning C4310: cast truncates constant value\r\n"
+        },
+        "compiler": "Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "-56\n"
+        },
+        "target": "windows-x64-msvc"
+      }
+    },
+    "sizes-table": {
+      "hash": "3984e7c6f57744fb",
+      "result": {
+        "compile": {
+          "diagnostics": [],
+          "ok": true,
+          "raw": ""
+        },
+        "compiler": "Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64",
+        "run": {
+          "exit": 0,
+          "signal": null,
+          "stderr": "",
+          "stdout": "char        1\nshort       2\nint         4\nlong        4\nlong long   8\nvoid *      8\nsize_t      8\nfloat       4\ndouble      8\nlong double 8\n"
+        },
+        "target": "windows-x64-msvc"
+      }
+    }
+  },
+  "target": "windows-x64-msvc"
+}

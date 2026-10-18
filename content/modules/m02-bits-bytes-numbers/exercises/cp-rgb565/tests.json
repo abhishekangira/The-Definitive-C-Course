@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "sources": [
+    "rgb565.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "black",
+      "run": {
+        "stdin": "0\n0\n0\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: packed: 0x0000\nred=0 green=0 blue=0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "white",
+      "run": {
+        "stdin": "255\n255\n255\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: packed: 0xffff\nred=248 green=252 blue=248\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "red 255, green 128, blue 8",
+      "run": {
+        "stdin": "255\n128\n8\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: packed: 0xfc01\nred=248 green=128 blue=8\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "only red",
+      "run": {
+        "stdin": "255\n0\n0\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: packed: 0xf800\nred=248 green=0 blue=0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "only green",
+      "run": {
+        "stdin": "0\n255\n0\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: packed: 0x07e0\nred=0 green=252 blue=0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "only blue",
+      "run": {
+        "stdin": "0\n0\n255\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: packed: 0x001f\nred=0 green=0 blue=248\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "low bits are dropped",
+      "run": {
+        "stdin": "7\n3\n7\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: packed: 0x0000\nred=0 green=0 blue=0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "a mixed colour",
+      "run": {
+        "stdin": "18\n52\n86\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: packed: 0x11aa\nred=16 green=52 blue=80\n",
+        "exit": 0
+      }
+    }
+  ]
+}
