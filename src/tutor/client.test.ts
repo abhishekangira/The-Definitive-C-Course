@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { requestTutorReply, statusToError, textFromChatBody, tutorPingMessages } from './client';
+import { TUTOR_MAX_RESPONSE_BYTES, requestTutorReply, statusToError, textFromChatBody, tutorPingMessages } from './client';
 import { DEFAULT_TUTOR_BASE_URL } from './settings';
 
 const KEY = 'sk-test-super-secret-value';
@@ -55,6 +55,7 @@ describe('requestTutorReply', () => {
       expect(init?.method).toBe('POST');
       expect(init?.redirect).toBe('error');
       expect(init?.credentials).toBe('omit');
+      expect(init?.referrerPolicy).toBe('no-referrer');
       const headers = init?.headers as Record<string, string>;
       expect(headers.Authorization).toBe(`Bearer ${KEY}`);
       expect(init?.body).not.toContain(KEY);
@@ -146,6 +147,69 @@ describe('requestTutorReply', () => {
       baseUrl: `https://example.com/v1?q=${KEY}`, apiKey: KEY, model: 'm', messages, fetchImpl,
     });
     expect(leaked).toMatchObject({ ok: false, code: 'bad-url' });
+    const mixed = 'sk-ECHO-1234567';
+    for (const base of [
+      `https://example.com/v1/${KEY}`,
+      `https://${KEY}.example.com/v1`,
+      `https://example.com/${encodeURIComponent(KEY)}/chat`,
+      `https://${mixed}.example.com/v1`,
+      `https://example.com/v1/${mixed}`,
+      'https://example.com/v1?sk=abc',
+      'https://example.com/v1?auth=abc',
+      'https://example.com/v1?bearer=abc',
+      'https://example.com/v1?accesskey=abc',
+    ]) {
+      const result = await requestTutorReply({
+        baseUrl: base, apiKey: base.includes(mixed) ? mixed : KEY, model: 'm', messages, fetchImpl,
+      });
+      expect(result, base).toMatchObject({ ok: false, code: 'bad-url' });
+    }
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('redacts the key from a 200 reply', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, okBody(`your key is ${KEY}`)));
+    const result = await requestTutorReply({
+      baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, model: 'm', messages, fetchImpl,
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.text).toContain('your key is');
+      expect(result.text).toContain('[redacted]');
+      expect(result.text).not.toContain(KEY);
+    }
+  });
+
+  it('does not read a response past the size cap', async () => {
+    const chunk = 64 * 1024;
+    let pulled = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (pulled >= TUTOR_MAX_RESPONSE_BYTES + chunk * 8) {
+          controller.close();
+          return;
+        }
+        pulled += chunk;
+        controller.enqueue(new Uint8Array(chunk));
+      },
+    });
+    const fetchImpl = vi.fn(async () => new Response(stream, { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    const result = await requestTutorReply({
+      baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, model: 'm', messages, fetchImpl,
+    });
+    expect(result).toMatchObject({ ok: false, code: 'empty' });
+    expect(pulled).toBeLessThan(TUTOR_MAX_RESPONSE_BYTES + chunk * 3);
+    expect(JSON.stringify(result)).not.toContain(KEY);
+
+    const declared = new Response('{"choices":[{"message":{"content":"visible-body"}}]}', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Content-Length': String(TUTOR_MAX_RESPONSE_BYTES + 10) },
+    });
+    const capped = await requestTutorReply({
+      baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, model: 'm', messages,
+      fetchImpl: async () => declared,
+    });
+    expect(capped).toMatchObject({ ok: false, code: 'empty' });
+    if (!capped.ok) expect(capped.message).not.toContain('visible-body');
   });
 });
