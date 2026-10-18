@@ -122,6 +122,18 @@ export interface MakeTest {
   hints?: string[];
 }
 
+export interface ScanTest {
+  name: string;
+  /**
+   * Operator-restricted exercise: a token scan of one function of the learner's first source file
+   * (see src/testing/scan.ts). Needs no compiler, so it also runs where only the file is known.
+   */
+  scan: { function: string; allow: string[]; maxOps: number; maxLiteral?: number; exclusive?: string[] };
+  hint?: string;
+  /** Tiered hints for this test, when one message is not enough (the checkpoint shows none). */
+  hints?: string[];
+}
+
 export interface TestsSpec {
   version: 1;
   title?: string;
@@ -137,7 +149,7 @@ export interface TestsSpec {
   leakcheck?: boolean;
   /** Native only: memory check (ASan+UBSan, LSan/leaks/valgrind). */
   memory?: boolean;
-  tests: Array<IoTest | UnitTest | MakeTest>;
+  tests: Array<IoTest | UnitTest | MakeTest | ScanTest>;
 }
 
 // ---------- generated sample data (src/generated/samples/<module>.json; written by tools/verify) ----------

@@ -1,0 +1,14 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+cases:
+  - name: "a negative start prints nothing to count"
+    stdin: "-4\n"
+  - name: "start 0 prints 0 and lifts off"
+    stdin: "0\n"
+    timeoutMs: 2000
+    hint: "After the 0 is printed, what does `i--` do to an unsigned 0?"
+  - name: "start 3 counts 3, 2, 1, 0"
+    stdin: "3\n"
+    timeoutMs: 2000
+  - name: "start 10 counts down to 0"
+    stdin: "10\n"
+    timeoutMs: 2000

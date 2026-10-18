@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertTestsSpec, hintsOf, validateTestsSpec } from './spec';
+import { assertTestsSpec, hintsOf, isScanTest, validateTestsSpec } from './spec';
 
 const ok = {
   version: 1,
@@ -20,7 +20,7 @@ describe('validateTestsSpec', () => {
       '"version" must be 1',
       '"sources" must be a non-empty list of file names',
       'tests[0] needs a non-empty "name"',
-      'test "a": needs exactly one of "run", "unit" or "make" (found 2)',
+      'test "a": needs exactly one of "run", "unit", "make" or "scan" (found 2)',
     ]));
   });
   it('checks expectations, regexes, exit codes and duplicate or reserved names', () => {
@@ -51,6 +51,30 @@ describe('validateTestsSpec', () => {
   it('assertTestsSpec throws with every error', () => {
     expect(() => assertTestsSpec({})).toThrow(/version.*\n.*sources/s);
     expect(assertTestsSpec(ok)).toBe(ok);
+  });
+});
+
+describe('validateTestsSpec: scan tests', () => {
+  const scan = (o: unknown, extra: object = {}) => ({ version: 1, sources: ['bitlab.c'], tests: [{ name: 's', scan: o, ...extra }] });
+  it('accepts a well-formed scan test', () => {
+    expect(validateTestsSpec(scan({ function: 'bit_and', allow: ['~', '|'], maxOps: 4, maxLiteral: 255 }))).toEqual({ errors: [], warnings: [] });
+    expect(isScanTest({ name: 's', scan: { function: 'f', allow: [], maxOps: 1 } })).toBe(true);
+    expect(isScanTest({ name: 'u', unit: { harness: 'a.c' } })).toBe(false);
+  });
+  it('rejects a bad function name, allow list, maxOps and maxLiteral', () => {
+    const { errors } = validateTestsSpec(scan({ function: '1bad', allow: ['~', 3], maxOps: 0, maxLiteral: -1 }));
+    expect(errors).toEqual([
+      'test "s": scan.function must be a C identifier',
+      'test "s": scan.allow must be a list of operator strings',
+      'test "s": scan.maxOps must be a positive integer',
+      'test "s": scan.maxLiteral must be a non-negative integer',
+    ]);
+    expect(validateTestsSpec(scan('x')).errors).toEqual(['test "s": "scan" must be an object']);
+  });
+  it('is exclusive with run, unit and make, and warns about unknown keys', () => {
+    const both = scan({ function: 'f', allow: [], maxOps: 1 }, { unit: { harness: 'a.c' } });
+    expect(validateTestsSpec(both).errors).toEqual(['test "s": needs exactly one of "run", "unit", "make" or "scan" (found 2)']);
+    expect(validateTestsSpec(scan({ function: 'f', allow: [], maxOps: 1, extra: 1 })).warnings).toEqual(['test "s".scan: unknown key "extra"']);
   });
 });
 

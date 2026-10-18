@@ -1,0 +1,122 @@
+# Module 2 retrieval quiz: Module 1 ideas that Module 2 builds on.
+- id: r-int-division
+  type: choice
+  from: m01
+  prompt: "What does this program print?"
+  code: |
+    #include <stdio.h>
+
+    int main(void) {
+        printf("%d %d %d\n", 7 / 2, -7 / 2, 7 % 2);
+        return 0;
+    }
+  choices:
+    - "3.5 -3.5 1"
+    - "3 -3 1"
+    - "4 -4 1"
+    - "3 -4 1"
+  explain: "Division of two ints gives an int, and C cuts off the fraction toward zero: 7 / 2 is 3 and -7 / 2 is -3. `%` is the remainder, 1."
+- id: r-sizeof-char
+  type: choice
+  from: m01
+  prompt: "Which statement about the size of C types is guaranteed by the language?"
+  choices:
+    - "`int` is always 4 bytes"
+    - "`long` is always 8 bytes"
+    - "`sizeof(char)` is always 1"
+    - "`double` is always 4 bytes"
+  answer: 2
+  explain: "`sizeof(char)` is 1 by definition: sizes are measured in chars. The other sizes depend on the platform, which is why you saw `long` change size between the browser and a 64-bit machine."
+- id: r-format-match
+  type: choice
+  from: m01
+  prompt: "`printf(\"%d\\n\", 2.5);` compiles with a warning. What is the warning about?"
+  choices:
+    - "`%d` expects an `int`, but the argument is a `double`: the format and the argument must match"
+    - "`printf` cannot print a decimal point"
+    - "The `\\n` must come before the `%d`"
+    - "`2.5` needs an `f` suffix"
+  answer: 0
+  explain: "`%d` reads the argument as an int. A `double` is passed differently and has a different size, so the output is meaningless. The compiler's format check (`-Wformat`) catches it, which is one reason to treat warnings as bugs."
+- id: r-scope
+  type: choice
+  from: m01
+  prompt: "A variable is declared inside the braces of a `for` loop body. Where can you use it?"
+  choices:
+    - "Anywhere later in the function"
+    - "Only inside those braces, after the declaration"
+    - "Anywhere in the file"
+    - "Only on the first pass of the loop"
+  answer: 1
+  explain: "A local is scoped to its block, like `let` in JavaScript. After the closing brace the name is gone, and using it is a compile error."
+- id: r-prototype
+  type: choice
+  from: m01
+  prompt: "Why do you declare a function (a prototype) above `main` when its definition is below `main`?"
+  choices:
+    - "To make the function run first"
+    - "So the compiler knows the function's name and types by the time it reaches the call"
+    - "Because functions must be defined in alphabetical order"
+    - "To reserve memory for the function's variables"
+  answer: 1
+  explain: "The compiler reads the file once from top to bottom. A call to a name it has not seen is an error. A prototype is a promise about the types; the linker later connects the call to the real definition."
+- id: r-call-by-value
+  type: choice
+  from: m01
+  prompt: "What does this program print?"
+  code: |
+    #include <stdio.h>
+
+    void bump(int n) {
+        n = n + 1;
+    }
+
+    int main(void) {
+        int n = 4;
+        bump(n);
+        printf("%d\n", n);
+        return 0;
+    }
+  choices:
+    - "4"
+    - "5"
+    - "0"
+    - "It does not compile"
+  explain: "`bump` receives a copy of the value. Changing the copy does not change `main`'s `n`, which stays 4."
+- id: r-stages
+  type: choice
+  from: m01
+  prompt: "Which of the four build stages is the first to need the definition (not just the declaration) of every function you call?"
+  choices:
+    - "Preprocess"
+    - "Compile"
+    - "Assemble"
+    - "Link"
+  answer: 3
+  explain: "The preprocessor pastes text, the compiler checks types using declarations, and the assembler turns one file's assembly into machine code. Only the linker connects each call to real code, so a missing definition is a link error."
+- id: r-reprompt
+  type: predict
+  from: m01
+  prompt: "The user types `x`, presses Enter, then types `5` and presses Enter. What does the program print? (The input typed is not part of the output.)"
+  code: |
+    #include <stdio.h>
+    #include "learnc.h"
+
+    int main(void) {
+        int n = get_int("n: ");
+        printf("%d\n", n * 2);
+        return 0;
+    }
+  meta: stdin="x\n5\n"
+  explain: "`get_int` does not accept `x`: it prints the prompt again and reads the next line. The prompt appears twice, and then `10` is printed."
+- id: r-exit-status
+  type: choice
+  from: m01
+  prompt: "`main` ends with `return 2;`. What does that tell the program that started it, such as a shell or CI?"
+  choices:
+    - "Success, because the value is not 0"
+    - "Failure: any exit status other than 0 means the program failed"
+    - "That the program printed two lines"
+    - "Nothing: the return value of `main` is ignored"
+  answer: 1
+  explain: "`main`'s return value is the process's exit status. By convention 0 means success and anything else means failure, and shells, `make` and CI read it."

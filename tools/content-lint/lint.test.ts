@@ -462,6 +462,30 @@ describe('component props', () => {
   });
 });
 
+describe('NumberDrill kind="float"', () => {
+  const frames = `${M1}/lessons/02-frames.mdx`;
+  const drill = '<NumberDrill value={42} from="dec" to="bin" width={8} />';
+  const msgs = (tag: string) => errorsOf(lintGoodWith({ [frames]: sub(drill, tag) }).result, 'interaction-props').map(m => m.message);
+  it('accepts a decode and an encode with exact values', () => {
+    expect(msgs('<NumberDrill kind="float" value="0x3F800000" from="hex" to="dec" />')).toEqual([]);
+    expect(msgs('<NumberDrill kind="float" value={-2.5} from="dec" to="hex" />')).toEqual([]);
+  });
+  it('rejects an unknown kind, a width other than 32, and base pairs that are not decode or encode', () => {
+    expect(msgs('<NumberDrill kind="double" value={1} />')[0]).toContain('int or float');
+    expect(msgs('<NumberDrill kind="float" value="0x3F800000" from="hex" to="dec" width={64} />')[0]).toContain('32-bit');
+    expect(msgs('<NumberDrill kind="float" value="0x3F800000" from="hex" to="bin" />')[0]).toContain('decodes');
+  });
+  it('rejects a decode value that is not 0x plus 8 hex digits, or whose decimal answer is not exact (0.1f)', () => {
+    expect(msgs('<NumberDrill kind="float" value="0x3F8" from="hex" to="dec" />')[0]).toContain('8 hex digits');
+    expect(msgs('<NumberDrill kind="float" value="0x3DCCCCCD" from="hex" to="dec" />')[0]).toContain('no exact short decimal');
+    expect(msgs('<NumberDrill kind="float" value={1} from="hex" to="dec" />')[0]).toContain('is a string');
+  });
+  it('rejects an encode value that is not a float exactly (0.1)', () => {
+    expect(msgs('<NumberDrill kind="float" value={0.1} from="dec" to="hex" />')[0]).toContain('not exactly a float');
+    expect(msgs('<NumberDrill kind="float" value="0.5" from="dec" to="hex" />')[0]).toContain('is a number');
+  });
+});
+
 // ---- module.yaml -------------------------------------------------------------------------------
 
 describe('module.yaml', () => {

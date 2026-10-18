@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "sources": [
+    "pack.c"
+  ],
+  "warnings": "error",
+  "tests": [
+    {
+      "name": "all channels zero",
+      "run": {
+        "stdin": "0\n0\n0\n0\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: Alpha: packed: 0x00000000\nred=0 green=0 blue=0 alpha=0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "orange with alpha 64",
+      "run": {
+        "stdin": "255\n128\n0\n64\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: Alpha: packed: 0xff800040\nred=255 green=128 blue=0 alpha=64\n",
+        "exit": 0
+      },
+      "hint": "Red is the top byte: `0xFF` shifted left by 24 gives `0xFF000000`."
+    },
+    {
+      "name": "only red",
+      "run": {
+        "stdin": "255\n0\n0\n0\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: Alpha: packed: 0xff000000\nred=255 green=0 blue=0 alpha=0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "only green",
+      "run": {
+        "stdin": "0\n255\n0\n0\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: Alpha: packed: 0x00ff0000\nred=0 green=255 blue=0 alpha=0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "only blue",
+      "run": {
+        "stdin": "0\n0\n255\n0\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: Alpha: packed: 0x0000ff00\nred=0 green=0 blue=255 alpha=0\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "only alpha",
+      "run": {
+        "stdin": "0\n0\n0\n255\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: Alpha: packed: 0x000000ff\nred=0 green=0 blue=0 alpha=255\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "every channel different",
+      "run": {
+        "stdin": "18\n52\n86\n120\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: Alpha: packed: 0x12345678\nred=18 green=52 blue=86 alpha=120\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "all channels 255",
+      "run": {
+        "stdin": "255\n255\n255\n255\n"
+      },
+      "expect": {
+        "stdout": "Red: Green: Blue: Alpha: packed: 0xffffffff\nred=255 green=255 blue=255 alpha=255\n",
+        "exit": 0
+      }
+    }
+  ]
+}
