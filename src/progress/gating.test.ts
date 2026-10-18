@@ -28,7 +28,7 @@ import {
 const at = '2026-01-01T00:00:00.000Z';
 const doc = (patch: Partial<ProgressV1> = {}): ProgressV1 => ({ ...emptyProgress(), seed: '0123456789abcdef', createdAt: at, ...patch });
 const ex = (patch: Partial<ExerciseProgress> = {}): ExerciseProgress => ({
-  attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false, ...patch,
+  attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false, tutorAsks: 0, ...patch,
 });
 const MIN = 60000;
 // `passed` is stored data here (QuizRunner decides it in the app); tests pass it explicitly instead of recomputing the rule.
@@ -79,6 +79,12 @@ describe('solutionGate', () => {
     const g = solutionGate(ex({ hintsViewed: 2, substantive: 5, activeMs: 60 * MIN }), false);
     expect(g.unlocked).toBe(false);
     expect(g.reason).toMatch(/hints/i);
+  });
+
+  it('tutor questions do not unlock the solution', () => {
+    expect(unlocked({ hintsViewed: 3, substantive: 0, tutorAsks: 50 })).toBe(false);
+    expect(unlocked({ hintsViewed: 3, substantive: 1, activeMs: 0, tutorAsks: 50 })).toBe(false);
+    expect(solutionGate(ex({ hintsViewed: 3, substantive: 0, tutorAsks: 50 }), false).reason).toMatch(/real attempt/);
   });
 
   it('with 3 hints, 0 substantive attempts stays locked even with lots of time', () => {

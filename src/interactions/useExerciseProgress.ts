@@ -44,6 +44,8 @@ export function useExerciseProgress(id: string, parentId?: string) {
     }
   }, [patch, parentId]);
 
+  /** An answered tutor question. Not a substantive attempt and not a streak submission (no noteActivity). */
+  const recordTutorAsk = useCallback(() => patch(e => { e.tutorAsks += 1; }), [patch]);
   const viewHint = useCallback((tier: number) => patch(e => { e.hintsViewed = Math.max(e.hintsViewed, tier); }), [patch]);
   const viewSolution = useCallback(() => patch(e => { e.solutionViewed = true; }), [patch]);
   const assignVariant = useCallback((variants: string[]) => {
@@ -56,5 +58,5 @@ export function useExerciseProgress(id: string, parentId?: string) {
     });
   }, [patch]);
 
-  return { ep, touch, recordAttempt, viewHint, viewSolution, assignVariant, patch };
+  return { ep, touch, recordAttempt, recordTutorAsk, viewHint, viewSolution, assignVariant, patch };
 }

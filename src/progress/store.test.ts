@@ -41,7 +41,7 @@ describe('migrate', () => {
       exercises: {
         e1: {
           attempts: 3, substantive: 2, lastCodeHash: 'abc', code: 'int main(void) { return 0; }', activeMs: 5, hintsViewed: 1, passed: true,
-          solutionViewed: true, variant: 'e1/variants/1', variantsTried: ['e1/variants/1'], mastered: false, codes: ['TDCC1-R1-e1-DONE-00000000'],
+          solutionViewed: true, variant: 'e1/variants/1', variantsTried: ['e1/variants/1'], mastered: false, codes: ['TDCC1-R1-e1-DONE-00000000'], tutorAsks: 4,
         } satisfies Required<ExerciseProgress>,
       },
       quizzes: { q1: { score: 3, total: 4, passed: false, at, answers: { a: 1, b: 'x' } } satisfies Required<QuizProgress> },
@@ -108,6 +108,13 @@ describe('mergeProgress', () => {
     const b = doc({ exercises: { cash: ex({ attempts: 2, hintsViewed: 3, passed: true, solutionViewed: true, activeMs: 9000, codes: ['c1'] }) } });
     const m = mergeProgress(a, b).exercises.cash;
     expect(m).toMatchObject({ attempts: 5, hintsViewed: 3, passed: true, solutionViewed: true, activeMs: 9000, codes: ['c1'] });
+  });
+
+  it('keeps the higher tutorAsks and does not treat it as attempts', () => {
+    const a = doc({ exercises: { cash: ex({ tutorAsks: 1, attempts: 2 }) } });
+    const b = doc({ exercises: { cash: ex({ tutorAsks: 4, attempts: 1 }) } });
+    expect(mergeProgress(a, b).exercises.cash).toMatchObject({ tutorAsks: 4, attempts: 2 });
+    expect(mergeProgress(b, a).exercises.cash.tutorAsks).toBe(4);
   });
 
   it('never loses a passed checkpoint, even when the other side scored higher without passing', () => {
