@@ -98,6 +98,7 @@ async function openFixture(page: Page, query = '?pauses=0', { video: hasVideo = 
 
 test.describe('animation player', () => {
   test('playback starts with the keyboard and runs to the end', async ({ page }) => {
+    test.setTimeout(60_000); // takes a few seconds; a hang can only be a failure, so fail in a minute, not at the 10 minute default (#58)
     await openFixture(page);
     expect(await paused(page)).toBe(true);
     await video(page).focus();
@@ -176,6 +177,7 @@ test.describe('animation player', () => {
   });
 
   test('reduced motion shows the step stills instead of the video', async ({ page }) => {
+    test.setTimeout(60_000); // takes a few seconds; a hang can only be a failure, so fail in a minute, not at the 10 minute default (#58)
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await openFixture(page, '?pauses=0', { video: false });
     const figure = page.getByRole('figure', { name: `Animation: ${steps.title}` });
@@ -186,7 +188,10 @@ test.describe('animation player', () => {
       const img = figure.getByRole('img', { name: s.label, exact: true });
       await expect(img).toBeVisible();
       await expect(img).toHaveAttribute('src', new RegExp(`${steps.stills[s.key].replace('.', '\\.')}$`));
-      expect(await img.evaluate((el: HTMLImageElement) => el.naturalWidth), `still "${s.key}" loads`).toBeGreaterThan(0);
+      // Ready means loaded and the still this step shows: after Next the same img gets a new src, and naturalWidth describes
+      // the previous still until the new one arrives. The poll is bounded by the expect timeout.
+      await expect.poll(() => img.evaluate((el: HTMLImageElement) => (el.complete && el.naturalWidth > 0 ? el.currentSrc : '')), { message: `still "${s.key}" loads` })
+        .toMatch(new RegExp(`${steps.stills[s.key].replace('.', '\\.')}$`));
       await expect(figure.getByText(`Step ${i + 1} of ${steps.steps.length}: ${s.label}`)).toBeVisible();
       if (i < steps.steps.length - 1) await figure.getByRole('button', { name: /Next/ }).click();
     }

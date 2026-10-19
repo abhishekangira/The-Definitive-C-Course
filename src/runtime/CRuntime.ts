@@ -62,7 +62,9 @@ export class CRuntime {
     this.compiler.postMessage({ type: 'init', baseUrl, version: toolchain.version });
     this.compiler.onmessage = (e: MessageEvent<CompilerOut>) => {
       const m = e.data;
-      if (m.type === 'progress') this.setState({ status: 'loading', done: m.done, total: m.total });
+      // Progress only describes a load that is running. A failed attempt can still report the files it was fetching, after its
+      // load-error: that must not turn the error back into a download that is not happening (the alert and Retry would vanish).
+      if (m.type === 'progress') { if (this.state.status === 'loading') this.setState({ status: 'loading', done: m.done, total: m.total }); }
       else if (m.type === 'ready') {
         this.setState({ status: 'ready', ms: m.ms, fromCache: m.networkFetches === 0 });
         navigator.storage?.persist?.().catch(() => {});

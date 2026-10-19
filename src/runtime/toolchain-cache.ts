@@ -25,6 +25,27 @@ export interface ToolchainFetch {
   discardAttempt(scope: 'stored' | 'all'): Promise<void>;
 }
 
+/**
+ * `resp` with its body checked against Content-Length. A response can end early without an error (a short fulfilled body, or a
+ * connection the browser closes cleanly), and then the bytes read so far would pass as the whole file: put() would store them,
+ * and WebAssembly would only reject them later, while the program compiles. Such a body errors instead. A response with no
+ * Content-Length, or with a content-encoding (its length is the encoded length, not the body's), passes through unchanged.
+ */
+export function lengthChecked(resp: Response): Response {
+  const declared = resp.headers.get('content-length');
+  if (!resp.body || declared === null || (resp.headers.get('content-encoding') ?? 'identity') !== 'identity') return resp;
+  const expected = Number(declared);
+  if (!Number.isInteger(expected)) return resp;
+  let seen = 0;
+  const body = resp.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) { seen += chunk.byteLength; controller.enqueue(chunk); },
+    flush(controller) {
+      if (seen !== expected) controller.error(new TypeError(`network error: the download ended after ${seen} of ${expected} bytes`));
+    },
+  }));
+  return new Response(body, { status: resp.status, statusText: resp.statusText, headers: resp.headers });
+}
+
 export function createToolchainFetch({ base, cacheName, fetch: realFetch, caches }: ToolchainFetchOptions): ToolchainFetch {
   const stats = { cacheHits: 0, networkFetches: 0 };
   const pendingPuts = new Set<Promise<unknown>>();
@@ -40,14 +61,14 @@ export function createToolchainFetch({ base, cacheName, fetch: realFetch, caches
       if (hit) { stats.cacheHits++; hitThisAttempt.add(url.href); return hit; }
       const resp = await realFetch(url.href, init);
       stats.networkFetches++;
-      if (resp.ok) {
-        // Never await put() here: it drains its tee branch while the caller streams the other one (keeps progress live).
-        // A body that errors mid-stream makes put() reject, so a truncated download is never stored.
-        const put = cache.put(url.href, resp.clone()).then(() => { storedThisAttempt.add(url.href); }, () => {});
-        pendingPuts.add(put);
-        void put.finally(() => pendingPuts.delete(put));
-      }
-      return resp;
+      if (!resp.ok) return resp;
+      const checked = lengthChecked(resp);
+      // Never await put() here: it drains its tee branch while the caller streams the other one (keeps progress live).
+      // put() rejects when the checked body errors, so a truncated download is never stored.
+      const put = cache.put(url.href, checked.clone()).then(() => { storedThisAttempt.add(url.href); }, () => {});
+      pendingPuts.add(put);
+      void put.finally(() => pendingPuts.delete(put));
+      return checked;
     } catch {
       stats.networkFetches++;
       return realFetch(input, init);

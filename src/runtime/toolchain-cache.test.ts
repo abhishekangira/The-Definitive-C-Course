@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { ToolchainState } from '../runtime/CRuntime';
 import { toolchainView } from '../components/toolchain-view';
-import { classifyLoadFailure, createToolchainFetch, describeLoadFailure, loadToolchain, patchBundleSource, ToolchainCorruptError, ToolchainDownloadError, ToolchainLoadError } from './toolchain-cache';
+import { classifyLoadFailure, createToolchainFetch, describeLoadFailure, lengthChecked, loadToolchain, patchBundleSource, ToolchainCorruptError, ToolchainDownloadError, ToolchainLoadError } from './toolchain-cache';
 
 const BASE = new URL('https://example.test/toolchain/clang-1/');
 const url = (name: string) => new URL(name, BASE).href;
@@ -169,6 +169,14 @@ describe('loadToolchain', () => {
     expect((err as ToolchainLoadError).kind).toBe('startup');
     expect(cache.entries.size).toBe(1);
   });
+
+  it('a body that ends before its Content-Length fails the attempt as a download, and nothing is stored (#58)', async () => {
+    const { cache, tf } = setup({ 'big.wasm': () => new Response(new Uint8Array(3), { status: 200, headers: { 'content-length': '5' } }) });
+    const err = await loadToolchain({ tf, importBundle: bundle(f => f(), tf), onProgress: () => {} }).catch(e => e);
+    expect(err).toBeInstanceOf(ToolchainLoadError);
+    expect((err as ToolchainLoadError).kind).toBe('download');
+    expect(cache.entries.size).toBe(0);
+  });
 });
 
 describe('toolchainView', () => {
@@ -210,5 +218,32 @@ describe('patchBundleSource', () => {
     ['import.meta.url inside another expression', 'new URL("a", import.meta.url); fileURLToPath(import.meta.url)'],
   ])('refuses a bundle with %s', (_, source) => {
     expect(() => patchBundleSource(source, 'u')).toThrow(/does not know/);
+  });
+});
+
+describe('a body that ends before its Content-Length (#58)', () => {
+  it('errors when read, and an exact or unlabelled body reads whole', async () => {
+    await expect(lengthChecked(new Response(new Uint8Array(3), { headers: { 'content-length': '5' } })).arrayBuffer())
+      .rejects.toThrow('the download ended after 3 of 5 bytes');
+    expect((await lengthChecked(new Response(new Uint8Array(5), { headers: { 'content-length': '5' } })).arrayBuffer()).byteLength).toBe(5);
+    expect((await lengthChecked(new Response(new Uint8Array(3))).arrayBuffer()).byteLength).toBe(3);
+  });
+
+  it('is never stored as the file, so the next fetch asks the network again', async () => {
+    const cache = new FakeCache();
+    const storage = { open: async () => cache } as unknown as CacheStorage;
+    let calls = 0;
+    const realFetch = (async () => {
+      calls++;
+      return new Response(new Uint8Array(calls === 1 ? 3 : 5), { status: 200, headers: { 'content-length': '5' } });
+    }) as typeof fetch;
+    const tf = createToolchainFetch({ base: BASE, cacheName: 'tdcc-toolchain-test', fetch: realFetch, caches: storage });
+    const first = await tf.fetch(url('llvm.core.wasm'));
+    await expect(first.arrayBuffer()).rejects.toThrow('the download ended after 3 of 5 bytes');
+    await tf.settled();
+    expect(cache.entries.has(url('llvm.core.wasm'))).toBe(false);
+    const second = await tf.fetch(url('llvm.core.wasm'));
+    expect((await second.arrayBuffer()).byteLength).toBe(5);
+    expect(calls).toBe(2);
   });
 });
