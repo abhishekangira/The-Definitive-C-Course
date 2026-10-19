@@ -110,6 +110,7 @@ test('1. a download that drops shows an error with Retry, and Retry works withou
 
 for (const kind of ['corrupt', 'truncated'] as const) {
   test(`2. a ${kind} download is never kept as complete: the next attempt fetches it again`, async ({ browser }) => {
+    test.setTimeout(60_000); // takes 3 to 15 s; a hang can only be a failure, so fail in a minute, not at the 10 minute default (#58)
     const { context, page, requests } = await session(browser);
     const real = readFileSync(join(toolchainDir(), 'llvm.core.wasm'));
     let good = false;
@@ -124,6 +125,9 @@ for (const kind of ['corrupt', 'truncated'] as const) {
     await page.goto('#/playground');
     await runButton(page).click();
     await expect(toolchainAlert(page)).toBeVisible({ timeout: RUN_TIMEOUT });
+    // The alert can be left over from an earlier attempt while the run still waits on a later one. Wait for the run to end, so
+    // no attempt is in flight when the route starts letting the file through (an attempt that got there first would succeed).
+    await expect(runButton(page)).toHaveAttribute('aria-disabled', 'false', { timeout: RUN_TIMEOUT });
     expect(await cachedFiles(page), 'the bad file must not stay in the cache').not.toContain('llvm.core.wasm');
 
     good = true;
