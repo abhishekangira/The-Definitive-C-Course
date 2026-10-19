@@ -55,10 +55,11 @@ describe('buildTutorMessages', () => {
   };
 
   it('includes the real failing output and only the opened hint', () => {
-    const [system, user] = buildTutorMessages({ ...base, openedHints: openedHintTexts(HINTS, 1), question: 'nudge' });
-    expect(system.role).toBe('system');
-    expect(system.content).toContain("I'm not sure");
-    expect(system.content).toContain('NEVER REVEAL');
+    const messages = buildTutorMessages({ ...base, openedHints: openedHintTexts(HINTS, 1), question: 'nudge' });
+    expect(messages, 'one user message carries the instructions and the exercise').toHaveLength(1);
+    const [user] = messages;
+    expect(user.role).toBe('user');
+    expect(user.content).toContain("I'm not sure");
     expect(user.content).toContain('actual output: ""');
     expect(user.content).toContain(JSON.stringify('hello, world\n'));
     expect(user.content).toContain('warning: unused');
@@ -72,7 +73,7 @@ describe('buildTutorMessages', () => {
   });
 
   it('asks about the learner\'s sentence and still omits unopened hints', () => {
-    const [, user] = buildTutorMessages({
+    const [user] = buildTutorMessages({
       ...base, openedHints: [], question: 'why', approach: 'I thought return printed the text.',
     });
     expect(user.content).toContain("Question: Why doesn't my approach work?");

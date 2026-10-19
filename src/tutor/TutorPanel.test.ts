@@ -44,7 +44,7 @@ describe('TutorPanel renders model output as text', () => {
   let root: Root;
   beforeEach(() => {
     localStorage.clear();
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: 'tutor.test' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', consentedHost: 'tutor.test' });
     host = document.createElement('div');
     document.body.appendChild(host);
     root = createRoot(host);
@@ -126,8 +126,36 @@ describe('TutorPanel renders model output as text', () => {
     expect(host.textContent).toContain('try a newline');
   });
 
+  it('clears the reply when a new check replaces the results it was about, and keeps it across other re-renders', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => reply('look at the return value')));
+    act(() => { root.render(createElement(TutorPanel, baseProps)); });
+    await act(async () => { button(/Give me a nudge/).click(); });
+    await flush();
+    expect(host.textContent).toContain('look at the return value');
+    act(() => { root.render(createElement(TutorPanel, { ...baseProps, currentCode: 'int main(void) { return 1; }' })); });
+    expect(host.textContent).toContain('look at the return value');
+    act(() => { root.render(createElement(TutorPanel, { ...baseProps, results: [{ ...baseProps.results[0], actual: 'hello' }] })); });
+    expect(host.textContent).not.toContain('look at the return value');
+  });
+
+  it('drops an answer that arrives after a newer check, without counting it', async () => {
+    let release: (response: Response) => void = () => {};
+    const gate = new Promise<Response>(resolve => { release = resolve; });
+    vi.stubGlobal('fetch', vi.fn(() => gate));
+    let asks = 0;
+    const props = { ...baseProps, onAsked: () => { asks += 1; } };
+    act(() => { root.render(createElement(TutorPanel, props)); });
+    await act(async () => { button(/Give me a nudge/).click(); });
+    act(() => { root.render(createElement(TutorPanel, { ...props, results: [{ ...baseProps.results[0], actual: 'hello' }] })); });
+    await act(async () => { release(reply('answer about the old check')); });
+    await flush();
+    expect(host.textContent).not.toContain('answer about the old check');
+    expect(asks).toBe(0);
+    expect((button(/Give me a nudge/) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('moves focus to the nudge after accept and to the refusal after decline', () => {
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', consentedHost: '' });
     act(() => { root.render(createElement(TutorPanel, baseProps)); });
     act(() => { button(/Don't send/).click(); });
     const refused = [...host.querySelectorAll('p')].find(p => p.textContent?.includes('Nothing was sent.'));

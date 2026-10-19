@@ -6,7 +6,6 @@ import { expectAccessible, setEditor } from './lib';
 const KEY = 'sk-test-not-a-real-key';
 const RUN = Number(process.env.E2E_RUN_TIMEOUT ?? 180_000);
 
-/** Wait until this check's button has gone through "Checking…" and come back, so a previous result cannot satisfy the assertion. */
 function userMessage(raw: string): string {
   const sent = JSON.parse(raw) as { messages: { role: string; content: string }[] };
   const user = sent.messages.find(m => m.role === 'user');
@@ -14,6 +13,7 @@ function userMessage(raw: string): string {
   return user.content;
 }
 
+/** Wait until this check's button has gone through "Checking…" and come back, so a previous result cannot satisfy the assertion. */
 async function checkCode(scope: Locator) {
   await scope.getByRole('button', { name: 'Check my code' }).click();
   await expect(scope.getByRole('button', { name: 'Checking…' })).toBeVisible();
@@ -70,7 +70,7 @@ test('ask the tutor after a failed check, and nowhere else', async ({ browser })
     localStorage.setItem('tdcc:v1:progress', JSON.stringify(progress));
     if (!localStorage.getItem('tdcc:v1:tutor')) {
       localStorage.setItem('tdcc:v1:tutor', JSON.stringify({
-        version: 1, apiKey: key, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '',
+        version: 1, apiKey: key, baseUrl: 'https://tutor.test/v1', consentedHost: '',
       }));
     }
   }, KEY);
@@ -99,6 +99,11 @@ test('ask the tutor after a failed check, and nowhere else', async ({ browser })
   expect(foreign).toEqual([]);
   expect(tutorUrls.every(u => u.startsWith('https://tutor.test/'))).toBe(true);
   const nudgeBody = userMessage(bodies.at(-1) ?? '');
+  const sentBody = JSON.parse(bodies.at(-1) ?? '{}') as Record<string, unknown>;
+  expect(Object.keys(sentBody).sort(), 'the request carries exactly these four fields').toEqual(['max_tokens', 'messages', 'models', 'provider']);
+  expect(sentBody.models).toEqual(['openai/gpt-oss-120b', 'google/gemini-3.5-flash-lite', 'nvidia/nemotron-3.5-super-vl:free']);
+  expect(sentBody.provider).toEqual({ only: ['groq', 'cerebras', 'google-ai-studio', 'nvidia'], allow_fallbacks: true });
+  expect((sentBody.messages as { role: string }[]).map(m => m.role)).toEqual(['user']);
   expect(nudgeBody).toContain('hello, world');
   expect(nudgeBody).toContain('actual output: ""');
   expect(nudgeBody).not.toContain("doesn't add a newline");
@@ -120,7 +125,7 @@ test('ask the tutor after a failed check, and nowhere else', async ({ browser })
   const whyBody = userMessage(bodies.at(-1) ?? '');
   expect(whyBody).toContain('You need');
   expect(whyBody).not.toContain("doesn't add a newline");
-  expect(whyBody).toContain("Why doesn't my approach work?");
+  expect(whyBody).toContain("Question: Why doesn't my approach work?");
 
   mode = 'leak';
   await nudge.focus();

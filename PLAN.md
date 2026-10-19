@@ -27,7 +27,7 @@ A self-paced, interactive web app that teaches C17 and low-level computer fundam
 | Local projects | Starter zip (built client-side, with the learner's seed) → `make test` → `node check.mjs` (zero-dependency, check50-like) **[V on Linux]** | The audience has Node; the test format is shared with the in-browser runner |
 | Animations | HyperFrames source projects in `animations/`, rendered to H.264 MP4 + captions, played in our accessible `<Explainer>` with pause-at-step predictions | Deterministic, byte-identical renders; accessible native video; no runtime JS **[V]** |
 | YouTube | Only **2 short segments** so far (≈3 min each) that beat what the app can do, on `youtube-nocookie.com` with `start`/`end`; listed in `videos.json` | IDs confirmed via oEmbed; boundaries taken from YouTube transcripts **[V]** |
-| AI tutor (optional) | Bring your own key: the learner pastes a key for an OpenAI-compatible chat API (OpenRouter by default) and picks a model; the browser calls the provider directly (§2.6) | Keeps the site static and free to run; the learner chooses and pays for the model; nothing to proxy, rate-limit or secure on our side |
+| AI tutor (optional) | Bring your own key: the learner pastes a key for an OpenAI-compatible chat API (OpenRouter by default); the course fixes the model list; the browser calls the provider directly (§2.6) | Keeps the site static and free to run; the learner pays for the model; nothing to proxy, rate-limit or secure on our side |
 | Hosting | GitHub Actions → GitHub Pages (works on any static host); toolchain copied from `node_modules` at build, never committed | Free; repeat visits load the compiler from cache |
 | Course size | **13 modules + capstone ≈ 200 h ≈ 40 weeks at 5 h/week**; CS50x C parity at ≈ week 24 | See §6; a fast lane of about 190 h is defined |
 
@@ -323,8 +323,8 @@ The tutor helps a learner whose code fails a check: it nudges them towards the n
 
 - **Provider and key.**
   - Any OpenAI-compatible chat-completions API, called with `fetch` (no SDK, no new dependency). The default base URL is OpenRouter's (`https://openrouter.ai/api/v1`); the learner can change it to another compatible provider.
-  - The learner pastes their own API key and types or picks a model ID; the app suggests a few, and the learner pays the provider.
-  - The key, base URL and model live in their own key `tdcc:v1:tutor`, outside the progress document, so export, import and "Reset all progress" never touch them (like `tdcc:v1:playground`). Settings has a "Remove key" button.
+  - The learner pastes their own API key and pays the provider. The learner picks no model: the owner fixed the request body to `models` (`openai/gpt-oss-120b`, `google/gemini-3.5-flash-lite`, `nvidia/nemotron-3.5-super-vl:free`), `provider` (`only` groq, cerebras, google-ai-studio, nvidia, with `allow_fallbacks`), `messages` (a single user message) and `max_tokens` (adjustable). These are OpenRouter's routing fields, so a custom base URL must accept them.
+  - The key and base URL live in their own key `tdcc:v1:tutor`, outside the progress document, so export, import and "Reset all progress" never touch them (like `tdcc:v1:playground`). Settings has a "Remove key" button.
   - Settings says plainly that the key is stored in this browser and readable by any script on the page, and recommends a key with a spending limit.
   - The tutor sends the learner's code to the provider they chose. The first use shows a one-time notice that names the provider host; until the learner accepts it, nothing is sent.
 - **Where it appears.**

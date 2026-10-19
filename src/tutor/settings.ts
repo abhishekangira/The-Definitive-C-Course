@@ -18,15 +18,7 @@ export const TUTOR_STORAGE_KEY = `${STORAGE_PREFIX}tutor`;
 /** OpenRouter's OpenAI-compatible base. The learner can replace it. */
 export const DEFAULT_TUTOR_BASE_URL = 'https://openrouter.ai/api/v1';
 
-/** Examples the settings field suggests. The learner can type any model id; these are not a promise that the provider still serves them. */
-export const SUGGESTED_TUTOR_MODELS = [
-  'openai/gpt-4o-mini',
-  'google/gemini-2.5-flash',
-  'meta-llama/llama-3.3-70b-instruct',
-] as const;
-
 const MAX_API_KEY = 2000;
-const MAX_MODEL = 200;
 const MAX_STORED_CHARS = 20_000;
 
 export interface TutorSettings {
@@ -34,13 +26,12 @@ export interface TutorSettings {
   apiKey: string;
   /** Canonical base URL, no trailing slash. */
   baseUrl: string;
-  model: string;
   /** `url.host` the learner agreed to send requests to. Empty until they accept, and after the host or the key changes. */
   consentedHost: string;
 }
 
 export function emptyTutorSettings(): TutorSettings {
-  return { apiKey: '', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', consentedHost: '' };
+  return { apiKey: '', baseUrl: DEFAULT_TUTOR_BASE_URL, consentedHost: '' };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -55,13 +46,6 @@ export function cleanTutorKey(v: unknown): string {
   const key = stripBearer(v.trim());
   if (!key || key.length > MAX_API_KEY || /\s/.test(key) || /[\u0000-\u001f\u007f]/.test(key)) return '';
   return key;
-}
-
-export function cleanTutorModel(v: unknown): string {
-  if (typeof v !== 'string') return '';
-  const model = v.trim();
-  if (!model || model.length > MAX_MODEL || /[\u0000-\u001f\u007f]/.test(model)) return '';
-  return model;
 }
 
 function isLoopback(hostname: string): boolean {
@@ -129,7 +113,6 @@ export function parseTutorSettings(raw: unknown): TutorSettings {
   return {
     apiKey: cleanTutorKey(raw.apiKey),
     baseUrl,
-    model: cleanTutorModel(raw.model),
     consentedHost: host && consented === host ? consented : '',
   };
 }
@@ -188,7 +171,7 @@ export function getTutorSettings(): TutorSettings { return current; }
 
 export function replaceTutorSettings(next: TutorSettings): void { write(next); }
 
-/** Drops the key and host consent. The next key asks for permission again. The URL and model stay. */
+/** Drops the key and host consent. The next key asks for permission again. The URL stays. */
 export function removeTutorKey(): void {
   write({ ...current, apiKey: '', consentedHost: '' });
 }
@@ -199,9 +182,9 @@ export function acceptTutorHost(host: string): void {
   write({ ...current, consentedHost: host });
 }
 
-export interface TutorDraft { apiKey: string; baseUrl: string; model: string }
+export interface TutorDraft { apiKey: string; baseUrl: string }
 
-export interface DraftCommit { settings: TutorSettings; problems: Array<'key' | 'url' | 'model'> }
+export interface DraftCommit { settings: TutorSettings; problems: Array<'key' | 'url'> }
 
 /**
  * Validates a form draft against the settings already stored. An illegal URL or key is not saved:
@@ -219,17 +202,12 @@ export function commitTutorDraft(draft: TutorDraft): DraftCommit {
   const canonical = parseTutorBaseUrl(draft.baseUrl);
   if (!canonical) problems.push('url');
   const baseUrl = canonical ?? prev.baseUrl;
-  let model = cleanTutorModel(draft.model);
-  if (draft.model.trim() !== '' && model === '') {
-    problems.push('model');
-    model = prev.model;
-  }
   const host = tutorHost(baseUrl);
   // Consent is for this key on this host. Clearing or replacing the key asks again.
   // A rejected key or URL keeps the previous value, and its consent.
   const sameKey = apiKey !== '' && apiKey === prev.apiKey;
   const consentedHost = sameKey && host && prev.consentedHost === host ? prev.consentedHost : '';
-  write({ apiKey, baseUrl, model, consentedHost });
+  write({ apiKey, baseUrl, consentedHost });
   return { settings: current, problems };
 }
 

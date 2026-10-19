@@ -1,4 +1,4 @@
-// OpenAI-compatible chat client. Plain fetch, no SDK. The key is sent only as
+// OpenRouter-style chat client. Plain fetch, no SDK. The key is sent only as
 // `Authorization: Bearer`, and only to tutorChatUrl(). Redirects are rejected so the
 // key is not forwarded to another host. Nothing here is logged.
 
@@ -8,6 +8,10 @@ import type { TutorMessage } from './prompt';
 export const TUTOR_TIMEOUT_MS = 30_000;
 export const TUTOR_MAX_OUTPUT_CHARS = 4_000;
 export const TUTOR_MAX_TOKENS = 700;
+/** Tried in this order by OpenRouter. The course picks them; the learner does not. */
+export const TUTOR_MODELS = ['openai/gpt-oss-120b', 'google/gemini-3.5-flash-lite', 'nvidia/nemotron-3.5-super-vl:free'] as const;
+/** OpenRouter provider routing: only these providers, with a fallback between them. */
+export const TUTOR_PROVIDER = { only: ['groq', 'cerebras', 'google-ai-studio', 'nvidia'], allow_fallbacks: true } as const;
 /** Stop reading a provider body past this. The displayed reply is capped much lower. */
 export const TUTOR_MAX_RESPONSE_BYTES = 1_000_000;
 const MAX_BODY_CHARS = 500_000;
@@ -128,7 +132,6 @@ async function readLimited(response: Response, maxBytes: number): Promise<string
 export interface TutorRequest {
   baseUrl: string;
   apiKey: string;
-  model: string;
   messages: readonly TutorMessage[];
   timeoutMs?: number;
   maxOutputChars?: number;
@@ -141,17 +144,17 @@ export interface TutorRequest {
  */
 export async function requestTutorReply(req: TutorRequest): Promise<TutorResult> {
   const endpoint = tutorChatUrl(req.baseUrl);
-  if (!endpoint || !req.apiKey || !req.model.trim()) return fail('bad-url');
+  if (!endpoint || !req.apiKey) return fail('bad-url');
   let url: URL;
   try { url = new URL(endpoint); } catch { return fail('bad-url'); }
   if (keyInUrl(url, req.apiKey)) return fail('bad-url');
 
+  // Exactly these four fields (the owner's decision): no `model`, `temperature` or `stream`.
   const payload = JSON.stringify({
-    model: req.model,
+    models: TUTOR_MODELS,
+    provider: TUTOR_PROVIDER,
     messages: req.messages,
-    temperature: 0.3,
     max_tokens: TUTOR_MAX_TOKENS,
-    stream: false,
   });
   if (payload.length > MAX_BODY_CHARS) return fail('provider');
 
@@ -192,8 +195,5 @@ export async function requestTutorReply(req: TutorRequest): Promise<TutorResult>
 
 /** A connection check. Sends no learner code. */
 export function tutorPingMessages(): TutorMessage[] {
-  return [
-    { role: 'system', content: 'Reply with the single word ok.' },
-    { role: 'user', content: 'ok' },
-  ];
+  return [{ role: 'user', content: 'Reply with the single word ok.' }];
 }

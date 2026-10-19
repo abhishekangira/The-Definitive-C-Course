@@ -32,7 +32,16 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
   const declinedRef = useRef<HTMLParagraphElement>(null);
   const replyRef = useRef<HTMLDivElement>(null);
   const moveFocus = useRef<'nudge' | 'declined' | null>(null);
+  // The results the visible reply is about. A new check replaces them, and the old reply goes with them.
+  const checked = useRef(results);
   const host = tutorHost(settings.baseUrl);
+
+  useEffect(() => {
+    if (checked.current === results) return;
+    checked.current = results;
+    setReply(null);
+    setError(null);
+  }, [results]);
 
   useEffect(() => {
     const target = moveFocus.current;
@@ -51,7 +60,6 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
     if (busy) return;
     const current = getTutorSettings();
     if (!consentCovers(current) || !host) return;
-    if (!current.model) { setError('Type a model id in Settings first.'); setReply(null); return; }
     if (question === 'why' && approach.trim() === '') {
       setError('Write one sentence about your approach first.');
       setReply(null);
@@ -60,6 +68,7 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
     setBusy(true);
     setError(null);
     setReply(null);
+    const asked = checked.current;
     const messages = buildTutorMessages({
       title,
       statement,
@@ -73,9 +82,11 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
       approach,
     });
     const result = await requestTutorReply({
-      baseUrl: current.baseUrl, apiKey: current.apiKey, model: current.model, messages,
+      baseUrl: current.baseUrl, apiKey: current.apiKey, messages,
     });
     setBusy(false);
+    // A newer check arrived while the provider was answering: this reply is about code that is gone.
+    if (checked.current !== asked) return;
     if (!result.ok) { setError(result.message); return; }
     const guarded = guardReply({ reply: result.text, solution, learnerCode: checkedCode, hintsViewed });
     setReply(guarded.show);

@@ -45,7 +45,6 @@ describe('TutorSettingsPanel', () => {
     render();
     type('tutor-key', KEY);
     type('tutor-base', 'https://tutor.test/v1');
-    type('tutor-model', 'test-model');
 
     await act(async () => { button(/Test connection/)!.click(); });
     await flush();
@@ -93,7 +92,6 @@ describe('TutorSettingsPanel', () => {
     render();
     type('tutor-key', KEY);
     type('tutor-base', 'http://localhost.evil.com/v1');
-    type('tutor-model', 'test-model');
     await act(async () => { button(/Test connection/)!.click(); });
     const alert = host.querySelector('[role="alert"]');
     expect(alert?.textContent).toContain('That URL is not allowed');

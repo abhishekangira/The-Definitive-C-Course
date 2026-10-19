@@ -43,7 +43,8 @@ export interface TutorPromptInput {
   approach?: string;
 }
 
-export interface TutorMessage { role: 'system' | 'user'; content: string }
+/** The request carries one user message: the instructions come first, then the exercise data. */
+export interface TutorMessage { role: 'user'; content: string }
 
 const CAP = {
   statement: 8_000,
@@ -90,7 +91,7 @@ export function skippedChecks(results: readonly ReportedCheck[]): string[] {
   return results.filter(r => r.status === 'skip').map(r => r.name).slice(0, CAP.cases);
 }
 
-const SYSTEM = [
+const INSTRUCTIONS = [
   'You are the tutor for The Definitive C Course. The learner\'s program failed a check.',
   'Help them take one next step. Do not write the corrected program, and do not reveal the reference solution.',
   'The reference solution is included only so you can avoid repeating it. It is marked NEVER REVEAL.',
@@ -112,7 +113,7 @@ function caseBlock(c: TutorFailureCase): string {
   ].filter(Boolean).join('\n');
 }
 
-/** System plus user message. The solution is in the user message, marked never reveal. */
+/** One user message: the instructions, then the exercise. The solution is in it, marked never reveal. */
 export function buildTutorMessages(input: TutorPromptInput): TutorMessage[] {
   const hints = input.openedHints.length
     ? input.openedHints.map((h, i) => `${i + 1}. ${h}`).join('\n')
@@ -122,7 +123,7 @@ export function buildTutorMessages(input: TutorPromptInput): TutorMessage[] {
   const question = input.question === 'nudge'
     ? 'Question: Give me a nudge.'
     : `Question: Why doesn't my approach work?\nThe learner's idea: ${cap(input.approach?.trim() || '(no sentence)', CAP.approach)}`;
-  const user = [
+  const exercise = [
     `Exercise: ${cap(input.title, 300)}`,
     '',
     'Statement:',
@@ -148,5 +149,5 @@ export function buildTutorMessages(input: TutorPromptInput): TutorMessage[] {
     '',
     question,
   ].join('\n');
-  return [{ role: 'system', content: SYSTEM }, { role: 'user', content: user }];
+  return [{ role: 'user', content: `${INSTRUCTIONS}\n\n${exercise}` }];
 }
