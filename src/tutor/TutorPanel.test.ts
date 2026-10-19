@@ -5,6 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { emptyTutorSettings, replaceTutorSettings } from './settings';
 import { TutorPanel } from './TutorPanel';
+import realReplies from './fixtures/real-replies.json';
 
 const consentGate = vi.hoisted(() => ({ covers: true }));
 
@@ -44,7 +45,7 @@ describe('TutorPanel renders model output as text', () => {
   let root: Root;
   beforeEach(() => {
     localStorage.clear();
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', consentedHost: 'tutor.test' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: 'tutor.test' });
     host = document.createElement('div');
     document.body.appendChild(host);
     root = createRoot(host);
@@ -147,6 +148,7 @@ describe('TutorPanel renders model output as text', () => {
     act(() => { root.render(createElement(TutorPanel, props)); });
     await act(async () => { button(/Give me a nudge/).click(); });
     act(() => { root.render(createElement(TutorPanel, { ...props, results: [{ ...baseProps.results[0], actual: 'hello' }] })); });
+    expect((button(/Give me a nudge/) as HTMLButtonElement).disabled, 'the new check does not wait for the abandoned request').toBe(false);
     await act(async () => { release(reply('answer about the old check')); });
     await flush();
     expect(host.textContent).not.toContain('answer about the old check');
@@ -154,8 +156,53 @@ describe('TutorPanel renders model output as text', () => {
     expect((button(/Give me a nudge/) as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('shows a real reply that names lines of a Parsons bank, and refuses the same reply without the bank', async () => {
+    const c = realReplies.cases.find(x => x.exercise === 'countdown-order')!;
+    vi.stubGlobal('fetch', vi.fn(async () => reply(c.reply)));
+    const props = {
+      ...baseProps, statement: c.statement, solution: c.solution, checkedCode: c.learnerCode, currentCode: c.learnerCode,
+      results: c.results, hints: [], hintsViewed: 0,
+    };
+    act(() => { root.render(createElement(TutorPanel, { ...props, bank: c.bank })); });
+    await act(async () => { button(/Give me a nudge/).click(); });
+    await flush();
+    expect(host.textContent).toContain('Have you placed that');
+    expect(host.textContent).not.toContain("I can't show that reply");
+
+    act(() => { root.unmount(); });
+    root = createRoot(host);
+    act(() => { root.render(createElement(TutorPanel, props)); });
+    await act(async () => { button(/Give me a nudge/).click(); });
+    await flush();
+    expect(host.textContent).toContain("I can't show that reply");
+  });
+
+  it('does not count or show an answer that arrives after the exercise went away', async () => {
+    let release: (response: Response) => void = () => {};
+    const gate = new Promise<Response>(resolve => { release = resolve; });
+    vi.stubGlobal('fetch', vi.fn(() => gate));
+    let asks = 0;
+    act(() => { root.render(createElement(TutorPanel, { ...baseProps, onAsked: () => { asks += 1; } })); });
+    await act(async () => { button(/Give me a nudge/).click(); });
+    act(() => { root.unmount(); });
+    await act(async () => { release(reply('too late')); });
+    await flush();
+    expect(asks).toBe(0);
+    root = createRoot(host);
+  });
+
+  it('says to choose a model, with a link to Settings, instead of offering Ask, when no model can be used', () => {
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: '', consentedHost: 'tutor.test' });
+    act(() => { root.render(createElement(TutorPanel, baseProps)); });
+    expect(host.textContent).toContain('Choose a model in Settings');
+    expect(host.querySelector('a[href="#/settings"]')).not.toBeNull();
+    expect(button(/Give me a nudge/)).toBeUndefined();
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: '', consentedHost: '' });
+    expect(host.textContent, 'no consent notice for a request that cannot be made').not.toContain('The first request sends your API key');
+  });
+
   it('moves focus to the nudge after accept and to the refusal after decline', () => {
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', consentedHost: '' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '' });
     act(() => { root.render(createElement(TutorPanel, baseProps)); });
     act(() => { button(/Don't send/).click(); });
     const refused = [...host.querySelectorAll('p')].find(p => p.textContent?.includes('Nothing was sent.'));

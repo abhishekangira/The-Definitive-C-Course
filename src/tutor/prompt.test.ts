@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTutorMessages, failingChecks, openedHintTexts, skippedChecks, type ReportedCheck } from './prompt';
+import { buildTutorMessages, failingChecks, learnerVisibleText, openedHintTexts, skippedChecks, type ReportedCheck } from './prompt';
 
 const HINTS = [
   'You need printf.',
@@ -80,5 +80,23 @@ describe('buildTutorMessages', () => {
     expect(user.content).toContain('I thought return printed the text.');
     expect(user.content).toContain('(none opened)');
     for (const h of HINTS) expect(user.content).not.toContain(h);
+  });
+});
+
+describe('learnerVisibleText', () => {
+  it('collects what the learner can already read, and only the hints that are open', () => {
+    const text = learnerVisibleText({
+      statement: 'Print exactly hello, world.', diagnostics: 'warning: unused variable',
+      openedHints: openedHintTexts(HINTS, 1), results: checks, bank: '#include <stdio.h>\nint main(void) {',
+    });
+    for (const shown of ['Print exactly hello, world.', 'warning: unused variable', HINTS[0], JSON.stringify('hello, world\n').slice(1, -3), 'wrong output', 'int main(void) {']) {
+      expect(text).toContain(shown.replace('\\n', '\n'));
+    }
+    expect(text).not.toContain(HINTS[1]);
+    expect(text).not.toContain(HINTS[2]);
+  });
+
+  it('is empty-safe', () => {
+    expect(learnerVisibleText({ statement: '', diagnostics: '', openedHints: [], results: [] }).trim()).toBe('');
   });
 });

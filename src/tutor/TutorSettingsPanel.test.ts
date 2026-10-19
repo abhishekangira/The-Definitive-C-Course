@@ -37,7 +37,15 @@ describe('TutorSettingsPanel', () => {
     const input = host.querySelector(`#${id}`) as HTMLInputElement;
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
     act(() => { input.dispatchEvent(new Event('input', { bubbles: true })); });
+    // The form saves on blur, like a learner tabbing away.
+    act(() => { input.dispatchEvent(new FocusEvent('focusout', { bubbles: true })); });
   }
+  const radio = (label: RegExp) => [...host.querySelectorAll('label')].find(l => label.test(l.textContent ?? ''))!.querySelector('input') as HTMLInputElement;
+  const chooseOwnModel = (id: string) => {
+    act(() => { radio(/My own model id/).click(); });
+    type('tutor-model', id);
+  };
+  const stored = () => JSON.parse(localStorage.getItem(TUTOR_STORAGE_KEY) ?? '{}') as { apiKey?: string; model?: string; consentedHost?: string };
 
   it('does not fetch before consent, fetches after the host is accepted, and Remove key clears the key', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse({ choices: [{ message: { content: 'bananas' } }] }));
@@ -45,6 +53,7 @@ describe('TutorSettingsPanel', () => {
     render();
     type('tutor-key', KEY);
     type('tutor-base', 'https://tutor.test/v1');
+    chooseOwnModel('test-model');
 
     await act(async () => { button(/Test connection/)!.click(); });
     await flush();
@@ -96,5 +105,105 @@ describe('TutorSettingsPanel', () => {
     const alert = host.querySelector('[role="alert"]');
     expect(alert?.textContent).toContain('That URL is not allowed');
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('starts on the course default for OpenRouter, and stores an empty model for it', () => {
+    render();
+    expect(radio(/Course default/).checked).toBe(true);
+    expect(radio(/Course default/).disabled).toBe(false);
+    expect(radio(/My own model id/).checked).toBe(false);
+    expect(host.querySelector('#tutor-model'), 'no model box while the default is chosen').toBeNull();
+    type('tutor-key', KEY);
+    expect(stored().model).toBe('');
+  });
+
+  it('shows the model box with suggestions for "My own model id", saves the id, and can go back to the default', () => {
+    render();
+    type('tutor-key', KEY);
+    act(() => { radio(/My own model id/).click(); });
+    expect(host.querySelector('[role="alert"]'), 'no error before the learner has typed a model id').toBeNull();
+    const input = host.querySelector('#tutor-model') as HTMLInputElement;
+    expect(input.getAttribute('list')).toBe('tutor-model-suggestions');
+    expect([...host.querySelectorAll('#tutor-model-suggestions option')].map(o => (o as HTMLOptionElement).value)).toContain('openai/gpt-oss-120b');
+    type('tutor-model', 'openai/gpt-4o-mini');
+    expect(stored().model).toBe('openai/gpt-4o-mini');
+    expect(stored().apiKey).toBe(KEY);
+    act(() => { radio(/Course default/).click(); });
+    expect(stored().model).toBe('');
+    expect(host.querySelector('#tutor-model')).toBeNull();
+  });
+
+  it('offers the course default only on OpenRouter, and asks for a model id on any other host', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse({ choices: [{ message: { content: 'ok' } }] }));
+    vi.stubGlobal('fetch', fetchImpl);
+    render();
+    type('tutor-key', KEY);
+    type('tutor-base', 'https://api.openai.com/v1');
+    expect(radio(/Course default/).disabled).toBe(true);
+    expect(radio(/My own model id/).checked).toBe(true);
+    expect(host.textContent).toContain('It needs the OpenRouter base URL');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Type a model id');
+    await act(async () => { button(/Test connection/)!.click(); });
+    await flush();
+    expect(fetchImpl, 'no model chosen: nothing is sent').not.toHaveBeenCalled();
+    expect(host.textContent).not.toContain('The first request sends your API key');
+  });
+
+  it('says what is really stored when a model id is rejected, never that the tutor is off when it is not', () => {
+    render();
+    type('tutor-key', KEY);
+    chooseOwnModel('openai/gpt-4o-mini');
+    type('tutor-model', 'two words');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('The previous model id (openai/gpt-4o-mini) is still used');
+    expect(stored().model).toBe('openai/gpt-4o-mini');
+    type('tutor-model', '');
+    expect(stored().model, 'clearing the box does not switch to the course default').toBe('openai/gpt-4o-mini');
+    act(() => { radio(/Course default/).click(); });
+    act(() => { radio(/My own model id/).click(); });
+    type('tutor-model', 'two words');
+    expect(host.querySelector('[role="alert"]')?.textContent, 'the default is stored now, and the message says so').toContain('the course default models are used');
+  });
+
+  it('keeps the course default available while the URL is a typo that cannot be saved', () => {
+    render();
+    type('tutor-key', KEY);
+    type('tutor-base', 'htp:/openrouter');
+    expect(radio(/Course default/).disabled).toBe(false);
+    expect(radio(/Course default/).checked).toBe(true);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('That URL is not allowed');
+  });
+
+  it('starts the form again from the store when another tab changes the settings, so a stale blur cannot undo Remove key', () => {
+    render();
+    type('tutor-key', KEY);
+    expect(stored().apiKey).toBe(KEY);
+    // Another tab clicked Remove key.
+    const removed = JSON.stringify({ version: 1, apiKey: '', baseUrl: 'https://openrouter.ai/api/v1', model: '', consentedHost: '' });
+    localStorage.setItem(TUTOR_STORAGE_KEY, removed);
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: TUTOR_STORAGE_KEY, newValue: removed })); });
+    expect((host.querySelector('#tutor-key') as HTMLInputElement).value).toBe('');
+    const base = host.querySelector('#tutor-base') as HTMLInputElement;
+    act(() => { base.dispatchEvent(new FocusEvent('focusout', { bubbles: true })); });
+    expect(stored().apiKey, 'blurring a field in this tab does not bring the removed key back').toBe('');
+  });
+
+  it('Test connection sends the course default body to OpenRouter and a plain body for a chosen model', async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return jsonResponse({ choices: [{ message: { content: 'ok' } }] });
+    }));
+    render();
+    type('tutor-key', KEY);
+    await act(async () => { button(/Test connection/)!.click(); });
+    await act(async () => { button(/Send to openrouter\.ai/)!.click(); });
+    await flush();
+    expect(Object.keys(bodies[0]).sort()).toEqual(['max_tokens', 'messages', 'models', 'provider']);
+
+    chooseOwnModel('openai/gpt-4o-mini');
+    await act(async () => { button(/Test connection/)!.click(); });
+    await flush();
+    expect(Object.keys(bodies[1]).sort()).toEqual(['max_tokens', 'messages', 'model']);
+    expect(bodies[1].model).toBe('openai/gpt-4o-mini');
   });
 });

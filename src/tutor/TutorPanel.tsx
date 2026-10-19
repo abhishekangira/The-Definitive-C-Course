@@ -5,11 +5,11 @@ import { requestTutorReply } from './client';
 import { ConsentNotice } from './ConsentNotice';
 import { tutorEligible, type TutorCheckSnapshot } from './eligibility';
 import { guardReply } from './leak';
-import { buildTutorMessages, failingChecks, openedHintTexts, skippedChecks, type TutorQuestion } from './prompt';
-import { acceptTutorHost, consentCovers, getTutorSettings, tutorHost, useTutorSettings } from './settings';
+import { buildTutorMessages, failingChecks, learnerVisibleText, openedHintTexts, skippedChecks, type TutorQuestion } from './prompt';
+import { acceptTutorHost, consentCovers, getTutorSettings, isOpenRouter, tutorHost, useTutorSettings } from './settings';
 import styles from './Tutor.module.css';
 
-export function TutorPanel({ title, statement, hints, hintsViewed, solution, checkedCode, currentCode, results, diagnostics, onAsked }: {
+export function TutorPanel({ title, statement, hints, hintsViewed, solution, checkedCode, currentCode, results, diagnostics, bank, onAsked }: {
   title: string;
   statement: string;
   hints: readonly string[];
@@ -19,6 +19,8 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
   currentCode: string;
   results: TutorCheckSnapshot['results'];
   diagnostics: string;
+  /** Every line of a Parsons bank. The learner can see all of them, so repeating one is not a leak. */
+  bank?: string;
   onAsked: () => void;
 }) {
   const settings = useTutorSettings();
@@ -34,11 +36,24 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
   const moveFocus = useRef<'nudge' | 'declined' | null>(null);
   // The results the visible reply is about. A new check replaces them, and the old reply goes with them.
   const checked = useRef(results);
+  // A request belongs to one check. A newer check, or leaving the exercise, abandons it: its answer is neither
+  // shown nor counted, and the buttons do not wait for it.
+  const generation = useRef(0);
+  const alive = useRef(true);
   const host = tutorHost(settings.baseUrl);
+  // No model chosen and no course default for this host: asking cannot work, so do not offer it.
+  const needsModel = Boolean(settings.apiKey) && !settings.model && !isOpenRouter(settings.baseUrl);
+
+  useEffect(() => {
+    alive.current = true;
+    return () => { alive.current = false; };
+  }, []);
 
   useEffect(() => {
     if (checked.current === results) return;
     checked.current = results;
+    generation.current += 1;
+    setBusy(false);
     setReply(null);
     setError(null);
   }, [results]);
@@ -68,7 +83,7 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
     setBusy(true);
     setError(null);
     setReply(null);
-    const asked = checked.current;
+    const mine = generation.current;
     const messages = buildTutorMessages({
       title,
       statement,
@@ -82,13 +97,14 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
       approach,
     });
     const result = await requestTutorReply({
-      baseUrl: current.baseUrl, apiKey: current.apiKey, messages,
+      baseUrl: current.baseUrl, apiKey: current.apiKey, model: current.model, messages,
     });
+    // A newer check arrived, or the exercise went away, while the provider was answering: this reply is about code that is gone.
+    if (!alive.current || generation.current !== mine) return;
     setBusy(false);
-    // A newer check arrived while the provider was answering: this reply is about code that is gone.
-    if (checked.current !== asked) return;
     if (!result.ok) { setError(result.message); return; }
-    const guarded = guardReply({ reply: result.text, solution, learnerCode: checkedCode, hintsViewed });
+    const knownText = learnerVisibleText({ statement, diagnostics, openedHints: openedHintTexts(hints, hintsViewed), results, bank });
+    const guarded = guardReply({ reply: result.text, solution, learnerCode: checkedCode, hintsViewed, knownText, bankText: bank });
     setReply(guarded.show);
     onAsked();
   };
@@ -98,14 +114,15 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
     <section className={styles.ask} aria-label="Ask the tutor" data-tutor="ask">
       <h4>Ask the tutor</h4>
       {!settings.apiKey && <p className={styles.muted}>Add an API key in <a href="#/settings">Settings</a> to ask the tutor.</p>}
-      {settings.apiKey && !consentCovers(settings) && host && !declined && (
+      {needsModel && <p className={styles.muted}>Choose a model in <a href="#/settings">Settings</a> to ask the tutor. The course default models only work through OpenRouter.</p>}
+      {settings.apiKey && !needsModel && !consentCovers(settings) && host && !declined && (
         <ConsentNotice host={host} onAccept={() => { moveFocus.current = 'nudge'; acceptTutorHost(host); setDeclined(false); }} onDecline={() => { moveFocus.current = 'declined'; setDeclined(true); }} />
       )}
-      {settings.apiKey && !consentCovers(settings) && declined && (
+      {settings.apiKey && !needsModel && !consentCovers(settings) && declined && (
         <p ref={declinedRef} tabIndex={-1} className={styles.muted}>Nothing was sent. <button type="button" className="btn btn-sm" onClick={() => setDeclined(false)}>Show the permission notice</button></p>
       )}
-      {consentCovers(settings) && stale && <p>Check again before asking: the tutor uses the code you last checked.</p>}
-      {consentCovers(settings) && !stale && (
+      {consentCovers(settings) && !needsModel && stale && <p>Check again before asking: the tutor uses the code you last checked.</p>}
+      {consentCovers(settings) && !needsModel && !stale && (
         <>
           <div className={styles.actions}>
             <button type="button" ref={nudgeRef} className="btn" disabled={busy} onClick={() => void ask('nudge')}>{busy ? 'Asking…' : 'Give me a nudge'}</button>
@@ -127,7 +144,7 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
 }
 
 /** Mounts the panel only when this exercise is allowed to ask and the latest check failed. */
-export function ExerciseTutor({ id, kind, runsIn, title, statement, hints, hintsViewed, solution, substantive, assessment, isVariant, allowTutor, currentCode, snapshot, onAsked }: {
+export function ExerciseTutor({ id, kind, runsIn, title, statement, hints, hintsViewed, solution, substantive, assessment, isVariant, allowTutor, currentCode, snapshot, bank, onAsked }: {
   id: string;
   kind: string;
   runsIn: string;
@@ -142,6 +159,7 @@ export function ExerciseTutor({ id, kind, runsIn, title, statement, hints, hints
   allowTutor: boolean;
   currentCode: string;
   snapshot: TutorCheckSnapshot | null;
+  bank?: string;
   onAsked: () => void;
 }) {
   if (!snapshot || !tutorEligible({
@@ -151,7 +169,7 @@ export function ExerciseTutor({ id, kind, runsIn, title, statement, hints, hints
     <TutorPanel
       title={title} statement={statement} hints={hints} hintsViewed={hintsViewed} solution={solution}
       checkedCode={snapshot.code} currentCode={currentCode} results={snapshot.results} diagnostics={snapshot.diagnostics}
-      onAsked={onAsked}
+      bank={bank} onAsked={onAsked}
     />
   );
 }

@@ -151,3 +151,21 @@ export function buildTutorMessages(input: TutorPromptInput): TutorMessage[] {
   ].join('\n');
   return [{ role: 'user', content: `${INSTRUCTIONS}\n\n${exercise}` }];
 }
+
+/** Text the learner can already read on screen. The leak guard does not treat a fragment of it as new information. */
+export function learnerVisibleText(input: {
+  statement: string;
+  diagnostics: string;
+  openedHints: readonly string[];
+  results: readonly ReportedCheck[];
+  /** Every line of a Parsons bank, placed or not. */
+  bank?: string;
+}): string {
+  return [
+    input.statement,
+    input.diagnostics,
+    ...input.openedHints,
+    ...input.results.flatMap(r => [r.expected ?? '', r.actual ?? '', r.message ?? '']),
+    input.bank ?? '',
+  ].join('\n');
+}

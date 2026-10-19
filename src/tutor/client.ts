@@ -2,7 +2,7 @@
 // `Authorization: Bearer`, and only to tutorChatUrl(). Redirects are rejected so the
 // key is not forwarded to another host. Nothing here is logged.
 
-import { tutorChatUrl } from './settings';
+import { OPENROUTER_HOST, tutorChatUrl } from './settings';
 import type { TutorMessage } from './prompt';
 
 export const TUTOR_TIMEOUT_MS = 30_000;
@@ -16,7 +16,7 @@ export const TUTOR_PROVIDER = { only: ['groq', 'cerebras', 'google-ai-studio', '
 export const TUTOR_MAX_RESPONSE_BYTES = 1_000_000;
 const MAX_BODY_CHARS = 500_000;
 
-export type TutorErrorCode = 'unauthorized' | 'payment' | 'rate-limit' | 'network' | 'provider' | 'empty' | 'bad-url';
+export type TutorErrorCode = 'unauthorized' | 'payment' | 'rate-limit' | 'network' | 'provider' | 'empty' | 'bad-url' | 'no-model';
 
 export type TutorResult =
   | { ok: true; text: string }
@@ -29,6 +29,7 @@ export const TUTOR_ERROR_TEXT: Record<Exclude<TutorErrorCode, 'provider'>, strin
   network: 'The request did not finish (network error or timeout). Your code is still here.',
   empty: 'The provider sent an empty or unreadable reply.',
   'bad-url': 'The tutor URL is not allowed. Use https, or http on localhost only.',
+  'no-model': 'Choose a model in Settings first. The course default models only work through OpenRouter.',
 };
 
 export function tutorErrorMessage(code: TutorErrorCode, status?: number): string {
@@ -129,9 +130,24 @@ async function readLimited(response: Response, maxBytes: number): Promise<string
   return new TextDecoder().decode(buf);
 }
 
+/**
+ * The request body. With no model chosen it is the owner's fixed OpenRouter body: `models`, `provider`,
+ * `messages` and `max_tokens`, and nothing else. A model the learner chose gives the plain
+ * OpenAI-compatible body, so a provider that rejects unknown fields never sees OpenRouter's. The course
+ * default exists only for OpenRouter: for any other host with no model this returns null.
+ */
+export function tutorRequestBody(input: { host: string; model: string; messages: readonly TutorMessage[] }): Record<string, unknown> | null {
+  const model = input.model.trim();
+  if (model) return { model, messages: input.messages, max_tokens: TUTOR_MAX_TOKENS };
+  if (input.host !== OPENROUTER_HOST) return null;
+  return { models: TUTOR_MODELS, provider: TUTOR_PROVIDER, messages: input.messages, max_tokens: TUTOR_MAX_TOKENS };
+}
+
 export interface TutorRequest {
   baseUrl: string;
   apiKey: string;
+  /** The learner's own model id. Empty means the course default, which only OpenRouter understands. */
+  model: string;
   messages: readonly TutorMessage[];
   timeoutMs?: number;
   maxOutputChars?: number;
@@ -149,13 +165,9 @@ export async function requestTutorReply(req: TutorRequest): Promise<TutorResult>
   try { url = new URL(endpoint); } catch { return fail('bad-url'); }
   if (keyInUrl(url, req.apiKey)) return fail('bad-url');
 
-  // Exactly these four fields (the owner's decision): no `model`, `temperature` or `stream`.
-  const payload = JSON.stringify({
-    models: TUTOR_MODELS,
-    provider: TUTOR_PROVIDER,
-    messages: req.messages,
-    max_tokens: TUTOR_MAX_TOKENS,
-  });
+  const requestBody = tutorRequestBody({ host: url.host, model: req.model, messages: req.messages });
+  if (!requestBody) return fail('no-model');
+  const payload = JSON.stringify(requestBody);
   if (payload.length > MAX_BODY_CHARS) return fail('provider');
 
   const timeoutMs = req.timeoutMs ?? TUTOR_TIMEOUT_MS;

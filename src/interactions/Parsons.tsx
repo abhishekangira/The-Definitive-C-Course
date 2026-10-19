@@ -103,7 +103,7 @@ export function Parsons({ entry, files, spec, fileName, isVariant, parentId, onP
         <ExerciseTutor
           id={entry.id} kind={entry.meta.kind} runsIn={entry.meta.runsIn} title={entry.meta.title} statement={entry.meta.prompt}
           hints={entry.meta.hints} hintsViewed={ep.hintsViewed} solution={files['solution.c'] ?? ''} substantive={ep.substantive}
-          assessment={false} isVariant={isVariant} allowTutor={allowTutor} currentCode={program} snapshot={snapshot} onAsked={recordTutorAsk} />
+          assessment={false} isVariant={isVariant} allowTutor={allowTutor} currentCode={program} snapshot={snapshot} bank={pool.map(b => b.text).join('\n')} onAsked={recordTutorAsk} />
       )}
     </div>
   );

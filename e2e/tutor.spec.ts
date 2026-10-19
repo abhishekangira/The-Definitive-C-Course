@@ -70,7 +70,7 @@ test('ask the tutor after a failed check, and nowhere else', async ({ browser })
     localStorage.setItem('tdcc:v1:progress', JSON.stringify(progress));
     if (!localStorage.getItem('tdcc:v1:tutor')) {
       localStorage.setItem('tdcc:v1:tutor', JSON.stringify({
-        version: 1, apiKey: key, baseUrl: 'https://tutor.test/v1', consentedHost: '',
+        version: 1, apiKey: key, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '',
       }));
     }
   }, KEY);
@@ -100,9 +100,8 @@ test('ask the tutor after a failed check, and nowhere else', async ({ browser })
   expect(tutorUrls.every(u => u.startsWith('https://tutor.test/'))).toBe(true);
   const nudgeBody = userMessage(bodies.at(-1) ?? '');
   const sentBody = JSON.parse(bodies.at(-1) ?? '{}') as Record<string, unknown>;
-  expect(Object.keys(sentBody).sort(), 'the request carries exactly these four fields').toEqual(['max_tokens', 'messages', 'models', 'provider']);
-  expect(sentBody.models).toEqual(['openai/gpt-oss-120b', 'google/gemini-3.5-flash-lite', 'nvidia/nemotron-3.5-super-vl:free']);
-  expect(sentBody.provider).toEqual({ only: ['groq', 'cerebras', 'google-ai-studio', 'nvidia'], allow_fallbacks: true });
+  expect(Object.keys(sentBody).sort(), 'a chosen model gets the plain body, never OpenRouter-only fields').toEqual(['max_tokens', 'messages', 'model']);
+  expect(sentBody.model).toBe('test-model');
   expect((sentBody.messages as { role: string }[]).map(m => m.role)).toEqual(['user']);
   expect(nudgeBody).toContain('hello, world');
   expect(nudgeBody).toContain('actual output: ""');
@@ -194,6 +193,41 @@ test('ask the tutor after a failed check, and nowhere else', async ({ browser })
     await page.emulateMedia({ colorScheme: scheme });
     await expectAccessible(page, `settings with the tutor form (${scheme})`);
   }
+  // The model selector. The course default exists only for OpenRouter and sends the owner's fixed body.
+  // This host is stubbed too: nothing here reaches the network.
+  await page.route(/openrouter\.ai/, fulfill);
+  await expect(page.getByRole('radio', { name: /Course default/ })).toBeDisabled();
+  await page.getByRole('textbox', { name: 'Base URL', exact: true }).fill('https://openrouter.ai/api/v1');
+  await page.getByRole('textbox', { name: 'Base URL', exact: true }).press('Tab');
+  await expect(page.getByRole('radio', { name: /Course default/ })).toBeEnabled();
+  await page.getByRole('radio', { name: /Course default/ }).check();
+  await expect(page.locator('#tutor-model'), 'no model box while the course default is chosen').toHaveCount(0);
+  for (const scheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await expectAccessible(page, `settings with the course default chosen (${scheme})`);
+  }
+  mode = 'nudge';
+  await page.getByRole('button', { name: 'Test connection' }).click();
+  await expect(page.getByText(/The first request sends your API key to openrouter\.ai/)).toBeVisible();
+  await page.getByRole('button', { name: 'Send to openrouter.ai' }).click();
+  await expect(page.getByText('Connected. The key works.')).toBeVisible();
+  const defaultBody = JSON.parse(bodies.at(-1) ?? '{}') as Record<string, unknown>;
+  expect(Object.keys(defaultBody).sort(), 'the course default sends exactly these four fields').toEqual(['max_tokens', 'messages', 'models', 'provider']);
+  expect(defaultBody.models).toEqual(['openai/gpt-oss-120b', 'google/gemini-3.5-flash-lite', 'nvidia/nemotron-3.5-super-vl:free']);
+  expect(defaultBody.provider).toEqual({ only: ['groq', 'cerebras', 'google-ai-studio', 'nvidia'], allow_fallbacks: true });
+  expect((defaultBody.messages as { role: string }[]).map(m => m.role)).toEqual(['user']);
+
+  await page.getByRole('radio', { name: /My own model id/ }).check();
+  await expect(page.locator('#tutor-model')).toBeVisible();
+  await expect(page.locator('section[aria-labelledby="tutor-settings-title"] [role="alert"]'), 'choosing "my own model id" is not an error before the learner types').toHaveCount(0);
+  await page.locator('#tutor-model').fill('openai/gpt-4o-mini');
+  await page.locator('#tutor-model').press('Tab');
+  await page.getByRole('button', { name: 'Test connection' }).click();
+  await expect(page.getByText('Connected. The key works.')).toBeVisible();
+  const ownBody = JSON.parse(bodies.at(-1) ?? '{}') as Record<string, unknown>;
+  expect(Object.keys(ownBody).sort()).toEqual(['max_tokens', 'messages', 'model']);
+  expect(ownBody.model).toBe('openai/gpt-4o-mini');
+
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Export progress' }).click(),

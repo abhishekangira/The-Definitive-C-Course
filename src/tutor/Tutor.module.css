@@ -48,3 +48,8 @@
 .reply, .notice { background: var(--info-soft); }
 .problems { margin: 0; padding-left: 1.2rem; }
 .problems li { margin: 0.2rem 0; }
+
+.group { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.group legend { font-weight: 600; font-size: 0.95rem; padding: 0; margin-bottom: var(--space-1); }
+.choice { display: flex; align-items: flex-start; gap: var(--space-2); font-weight: 400; }
+.choice input { margin-top: 0.25rem; flex: none; }

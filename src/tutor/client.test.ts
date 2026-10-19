@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { TUTOR_MAX_RESPONSE_BYTES, requestTutorReply, statusToError, textFromChatBody, tutorPingMessages } from './client';
+import { TUTOR_MAX_RESPONSE_BYTES, requestTutorReply, statusToError, textFromChatBody, tutorPingMessages, tutorRequestBody, type TutorRequest } from './client';
 import { DEFAULT_TUTOR_BASE_URL } from './settings';
 
 const KEY = 'sk-test-super-secret-value';
 const messages = tutorPingMessages();
+/** The course default model (no model chosen) unless the test says otherwise. */
+const ask = (req: Omit<TutorRequest, 'model'> & { model?: string }) => requestTutorReply({ model: '', ...req });
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(typeof body === 'string' ? body : JSON.stringify(body), {
@@ -71,7 +73,7 @@ describe('requestTutorReply', () => {
     });
     const logs = ['log', 'info', 'warn', 'error', 'debug'] as const;
     const spies = logs.map(name => vi.spyOn(console, name).mockImplementation(() => {}));
-    const result = await requestTutorReply({
+    const result = await ask({
       baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages, fetchImpl,
     });
     expect(result).toEqual({ ok: true, text: 'ok' });
@@ -84,7 +86,7 @@ describe('requestTutorReply', () => {
 
   it('caps a long reply and does not echo the key when the body contains it', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(200, okBody(`${'abcd'.repeat(2000)}${KEY}`)));
-    const result = await requestTutorReply({
+    const result = await ask({
       baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages, maxOutputChars: 100, fetchImpl,
     });
     expect(result.ok).toBe(true);
@@ -102,7 +104,7 @@ describe('requestTutorReply', () => {
     [500, 'provider'],
   ] as const)('status %s becomes %s and the message hides the key', async (status, code) => {
     const fetchImpl = vi.fn(async () => jsonResponse(status, { error: KEY }));
-    const result = await requestTutorReply({ baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages, fetchImpl });
+    const result = await ask({ baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages, fetchImpl });
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe(code);
@@ -111,13 +113,13 @@ describe('requestTutorReply', () => {
   });
 
   it('reports a network error when fetch rejects, including a timeout abort', async () => {
-    const network = await requestTutorReply({
+    const network = await ask({
       baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages,
       fetchImpl: async () => { throw new TypeError('Failed to fetch'); },
     });
     expect(network).toMatchObject({ ok: false, code: 'network' });
 
-    const timed = await requestTutorReply({
+    const timed = await ask({
       baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages, timeoutMs: 20,
       fetchImpl: (_url, init) => new Promise((_resolve, reject) => {
         const signal = init?.signal;
@@ -135,7 +137,7 @@ describe('requestTutorReply', () => {
 
   it('reports an empty or unparsable reply', async () => {
     for (const body of ['not-json', JSON.stringify({ choices: [] }), JSON.stringify(okBody('   ')), JSON.stringify(okBody(null))]) {
-      const result = await requestTutorReply({
+      const result = await ask({
         baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages,
         fetchImpl: async () => new Response(body, { status: 200, headers: { 'Content-Type': 'application/json' } }),
       });
@@ -145,9 +147,9 @@ describe('requestTutorReply', () => {
 
   it('refuses a base URL that is not allowed, and a URL that contains the key, without calling fetch', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(200, okBody('no')));
-    const http = await requestTutorReply({ baseUrl: 'http://evil.test/v1', apiKey: KEY, messages, fetchImpl });
+    const http = await ask({ baseUrl: 'http://evil.test/v1', apiKey: KEY, messages, fetchImpl });
     expect(http).toMatchObject({ ok: false, code: 'bad-url' });
-    const leaked = await requestTutorReply({
+    const leaked = await ask({
       baseUrl: `https://example.com/v1?q=${KEY}`, apiKey: KEY, messages, fetchImpl,
     });
     expect(leaked).toMatchObject({ ok: false, code: 'bad-url' });
@@ -163,7 +165,7 @@ describe('requestTutorReply', () => {
       'https://example.com/v1?bearer=abc',
       'https://example.com/v1?accesskey=abc',
     ]) {
-      const result = await requestTutorReply({
+      const result = await ask({
         baseUrl: base, apiKey: base.includes(mixed) ? mixed : KEY, messages, fetchImpl,
       });
       expect(result, base).toMatchObject({ ok: false, code: 'bad-url' });
@@ -173,7 +175,7 @@ describe('requestTutorReply', () => {
 
   it('redacts the key from a 200 reply', async () => {
     const fetchImpl = vi.fn(async () => jsonResponse(200, okBody(`your key is ${KEY}`)));
-    const result = await requestTutorReply({
+    const result = await ask({
       baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages, fetchImpl,
     });
     expect(result.ok).toBe(true);
@@ -198,7 +200,7 @@ describe('requestTutorReply', () => {
       },
     });
     const fetchImpl = vi.fn(async () => new Response(stream, { status: 200, headers: { 'Content-Type': 'application/json' } }));
-    const result = await requestTutorReply({
+    const result = await ask({
       baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages, fetchImpl,
     });
     expect(result).toMatchObject({ ok: false, code: 'empty' });
@@ -209,11 +211,52 @@ describe('requestTutorReply', () => {
       status: 200,
       headers: { 'Content-Type': 'application/json', 'Content-Length': String(TUTOR_MAX_RESPONSE_BYTES + 10) },
     });
-    const capped = await requestTutorReply({
+    const capped = await ask({
       baseUrl: DEFAULT_TUTOR_BASE_URL, apiKey: KEY, messages,
       fetchImpl: async () => declared,
     });
     expect(capped).toMatchObject({ ok: false, code: 'empty' });
     if (!capped.ok) expect(capped.message).not.toContain('visible-body');
+  });
+});
+
+describe('the request body follows the model choice and the host', () => {
+  const MODELS = ['openai/gpt-oss-120b', 'google/gemini-3.5-flash-lite', 'nvidia/nemotron-3.5-super-vl:free'];
+  const sentBody = async (baseUrl: string, model: string) => {
+    let sent: Record<string, unknown> | null = null;
+    const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      sent = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return jsonResponse(200, okBody('ok'));
+    });
+    const result = await requestTutorReply({ baseUrl, apiKey: KEY, model, messages, fetchImpl });
+    return { result, sent: sent as Record<string, unknown> | null, calls: fetchImpl.mock.calls.length };
+  };
+
+  it('sends the course default body to OpenRouter when no model is chosen', async () => {
+    const { result, sent } = await sentBody('https://openrouter.ai/api/v1', '');
+    expect(result).toEqual({ ok: true, text: 'ok' });
+    expect(sent).toEqual({
+      models: MODELS,
+      provider: { only: ['groq', 'cerebras', 'google-ai-studio', 'nvidia'], allow_fallbacks: true },
+      messages,
+      max_tokens: 700,
+    });
+  });
+
+  it('sends only `model`, `messages` and `max_tokens` for a chosen model, on OpenRouter and elsewhere', async () => {
+    for (const base of ['https://openrouter.ai/api/v1', 'https://api.openai.com/v1', 'http://localhost:11434/v1']) {
+      const { sent } = await sentBody(base, 'openai/gpt-4o-mini');
+      expect(Object.keys(sent ?? {}).sort(), base).toEqual(['max_tokens', 'messages', 'model']);
+      expect(sent?.model).toBe('openai/gpt-4o-mini');
+    }
+  });
+
+  it('never sends OpenRouter-only fields to another host, and sends nothing when no model is chosen there', async () => {
+    const { result, calls } = await sentBody('https://api.openai.com/v1', '');
+    expect(result).toMatchObject({ ok: false, code: 'no-model' });
+    expect(calls).toBe(0);
+    expect(tutorRequestBody({ host: 'openrouter.ai.evil.test', model: '', messages })).toBeNull();
+    expect(tutorRequestBody({ host: 'openrouter.ai:8443', model: '   ', messages })).toBeNull();
+    expect(tutorRequestBody({ host: 'openrouter.ai', model: '   ', messages })).toMatchObject({ models: MODELS });
   });
 });

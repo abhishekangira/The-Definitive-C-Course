@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_TUTOR_BASE_URL, TUTOR_STORAGE_KEY, acceptTutorHost, cleanTutorKey, commitTutorDraft, consentCovers,
-  emptyTutorSettings, getTutorSettings, loadTutorSettings, parseTutorBaseUrl, parseTutorSettings, removeTutorKey,
+  DEFAULT_TUTOR_BASE_URL, TUTOR_STORAGE_KEY, acceptTutorHost, cleanTutorKey, cleanTutorModel, commitTutorDraft, consentCovers,
+  emptyTutorSettings, getTutorSettings, isOpenRouter, loadTutorSettings, parseTutorBaseUrl, parseTutorSettings, removeTutorKey,
   replaceTutorSettings, saveTutorSettings, tutorChatUrl, tutorHost,
 } from './settings';
 
@@ -96,7 +96,7 @@ describe('parseTutorSettings (untrusted storage)', () => {
       version: 1,
       apiKey: 12,
       baseUrl: 'http://evil.test/v1',
-      model: 'openai/gpt-4o-mini',
+      model: { id: 'x' },
       consentedHost: 'evil.test',
       extra: '<script>',
     });
@@ -158,13 +158,13 @@ describe('commitTutorDraft', () => {
     replaceTutorSettings(parseTutorSettings({
       version: 1, apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, consentedHost: 'openrouter.ai',
     }));
-    const bad = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: 'http://evil.test/v1' });
+    const bad = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: 'http://evil.test/v1', model: '', useDefaultModel: true });
     expect(bad.problems).toEqual(['url']);
     expect(bad.settings.baseUrl).toBe(DEFAULT_TUTOR_BASE_URL);
     expect(bad.settings.apiKey).toBe('sk-keep');
     expect(bad.settings.consentedHost).toBe('openrouter.ai');
 
-    const moved = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: 'https://api.openai.com/v1' });
+    const moved = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', useDefaultModel: false });
     expect(moved.problems).toEqual([]);
     expect(moved.settings.baseUrl).toBe('https://api.openai.com/v1');
     expect(moved.settings.consentedHost).toBe('');
@@ -175,7 +175,7 @@ describe('commitTutorDraft', () => {
     replaceTutorSettings(parseTutorSettings({
       version: 1, apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, consentedHost: 'openrouter.ai',
     }));
-    const badKey = commitTutorDraft({ apiKey: 'has a space', baseUrl: DEFAULT_TUTOR_BASE_URL });
+    const badKey = commitTutorDraft({ apiKey: 'has a space', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', useDefaultModel: true });
     expect(badKey.problems).toEqual(['key']);
     expect(getTutorSettings().apiKey).toBe('sk-keep');
     acceptTutorHost('openrouter.ai');
@@ -192,12 +192,12 @@ describe('commitTutorDraft', () => {
     replaceTutorSettings(parseTutorSettings({
       version: 1, apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, consentedHost: 'openrouter.ai',
     }));
-    const same = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL });
+    const same = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', useDefaultModel: true });
     expect(same.problems).toEqual([]);
     expect(same.settings.consentedHost).toBe('openrouter.ai');
     expect(consentCovers(same.settings)).toBe(true);
 
-    const replaced = commitTutorDraft({ apiKey: 'sk-new-value', baseUrl: DEFAULT_TUTOR_BASE_URL });
+    const replaced = commitTutorDraft({ apiKey: 'sk-new-value', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', useDefaultModel: true });
     expect(replaced.problems).toEqual([]);
     expect(replaced.settings.apiKey).toBe('sk-new-value');
     expect(replaced.settings.consentedHost).toBe('');
@@ -205,10 +205,63 @@ describe('commitTutorDraft', () => {
 
     acceptTutorHost('openrouter.ai');
     expect(consentCovers(getTutorSettings())).toBe(true);
-    const cleared = commitTutorDraft({ apiKey: '', baseUrl: DEFAULT_TUTOR_BASE_URL });
+    const cleared = commitTutorDraft({ apiKey: '', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', useDefaultModel: true });
     expect(cleared.problems).toEqual([]);
     expect(cleared.settings.apiKey).toBe('');
     expect(cleared.settings.consentedHost).toBe('');
     expect(consentCovers(cleared.settings)).toBe(false);
+  });
+});
+
+describe('the model choice', () => {
+  const stored = (extra: Record<string, unknown> = {}) => parseTutorSettings({
+    version: 1, apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, consentedHost: 'openrouter.ai', ...extra,
+  });
+
+  it('keeps a valid model id and drops spaces, control characters, wrong types and absurd lengths', () => {
+    expect(stored({ model: 'openai/gpt-oss-120b' }).model).toBe('openai/gpt-oss-120b');
+    expect(stored({ model: '  nvidia/nemotron-3.5-super-vl:free  ' }).model).toBe('nvidia/nemotron-3.5-super-vl:free');
+    for (const bad of ['two words', 'tab\there', 'new\nline', 'x'.repeat(201), 12, { id: 'x' }, null, '']) {
+      expect(stored({ model: bad }).model, JSON.stringify(bad)).toBe('');
+    }
+    expect(cleanTutorModel('openai/gpt-4o-mini')).toBe('openai/gpt-4o-mini');
+    expect(cleanTutorModel('a b')).toBe('');
+  });
+
+  it('knows which hosts understand the course default', () => {
+    expect(isOpenRouter('https://openrouter.ai/api/v1')).toBe(true);
+    expect(isOpenRouter('https://api.openai.com/v1')).toBe(false);
+    expect(isOpenRouter('https://openrouter.ai.evil.test/v1')).toBe(false);
+    expect(isOpenRouter('http://localhost:11434/v1')).toBe(false);
+    expect(isOpenRouter('not a url')).toBe(false);
+  });
+
+  it('stores the course default as an empty model and a chosen id as that id, and a model change keeps consent', () => {
+    replaceTutorSettings(stored());
+    const own = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, model: 'openai/gpt-4o-mini', useDefaultModel: false });
+    expect(own.problems).toEqual([]);
+    expect(own.settings.model).toBe('openai/gpt-4o-mini');
+    expect(own.settings.consentedHost, 'same key, same host: consent stays').toBe('openrouter.ai');
+    const back = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, model: 'ignored', useDefaultModel: true });
+    expect(back.problems).toEqual([]);
+    expect(back.settings.model).toBe('');
+  });
+
+  it('rejects a broken id without wiping the stored one, and an empty "my own model" box changes nothing (an empty model would mean the course default)', () => {
+    replaceTutorSettings(stored({ model: 'openai/gpt-4o-mini' }));
+    const broken = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, model: 'two words', useDefaultModel: false });
+    expect(broken.problems).toEqual(['model']);
+    expect(broken.settings.model).toBe('openai/gpt-4o-mini');
+    const empty = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '  ', useDefaultModel: false });
+    expect(empty.problems).toEqual(['model']);
+    expect(empty.settings.model, 'a learner who chose a model is not moved onto the default models').toBe('openai/gpt-4o-mini');
+  });
+
+  it('flags the course default on a host that is not OpenRouter', () => {
+    replaceTutorSettings(stored());
+    const result = commitTutorDraft({ apiKey: 'sk-keep', baseUrl: 'https://api.openai.com/v1', model: '', useDefaultModel: true });
+    expect(result.problems).toEqual(['model']);
+    expect(result.settings.baseUrl).toBe('https://api.openai.com/v1');
+    expect(result.settings.model).toBe('');
   });
 });

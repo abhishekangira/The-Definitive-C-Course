@@ -18,7 +18,21 @@ export const TUTOR_STORAGE_KEY = `${STORAGE_PREFIX}tutor`;
 /** OpenRouter's OpenAI-compatible base. The learner can replace it. */
 export const DEFAULT_TUTOR_BASE_URL = 'https://openrouter.ai/api/v1';
 
+/** The host whose API understands the course's own `models` and `provider` request fields. */
+export const OPENROUTER_HOST = 'openrouter.ai';
+
+/** Examples for the "my own model id" box. The learner can type any id; these are not a promise that the provider still serves them. */
+export const SUGGESTED_TUTOR_MODELS = [
+  'openai/gpt-oss-120b',
+  'google/gemini-3.5-flash-lite',
+  'nvidia/nemotron-3.5-super-vl:free',
+  'openai/gpt-4o-mini',
+  'meta-llama/llama-3.3-70b-instruct',
+  'anthropic/claude-haiku-5.5',
+] as const;
+
 const MAX_API_KEY = 2000;
+const MAX_MODEL = 200;
 const MAX_STORED_CHARS = 20_000;
 
 export interface TutorSettings {
@@ -26,12 +40,14 @@ export interface TutorSettings {
   apiKey: string;
   /** Canonical base URL, no trailing slash. */
   baseUrl: string;
+  /** The learner's own model id. Empty means the course default (several models through OpenRouter), which only OpenRouter understands. */
+  model: string;
   /** `url.host` the learner agreed to send requests to. Empty until they accept, and after the host or the key changes. */
   consentedHost: string;
 }
 
 export function emptyTutorSettings(): TutorSettings {
-  return { apiKey: '', baseUrl: DEFAULT_TUTOR_BASE_URL, consentedHost: '' };
+  return { apiKey: '', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', consentedHost: '' };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -46,6 +62,14 @@ export function cleanTutorKey(v: unknown): string {
   const key = stripBearer(v.trim());
   if (!key || key.length > MAX_API_KEY || /\s/.test(key) || /[\u0000-\u001f\u007f]/.test(key)) return '';
   return key;
+}
+
+/** A model id we are willing to send. Control characters, spaces and absurd lengths are rejected, not truncated. */
+export function cleanTutorModel(v: unknown): string {
+  if (typeof v !== 'string') return '';
+  const model = v.trim();
+  if (!model || model.length > MAX_MODEL || /\s/.test(model) || /[\u0000-\u001f\u007f]/.test(model)) return '';
+  return model;
 }
 
 function isLoopback(hostname: string): boolean {
@@ -102,6 +126,10 @@ export function tutorHost(baseUrl: string): string | null {
   return new URL(base).host;
 }
 
+export function isOpenRouter(baseUrl: string): boolean {
+  return tutorHost(baseUrl) === OPENROUTER_HOST;
+}
+
 /** Rebuilds settings from untrusted JSON. Unknown keys are ignored. A bad document becomes the defaults. */
 export function parseTutorSettings(raw: unknown): TutorSettings {
   const empty = emptyTutorSettings();
@@ -113,6 +141,7 @@ export function parseTutorSettings(raw: unknown): TutorSettings {
   return {
     apiKey: cleanTutorKey(raw.apiKey),
     baseUrl,
+    model: cleanTutorModel(raw.model),
     consentedHost: host && consented === host ? consented : '',
   };
 }
@@ -171,7 +200,7 @@ export function getTutorSettings(): TutorSettings { return current; }
 
 export function replaceTutorSettings(next: TutorSettings): void { write(next); }
 
-/** Drops the key and host consent. The next key asks for permission again. The URL stays. */
+/** Drops the key and host consent. The next key asks for permission again. The URL and model stay. */
 export function removeTutorKey(): void {
   write({ ...current, apiKey: '', consentedHost: '' });
 }
@@ -182,13 +211,22 @@ export function acceptTutorHost(host: string): void {
   write({ ...current, consentedHost: host });
 }
 
-export interface TutorDraft { apiKey: string; baseUrl: string }
+export interface TutorDraft {
+  apiKey: string;
+  baseUrl: string;
+  /** Used only when `useDefaultModel` is false. */
+  model: string;
+  /** The course default: several models through OpenRouter. Stored as an empty model. */
+  useDefaultModel: boolean;
+}
 
-export interface DraftCommit { settings: TutorSettings; problems: Array<'key' | 'url'> }
+export interface DraftCommit { settings: TutorSettings; problems: Array<'key' | 'url' | 'model'> }
 
 /**
- * Validates a form draft against the settings already stored. An illegal URL or key is not saved:
- * the previous allowed value stays, and `problems` says which field was rejected.
+ * Validates a form draft against the settings already stored. An illegal URL, key or model id is not
+ * saved: the previous allowed value stays, and `problems` says which field was rejected. "My own model
+ * id" with nothing typed, or the course default on a host other than OpenRouter, is a `model` problem
+ * too (nothing is sent until a model is chosen).
  */
 export function commitTutorDraft(draft: TutorDraft): DraftCommit {
   const prev = current;
@@ -202,12 +240,24 @@ export function commitTutorDraft(draft: TutorDraft): DraftCommit {
   const canonical = parseTutorBaseUrl(draft.baseUrl);
   if (!canonical) problems.push('url');
   const baseUrl = canonical ?? prev.baseUrl;
+  let model = '';
+  if (!draft.useDefaultModel) {
+    model = cleanTutorModel(draft.model);
+    if (model === '') {
+      // An empty or broken id changes nothing. An empty stored model means the course default, so writing one here
+      // would silently move a learner who chose their own model onto the default models.
+      problems.push('model');
+      model = prev.model;
+    }
+  } else if (!isOpenRouter(baseUrl)) {
+    problems.push('model');
+  }
   const host = tutorHost(baseUrl);
   // Consent is for this key on this host. Clearing or replacing the key asks again.
   // A rejected key or URL keeps the previous value, and its consent.
   const sameKey = apiKey !== '' && apiKey === prev.apiKey;
   const consentedHost = sameKey && host && prev.consentedHost === host ? prev.consentedHost : '';
-  write({ apiKey, baseUrl, consentedHost });
+  write({ apiKey, baseUrl, model, consentedHost });
   return { settings: current, problems };
 }
 
@@ -217,12 +267,20 @@ export function useTutorSettings(): TutorSettings {
   return useSyncExternalStore(subscribe, getTutorSettings, getTutorSettings);
 }
 
+/** How many times another tab changed the settings. A form that holds a draft starts it again from the store. */
+let externalChanges = 0;
+
+export function useExternalTutorChanges(): number {
+  return useSyncExternalStore(subscribe, () => externalChanges, () => externalChanges);
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', e => {
     if (e.key !== TUTOR_STORAGE_KEY) return;
     try {
       current = e.newValue ? parseTutorSettings(JSON.parse(e.newValue)) : emptyTutorSettings();
     } catch { current = emptyTutorSettings(); }
+    externalChanges += 1;
     emit();
   });
 }
