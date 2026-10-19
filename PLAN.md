@@ -119,7 +119,7 @@ Steps are timeline labels (`data-steps`), exported to `steps.json`. Our player *
 
 ### 2.1 Repository layout
 ```
-PLAN.md  AGENTS.md  CLAUDE.md (imports AGENTS.md)  README.md  videos.json
+PLAN.md  AGENTS.md (+ an AGENTS.md in some folders)  README.md  videos.json
 package.json  vite.config.ts  tsconfig.json  playwright.config.ts
 content/                          # ← all course text; editable without touching components
   course.yaml                     # module order, ids, hours, success-criteria map
