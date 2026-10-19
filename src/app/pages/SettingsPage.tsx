@@ -9,6 +9,7 @@ import { downloadBlob } from '../../interactions/zip';
 import { detectStdinMode } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
 import { SpiritBeans, StreakWarrior, WarriorGallery } from '../../components/StreakWarrior';
+import { TutorSettingsPanel } from '../../tutor/TutorSettingsPanel';
 import { BeanArt } from '../../components/WarriorArt';
 import { useNow } from '../../components/useNow';
 import { BEAN_EVERY, dayWord, MAX_BEANS, recentDays, START_BEANS, streakStatus } from '../../progress/streak';
@@ -134,6 +135,8 @@ export function SettingsPage() {
           Low-memory mode: don't download the compiler (≈24 MB); show stored outputs instead.
         </label>
       </section>
+
+      <TutorSettingsPanel />
 
       <section className={styles.panel}>
         <h2>Start over</h2>

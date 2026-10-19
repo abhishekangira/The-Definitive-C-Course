@@ -11,14 +11,16 @@ import { browserExec } from './exec-browser';
 import { seededShuffle } from './hash';
 import { useExerciseProgress } from './useExerciseProgress';
 import { GiveUp, Hints, TestResults, type AssessmentProps } from './ExerciseParts';
+import { ExerciseTutor } from '../tutor/TutorPanel';
+import type { TutorCheckSnapshot } from '../tutor/eligibility';
 import { Icon } from '../components/Icon';
 import styles from './Interaction.module.css';
 import ps from './Parsons.module.css';
 
 interface Block { key: string; text: string; indent: number }
 
-export function Parsons({ entry, files, spec, fileName, isVariant, parentId, onPassed, assessment, onGiveUp }: {
-  entry: ExerciseEntry; files: Record<string, string>; spec: TestsSpec; fileName: string; isVariant: boolean; parentId?: string; onPassed: () => void;
+export function Parsons({ entry, files, spec, fileName, isVariant, parentId, onPassed, assessment, onGiveUp, allowTutor = true }: {
+  entry: ExerciseEntry; files: Record<string, string>; spec: TestsSpec; fileName: string; isVariant: boolean; parentId?: string; onPassed: () => void; allowTutor?: boolean;
 } & AssessmentProps) {
   const progress = useProgress();
   const indentMode = entry.meta.parsons?.indent ?? false;
@@ -31,9 +33,10 @@ export function Parsons({ entry, files, spec, fileName, isVariant, parentId, onP
   const [placed, setPlaced] = useState<Block[]>([]);
   const [results, setResults] = useState<TestResult[]>([]);
   const [diag, setDiag] = useState<{ raw: string } | null>(null);
+  const [snapshot, setSnapshot] = useState<TutorCheckSnapshot | null>(null);
   const [checking, setChecking] = useState(false);
   const [passedNow, setPassedNow] = useState(false);
-  const { ep, recordAttempt, viewHint } = useExerciseProgress(entry.id, parentId);
+  const { ep, recordAttempt, recordTutorAsk, viewHint } = useExerciseProgress(entry.id, parentId);
   const bank = pool.filter(b => !placed.some(p => p.key === b.key));
 
   const move = (i: number, d: -1 | 1) => setPlaced(p => { const n = [...p]; const j = i + d; if (j < 0 || j >= n.length) return p; [n[i], n[j]] = [n[j], n[i]]; return n; });
@@ -47,6 +50,7 @@ export function Parsons({ entry, files, spec, fileName, isVariant, parentId, onP
     setResults(report.results);
     setDiag(report.compile.ok ? null : { raw: report.compile.raw });
     const passed = report.allPassed;
+    setSnapshot({ code: program, results: report.results, diagnostics: report.compile.raw, failed: !passed });
     recordAttempt(program, passed);
     if (passed) { setPassedNow(true); onPassed(); }
   };
@@ -89,12 +93,18 @@ export function Parsons({ entry, files, spec, fileName, isVariant, parentId, onP
       </div>
       <div className={styles.actions}>
         <button type="button" className="btn btn-primary" onClick={check} disabled={checking || placed.length === 0}>{checking ? 'Compiling and testing…' : 'Compile and test my program'}</button>
-        <button type="button" className="btn btn-ghost" onClick={() => { setPlaced([]); setResults([]); }}>Start over</button>
+        <button type="button" className="btn btn-ghost" onClick={() => { setPlaced([]); setResults([]); setSnapshot(null); }}>Start over</button>
         {assessment ? <GiveUp onGiveUp={onGiveUp} disabled={passedNow} /> : ep.passed && <span className="badge badge-ok">Passed</span>}
       </div>
       {diag && <DiagnosticsList diagnostics={[]} raw={diag.raw} />}
       <TestResults results={results} hideHints={assessment} />
       {!assessment && <Hints hints={entry.meta.hints} viewed={ep.hintsViewed} onView={viewHint} maxTier={isVariant ? 2 : 3} />}
+      {!assessment && (
+        <ExerciseTutor
+          id={entry.id} kind={entry.meta.kind} runsIn={entry.meta.runsIn} title={entry.meta.title} statement={entry.meta.prompt}
+          hints={entry.meta.hints} hintsViewed={ep.hintsViewed} solution={files['solution.c'] ?? ''} substantive={ep.substantive}
+          assessment={false} isVariant={isVariant} allowTutor={allowTutor} currentCode={program} snapshot={snapshot} bank={pool.map(b => b.text).join('\n')} onAsked={recordTutorAsk} />
+      )}
     </div>
   );
 }

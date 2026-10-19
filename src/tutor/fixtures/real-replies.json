@@ -1,0 +1,100 @@
+{
+  "capturedFrom": "Live OpenRouter run on 2026-10-19: openai/gpt-oss-120b through Groq or Cerebras, driven by the real app and browser compiler. The guard refused each reply even though none gives the solution away.",
+  "cases": [
+    {
+      "name": "quotes the learner’s own wrong printf",
+      "exercise": "hello-world",
+      "why": "window `printf(hello` is a prefix of both the learner’s line and the solution line",
+      "statement": "Write a program that prints exactly `hello, world` followed by a newline. Lowercase, one comma, one space.\n",
+      "solution": "#include <stdio.h>\n\nint main(void) {\n    printf(\"hello, world\\n\");\n    return 0;\n}\n",
+      "bank": "",
+      "learnerCode": "#include <stdio.h>\n\nint main(void) {\n    printf(\"hello world\\n\");\n    return 0;\n}\n",
+      "results": [
+        {
+          "status": "fail",
+          "name": "prints hello, world",
+          "expected": "hello, world\n",
+          "actual": "hello world\n",
+          "message": "wrong output: first difference on line 1, character 6: expected ',', got ' '"
+        }
+      ],
+      "reply": "Your program runs without errors, but the test checks for an **exact** match to the required output. The specification says the output must be exactly:\n\n```\nhello, world\n```\n\nincluding the comma after “hello”. In your `printf` you wrote:\n\n```c\nprintf(\"hello world\\n\");\n```\n\nso the string lacks the comma. Because the test compares the program’s output character‑by‑character, the first mismatch occurs at character 6 (where a comma is expected but a space appears). The missing punctuation means the output doesn’t satisfy the specification, even though the rest of the line and the newline are correct. To pass the test, the printed text must include that comma exactly where it belongs."
+    },
+    {
+      "name": "quotes the expected output in parentheses",
+      "exercise": "hello-world",
+      "why": "window `(hello,world` is only prose in parentheses",
+      "statement": "Write a program that prints exactly `hello, world` followed by a newline. Lowercase, one comma, one space.\n",
+      "solution": "#include <stdio.h>\n\nint main(void) {\n    printf(\"hello, world\\n\");\n    return 0;\n}\n",
+      "bank": "",
+      "learnerCode": "#include <stdio.h>\n\nint main(void) {\n    printf(\"hello world\");\n    return 0;\n}\n",
+      "results": [
+        {
+          "status": "fail",
+          "name": "prints hello, world",
+          "expected": "hello, world\n",
+          "actual": "hello world",
+          "message": "wrong output: first difference on line 1, character 6: expected ',', got ' '"
+        }
+      ],
+      "reply": "Your program prints **`hello world`** instead of **`hello, world`** because the format string you gave to `printf` is missing two things:\n\n1. **A comma** after `hello`. The expected output has a comma (`hello, world`), but your string has a space (`hello world`), so the first character that differs is the comma versus the space (character 6 on line 1).\n\n2. **A newline** at the end. The specification requires the output to end with `\\n`, but your string stops right after `world`. Without the newline, the output doesn’t match the required `hello, world\\n`.\n\nIn short, the literal you passed to `printf` doesn’t exactly match the required output. Adding the missing comma and the newline character will make the program satisfy the test."
+    },
+    {
+      "name": "quotes the learner’s own loop header",
+      "exercise": "fix-pyramid",
+      "why": "window `<=height` is in the learner’s own `row <= height`",
+      "statement": "**Bug report:** \"I asked for a pyramid of height 3. It printed **four** lines, and the first one was empty.\nHeight 1 gives two lines. It's always one too many.\"\n\nExpected for height 3:\n```\nHeight: #\n##\n###\n```\n(The prompt `Height: ` has no newline, and the input you type isn't part of the output, so the first `#` follows the prompt.)\nFind the bug and fix it without rewriting the program. (`get_int`, which reads the height, comes from the helper header `learnc.h` that comes with the course; lesson 5 opens it up.)\n",
+      "solution": "#include <stdio.h>\n#include \"learnc.h\"\n\nint main(void) {\n    int height = get_int(\"Height: \");\n    for (int row = 1; row <= height; row++) {\n        for (int i = 0; i < row; i++) {\n            printf(\"#\");\n        }\n        printf(\"\\n\");\n    }\n    return 0;\n}\n",
+      "bank": "",
+      "learnerCode": "#include <stdio.h>\n#include \"learnc.h\"\n\nint main(void) {\n    int height = get_int(\"Height: \");\n    for (int row = 0; row <= height; row++) {\n        for (int i = 0; i < row; i++) {\n            printf(\"#\");\n        }\n        printf(\"\\n\");\n    }\n    return 0;\n}\n",
+      "results": [
+        {
+          "status": "fail",
+          "name": "height 1 prints one row",
+          "expected": "Height: #\n",
+          "actual": "Height: \n#\n",
+          "message": "wrong output"
+        }
+      ],
+      "reply": "Notice that your outer `for` loop begins with `row = 0` and runs while `row <= height`.  \nWhat does the loop do on the very first iteration when `row` is 0?  \nIf you changed the start value (or the loop condition) so that the loop skips that empty iteration, how would the output change?"
+    },
+    {
+      "name": "quotes the learner’s own loops in two fences",
+      "exercise": "fix-pyramid",
+      "why": "window `for(introw` is a prefix of the learner’s own `for (int row = 0; ...`",
+      "statement": "**Bug report:** \"I asked for a pyramid of height 3. It printed **four** lines, and the first one was empty.\nHeight 1 gives two lines. It's always one too many.\"\n\nExpected for height 3:\n```\nHeight: #\n##\n###\n```\n(The prompt `Height: ` has no newline, and the input you type isn't part of the output, so the first `#` follows the prompt.)\nFind the bug and fix it without rewriting the program. (`get_int`, which reads the height, comes from the helper header `learnc.h` that comes with the course; lesson 5 opens it up.)\n",
+      "solution": "#include <stdio.h>\n#include \"learnc.h\"\n\nint main(void) {\n    int height = get_int(\"Height: \");\n    for (int row = 1; row <= height; row++) {\n        for (int i = 0; i < row; i++) {\n            printf(\"#\");\n        }\n        printf(\"\\n\");\n    }\n    return 0;\n}\n",
+      "bank": "",
+      "learnerCode": "#include <stdio.h>\n#include \"learnc.h\"\n\nint main(void) {\n    int height = get_int(\"Height: \");\n    for (int row = 0; row < height; row++) {\n        for (int i = 0; i < row; i++) {\n            printf(\"#\");\n        }\n        printf(\"\\n\");\n    }\n    return 0;\n}\n",
+      "results": [
+        {
+          "status": "fail",
+          "name": "height 1 prints one row",
+          "expected": "Height: #\n",
+          "actual": "Height: \n",
+          "message": "wrong output"
+        }
+      ],
+      "reply": "Your outer loop starts at **0**:\n\n```c\nfor (int row = 0; row < height; row++) {\n```\n\nInside that loop you print `row` number of `#` characters:\n\n```c\nfor (int i = 0; i < row; i++) {\n    printf(\"#\");\n}\n```\n\nWhen `row` is **0** (the first iteration), the inner loop’s condition `i < row` is false immediately, so no `#` gets printed. You then execute `printf(\"\\n\");`, which produces the empty line that the tests reported.\n\nBecause the outer loop begins at 0, you always produce one extra line (the empty one) and you end up printing only `height‑1` rows of `#`. Changing the comparison operator (`<` versus `<=`) won’t fix the problem while `row` still starts at 0; the extra iteration will remain, just shifted.\n\nTo get the correct number of rows, you need either:\n\n* to start `row` at **1** (so the first iteration prints one `#`), or  \n* to keep `row` starting at 0 but adjust the inner loop (or the `printf(\"\\n\")`) so that the first iteration prints one `#` instead of none.\n\nIn short, the bug is the choice of the initial value for `row` and how it interacts with the inner loop’s condition, which together cause an empty first line and one fewer line of `#` than expected."
+    },
+    {
+      "name": "names #include and main in a Parsons exercise",
+      "exercise": "countdown-order",
+      "why": "every line is visible in the bank, so `#include <stdio.h>` reveals nothing",
+      "statement": "Build a program that prints `3...`, `2...`, `1...` on separate lines and then `Liftoff!`.\nUse a `for` loop that counts **down**. Three of the lines are distractors: leave them in the bank.\n",
+      "solution": "#include <stdio.h>\nint main(void) {\n    for (int i = 3; i > 0; i--) {\n        printf(\"%d...\\n\", i);\n    }\n    printf(\"Liftoff!\\n\");\n    return 0;\n}\n",
+      "bank": "#include <stdio.h>\nint main(void) {\n    for (int i = 3; i > 0; i--) {\n        printf(\"%d...\\n\", i);\n    }\n    printf(\"Liftoff!\\n\");\n    return 0;\n}\n    for (int i = 3; i >= 0; i--) {\n    printf(\"Liftoff!\\n\")\n    return 1;",
+      "learnerCode": "    printf(\"%d...\\n\", i);",
+      "results": [
+        {
+          "status": "fail",
+          "name": "compiles without warnings",
+          "expected": "",
+          "actual": "",
+          "message": "your code doesn't compile yet"
+        }
+      ],
+      "reply": "Have you placed that `printf` inside a proper `main` function and included the required header? Think about starting with something like `#include <stdio.h>` and then defining `int main(void) { … }` before you add a loop that counts down. What loop header could you write to start at 3 and stop before 0?"
+    }
+  ]
+}
