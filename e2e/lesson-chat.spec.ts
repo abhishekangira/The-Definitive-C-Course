@@ -143,7 +143,8 @@ test('the keyboard reaches the chat without a highlight: button, box, Enter, Esc
   await expect(open).toHaveAttribute('aria-expanded', 'false');
   await open.focus();
   await page.keyboard.press('Enter');
-  await expect(open).toHaveAttribute('aria-expanded', 'true');
+  await expect(panel(page)).toBeVisible();
+  await expect(open, 'the floating button gives way to the panel').toBeHidden();
   const box = panel(page).getByRole('textbox', { name: 'Your question' });
   await expect(box, 'opening puts the cursor in the box').toBeFocused();
   await page.keyboard.type('What does int main(void) mean?');

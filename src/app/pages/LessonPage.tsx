@@ -15,6 +15,7 @@ import { LESSON_CHAT_ID, LessonChat, type LessonChatHandle } from '../../tutor/L
 import { lessonTextFrom } from '../../tutor/lessonText';
 import { SelectionToolbar } from '../../tutor/SelectionToolbar';
 import { useTutorSettings } from '../../tutor/settings';
+import chatStyles from '../../tutor/LessonChat.module.css';
 import styles from './Pages.module.css';
 
 export function LessonPage() {
@@ -31,7 +32,12 @@ export function LessonPage() {
   const prose = useRef<HTMLDivElement>(null);
   const askButton = useRef<HTMLButtonElement>(null);
   const readLesson = useCallback(() => (prose.current ? lessonTextFrom(prose.current) : ''), []);
-  const closeChat = useCallback(() => { setChatOpen(false); askButton.current?.focus(); }, []);
+  // The button is hidden while the chat is open, so focus returns to it only after it is visible again.
+  const refocus = useRef(false);
+  const closeChat = useCallback(() => { refocus.current = true; setChatOpen(false); }, []);
+  useEffect(() => {
+    if (!chatOpen && refocus.current) { refocus.current = false; askButton.current?.focus(); }
+  }, [chatOpen]);
   useEffect(() => { if (!tutorOn) setChatOpen(false); }, [tutorOn]);
 
   useEffect(() => {
@@ -59,7 +65,7 @@ export function LessonPage() {
   const doneCount = m.lessons.filter(l => progress.lessons[l.frontmatter.id]).length;
 
   return (
-    <div className={styles.lessonLayout} data-chat={tutorOn && chatOpen ? 'open' : undefined}>
+    <div className={styles.lessonLayout}>
       <article className={styles.lesson}>
         <nav className={styles.crumbs} aria-label="Breadcrumb">
           <Link to="/">Course</Link> <span aria-hidden="true">/</span> <Link to={`/m/${moduleId}`}>{label}</Link>
@@ -67,12 +73,6 @@ export function LessonPage() {
         <h1>{lesson.frontmatter.title}</h1>
         <div className={styles.lessonMeta}>
           <p className={styles.meta}>Lesson {idx + 1} of {m.lessons.length} · {lesson.frontmatter.minutes} min</p>
-          {tutorOn && (
-            <button
-              type="button" ref={askButton} className="btn btn-sm" aria-expanded={chatOpen} aria-controls={LESSON_CHAT_ID}
-              onClick={() => (chatOpen ? closeChat() : setChatOpen(true))}
-            ><Icon name="chat" /> Ask the tutor</button>
-          )}
         </div>
         {Lesson && samples !== undefined ? (
           <LessonProvider lessonId={lesson.frontmatter.id} moduleId={moduleId} samples={samples}>
@@ -117,6 +117,11 @@ export function LessonPage() {
       </aside>
       {tutorOn && (
         <>
+          <button
+            type="button" ref={askButton} className={`btn ${chatStyles.fab}`} aria-expanded={chatOpen} aria-controls={LESSON_CHAT_ID}
+            data-open={chatOpen ? 'true' : undefined}
+            onClick={() => (chatOpen ? closeChat() : setChatOpen(true))}
+          ><Icon name="chat" /> Ask the tutor</button>
           <SelectionToolbar container={prose} onAction={(action, quote) => { setChatOpen(true); chat.current?.ask(action, quote); }} />
           <LessonChat
             key={lesson.frontmatter.id} ref={chat} open={chatOpen} onClose={closeChat}
