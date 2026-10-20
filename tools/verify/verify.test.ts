@@ -20,8 +20,11 @@ afterAll(() => { rmSync(generatedRoot, { recursive: true, force: true }); cleanu
 
 const toolchainReady = existsSync(path.join(ROOT, 'src/generated/toolchain-version.json'));
 const hasGdb = spawnSync('gdb', ['--version']).status === 0 && process.platform === 'linux' && process.arch === 'x64';
-// The m97 sessions need the CI toolchain (.github/AGENTS.md), lldb-22 included.
-const hasSessionTools = hasGdb && ['valgrind', 'make', process.env.LLDB22 ?? 'lldb-22'].every(t => spawnSync(t, ['--version']).status === 0);
+// The m97 sessions need the CI toolchain (root AGENTS.md "Start here" step 3), lldb-22 included. Missing tools skip
+// the test with a warning naming them; on CI they are an error, so a green CI run always ran it.
+const missingSessionTools = hasGdb ? ['valgrind', 'make', process.env.LLDB22 ?? 'lldb-22'].filter(t => spawnSync(t, ['--version']).status !== 0) : ['gdb (x86-64 Linux)'];
+const hasSessionTools = missingSessionTools.length === 0 || !!process.env.CI;
+if (!hasSessionTools) process.stderr.write(`\nverify.test.ts: SKIPPING the m97 native-session test: missing ${missingSessionTools.join(', ')}. Install the CI toolchain (root AGENTS.md, "Start here" step 3).\n`);
 
 describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtures)', () => {
   it('m99: every sample passes and the generated file has the expected answers', async () => {
@@ -103,7 +106,8 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     writeFileSync(samplesPath, onDisk);
   }, 120_000);
 
-  it.skipIf(!hasSessionTools)('m97: every native session runs twice, stable, and stores the real tool output', async () => {
+  it.skipIf(!hasSessionTools)(`m97: every native session runs twice, stable, and stores the real tool output${missingSessionTools.length ? ` (missing: ${missingSessionTools.join(', ')})` : ''}`, async () => {
+    expect(missingSessionTools, 'the CI toolchain must include every session tool').toEqual([]);
     const r = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm97', trace: false });
     expect(r.problems).toEqual([]);
     const file = JSON.parse(readFileSync(path.join(generatedRoot, 'sessions/m97.json'), 'utf8')) as SessionsFile;
