@@ -10,6 +10,28 @@ A self-paced, interactive web app that teaches C17 and low-level computer fundam
 > - **[DOCS]** marks a claim read in documentation only.
 > - Raw reports and working prototypes are in `research/reports/` and `research/prototypes/`. Three independent adversarial reviews of the first draft are in `research/reports/review-*.md`; their confirmed findings are folded in below.
 
+## Contents
+
+- [0. Key decisions at a glance](#0-key-decisions-at-a-glance)
+- [1. Research summary](#1-research-summary)
+  - [1.1 Options for running real C in the browser](#11-options-for-running-real-c-in-the-browser) · [1.2 What the browser build cannot do](#12-what-the-browser-build-cannot-do-and-how-the-plan-handles-it) · [1.3 HyperFrames](#13-hyperframes) · [1.4 YouTube](#14-youtube)
+- [2. Architecture](#2-architecture)
+  - [2.1 Repository layout](#21-repository-layout) · [2.2 App](#22-app) · [2.3 In-browser C runtime](#23-in-browser-c-runtime) · [2.4 Content format](#24-content-format) · [2.5 Progress, gating and pedagogy rules](#25-progress-gating-and-pedagogy-rules) · [2.6 Optional AI tutor](#26-optional-ai-tutor-bring-your-own-key)
+- [3. Build-time verification pipeline](#3-build-time-verification-pipeline)
+  - [3.1 Samples](#31-samples-npm-run-verify) · [3.2 64-bit vs browser difference check](#32-the-64-bit-vs-browser-difference-check-automatic) · [3.3 Other generators](#33-other-generators) · [3.4 Undefined behaviour and prediction answers](#34-undefined-behaviour-nondeterminism-and-prediction-answers) · [3.5 Browser checks](#35-browser-checks) · [3.6 Per-module definition of done](#36-per-module-definition-of-done)
+- [4. Local toolchain, projects and animations](#4-local-toolchain-projects-and-animations)
+  - [4.1 Local setup (Module 3)](#41-local-setup-module-3) · [4.2 Projects and the `check.mjs` runner](#42-projects-and-the-checkmjs-runner) · [4.3 Helper header](#43-helper-header) · [4.4 Conventions and licensing guard](#44-conventions-and-licensing-guard) · [4.5 YouTube embeds](#45-youtube-embeds) · [4.6 Animations](#46-animations-hyperframes) · [4.7 Hosting and deploy](#47-hosting-and-deploy)
+- [5. Interaction types (components)](#5-interaction-types-components)
+- [6. Course outline](#6-course-outline)
+  - [M1. C in Your Browser](#m1-c-in-your-browser-from-js-to-c-10-h-2-weeks-browser) · [M2. Bits, Bytes & Numbers](#m2-bits-bytes--numbers-10-h-2-weeks-browser) · [M3. Going Native](#m3-going-native-toolchain-debugger-sanitizers--make-10-h-2-weeks-native--browser) · [M4. Arrays, Strings & the CLI](#m4-arrays-strings--the-command-line-10-h-2-weeks-lessons-in-browser-project-native) · [M5. Algorithms & Big-O](#m5-algorithms-recursion-structs--big-o-18-h-36-weeks-lessons-in-browser-project-native) · [M6. Pointers & Dynamic Memory](#m6-pointers--dynamic-memory-155-h-31-weeks-lessons-in-browser-with-both-panels-project-native) · [M7. Structs, Files & Binary Formats](#m7-structs-files--binary-formats-15-h-3-weeks-native-with-browser-snippets-and-bmp-preview) · [M8. Data Structures I](#m8-data-structures-i-lists-stacks-queues-trees-15-h-3-weeks-visualizers-in-browser-project-native) · [M9. Data Structures II](#m9-data-structures-ii-hash-tables-tries--speller-155-h-31-weeks-visualizers-in-browser-project-native--cs50-c-parity) · [M10. Inside the CPU](#m10-inside-the-cpu-instructions-registers--assembly-17-h-34-weeks-native--browser-tinycpu-and-stored-listings) · [M11. Linking & Loading](#m11-linking-loading-libraries--the-c-abi-10-h-2-weeks-native--browser-multi-file) · [M12. Memory Hierarchy](#m12-memory-hierarchy--performance-135-h-27-weeks-browser-simulator--native-measurements) · [M13. The Operating System](#m13-the-operating-system-processes-system-calls-files--virtual-memory-155-h-31-weeks-native-posix-wsl-on-windows) · [Capstone: malloc](#capstone-build-malloc-then-run-your-own-programs-on-it-25-h-5-weeks-native)
+  - [6.1 Success criteria → modules](#61-success-criteria--modules-i-introduced-d-developed-a-assessed) · [6.2 CS50x parity](#62-cs50x-2026-problem-set-parity)
+- [7. Visualizers](#7-visualizers-react-components-the-learner-controls)
+- [8. HyperFrames animations](#8-hyperframes-animations-3090-s-each-is-followed-by-an-interaction)
+- [9. YouTube segments](#9-youtube-segments-2-per-module-videosjson-is-delivered-for-review-in-stage-2)
+- [10. Further study](#10-further-study-out-of-scope-rather-than-skimmed)
+- [11. Build roadmap](#11-build-roadmap) · [Risks and mitigations](#risks-and-mitigations)
+- [12. Decisions](#12-decisions-confirmed-by-the-client-stage-1-review)
+
 ---
 
 ## 0. Key decisions at a glance
