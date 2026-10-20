@@ -65,7 +65,7 @@ export function SettingsPage() {
           </p>
         </div>
         <div className="setting-body">
-          <StreakWarrior size={224} />
+          <StreakWarrior size={160} />
           <p>
             {streak.state === 'none'
               ? (streak.longest > 0

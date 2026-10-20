@@ -19,7 +19,7 @@
 
 /* Course map */
 .homeTitle { max-width: 860px; margin-bottom: var(--space-6); }
-.homeTitle h1 { font-size: clamp(1.75rem, 4vw, 2.25rem); letter-spacing: -0.03em; }
+.homeTitle h1 { font-size: 2rem; letter-spacing: -0.03em; }
 .upNext { display: flex; flex-direction: column; gap: var(--space-4); justify-content: space-between; }
 .cardLabel { margin: 0; font-size: 0.875rem; font-weight: 500; letter-spacing: 0; color: var(--text-muted); }
 .nextTitle { margin: 0 0 var(--space-1); font-size: 1.75rem; line-height: 1.2; font-weight: 600; letter-spacing: -0.025em; }
@@ -88,8 +88,10 @@ a.lessonLink:hover { background: var(--bg-sunken); }
 .lessonTitle { flex: 1; font-weight: 500; }
 .lessonOff .lessonTitle { font-weight: 400; }
 .lessonMeta { color: var(--text-muted); font-size: 0.875rem; display: flex; gap: var(--space-2); align-items: center; font-variant-numeric: tabular-nums; }
-.problem { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); margin-top: var(--space-2); background: var(--bg); }
+/* A problem is a row under the step, not a second card: the exercise box inside it already has its own frame. */
+.problem { border-top: 1px solid var(--border); margin-top: var(--space-3); padding-top: var(--space-3); }
 .problem summary { cursor: pointer; font-weight: 500; display: flex; gap: var(--space-2); align-items: center; }
+.problem[open] summary { margin-bottom: var(--space-2); }
 .okBox, .warnBox { padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); margin: var(--space-3) 0; }
 .okBox { background: var(--ok-soft); color: var(--ok-ink); }
 .warnBox { background: var(--warn-soft); color: var(--warn-ink); }
