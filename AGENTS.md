@@ -86,7 +86,7 @@ Risk: (does it touch learner-facing app code, the generated-data format, or CI/d
 | `npm run e2e` | Playwright click-through of every lesson, problem set, project and checkpoint, plus axe (run `npm run build` first) |
 | `npm run e2e:stress [-- <playwright args>]` | the e2e suite repeated under CPU load (`e2e/AGENTS.md`) |
 
-CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub Pages; a PR that changes only root docs, `LICENSE` or `research/` skips the heavy steps. The `Targets` workflow runs samples on macOS arm64, Linux arm64 and Windows MSVC and a bot commits `src/generated/targets/`. Details of both workflows: `.github/AGENTS.md`.
+CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub Pages; a PR that changes only notes (root docs, `AGENTS.md` files, skills), `LICENSE` or `research/` skips the heavy steps. The `Targets` workflow runs samples on macOS arm64, Linux arm64 and Windows MSVC and a bot commits `src/generated/targets/`. Details of both workflows: `.github/AGENTS.md`.
 
 ## Where to find what
 | Path | Contents | Read before editing |
