@@ -1,8 +1,8 @@
-/* The lesson chat: a panel docked at the right edge of the lesson column, and the toolbar that follows a highlight.
+/* The lesson chat: a panel and its opening button floating at the bottom right of the window (the page does not move for them), and the toolbar that follows a highlight.
    Surfaces are told apart by a tone step or a 1px line, never by a shadow. On a phone the panel is a sheet at the bottom. */
 .panel {
   position: fixed;
-  right: max(var(--space-4), calc(50vw - var(--column) / 2));
+  right: var(--space-4);
   bottom: var(--space-4);
   z-index: 30;
   width: var(--chat-width);
@@ -14,8 +14,11 @@
   border-radius: var(--radius);
   overflow: hidden;
 }
+.fab { position: fixed; right: var(--space-4); bottom: var(--space-4); z-index: 30; background: var(--bg-elev); border-color: var(--border-strong); }
+.fab[data-open] { visibility: hidden; }
 .panel[hidden] { display: none; }
 @media (max-width: 960px) {
+  .fab { right: var(--space-2); bottom: var(--space-2); }
   .panel { left: var(--space-2); right: var(--space-2); bottom: var(--space-2); width: auto; height: min(72dvh, 640px); }
 }
 

@@ -124,12 +124,11 @@ a.lessonLink:hover { background: var(--bg-sunken); }
   .lessonLayout { grid-template-columns: minmax(0, 1fr); }
   .rail { display: none; }
 }
-/* The tutor chat takes the rail's place at the right edge. The reading column makes room for it and the rail steps aside;
-   on a phone the chat is a sheet over the page instead (LessonChat.module.css). */
-.lessonLayout[data-chat="open"] { grid-template-columns: minmax(0, 1fr); padding-right: calc(var(--chat-width) + var(--space-5)); }
-.lessonLayout[data-chat="open"] .rail { display: none; }
-@media (max-width: 960px) {
-  .lessonLayout[data-chat="open"] { padding-right: 0; }
+/* The chat floats over the page. Only where it would cover the reading column (about 961 to 1199px) the column makes room
+   and the rail steps aside; below that the chat is a sheet, above it the panel covers the rail's side. */
+@media (min-width: 961px) and (max-width: 1199px) {
+  .lessonLayout[data-chat="open"] { padding-right: calc(var(--chat-width) + var(--space-5)); }
+  .lessonLayout[data-chat="open"] .rail { display: none; }
 }
 
 /* Quizzes */

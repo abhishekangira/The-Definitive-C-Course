@@ -31,6 +31,8 @@
 
 .footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2) var(--space-4); padding-top: var(--space-4); padding-bottom: var(--space-5); color: var(--text-muted); font-size: 0.875rem; }
 .footer a { color: var(--text-muted); }
+/* A lesson with the tutor on has a floating button at the bottom right: the footer's last line stays clear of it. */
+body:has([data-tutor]) .footer { padding-bottom: calc(2.25rem + var(--space-6)); }
 
 @media (max-width: 640px) {
   .frame { padding-left: var(--space-4); padding-right: var(--space-4); }

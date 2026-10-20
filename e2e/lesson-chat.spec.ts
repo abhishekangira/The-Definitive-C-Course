@@ -143,7 +143,8 @@ test('the keyboard reaches the chat without a highlight: button, box, Enter, Esc
   await expect(open).toHaveAttribute('aria-expanded', 'false');
   await open.focus();
   await page.keyboard.press('Enter');
-  await expect(open).toHaveAttribute('aria-expanded', 'true');
+  await expect(panel(page)).toBeVisible();
+  await expect(open, 'the floating button gives way to the panel').toBeHidden();
   const box = panel(page).getByRole('textbox', { name: 'Your question' });
   await expect(box, 'opening puts the cursor in the box').toBeFocused();
   await page.keyboard.type('What does int main(void) mean?');
@@ -289,5 +290,25 @@ test('phone width (390x844): the chat fits, Enter is a new line and Send sends',
   await expect(log(page)).toContainText('Short answer.');
   expect(bodies[0].messages[1].content).toBe('First line\nsecond line');
   await expectAccessible(page, 'lesson chat at phone width');
+  await context.close();
+});
+
+test('at 1024px the open chat does not cover the reading column, and the button does not cover the page end', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1024, height: 800 } });
+  const page = await context.newPage();
+  await seed(context, { cards: { 'm01-l1': [0] } });
+  await stubProvider(page, ['ok']);
+  await page.goto('#/m/m01/01-hello-compiled-world');
+  await expect(page.getByRole('heading', { level: 1, name: 'Hello, compiled world' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  await expect(panel(page)).toBeVisible();
+  const article = await page.locator('article').first().boundingBox();
+  const floating = await panel(page).boundingBox();
+  expect(article!.x + article!.width, 'the reading column ends before the panel').toBeLessThanOrEqual(floating!.x);
+  await panel(page).getByRole('button', { name: 'Close the tutor chat' }).click();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const button = await page.getByRole('button', { name: 'Ask the tutor' }).boundingBox();
+  const footer = await page.getByRole('link', { name: /About/ }).last().boundingBox();
+  expect(footer!.y + footer!.height, 'the last line of the page is above the button').toBeLessThanOrEqual(button!.y);
   await context.close();
 });
