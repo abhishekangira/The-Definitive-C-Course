@@ -292,3 +292,23 @@ test('phone width (390x844): the chat fits, Enter is a new line and Send sends',
   await expectAccessible(page, 'lesson chat at phone width');
   await context.close();
 });
+
+test('at 1024px the open chat does not cover the reading column, and the button does not cover the page end', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1024, height: 800 } });
+  const page = await context.newPage();
+  await seed(context, { cards: { 'm01-l1': [0] } });
+  await stubProvider(page, ['ok']);
+  await page.goto('#/m/m01/01-hello-compiled-world');
+  await expect(page.getByRole('heading', { level: 1, name: 'Hello, compiled world' })).toBeVisible();
+  await page.getByRole('button', { name: 'Ask the tutor' }).click();
+  await expect(panel(page)).toBeVisible();
+  const article = await page.locator('article').first().boundingBox();
+  const floating = await panel(page).boundingBox();
+  expect(article!.x + article!.width, 'the reading column ends before the panel').toBeLessThanOrEqual(floating!.x);
+  await panel(page).getByRole('button', { name: 'Close the tutor chat' }).click();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const button = await page.getByRole('button', { name: 'Ask the tutor' }).boundingBox();
+  const footer = await page.getByRole('link', { name: /About/ }).last().boundingBox();
+  expect(footer!.y + footer!.height, 'the last line of the page is above the button').toBeLessThanOrEqual(button!.y);
+  await context.close();
+});

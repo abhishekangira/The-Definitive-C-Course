@@ -65,7 +65,14 @@ export function LessonPage() {
   const doneCount = m.lessons.filter(l => progress.lessons[l.frontmatter.id]).length;
 
   return (
-    <div className={styles.lessonLayout}>
+    <div className={styles.lessonLayout} data-tutor={tutorOn ? '' : undefined} data-chat={tutorOn && chatOpen ? 'open' : undefined}>
+      {/* First in the DOM, so the keyboard reaches the chat early; it is position: fixed, so this does not move it. */}
+      {tutorOn && (
+        <button
+          type="button" ref={askButton} className={`btn ${chatStyles.fab}`} aria-expanded={chatOpen} aria-controls={LESSON_CHAT_ID}
+          data-open={chatOpen ? 'true' : undefined} onClick={() => setChatOpen(true)}
+        ><Icon name="chat" /> Ask the tutor</button>
+      )}
       <article className={styles.lesson}>
         <nav className={styles.crumbs} aria-label="Breadcrumb">
           <Link to="/">Course</Link> <span aria-hidden="true">/</span> <Link to={`/m/${moduleId}`}>{label}</Link>
@@ -117,11 +124,6 @@ export function LessonPage() {
       </aside>
       {tutorOn && (
         <>
-          <button
-            type="button" ref={askButton} className={`btn ${chatStyles.fab}`} aria-expanded={chatOpen} aria-controls={LESSON_CHAT_ID}
-            data-open={chatOpen ? 'true' : undefined}
-            onClick={() => (chatOpen ? closeChat() : setChatOpen(true))}
-          ><Icon name="chat" /> Ask the tutor</button>
           <SelectionToolbar container={prose} onAction={(action, quote) => { setChatOpen(true); chat.current?.ask(action, quote); }} />
           <LessonChat
             key={lesson.frontmatter.id} ref={chat} open={chatOpen} onClose={closeChat}

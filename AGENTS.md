@@ -34,10 +34,8 @@ Stop and ask the owner (in the PR, or the person who gave you the ticket) before
 5. **Evidence, not narration.** Paste the tail of each command's real output. Use the CI toolchain (Ubuntu 24.04, gcc 13, clang 22, gdb 15, valgrind 3.22, Node 22). If yours differs, say exactly how, and don't call a failure "pre-existing" unless you also ran it on a clean `main`. Once CI is green on `main`, CI is the evidence: link the green run.
 6. **Generated files.** Don't commit regenerated `src/generated/{samples,traces}` files: CI owns them and a bot commit updates your branch when behaviour changes (see **Decisions**). Never commit files that differ only because your toolchain's version strings or UB garbage differ from CI's.
 7. **Post the report on the right PR**, once, in the description or in a single comment that names the PR number and head SHA. Never post a report on another PR.
-7a. **Subscribe to every PR you open.** Right after creating it, watch it for CI results and review comments (in Claude Code, `subscribe_pr_activity`) and drive it to green. Don't wait to be asked.
 8. **Answer review with commits.** Push a new commit (no force-push) and reply to each point: fixed (commit), not fixed (why), or disagree (why). Don't mark a point resolved without one.
-9. **UI or content changes need screenshots.** Take them with Playwright at desktop (about 1400px) and phone (390px) widths, and in light and dark only when the PR is about colours or themes. Commit them under `.github/pr-screenshots/<ticket-name>/`, and embed them in the PR description as `https://github.com/<owner>/<repo>/blob/<SHA>/<path>?raw=true` links pinned to that commit's SHA (`raw.githubusercontent.com` links don't load on a private repo), so they survive later pushes.
-10. **UI changes** also report the axe result in light and dark (`npm run e2e`) and how the change behaves with the keyboard.
+9. **UI changes** also report the axe result in light and dark (`npm run e2e`) and how the change behaves with the keyboard.
 
 PR description template (under about 300 words):
 ```
