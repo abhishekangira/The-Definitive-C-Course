@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useTheme, type ThemeChoice } from './theme';
 import { useProgress, daysSinceExport, storageWorks } from '../progress/store';
+import { driveSyncedWithin, useDrive } from '../progress/drive';
 import { course } from '../content-runtime/course';
 import { StreakChip } from '../components/StreakChip';
 import { BrandMark } from '../components/BrandMark';
@@ -34,7 +35,9 @@ export function Layout({ children }: { children?: ReactNode }) {
   const [persistent] = useState(storageWorks);
   const days = daysSinceExport(progress);
   const hasProgress = Object.keys(progress.lessons).length > 0;
-  const remindExport = hasProgress && (days === null || days >= 7);
+  // A Drive sync in the last week is a backup too.
+  const synced = driveSyncedWithin(useDrive().settings, 7);
+  const remindExport = hasProgress && !synced && (days === null || days >= 7);
 
   // Move focus to the main heading on navigation, so screen readers announce the new page.
   useEffect(() => {

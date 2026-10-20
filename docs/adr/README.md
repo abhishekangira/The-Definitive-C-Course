@@ -11,6 +11,7 @@ One file per decision that the code alone does not explain: what was decided, th
 |---|---|
 | [0001](0001-agent-docs-layout.md) | Agent notes: a short root `AGENTS.md`, notes per area, skills and these records; no `CLAUDE.md` |
 | [0002](0002-e2e-workers.md) | Playwright e2e runs on 2 workers in CI and 3 locally |
+| [0003](0003-google-drive-sync.md) | Optional progress sync to the learner's Google Drive app-data folder, with no backend |
 
 Template:
 

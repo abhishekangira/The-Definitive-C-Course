@@ -206,7 +206,6 @@ export function storageWorks(): boolean {
 }
 
 let state: ProgressV1 = load();
-const listeners = new Set<() => void>();
 
 function load(): ProgressV1 {
   const raw = storageGet(KEY);
@@ -218,7 +217,11 @@ function load(): ProgressV1 {
   return fresh;
 }
 
-function emit() { listeners.forEach(l => l()); }
+/** 'local': this tab changed the document; 'storage': another tab did, and this tab loaded its write. */
+export type ProgressChangeSource = 'local' | 'storage';
+const listeners = new Set<(source: ProgressChangeSource) => void>();
+
+function emit(source: ProgressChangeSource = 'local') { listeners.forEach(l => l(source)); }
 
 /** Immutable update. The updater may mutate the draft (a structured clone). */
 export function update(fn: (draft: ProgressV1) => void): void {
@@ -244,14 +247,15 @@ export function replaceProgress(next: ProgressV1): void {
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', e => {
     if (e.key !== KEY || !e.newValue) return;
-    try { state = migrate(JSON.parse(e.newValue)); emit(); } catch { /* ignore foreign writes */ }
+    try { state = migrate(JSON.parse(e.newValue)); emit('storage'); } catch { /* ignore foreign writes */ }
   });
 }
 
-function subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); }
+/** Calls `l` after every change to the document, this tab's updates and other tabs' writes, with which it was. */
+export function subscribeProgress(l: (source: ProgressChangeSource) => void) { listeners.add(l); return () => { listeners.delete(l); }; }
 
 export function useProgress(): ProgressV1 {
-  return useSyncExternalStore(subscribe, getProgress, getProgress);
+  return useSyncExternalStore(subscribeProgress, getProgress, getProgress);
 }
 
 // ---------- export / import ----------
