@@ -21,6 +21,9 @@ Stop and ask the owner (in the PR, or the person who gave you the ticket) before
 - change a decision in PLAN.md, in **Decisions** below or in `docs/adr/` (propose a new decision record instead),
 - add support or tests for a browser other than Chromium (see **Decisions**).
 
+## Filing an issue
+Before you write, split or label a GitHub issue, read `.agents/skills/write-issue/SKILL.md`.
+
 ## Pull request rules (what makes review cheap)
 1. **Small and single-purpose.** One ticket, no unrelated edits (formatting, renames, drive-by fixes). If the diff is over about 400 changed lines (not counting fixtures and generated files), say why or split it.
 2. **The simplest thing that meets the acceptance criteria.** No speculative features or extra abstractions. If you add a mechanism of more than about 50 lines, say why a simpler one would not do.
