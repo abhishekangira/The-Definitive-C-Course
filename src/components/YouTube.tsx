@@ -1,9 +1,10 @@
 // <YouTube video="yt-1"> — one verified segment from videos.json, embedded from youtube-nocookie.com
 // behind a click-to-load facade (no request to YouTube until the learner chooses to watch).
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { videoByKey } from '../content-runtime/course';
 import { Icon } from './Icon';
 import { embedSrc } from './youtube-embed';
+import { loadSegmentTranscript, type SegmentTranscript } from './youtube-transcript';
 import styles from './YouTube.module.css';
 
 const fmt = (s: number) => `${Math.floor(s / 3600) ? `${Math.floor(s / 3600)}:` : ''}${String(Math.floor((s % 3600) / 60)).padStart(Math.floor(s / 3600) ? 2 : 1, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -11,6 +12,12 @@ const fmt = (s: number) => `${Math.floor(s / 3600) ? `${Math.floor(s / 3600)}:` 
 export function YouTube({ video }: { video: string }) {
   const v = videoByKey(video);
   const [play, setPlay] = useState(false);
+  const [transcript, setTranscript] = useState<SegmentTranscript | null>(null);
+  useEffect(() => {
+    let live = true;
+    if (v) void loadSegmentTranscript(v).then(t => { if (live) setTranscript(t); }).catch(() => {});
+    return () => { live = false; };
+  }, [v]);
   if (!v) return <p role="alert">Unknown video “{video}” (not in videos.json).</p>;
   const src = embedSrc(v);
   if (!src) return <p role="alert">Video “{video}” has an invalid id or time range in videos.json.</p>;
@@ -32,6 +39,13 @@ export function YouTube({ video }: { video: string }) {
         )}
       </div>
       <figcaption className={styles.caption}><strong>Why this clip:</strong> {v.why}</figcaption>
+      {transcript && (
+        <details className={styles.transcript} data-transcript>
+          <summary>Transcript</summary>
+          <p>{transcript.text}</p>
+          {transcript.credit && <p className={styles.credit}>{transcript.credit}</p>}
+        </details>
+      )}
     </figure>
   );
 }

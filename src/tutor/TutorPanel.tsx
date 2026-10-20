@@ -116,7 +116,7 @@ export function TutorPanel({ title, statement, hints, hintsViewed, solution, che
       {!settings.apiKey && <p className={styles.muted}>Add an API key in <a href="#/settings">Settings</a> to ask the tutor.</p>}
       {needsModel && <p className={styles.muted}>Choose a model in <a href="#/settings">Settings</a> to ask the tutor. The course default models only work through OpenRouter.</p>}
       {settings.apiKey && !needsModel && !consentCovers(settings) && host && !declined && (
-        <ConsentNotice host={host} onAccept={() => { moveFocus.current = 'nudge'; acceptTutorHost(host); setDeclined(false); }} onDecline={() => { moveFocus.current = 'declined'; setDeclined(true); }} />
+        <ConsentNotice host={host} scope="exercise" onAccept={() => { moveFocus.current = 'nudge'; acceptTutorHost(host); setDeclined(false); }} onDecline={() => { moveFocus.current = 'declined'; setDeclined(true); }} />
       )}
       {settings.apiKey && !needsModel && !consentCovers(settings) && declined && (
         <p ref={declinedRef} tabIndex={-1} className={styles.muted}>Nothing was sent. <button type="button" className="btn btn-sm" onClick={() => setDeclined(false)}>Show the permission notice</button></p>

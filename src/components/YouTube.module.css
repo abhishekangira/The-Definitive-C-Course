@@ -7,3 +7,6 @@
 .facadeText { display: flex; flex-direction: column; gap: 2px; }
 .small { font-size: 0.82rem; color: #c3c9d1; }
 .caption { padding: var(--space-2) var(--space-4); font-size: 0.92rem; border-top: 1px solid var(--border); }
+.transcript { padding: var(--space-2) var(--space-4); border-top: 1px solid var(--border); font-size: 0.92rem; }
+.transcript summary { cursor: pointer; font-weight: 600; }
+.credit { color: var(--text-muted); font-size: 0.82rem; }

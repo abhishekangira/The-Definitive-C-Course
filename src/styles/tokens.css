@@ -56,6 +56,8 @@
   --shadow: none;
   --shadow-lg: 0 8px 24px rgba(14, 17, 22, 0.14);
   --column: 1120px;
+  /* the lesson chat panel */
+  --chat-width: 380px;
   /* a reading line: about 75 characters of Geist at any size */
   --measure: 38em;
   --content-width: 760px;

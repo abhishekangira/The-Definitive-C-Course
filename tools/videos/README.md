@@ -51,7 +51,7 @@ tsx tools/videos/excerpt.ts yt-1 /path/to/SlqjA04_dpk.en.vtt     # rewrites tool
 npm run videos:check
 ```
 
-`vtt.ts` has no Node imports, so the app can reuse `parseVtt()` and `cuesBetween()` to show a segment's transcript:
+The app does this: `src/components/youtube-transcript.ts` cuts the segment at its two anchors, `<YouTube>` shows it under the clip, and the lesson chat sends it to the learner's AI provider with the rest of the lesson. `vtt.ts` has no Node imports, so the app reuses `parseVtt()`, `findAnchor()` and `cuesBetween()`:
 `import.meta.glob('/tools/videos/transcripts/*.vtt', { query: '?raw', import: 'default' })`.
 
 ## Embedding
