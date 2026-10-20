@@ -5,7 +5,7 @@ A self-paced, interactive web app that teaches C17 and low-level computer fundam
 - Learners write and run real C in the browser from the first lesson.
 - From Module 3 (weeks 5–6), they also use their own toolchain for debugging, sanitizers and projects.
 
-> **Status:** Stage 1 (research + plan) was reviewed and approved; the client's decisions are recorded in §12. Stage 2 (app shell + Module 1) is in progress.
+> **Status:** Stage 1 (research + plan) was reviewed and approved; the client's decisions are recorded in §12. Current status: the **Status** section of `AGENTS.md`.
 > - **[V]** marks a technical claim verified by running it in this repo's container during research.
 > - **[DOCS]** marks a claim read in documentation only.
 > - Raw reports and working prototypes are in `research/reports/` and `research/prototypes/`. Three independent adversarial reviews of the first draft are in `research/reports/review-*.md`; their confirmed findings are folded in below.

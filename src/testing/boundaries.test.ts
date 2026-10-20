@@ -24,9 +24,14 @@ function inspect(file: string): { imports: Use[]; globals: Use[] } {
   const imports: Use[] = [];
   const globals: Use[] = [];
   const at = (n: ts.Node) => sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1;
+  /** `globalThis`, also behind parentheses or a cast: `(globalThis as any)`. */
+  const unwrap = (e: ts.Expression): ts.Expression =>
+    ts.isParenthesizedExpression(e) || ts.isAsExpression(e) || ts.isNonNullExpression(e) || ts.isSatisfiesExpression(e) ? unwrap(e.expression) : e;
+  const isGlobalThis = (e: ts.Expression) => { const b = unwrap(e); return ts.isIdentifier(b) && b.text === 'globalThis'; };
   const isMemberName = (n: ts.Identifier) => {
     const p = n.parent;
-    return (ts.isPropertyAccessExpression(p) && p.name === n) || (ts.isQualifiedName(p) && p.right === n)
+    // `globalThis.process` names the global itself, so it is not a member name.
+    return (ts.isPropertyAccessExpression(p) && p.name === n && !isGlobalThis(p.expression)) || (ts.isQualifiedName(p) && p.right === n)
       || ((ts.isPropertyAssignment(p) || ts.isPropertySignature(p) || ts.isPropertyDeclaration(p) || ts.isMethodDeclaration(p)
         || ts.isMethodSignature(p) || ts.isEnumMember(p)) && p.name === n);
   };
@@ -40,6 +45,8 @@ function inspect(file: string): { imports: Use[]; globals: Use[] } {
       imports.push({ line: at(n), text: arg && ts.isStringLiteralLike(arg) ? arg.text : '<computed import()>' });
     } else if (ts.isIdentifier(n) && GLOBALS.has(n.text) && !isMemberName(n)) {
       globals.push({ line: at(n), text: n.text });
+    } else if (ts.isElementAccessExpression(n) && isGlobalThis(n.expression) && ts.isStringLiteralLike(n.argumentExpression) && GLOBALS.has(n.argumentExpression.text)) {
+      globals.push({ line: at(n), text: n.argumentExpression.text });
     }
     ts.forEachChild(n, visit);
   };
@@ -51,6 +58,12 @@ describe('src/testing stays environment-neutral', () => {
   it('finds the shared modules (guard against checking nothing)', () => {
     expect(modules).toContain('runner.ts');
     expect(modules).toContain('token.ts');
+  });
+
+  it('has no subfolder that this test does not read', () => {
+    const dirs = readdirSync(DIR, { withFileTypes: true }).filter(e => e.isDirectory() && e.name !== '__fixtures__')
+      .map(e => `src/testing/${e.name}/: this test reads only the files directly in src/testing; move the modules up, or make it walk this folder`);
+    expect(dirs).toEqual([]);
   });
 
   it('imports only its own modules and neutral packages', () => {
