@@ -1,42 +1,66 @@
-/* Design tokens. Light is the default; dark applies by system preference unless the learner chose
-   a theme (html[data-theme]). Every colour pair here meets WCAG AA for its intended use. */
+/* Design tokens: the "achromatic ledger" look. The chrome is ink on a cool grey ground with white surfaces; the one hue
+   (--data, a blue) marks the data that matters (progress, the current step, the line being traced); status colours stay
+   in small pale pairs. Light is the default; dark applies by system preference unless the learner chose a theme
+   (html[data-theme]). Every text pair here meets WCAG AA (4.5:1) and `tokens.test.ts` checks it. The ground, surface and
+   code tones are separated by tone steps and 1px lines, never by shadows. */
 :root {
   color-scheme: light;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-sans: "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
-  --bg: #f7f7f5;
+  /* surfaces: ground < surface (cards, inputs); sunken is the tone step for callouts, hover and the active nav item */
+  --bg: #f2f4f7;
   --bg-elev: #ffffff;
-  --bg-sunken: #efefeb;
-  --bg-code: #f3f4f1;
-  --border: #dcdcd6;
-  --border-strong: #b9b9b0;
-  --text: #1b1d22;
-  --text-muted: #5a5e66;
-  --text-faint: #636770;
-  --accent: #1d5fd1;
+  --bg-sunken: #e9edf2;
+  --bg-code: #f6f7f9;
+  /* lines: a hairline for structure, a firmer one for dashes and frames, and a 3:1 edge for form controls */
+  --border: #dde2e9;
+  --border-strong: #c3cad4;
+  --control: #7d858f;
+  /* text */
+  --text: #0e1116;
+  --text-muted: #555e6b;
+  --text-faint: #5f6975;
+  /* the primary action is near-black; links are ink and underlined */
+  --accent: #14171c;
+  --accent-hover: #2b3038;
   --accent-text: #ffffff;
-  --accent-soft: #e6eefc;
-  --focus: #1d5fd1;
-  --ok: #137a3a;
-  --ok-soft: #e3f4e8;
-  --warn: #8a5a00;
-  --warn-soft: #fbf1db;
-  --err: #b42318;
-  --err-soft: #fde8e6;
-  --info-soft: #eaf2fb;
-  --terminal-bg: #111418;
-  --terminal-text: #e6e8eb;
-  --terminal-muted: #9aa3ad;
+  --accent-soft: #e9edf2;
+  /* the one hue: data, the current step, focus */
+  --data: #1d5fbf;
+  --data-soft: #e3ecfa;
+  --data-ink: #174a96;
+  --focus: #1d5fbf;
+  /* status: a text colour for lines of text, a pale fill and a dark ink for pills */
+  --ok: #1a7245;
+  --ok-soft: #dcf3e5;
+  --ok-ink: #0b3d24;
+  --warn: #8a4b0a;
+  --warn-soft: #fdf1dc;
+  --warn-ink: #6b3a05;
+  --err: #b3261e;
+  --err-soft: #fdeceb;
+  --err-ink: #7a1712;
+  --info-soft: #e9edf2;
+  /* the terminal and the video stage stay dark in both themes */
+  --terminal-bg: #101112;
+  --terminal-text: #e8eaec;
+  --terminal-muted: #a1a7ae;
   --terminal-err: #ff9b8f;
   --terminal-in: #8fd3ff;
 
-  --radius: 10px;
+  /* tight radii, chosen once: cards 8, controls 6, chips 4 */
+  --radius: 8px;
   --radius-sm: 6px;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.12);
+  --radius-chip: 4px;
+  --shadow: none;
+  --shadow-lg: 0 8px 24px rgba(14, 17, 22, 0.14);
+  --column: 1120px;
+  /* a reading line: about 75 characters of Geist at any size */
+  --measure: 38em;
   --content-width: 760px;
   --wide-width: 1120px;
+  --control-height: 36px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -44,60 +68,75 @@
   --space-5: 24px;
   --space-6: 32px;
   --space-7: 48px;
+  --space-8: 72px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #0f1216;
-    --bg-elev: #171b21;
-    --bg-sunken: #0b0d10;
-    --bg-code: #12161b;
-    --border: #2a3039;
-    --border-strong: #3d4552;
-    --text: #e7e9ec;
-    --text-muted: #a4abb6;
-    --text-faint: #8a929e;
-    --accent: #7cb2ff;
-    --accent-text: #0b1220;
-    --accent-soft: #16233a;
-    --focus: #7cb2ff;
-    --ok: #5fd08a;
-    --ok-soft: #13291c;
-    --warn: #f0c060;
-    --warn-soft: #2d2412;
-    --err: #ff8a7f;
-    --err-soft: #331715;
-    --info-soft: #142233;
-    --terminal-bg: #07090b;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --bg: #101112;
+    --bg-elev: #17181a;
+    --bg-sunken: #202224;
+    --bg-code: #131415;
+    --border: #2a2c2f;
+    --border-strong: #3a3d41;
+    --control: #787e86;
+    --text: #f1f2f3;
+    --text-muted: #b3b7bc;
+    --text-faint: #9ba0a6;
+    --accent: #f1f2f3;
+    --accent-hover: #ffffff;
+    --accent-text: #101112;
+    --accent-soft: #202224;
+    --data: #7cb0ff;
+    --data-soft: #172640;
+    --data-ink: #a9ccff;
+    --focus: #7cb0ff;
+    --ok: #5cc98c;
+    --ok-soft: #14291e;
+    --ok-ink: #8fe0b2;
+    --warn: #e9b866;
+    --warn-soft: #2b2312;
+    --warn-ink: #f0cd8c;
+    --err: #ff8f85;
+    --err-soft: #321816;
+    --err-ink: #ffb5ad;
+    --info-soft: #202224;
+    --terminal-bg: #0a0b0c;
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0f1216;
-  --bg-elev: #171b21;
-  --bg-sunken: #0b0d10;
-  --bg-code: #12161b;
-  --border: #2a3039;
-  --border-strong: #3d4552;
-  --text: #e7e9ec;
-  --text-muted: #a4abb6;
-  --text-faint: #8a929e;
-  --accent: #7cb2ff;
-  --accent-text: #0b1220;
-  --accent-soft: #16233a;
-  --focus: #7cb2ff;
-  --ok: #5fd08a;
-  --ok-soft: #13291c;
-  --warn: #f0c060;
-  --warn-soft: #2d2412;
-  --err: #ff8a7f;
-  --err-soft: #331715;
-  --info-soft: #142233;
-  --terminal-bg: #07090b;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --bg: #101112;
+  --bg-elev: #17181a;
+  --bg-sunken: #202224;
+  --bg-code: #131415;
+  --border: #2a2c2f;
+  --border-strong: #3a3d41;
+  --control: #787e86;
+  --text: #f1f2f3;
+  --text-muted: #b3b7bc;
+  --text-faint: #9ba0a6;
+  --accent: #f1f2f3;
+  --accent-hover: #ffffff;
+  --accent-text: #101112;
+  --accent-soft: #202224;
+  --data: #7cb0ff;
+  --data-soft: #172640;
+  --data-ink: #a9ccff;
+  --focus: #7cb0ff;
+  --ok: #5cc98c;
+  --ok-soft: #14291e;
+  --ok-ink: #8fe0b2;
+  --warn: #e9b866;
+  --warn-soft: #2b2312;
+  --warn-ink: #f0cd8c;
+  --err: #ff8f85;
+  --err-soft: #321816;
+  --err-ink: #ffb5ad;
+  --info-soft: #202224;
+  --terminal-bg: #0a0b0c;
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
 }

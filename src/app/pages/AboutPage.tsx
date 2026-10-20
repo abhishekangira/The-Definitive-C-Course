@@ -18,6 +18,7 @@ export function AboutPage() {
         <li><strong>@bjorn3/browser_wasi_shim</strong>: MIT OR Apache-2.0.</li>
         <li><strong>React</strong>, <strong>React Router</strong>, <strong>MDX</strong>, <strong>CodeMirror</strong>, <strong>fflate</strong>: MIT.</li>
         <li><strong>HyperFrames</strong> (animation authoring, build time only): Apache-2.0. <strong>GSAP</strong>: standard no-charge licence (build time only; rendered videos contain no GSAP code).</li>
+        <li><strong>Geist</strong> and <strong>Geist Mono</strong> (the page fonts, self-hosted via @fontsource-variable): SIL Open Font License 1.1.</li>
         <li><strong>Fonts in animations</strong>: SIL Open Font License 1.1.</li>
         <li><strong>CS50 lecture clips</strong> are embedded from YouTube (Harvard CS50, CC BY-NC-SA 4.0) and are not re-hosted.</li>
       </ul>

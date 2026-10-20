@@ -4,7 +4,7 @@
   overflow: hidden;
   background: var(--bg-code);
 }
-.editor:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.editor:focus-within { border-color: var(--focus); box-shadow: 0 0 0 1px var(--focus); }
 
 /* Shown while CodeMirror loads. It reproduces the editor's metrics (no top/bottom border, 10px vertical padding, 14.5px/1.4 mono text,
    a gutter-wide left strip) so the box has the same height when the editor replaces it. */

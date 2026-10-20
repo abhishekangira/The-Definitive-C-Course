@@ -8,33 +8,37 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.55;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
-a { color: var(--accent); text-underline-offset: 2px; }
-a:hover { text-decoration-thickness: 2px; }
+/* Links are ink, set apart by the underline (not by colour), so they stay readable inside a sentence. */
+a { color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { text-decoration-color: currentColor; }
 
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
 /* Headings and <main> are focused by script after navigation so screen readers announce the new page;
    they are not interactive, so they get no visible ring. */
 [tabindex="-1"]:focus-visible { outline: none; }
+::selection { background: var(--data-soft); color: var(--text); }
 
-h1, h2, h3, h4 { line-height: 1.25; margin: 1.4em 0 0.5em; font-weight: 700; letter-spacing: -0.01em; }
-h1 { font-size: 2rem; margin-top: 0; }
-h2 { font-size: 1.45rem; }
-h3 { font-size: 1.15rem; }
+h1, h2, h3, h4 { line-height: 1.25; margin: 1.6em 0 0.5em; font-weight: 600; letter-spacing: -0.015em; }
+h1 { font-size: 1.75rem; margin-top: 0; letter-spacing: -0.025em; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1.0625rem; }
+h4 { font-size: 0.9375rem; }
 p, ul, ol { margin: 0 0 1em; }
 li + li { margin-top: 0.25em; }
+strong, b { font-weight: 600; }
 hr { border: 0; border-top: 1px solid var(--border); margin: var(--space-6) 0; }
 
-code, kbd, samp, pre { font-family: var(--font-mono); font-size: 0.92em; }
+code, kbd, samp, pre { font-family: var(--font-mono); font-size: 0.9em; }
 :not(pre) > code {
-  background: var(--bg-code);
-  border: 1px solid var(--border);
+  background: var(--bg-sunken);
   border-radius: 4px;
-  padding: 0.05em 0.35em;
+  padding: 0.1em 0.35em;
   white-space: break-spaces;
 }
 pre {
@@ -53,12 +57,20 @@ kbd {
   background: var(--bg-elev);
 }
 
-table { border-collapse: collapse; width: 100%; margin: 0 0 1em; font-size: 0.95em; }
-th, td { border: 1px solid var(--border); padding: var(--space-2) var(--space-3); text-align: left; vertical-align: top; }
-th { background: var(--bg-sunken); font-weight: 600; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 1em; font-size: 0.93em; font-variant-numeric: tabular-nums; }
+th, td { border-bottom: 1px solid var(--border); padding: var(--space-2) var(--space-3); text-align: left; vertical-align: top; }
+th { color: var(--text-muted); font-weight: 500; font-size: 0.9em; }
 
 button { font: inherit; color: inherit; }
 input, textarea, select { font: inherit; color: inherit; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), textarea, select {
+  background: var(--bg-elev);
+  border: 1px solid var(--control);
+  border-radius: var(--radius-sm);
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select { min-height: var(--control-height); padding: 0 var(--space-3); }
+textarea { padding: var(--space-2) var(--space-3); }
 
 .visually-hidden {
   position: absolute !important;
@@ -74,41 +86,52 @@ input, textarea, select { font: inherit; color: inherit; }
 }
 .skip-link:focus { top: var(--space-3); }
 
-/* Shared button styles */
+/* Shared button styles: flat, one fill. The primary is near-black (inverted in dark); the rest are white with a 1px edge. */
 .btn {
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  min-height: 40px;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--control-height);
   padding: 0 var(--space-4);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   background: var(--bg-elev);
   color: var(--text);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
 }
 /* Inline SVG icons (src/components/Icon.tsx): sized by the surrounding text, coloured by `currentColor`. */
 .icon { display: inline-block; width: 1em; height: 1em; vertical-align: -0.15em; flex: none; }
-.btn:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--accent); }
-.btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.btn:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--bg-sunken); border-color: var(--control); }
+/* A disabled control stays legible (never dimmed with opacity): a flat tone with muted text. */
+.btn:disabled, .btn[aria-disabled="true"] { background: var(--bg-sunken); color: var(--text-muted); border-color: var(--border); cursor: not-allowed; }
 .btn-primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
-.btn-primary:hover:not(:disabled):not([aria-disabled="true"]) { filter: brightness(1.08); }
+.btn-primary:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .btn-ghost { background: transparent; border-color: transparent; }
-.btn-ghost:hover:not(:disabled) { background: var(--bg-sunken); border-color: var(--border); }
-.btn-sm { min-height: 32px; padding: 0 var(--space-3); font-size: 0.9em; }
+.btn-ghost:hover:not(:disabled) { background: var(--bg-sunken); border-color: transparent; }
+.btn-sm { min-height: 30px; padding: 0 var(--space-3); font-size: 0.9em; }
 
+/* A pill sits inside a row or beside a value: a pale tint with dark text of the same hue. */
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 0.78rem; font-weight: 600;
-  padding: 2px 8px; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 500; line-height: 1;
+  min-height: 20px; padding: 0 7px; border-radius: var(--radius-chip);
   background: var(--bg-sunken); color: var(--text-muted);
-  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
 }
-.badge-ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
-.badge-warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
-.badge-err { background: var(--err-soft); color: var(--err); border-color: transparent; }
-.badge-accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.badge-ok { background: var(--ok-soft); color: var(--ok-ink); }
+.badge-warn { background: var(--warn-soft); color: var(--warn-ink); }
+.badge-err { background: var(--err-soft); color: var(--err-ink); }
+.badge-accent { background: var(--data-soft); color: var(--data-ink); }
+
+/* A settings row: the section's title and help on the left, its controls on a surface on the right. Used by the settings page. */
+.setting { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: var(--space-3) var(--space-7); padding: var(--space-6) 0; border-top: 1px solid var(--border); }
+.setting:first-of-type { border-top: 0; padding-top: var(--space-2); }
+.setting-head h2 { margin: 0 0 var(--space-2); font-size: 1rem; }
+.setting-head p { margin: 0 0 var(--space-2); color: var(--text-muted); font-size: 0.875rem; }
+.setting-body { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; padding: var(--space-5); background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); }
+.setting-body > p { margin: 0; }
+@media (max-width: 860px) { .setting { grid-template-columns: minmax(0, 1fr); } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
