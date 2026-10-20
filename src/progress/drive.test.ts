@@ -14,12 +14,15 @@ class FakeDrive {
   files = new Map<string, string>();
   calls: string[] = [];
   status: number | null = null;
+  /** Requests ("METHOD /path") that fail like a blocked request: fetch rejects with a TypeError. */
+  unreachable = new Set<string>();
   private next = 1;
 
   fetch: typeof fetch = async (input, init) => {
     const url = new URL(String(input));
     const method = init?.method ?? 'GET';
     this.calls.push(`${method} ${url.pathname}`);
+    if (this.unreachable.has(`${method} ${url.pathname}`)) throw new TypeError('Failed to fetch');
     expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer tok');
     if (this.status) return new Response('', { status: this.status });
     const json = (v: unknown) => new Response(JSON.stringify(v), { status: 200 });
@@ -38,12 +41,10 @@ class FakeDrive {
       this.files.set(m[1], String(init?.body));
       return json({ id: m[1] });
     }
-    if (method === 'POST' && url.pathname === '/upload/drive/v3/files') {
-      const body = String(init?.body);
-      expect(body).toContain('"parents":["appDataFolder"]');
-      const parts = body.split(/\r\n--tdcc\w+(?:--)?/);
+    if (method === 'POST' && url.pathname === '/drive/v3/files') {
+      expect(JSON.parse(String(init?.body))).toEqual({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'], mimeType: 'application/json' });
       const id = `f${this.next++}`;
-      this.files.set(id, parts[1].split('\r\n\r\n')[1]);
+      this.files.set(id, '');
       return json({ id });
     }
     throw new Error(`unexpected ${method} ${url}`);
@@ -147,7 +148,21 @@ describe('syncOnce', () => {
     const local = { doc: doc('bbbbbbbbbbbbbbbb') };
     const r = await syncOnce(deps(drive, local, { fileId: 'gone' }));
     expect(r.fileId).toBe('f1');
-    expect(drive.calls).toEqual(['GET /drive/v3/files/gone', 'GET /drive/v3/files', 'POST /upload/drive/v3/files']);
+    expect(drive.calls).toEqual(['GET /drive/v3/files/gone', 'GET /drive/v3/files', 'POST /drive/v3/files', 'PATCH /upload/drive/v3/files/f1']);
+  });
+
+  it('names the step when a request never gets a readable reply', async () => {
+    const drive = new FakeDrive();
+    drive.unreachable.add('POST /drive/v3/files');
+    await expect(syncOnce(deps(drive, { doc: doc('bbbbbbbbbbbbbbbb') }))).rejects.toThrow(/while creating the Drive file \(Failed to fetch\)/);
+  });
+
+  it('reports a 403 (Drive access not granted) as an error with Google\'s reason, not as an expired sign-in', async () => {
+    const drive = new FakeDrive();
+    drive.status = 403;
+    const err = await syncOnce(deps(drive, { doc: doc('bbbbbbbbbbbbbbbb') })).catch((e: unknown) => e);
+    expect(err).not.toBeInstanceOf(DriveAuthError);
+    expect(String(err)).toMatch(/refused listing the Drive folder.*allow Google Drive access/);
   });
 
   it('reports an expired sign-in as DriveAuthError', async () => {

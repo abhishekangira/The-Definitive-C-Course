@@ -161,15 +161,28 @@ export interface SyncDeps {
 
 export interface SyncResult { fileId: string | undefined; epoch?: string; applied: boolean; uploaded: boolean; cancelled?: true }
 
-async function call(deps: SyncDeps, url: string, init: RequestInit = {}): Promise<Response> {
-  const res = await deps.fetch(url, { ...init, redirect: 'error', headers: { ...init.headers, Authorization: `Bearer ${deps.token}` } });
-  if (res.status === 401 || res.status === 403) throw new DriveAuthError('Google Drive refused the sign-in.');
+/** `step` names the request in error messages ("listing the Drive folder"), so a learner's report says which one failed. */
+async function call(deps: SyncDeps, step: string, url: string, init: RequestInit = {}): Promise<Response> {
+  let res: Response;
+  try {
+    res = await deps.fetch(url, { ...init, redirect: 'error', headers: { ...init.headers, Authorization: `Bearer ${deps.token}` } });
+  } catch (e) {
+    // fetch rejects without a status when the request never got a readable reply: offline, a blocker, or an error without CORS headers.
+    throw new Error(`Couldn't reach Google Drive while ${step} (${e instanceof Error ? e.message : String(e)}). Check your connection, and that no extension or shield blocks www.googleapis.com.`);
+  }
+  if (res.status === 401) throw new DriveAuthError('Google Drive refused the sign-in.');
+  if (res.status === 403) {
+    // Not an expired sign-in: the Drive box was unticked on Google's consent screen, or the API is off or over quota.
+    let reason = '';
+    try { reason = String(((await res.json()) as { error?: { message?: unknown } }).error?.message ?? ''); } catch { /* no JSON body */ }
+    throw new Error(`Google Drive refused ${step}${reason ? `: ${reason.slice(0, 300)}` : ''}. Disconnect, connect again and allow Google Drive access.`);
+  }
   return res;
 }
 
 async function findFile(deps: SyncDeps): Promise<string | undefined> {
   const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
-  const res = await call(deps, `${API}?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)&orderBy=modifiedTime%20desc`);
+  const res = await call(deps, 'listing the Drive folder', `${API}?spaces=appDataFolder&q=${q}&fields=files(id,modifiedTime)&orderBy=modifiedTime%20desc`);
   if (!res.ok) throw new Error(`Couldn't list the Drive folder (HTTP ${res.status}).`);
   const body = (await res.json()) as { files?: Array<{ id?: unknown }> };
   const id = body.files?.[0]?.id;
@@ -178,23 +191,26 @@ async function findFile(deps: SyncDeps): Promise<string | undefined> {
 
 async function upload(deps: SyncDeps, fileId: string | undefined, doc: ProgressV1, epoch: string): Promise<string> {
   const text = JSON.stringify({ ...doc, driveEpoch: epoch });
+  const save = (id: string) => call(deps, 'saving to Drive', `${UPLOAD}/${encodeURIComponent(id)}?uploadType=media&fields=id`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: text,
+  });
   if (fileId) {
-    const res = await call(deps, `${UPLOAD}/${encodeURIComponent(fileId)}?uploadType=media&fields=id`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: text,
-    });
+    const res = await save(fileId);
     if (res.ok) return fileId;
     if (res.status !== 404) throw new Error(`Couldn't save to Drive (HTTP ${res.status}).`);
     // The file was deleted from Drive: create it again.
   }
-  const boundary = `tdcc${Math.random().toString(36).slice(2)}`;
-  const meta = JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'], mimeType: 'application/json' });
-  const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${text}\r\n--${boundary}--`;
-  const res = await call(deps, `${UPLOAD}?uploadType=multipart&fields=id`, {
-    method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body,
+  // Two plain requests (create the empty file, then upload into it) instead of one multipart upload: the PATCH is the
+  // same request every later save makes, and nothing depends on a hand-built multipart body.
+  const res = await call(deps, 'creating the Drive file', `${API}?fields=id`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: DRIVE_FILE_NAME, parents: ['appDataFolder'], mimeType: 'application/json' }),
   });
   if (!res.ok) throw new Error(`Couldn't create the Drive file (HTTP ${res.status}).`);
   const id = ((await res.json()) as { id?: unknown }).id;
   if (typeof id !== 'string') throw new Error('Drive did not return a file id.');
+  const saved = await save(id);
+  if (!saved.ok) throw new Error(`Couldn't save to Drive (HTTP ${saved.status}).`);
   return id;
 }
 
@@ -204,7 +220,7 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncResult> {
   let remote: ProgressV1 | null = null;
   let remoteEpoch: string | undefined;
   if (fileId && !deps.replace) {
-    const download = (id: string) => call(deps, `${API}/${encodeURIComponent(id)}?alt=media`);
+    const download = (id: string) => call(deps, 'reading the Drive copy', `${API}/${encodeURIComponent(id)}?alt=media`);
     let res: Response | undefined = await download(fileId);
     if (res.status === 404) {
       // The remembered file was deleted (or this is another account's id): look for the current one.
@@ -238,7 +254,7 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncResult> {
 
 // ---------- sign-in (Google Identity Services) ----------
 
-interface TokenResponse { access_token?: string; expires_in?: number | string; error?: string }
+interface TokenResponse { access_token?: string; expires_in?: number | string; scope?: string; error?: string }
 interface GoogleOAuth2 {
   initTokenClient(c: {
     client_id: string; scope: string;
@@ -274,6 +290,11 @@ async function requestToken(): Promise<{ token: string; expiresAt: number }> {
       scope: DRIVE_SCOPE,
       callback: r => {
         if (!r.access_token) { reject(new Error(r.error ? `Google sign-in failed: ${r.error}.` : 'Google sign-in failed.')); return; }
+        // Google's consent screen lets the learner untick the Drive box and still returns a token.
+        if (r.scope !== undefined && !r.scope.split(' ').includes(DRIVE_SCOPE)) {
+          reject(new Error('Google Drive access was not allowed. Connect again and tick the box that lets the course use its Drive folder.'));
+          return;
+        }
         resolve({ token: r.access_token, expiresAt: Date.now() + Number(r.expires_in ?? 3599) * 1000 });
       },
       error_callback: e => reject(new Error(e.type === 'popup_closed' ? 'The Google sign-in window was closed.' : e.type === 'popup_failed_to_open'
