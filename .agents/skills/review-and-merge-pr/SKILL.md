@@ -24,9 +24,10 @@ A worktree whose `node_modules` is a symlink to another checkout must `rm node_m
 Reviewers check that the notes are still true (the root `AGENTS.md`, "Reviewers check the notes too"). A test can tell that a note exists, not that it is right, so this is read by hand.
 1. List the folders the diff touches: `git diff --name-only origin/main...refs/review/prN`.
 2. For each, read its `AGENTS.md` or README (the root table "Where to find what" names it), and the root `AGENTS.md`.
-3. Ask whether the change made a statement in them untrue (a path, command, rule or number), and whether it taught a lesson that is not written down.
-4. Read the **Notes:** line of the PR description. If it is empty or says "none", check that claim.
-5. A note the change made untrue blocks the merge, like a missing test. An unwritten lesson is a nit.
+3. On every PR, however small, also read the root `README.md` (what the app is, how to run it, where to read next, the licence).
+4. Ask whether the change made a statement in any of them untrue (a path, command, rule or number), and whether it taught a lesson that is not written down.
+5. Read the **Notes:** line of the PR description. If it is empty, says "none", or does not say the root `README.md` was checked, check that yourself.
+6. A note or README the change made untrue blocks the merge, like a missing test. An unwritten lesson is a nit.
 
 ## GitHub API details
 Use REST (`gh api repos/<owner>/<repo>/...`). In list endpoints (`pulls?state=open`) `additions`, `deletions`, `changed_files` and `mergeable` come back `null`: read a single PR (`pulls/N`), and retry `mergeable` after a few seconds (it stays `null` while GitHub computes it).

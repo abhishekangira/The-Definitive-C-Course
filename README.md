@@ -11,7 +11,7 @@ npm ci
 npm run dev        # prepares the in-browser toolchain, then starts Vite
 ```
 
-Contributors and coding agents: read [`AGENTS.md`](AGENTS.md) first (workflow, commands, pull request rules), then [`PLAN.md`](PLAN.md) (architecture and course outline).
+Contributors and coding agents: read [`AGENTS.md`](AGENTS.md) first (workflow, commands, pull request rules, and the notes to read for each folder), then [`PLAN.md`](PLAN.md) (architecture and course outline). Decisions and their evidence are in [`docs/adr/`](docs/adr/README.md).
 
 ## Licence
 

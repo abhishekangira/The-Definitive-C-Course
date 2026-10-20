@@ -12,7 +12,7 @@ You were told to read this file and given a ticket. Do this, in order:
 6. Write the PR description with the template in **Pull request rules** below. Say plainly what you could not verify; never claim a pass you didn't see.
 7. If the ticket is wrong, ambiguous or blocked, stop and say so (in the PR, or to the person who gave it to you) instead of working around it.
 8. No repository access, or can't run commands (for example a plain chat window)? Say so, return your change as a unified diff plus the exact commands a human should run to check it, and label everything unverified.
-9. **Keeping these notes up to date is the PR author's duty.** Before you open the PR, make sure this file and the `AGENTS.md` (or README) of every folder you touched are still true after your change. Correct any path, command, rule or number your change made wrong, delete a bullet whose bug you fixed, and write down a gotcha or practice that would have saved you time, in the place **Where new knowledge goes** names. Only write down what you observed or verified.
+9. **Keeping these notes up to date is the PR author's duty.** Before you open the PR, make sure this file and the `AGENTS.md` (or README) of every folder you touched are still true after your change. Correct any path, command, rule or number your change made wrong, delete a bullet whose bug you fixed, and write down a gotcha or practice that would have saved you time, in the place **Where new knowledge goes** names. Only write down what you observed or verified. **Check the root `README.md` on every PR, whatever folders you touched:** it is the first page a person reads (what the app is, how to run it, where to read next, the licence), so a change to any of those updates it in the same PR.
 
 ## Ask first
 Stop and ask the owner (in the PR, or the person who gave you the ticket) before you:
@@ -42,7 +42,7 @@ PR description template (under about 300 words):
 Closes #N
 Summary: (at most 5 lines)
 Files touched and why:
-Notes: (the AGENTS.md or README files you updated, or why none needed it)
+Notes: (the AGENTS.md or README files you updated, or why none needed it; always say you checked the root README.md)
 Acceptance criteria: (copied from the issue; each with ✓ or ✗ and the evidence)
 Commands run: (pasted output tails; for a module change, paste the `npm run dod -- --module mNN` table)
 Could not verify:
@@ -51,7 +51,7 @@ Risk: (does it touch learner-facing app code, the generated-data format, or CI/d
 
 Review depth, so you know where evidence matters most: the maintainer reviews thoroughly when a PR touches learner-facing app code, the verifier's data format, or CI/deploy. For tests-only changes, content text and refactors whose output can be diffed, it runs the checks and reads the diff.
 
-**Reviewers check the notes too** (the maintainer, a review agent, or any agent asked to review). For each folder the diff touches, read its `AGENTS.md` or README and this file, and ask whether the change made a statement in them untrue or taught a lesson that is not written down. A note the change made untrue blocks the merge, like a missing test; an unwritten lesson is a nit. Read the **Notes:** line of the PR description, and if it is empty or says "none", check that claim.
+**Reviewers check the notes too** (the maintainer, a review agent, or any agent asked to review). For each folder the diff touches, read its `AGENTS.md` or README and this file, and ask whether the change made a statement in them untrue or taught a lesson that is not written down. On every PR, however small, also read the root `README.md` and ask whether the change made it untrue. A note or README the change made untrue blocks the merge, like a missing test; an unwritten lesson is a nit. Read the **Notes:** line of the PR description: if it is empty, says "none", or does not say the root `README.md` was checked, check that yourself.
 
 ## Status
 - **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/ (GitHub Pages; the `deploy` job in `ci.yml` publishes `main`).
