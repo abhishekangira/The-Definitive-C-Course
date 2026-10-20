@@ -3,12 +3,14 @@
 `npm run e2e` tests the production build, so run `npm run build` first. `lib.ts` completes every interaction from the generated data.
 
 ## Running
+- **Browser.** In the cloud container Chromium is at `/opt/pw-browsers`; don't run `playwright install` there. Elsewhere run `npx playwright install chromium` first: `playwright.config.ts` falls back to Playwright's own Chromium, and `CHROMIUM_PATH` selects another.
 - **Workers.** CI runs 2 workers and local runs 3 (`playwright.config.ts`). `fullyParallel` stays false because `test.describe.serial` groups share one page. The benchmarks behind both numbers are in `docs/adr/0002-e2e-workers.md`; bench again before changing them.
 - **`npm run e2e:stress [-- <playwright args>]`** runs the full suite with `--repeat-each=$E2E_STRESS_REPEAT` (default 5) while `$E2E_STRESS_LOAD` busy-loop processes (default: one per usable CPU) run, with `--retries=0`. Select whole spec files, not `-g` (the lesson tests are a serial group). It passes no `--workers`, so it uses the config's count. `E2E_DELIBERATE_FAIL=1 npx playwright test failure-artifacts` shows the failure artifacts.
 - **A leftover `vite preview` on port 4173 serves another checkout's `dist/`** (`reuseExistingServer` is on outside CI) and an unbuilt worktree hangs for 60 s with "Timed out waiting from config.webServer". Build first and give each worktree its own `E2E_PORT`.
 - **Never `pkill -f` a pattern that is also in your own command line.** `pkill -f "vite preview" && …` in one Bash call kills that shell (exit 144) and the rest of the line never runs. Start the preview server in its own call (`nohup npx vite preview --port 4173 --strictPort &`) and stop it by PID.
 
 ## Pitfalls
+- **A mutation that leaves a variable unused fails `tsc`, so `npm run build` aborts and `dist/` stays stale.** The e2e then runs the old build and the mutation looks undetected. When mutation-checking, keep the variable used (for example `cond || true`) and check the build line says "built".
 - Test harness: `AxeBuilder` needs pages from `browser.newContext()`; scope `summary` locators with `:scope >` because exercises contain nested `<details>`.
 - **Playwright `getByText` with a regex does not trim.** An icon before the words leaves a leading space, so `/^Right\./` misses and `/^\s*Right\./` matches; a plain string (with `exact: true`) is trimmed. Check the button name too: an `aria-hidden` icon adds nothing to it, so `name: 'Step', exact: true`.
 - **Wait for a signal that identifies the page.** A bare `h1` also matches the page you are leaving; use the specific heading text or a `data-*` attribute.

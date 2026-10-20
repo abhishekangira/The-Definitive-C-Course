@@ -1,6 +1,6 @@
 ---
 name: review-and-merge-pr
-description: Review a pull request of this repo in a separate worktree, check that its AGENTS.md and README notes are still true, check it against main before merging, retarget stacked PRs and clean up merged branches. Use when the lead session reviews, merges or retargets a PR, or deletes a merged ticket branch.
+description: Review a pull request of this repo in a separate worktree, check that its AGENTS.md and README notes are still true, check it against main before merging, retarget stacked PRs and clean up merged branches. Use when reviewing any PR in this repo (the maintainer, a review agent or any agent asked to review), or when the lead session merges or retargets a PR or deletes a merged ticket branch.
 ---
 
 # Review and merge a pull request
@@ -20,8 +20,11 @@ Use `ln -sfn`, not `ln -s`: onto an existing link, plain `ln -s` creates a link 
 
 A worktree whose `node_modules` is a symlink to another checkout must `rm node_modules && npm ci` before `npm install`, or it edits the other checkout.
 
+## How deep to review
+Review thoroughly when a PR touches learner-facing app code, the verifier's data format, or CI/deploy (the PR template's **Risk:** line says which). For tests-only changes, content text and refactors whose output can be diffed, run the checks and read the diff.
+
 ## Check the notes
-Reviewers check that the notes are still true (the root `AGENTS.md`, "Reviewers check the notes too"). A test can tell that a note exists, not that it is right, so this is read by hand.
+Every reviewer (the maintainer, a review agent, or any agent asked to review) checks that the notes are still true. A test can tell that a note exists, not that it is right, so this is read by hand.
 1. List the folders the diff touches: `git diff --name-only origin/main...refs/review/prN`.
 2. For each, read its `AGENTS.md` or README (the root table "Where to find what" names it), and the root `AGENTS.md`.
 3. On every PR, however small, also read the root `README.md` (what the app is, how to run it, where to read next, the licence).

@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Decides whether the change is documentation only (tools/ci/docs-only.mjs: an allowlist of root docs and research/).
+  # Decides whether the change is documentation only (tools/ci/docs-only.mjs: an allowlist of root docs, AGENTS.md notes, skills and research/).
   # `check` always runs, so a required status check still reports, but a docs-only pull request skips the native
   # toolchain, verify, build and e2e steps. Pushes, manual runs and anything outside the allowlist run everything.
   changes:
