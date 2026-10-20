@@ -1,10 +1,10 @@
 .layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
 .stack { display: flex; flex-direction: column; gap: var(--space-2); }
 .frame { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); }
-.frameName { font-family: var(--font-mono); font-weight: 700; padding: 4px var(--space-3); background: var(--bg-sunken); border-bottom: 1px solid var(--border); }
+.frameName { font-family: var(--font-mono); font-weight: 500; padding: 4px var(--space-3); background: var(--bg-sunken); border-bottom: 1px solid var(--border); }
 .cell { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding: 6px var(--space-3); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .cell:last-child { border-bottom: 0; }
 .name, .value { background: none !important; border: 0 !important; padding: 0 !important; }
-.input input, .input select { font-family: var(--font-mono); padding: 4px 6px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--bg-elev); }
+.input input, .input select { font-family: var(--font-mono); min-height: 30px; padding: 0 6px; }
 .reveal { color: var(--text-muted); font-size: 0.85rem; }
 @media (max-width: 760px) { .layout { grid-template-columns: minmax(0, 1fr); } }

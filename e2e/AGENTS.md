@@ -6,6 +6,7 @@
 - **Workers.** CI runs 2 workers and local runs 3 (`playwright.config.ts`). `fullyParallel` stays false because `test.describe.serial` groups share one page. The benchmarks behind both numbers are in `docs/adr/0002-e2e-workers.md`; bench again before changing them.
 - **`npm run e2e:stress [-- <playwright args>]`** runs the full suite with `--repeat-each=$E2E_STRESS_REPEAT` (default 5) while `$E2E_STRESS_LOAD` busy-loop processes (default: one per usable CPU) run, with `--retries=0`. Select whole spec files, not `-g` (the lesson tests are a serial group). It passes no `--workers`, so it uses the config's count. `E2E_DELIBERATE_FAIL=1 npx playwright test failure-artifacts` shows the failure artifacts.
 - **A leftover `vite preview` on port 4173 serves another checkout's `dist/`** (`reuseExistingServer` is on outside CI) and an unbuilt worktree hangs for 60 s with "Timed out waiting from config.webServer". Build first and give each worktree its own `E2E_PORT`.
+- **Never `pkill -f` a pattern that is also in your own command line.** `pkill -f "vite preview" && …` in one Bash call kills that shell (exit 144) and the rest of the line never runs. Start the preview server in its own call (`nohup npx vite preview --port 4173 --strictPort &`) and stop it by PID.
 
 ## Pitfalls
 - Test harness: `AxeBuilder` needs pages from `browser.newContext()`; scope `summary` locators with `:scope >` because exercises contain nested `<details>`.

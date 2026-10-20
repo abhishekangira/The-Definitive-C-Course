@@ -1,12 +1,12 @@
-.box { margin: var(--space-5) 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); display: flex; flex-direction: column; gap: var(--space-3); }
+.box { margin: var(--space-5) 0; padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); display: flex; flex-direction: column; gap: var(--space-3); }
 .head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); font-size: 0.9rem; }
-.title { font-weight: 700; margin-right: auto; }
-.head select { margin-left: 4px; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--bg); }
-.entry { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; flex-wrap: wrap; }
-.entry input { font-family: var(--font-mono); padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); min-width: 14ch; }
+.title { font-weight: 600; margin-right: auto; }
+.head select { margin-left: 4px; min-height: 30px; padding: 0 6px; }
+.entry { display: flex; align-items: center; gap: var(--space-2); font-weight: 500; flex-wrap: wrap; }
+.entry input { font-family: var(--font-mono); min-width: 14ch; }
 .note { margin: 0; font-size: 0.88rem; color: var(--warn); }
 .bits { display: flex; flex-wrap: wrap; gap: 3px; }
-.bit { width: 30px; height: 36px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--bg); font-family: var(--font-mono); font-weight: 700; cursor: pointer; }
+.bit { width: 30px; height: 36px; border: 1px solid var(--control); border-radius: 4px; background: var(--bg-elev); font-family: var(--font-mono); font-weight: 500; cursor: pointer; }
 .bit:nth-child(4n) { margin-right: 6px; }
 .on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .sign { outline: 2px dashed var(--warn); outline-offset: 1px; }
@@ -21,15 +21,15 @@
 .arcPos, .arcNeg { fill: none; stroke-width: 10; }
 .arcPos { stroke: var(--ok); }
 .arcNeg { stroke: var(--err); }
-.marker { fill: var(--accent); stroke: var(--bg-elev); stroke-width: 2; }
+.marker { fill: var(--data); stroke: var(--bg-elev); stroke-width: 2; }
 .tickU { fill: var(--text); font-size: 9px; font-family: var(--font-mono); }
 .tickS { fill: var(--text-muted); font-size: 9px; font-family: var(--font-mono); }
-.centre { fill: var(--text); font-size: 22px; font-weight: 700; font-family: var(--font-mono); }
+.centre { fill: var(--text); font-size: 22px; font-weight: 600; font-family: var(--font-mono); }
 .centreS { fill: var(--text-muted); font-size: 11px; font-family: var(--font-mono); }
 
 /* float editor */
 .fields { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-4); }
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.fieldName { font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
+.fieldName { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; }
 .smallBit { width: 22px; height: 30px; font-size: 0.85rem; }
 .smallBit:nth-child(4n) { margin-right: 0; }

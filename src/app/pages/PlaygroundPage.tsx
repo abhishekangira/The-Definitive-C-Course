@@ -129,8 +129,8 @@ export function PlaygroundPage() {
   return (
     <div className={styles.page}>
       <div>
-        <p className={styles.eyebrow}>Nothing here counts toward your progress</p>
         <h1>Playground</h1>
+        <p className={styles.eyebrow}>Nothing here counts toward your progress</p>
         <p className={styles.lede}>Write any C program and run it. It is compiled by clang right in your browser, the same compiler the lessons use.</p>
       </div>
 
