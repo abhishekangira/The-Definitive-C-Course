@@ -1,5 +1,6 @@
 // Native sessions: the normaliser on real tool output (fixtures/session-captures, captured with gcc 13, clang 22.1.8,
 // gdb 16, lldb 22.1.8 and valgrind 3.24 in /tmp/tdcc-capture-7Kq2), session.yaml validation, and the run checks.
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -150,6 +151,30 @@ describe('runSession', () => {
     const r = await runSession(one('steps:\n  all:\n    - run: echo oops >&2; exit 1\n'), 'linux-gcc', tools());
     expect(r.problems).toEqual(['step 1 `echo oops >&2; exit 1`: expected exit ok, got 1\noops']);
   });
+
+  it('a timeout kills the whole step, children included, and records the problem (Targets run 39498908355 hung on leaks)', async () => {
+    const t0 = performance.now();
+    const r = await runSession(one('steps:\n  all:\n    - run: sleep 8; true\n    - run: echo never\n'), 'linux-gcc', { ...tools(), timeoutMs: 1000 });
+    expect(performance.now() - t0).toBeLessThan(4000);
+    expect(r.timedOut).toBe(true);
+    expect(r.problems).toEqual(['step 1 `sleep 8; true` timed out after 1 s']);
+    expect(r.steps).toHaveLength(1);
+  });
+
+  it('a background job left running after the step does not hold it open', async () => {
+    const t0 = performance.now();
+    const r = await runSession(one('steps:\n  all:\n    - run: (sleep 8; echo late) & echo now\n'), 'linux-gcc', { ...tools(), timeoutMs: 20_000 });
+    expect(performance.now() - t0).toBeLessThan(4000);
+    expect(r.problems).toEqual([]);
+    expect(r.steps[0].stdout).toBe('now\n');
+  });
+
+  it.skipIf(spawnSync('setsid', ['--version']).status !== 0)('a process that left the group (setsid) holds the pipes for at most 2 s more', async () => {
+    const t0 = performance.now();
+    const r = await runSession(one('steps:\n  all:\n    - run: setsid sleep 8 & sleep 0.5; echo now\n'), 'linux-gcc', { ...tools(), timeoutMs: 20_000 });
+    expect(performance.now() - t0).toBeLessThan(9000); // two runs of ~2.5 s; without the cut-off, 2 × 8 s
+    expect(r.steps[0]).toMatchObject({ stdout: 'now\n', exit: 0 });
+  }, 15_000);
 
   it('normalises addresses only in steps with `as:`', async () => {
     const r = await runSession(one('steps:\n  all:\n    - run: echo "mask = 0xDEADBEEF, process 3 items"\n    - run: echo "mask = 0xDEADBEEF, process 3 items"\n      as: tool\n'), 'linux-gcc', tools());

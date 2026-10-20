@@ -178,7 +178,7 @@ async function runOnce(spec: SessionSpec, steps: SessionStep[], tools: SessionTo
     };
     const out: SessionRun = { steps: [], problems: [], timedOut: false };
     for (const [i, s] of steps.entries()) {
-      const r = await run('bash', ['-c', s.run], { cwd: work, input: s.stdin, env, timeoutMs: tools.timeoutMs ?? 60_000 });
+      const r = await run('bash', ['-c', s.run], { cwd: work, input: s.stdin, env, timeoutMs: tools.timeoutMs ?? 60_000, group: true });
       const exit = r.status ?? 128 + signalNumber(r.signal);
       const [stdout, stderr] = normaliseSession([r.stdout, r.stderr], [work, realpathSync(work)], { tool: !!s.as });
       out.steps.push({ cmd: s.run, ...(s.as ? { as: s.as } : {}), stdout, stderr, exit });
