@@ -5,16 +5,16 @@
 .stage { position: relative; flex: none; width: var(--warrior-size, 120px); aspect-ratio: 1; }
 .stage > .art { position: absolute; inset: 0; }
 .caption { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
-.formName { font-weight: 700; color: var(--text); }
+.formName { font-weight: 600; color: var(--text); }
 .message { font-size: 0.95rem; color: var(--text-muted); max-width: 44ch; }
 .news {
   align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
-  padding: 2px 10px; border-radius: 999px; border: 1px solid var(--warn); background: var(--warn-soft);
-  color: var(--text); font-size: 0.85rem; font-weight: 700;
+  padding: 2px 8px; border-radius: var(--radius-chip); background: var(--warn-soft);
+  color: var(--warn-ink); font-size: 0.8125rem; font-weight: 500;
 }
 .next { display: flex; flex-direction: column; gap: 4px; font-size: 0.88rem; color: var(--text-muted); max-width: 44ch; }
-.nextBar { height: 8px; border-radius: 999px; background: var(--bg-sunken); border: 1px solid var(--border); overflow: hidden; }
-.nextBar > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff8a1f, #ffc928); }
+.nextBar { height: 8px; border-radius: 2px; background: var(--border-strong); overflow: hidden; }
+.nextBar > span { display: block; height: 100%; border-radius: inherit; background: var(--data); }
 @media (max-width: 480px) { .warrior { flex-direction: column; align-items: flex-start; } }
 
 /* ---------- the art: pixel sprites, so everything moves in whole pixels (steps) ---------- */
@@ -116,13 +116,13 @@
   display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; text-align: center;
   padding: var(--space-2) 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg);
 }
-.gallery li[data-state='current'] { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); background: var(--warn-soft); }
+.gallery li[data-state='current'] { border-color: var(--data); box-shadow: inset 0 0 0 1px var(--data); background: var(--data-soft); }
 .gallery .art { width: 100%; max-width: 112px; aspect-ratio: 1; }
 /* A form not reached yet is a flat silhouette (a filter, not opacity: the label beside it carries the meaning). */
 .locked .svg { filter: brightness(0) invert(0.72); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .locked .svg { filter: brightness(0) invert(0.32); } }
 :root[data-theme='dark'] .locked .svg { filter: brightness(0) invert(0.32); }
-.galleryName { font-size: 0.8rem; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.galleryName { font-size: 0.8rem; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
 .galleryDay { font-size: 0.75rem; color: var(--text-muted); }
 @media (max-width: 560px) { .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 

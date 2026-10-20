@@ -2,9 +2,9 @@
 .line { display: block; border-left: 3px solid transparent; }
 .line > .no, .pick > .no { display: inline-block; min-width: 3ch; padding: 0 var(--space-2); text-align: right; color: var(--text-faint); user-select: none; }
 .text { background: none !important; border: 0 !important; padding: 0 var(--space-3) 0 0 !important; white-space: pre; font-size: inherit; }
-.current { background: color-mix(in srgb, var(--accent) 16%, transparent); border-left-color: var(--accent); }
-.picked { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.current { background: var(--data-soft); border-left-color: var(--data); }
+.picked { background: var(--data-soft); }
 .right { background: var(--ok-soft); border-left-color: var(--ok); }
 .wrong { background: var(--err-soft); border-left-color: var(--err); }
 .pick { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; }
-.pick:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.pick:hover { background: var(--data-soft); }

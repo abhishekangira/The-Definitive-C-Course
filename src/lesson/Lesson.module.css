@@ -1,11 +1,10 @@
+/* One card of a lesson: the prose and the interaction that gates the next card. Cards are told apart by space, not by rules. */
 .card {
-  scroll-margin-top: 72px;
+  scroll-margin-top: var(--space-5);
   padding-bottom: var(--space-5);
   margin-bottom: var(--space-5);
-  border-bottom: 1px dashed var(--border);
   animation: reveal 280ms ease-out;
 }
-.card:last-child { border-bottom: 0; }
 
 @keyframes reveal {
   from { opacity: 0; transform: translateY(6px); }

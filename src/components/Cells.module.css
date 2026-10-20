@@ -1,0 +1,3 @@
+.cells { display: flex; gap: 3px; height: 8px; width: 100%; }
+.cells > span { flex: 1; min-width: 3px; border-radius: 2px; background: var(--border-strong); }
+.cells > .on { background: var(--data); }

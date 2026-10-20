@@ -122,57 +122,61 @@ export function TutorSettingsPanel() {
   const defaultChosen = usingDefault(draft);
 
   return (
-    <section className={styles.section} aria-labelledby="tutor-settings-title">
-      <h2 id="tutor-settings-title">AI tutor</h2>
-      <p className={styles.warn}>The API key is stored in this browser. Any script on this page can read it. Use a key with a spending limit. The course never receives the key.</p>
-      <p className={styles.muted}>Optional. After a failed check on a lesson or problem-set exercise you can ask for a nudge. It works with OpenRouter or any other OpenAI-compatible chat API.</p>
-      <label className={styles.field} htmlFor="tutor-key">API key
-        <input id="tutor-key" type="password" autoComplete="off" autoCapitalize="off" spellCheck={false} value={draft.apiKey}
-          onChange={e => setDraft(d => ({ ...d, apiKey: e.target.value }))} onBlur={() => commit()} />
-      </label>
-      <label className={styles.field} htmlFor="tutor-base">Base URL
-        <input id="tutor-base" type="text" autoComplete="off" spellCheck={false} value={draft.baseUrl}
-          onChange={e => setDraft(d => ({ ...d, baseUrl: e.target.value }))} onBlur={() => commit()} />
-      </label>
-      <fieldset className={styles.group}>
-        <legend>Model</legend>
-        <label className={styles.choice}>
-          <input type="radio" name="tutor-model-mode" checked={defaultChosen} disabled={!defaultAvailable} onChange={() => chooseModelMode(true)} />
-          <span>
-            Course default
-            <span className={styles.muted}> tries gpt-oss-120b, then Gemini 3.5 Flash-Lite, then a free Nemotron model, through Groq, Cerebras, Google AI Studio or NVIDIA.
-              {defaultAvailable ? '' : ' It needs the OpenRouter base URL.'}</span>
-          </span>
-        </label>
-        <label className={styles.choice}>
-          <input type="radio" name="tutor-model-mode" checked={!defaultChosen} onChange={() => chooseModelMode(false)} />
-          <span>My own model id <span className={styles.muted}>(for OpenRouter or any other provider)</span></span>
-        </label>
-        {!defaultChosen && (
-          <label className={styles.field} htmlFor="tutor-model">Model id
-            <input id="tutor-model" type="text" list="tutor-model-suggestions" autoComplete="off" spellCheck={false}
-              placeholder="for example openai/gpt-4o-mini" value={draft.model}
-              onChange={e => setDraft(d => ({ ...d, model: e.target.value }))} onBlur={() => commit()} />
-          </label>
-        )}
-        <datalist id="tutor-model-suggestions">
-          {SUGGESTED_TUTOR_MODELS.map(model => <option key={model} value={model} />)}
-        </datalist>
-        <p className={styles.muted}>The suggested ids are examples, not a promise that the provider still serves them.</p>
-      </fieldset>
-      {problems.length > 0 && (
-        <ul className={`${styles.warn} ${styles.problems}`} role="alert">
-          {problems.map(p => <li key={p}>{p === 'model' ? modelProblemText(saved) : PROBLEM_TEXT[p]}</li>)}
-        </ul>
-      )}
-      <div className={styles.actions}>
-        <button type="button" ref={testButtonRef} className="btn btn-primary" onClick={() => void testConnection()}>{busy ? 'Testing…' : 'Test connection'}</button>
-        <button type="button" className="btn" onClick={remove}>Remove key</button>
+    <section className="setting" aria-labelledby="tutor-settings-title">
+      <div className="setting-head">
+        <h2 id="tutor-settings-title">AI tutor</h2>
+        <p>Optional. After a failed check on a lesson or problem-set exercise you can ask for a nudge. It works with OpenRouter or any other OpenAI-compatible chat API.</p>
       </div>
-      {askConsent && host && (
-        <ConsentNotice host={host} onAccept={accept} onDecline={() => { moveFocus.current = true; setAskConsent(false); setNotice('Nothing was sent.'); }} />
-      )}
-      {notice && <p ref={noticeRef} tabIndex={-1} className={notice.startsWith('Connected') ? styles.reply : styles.bad} role="status">{notice}</p>}
+      <div className="setting-body">
+        <p className={styles.warn}>The API key is stored in this browser. Any script on this page can read it. Use a key with a spending limit. The course never receives the key.</p>
+        <label className={styles.field} htmlFor="tutor-key">API key
+          <input id="tutor-key" type="password" autoComplete="off" autoCapitalize="off" spellCheck={false} value={draft.apiKey}
+            onChange={e => setDraft(d => ({ ...d, apiKey: e.target.value }))} onBlur={() => commit()} />
+        </label>
+        <label className={styles.field} htmlFor="tutor-base">Base URL
+          <input id="tutor-base" type="text" autoComplete="off" spellCheck={false} value={draft.baseUrl}
+            onChange={e => setDraft(d => ({ ...d, baseUrl: e.target.value }))} onBlur={() => commit()} />
+        </label>
+        <fieldset className={styles.group}>
+          <legend>Model</legend>
+          <label className={styles.choice}>
+            <input type="radio" name="tutor-model-mode" checked={defaultChosen} disabled={!defaultAvailable} onChange={() => chooseModelMode(true)} />
+            <span>
+              Course default
+              <span className={styles.muted}> tries gpt-oss-120b, then Gemini 3.5 Flash-Lite, then a free Nemotron model, through Groq, Cerebras, Google AI Studio or NVIDIA.
+                {defaultAvailable ? '' : ' It needs the OpenRouter base URL.'}</span>
+            </span>
+          </label>
+          <label className={styles.choice}>
+            <input type="radio" name="tutor-model-mode" checked={!defaultChosen} onChange={() => chooseModelMode(false)} />
+            <span>My own model id <span className={styles.muted}>(for OpenRouter or any other provider)</span></span>
+          </label>
+          {!defaultChosen && (
+            <label className={styles.field} htmlFor="tutor-model">Model id
+              <input id="tutor-model" type="text" list="tutor-model-suggestions" autoComplete="off" spellCheck={false}
+                placeholder="for example openai/gpt-4o-mini" value={draft.model}
+                onChange={e => setDraft(d => ({ ...d, model: e.target.value }))} onBlur={() => commit()} />
+            </label>
+          )}
+          <datalist id="tutor-model-suggestions">
+            {SUGGESTED_TUTOR_MODELS.map(model => <option key={model} value={model} />)}
+          </datalist>
+          <p className={styles.muted}>The suggested ids are examples, not a promise that the provider still serves them.</p>
+        </fieldset>
+        {problems.length > 0 && (
+          <ul className={`${styles.warn} ${styles.problems}`} role="alert">
+            {problems.map(p => <li key={p}>{p === 'model' ? modelProblemText(saved) : PROBLEM_TEXT[p]}</li>)}
+          </ul>
+        )}
+        <div className={styles.actions}>
+          <button type="button" ref={testButtonRef} className="btn btn-primary" onClick={() => void testConnection()}>{busy ? 'Testing…' : 'Test connection'}</button>
+          <button type="button" className="btn" onClick={remove}>Remove key</button>
+        </div>
+        {askConsent && host && (
+          <ConsentNotice host={host} onAccept={accept} onDecline={() => { moveFocus.current = true; setAskConsent(false); setNotice('Nothing was sent.'); }} />
+        )}
+        {notice && <p ref={noticeRef} tabIndex={-1} className={notice.startsWith('Connected') ? styles.reply : styles.bad} role="status">{notice}</p>}
+      </div>
     </section>
   );
 }

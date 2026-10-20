@@ -5,6 +5,8 @@ import { useTheme, type ThemeChoice } from './theme';
 import { useProgress, daysSinceExport, storageWorks } from '../progress/store';
 import { course } from '../content-runtime/course';
 import { StreakChip } from '../components/StreakChip';
+import { BrandMark } from '../components/BrandMark';
+import { Icon } from '../components/Icon';
 import styles from './Layout.module.css';
 
 const THEME_LABEL: Record<ThemeChoice, string> = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
@@ -46,43 +48,52 @@ export function Layout({ children }: { children?: ReactNode }) {
     <div className={styles.shell}>
       <a className="skip-link" href="#main" onClick={e => { e.preventDefault(); document.getElementById('main')?.focus(); }}>Skip to content</a>
       <header className={styles.header}>
-        <Link to="/" className={styles.brand} aria-label={`${course.title}: course map`}>
-          <span className={styles.logo} aria-hidden="true">C</span>
-          <span className={styles.title}>{course.title}</span>
-        </Link>
-        <nav className={styles.nav} aria-label="Site">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? styles.active : undefined)}>Course</NavLink>
-          <NavLink to="/playground" className={({ isActive }) => (isActive ? styles.active : undefined)}>Playground</NavLink>
-          <StreakChip className={styles.streak} riskClassName={styles.streakRisk} />
-          <NavLink to="/settings" className={({ isActive }) => (isActive ? styles.active : undefined)}>Progress &amp; settings</NavLink>
-          <button
-            type="button"
-            className={`btn btn-ghost btn-sm ${styles.themeBtn}`}
-            onClick={() => setTheme(NEXT[theme])}
-            aria-label={`${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[NEXT[theme]].toLowerCase()}.`}
-            title={`${THEME_LABEL[theme]} (click to change)`}
-          >
-            <ThemeIcon theme={theme} />
-          </button>
-        </nav>
+        <div className={`${styles.frame} ${styles.bar}`}>
+          <Link to="/" className={styles.brand} aria-label={`${course.title}: course map`}>
+            <BrandMark className={styles.logo} />
+            <span className={styles.title}>{course.title}</span>
+          </Link>
+          <nav className={styles.nav} aria-label="Site">
+            <NavLink to="/" end>Course</NavLink>
+            <NavLink to="/playground">Playground</NavLink>
+            <StreakChip className={styles.streak} riskClassName={styles.streakRisk} />
+            <NavLink to="/settings" className={styles.settingsLink}>
+              <span className={styles.settingsText}>Progress &amp; settings</span>
+              <Icon name="sliders" />
+            </NavLink>
+            <button
+              type="button"
+              className={`btn btn-ghost btn-sm ${styles.themeBtn}`}
+              onClick={() => setTheme(NEXT[theme])}
+              aria-label={`${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[NEXT[theme]].toLowerCase()}.`}
+              title={`${THEME_LABEL[theme]} (click to change)`}
+            >
+              <ThemeIcon theme={theme} />
+            </button>
+          </nav>
+        </div>
       </header>
       {!persistent && (
-        <div className={styles.banner} role="status">
-          This browser is blocking site storage (a private window or blocked site data), so your progress will be lost when you close the tab.
-          {' '}Allow storage for this site, or <Link to="/settings">export a backup</Link> before you leave.
+        <div className={styles.frame}>
+          <div className={styles.banner} role="status">
+            This browser is blocking site storage (a private window or blocked site data), so your progress will be lost when you close the tab.
+            {' '}Allow storage for this site, or <Link to="/settings">export a backup</Link> before you leave.
+          </div>
         </div>
       )}
       {persistent && remindExport && location.pathname !== '/settings' && (
-        <div className={styles.banner} role="note">
-          Your progress lives only in this browser. <Link to="/settings">Export a backup</Link>
-          {days === null ? '' : ` (last export ${days} days ago)`}.
+        <div className={styles.frame}>
+          <div className={styles.banner} role="note">
+            Your progress lives only in this browser. <Link to="/settings">Export a backup</Link>
+            {days === null ? '' : ` (last export ${days} days ago)`}.
+          </div>
         </div>
       )}
-      <main id="main" tabIndex={-1} className={styles.main}>
+      <main id="main" tabIndex={-1} className={`${styles.frame} ${styles.main}`}>
         {children ?? <Outlet />}
       </main>
-      <footer className={styles.footer}>
-        <span>Real C, compiled in your browser by clang. </span>
+      <footer className={`${styles.frame} ${styles.footer}`}>
+        <span>Real C, compiled in your browser by clang.</span>
         <Link to="/about">About &amp; licenses</Link>
       </footer>
     </div>
