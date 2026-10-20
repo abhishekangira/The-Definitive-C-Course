@@ -9,7 +9,7 @@ You were told to read this file and given a ticket. Do this, in order:
 3. **Install the CI toolchain before you run anything.** Run the commands of the `Install the native toolchain` step in `.github/workflows/ci.yml` (with `sudo` unless you are root), then check `gcc-13`, `clang-22`, `gdb`, `valgrind` and `node` with `--version` against **Pull request rules** 5. `tools/verify` falls back to plain `clang` with a warning, and those outputs are not comparable. A version mismatch is your setup to fix, not a finding to report. Only if the install fails (no network or no `sudo`), name your versions under **Could not verify**.
 4. Stay in scope, and stop at anything under **Ask first**. A new dependency needs a reason in the PR description and an exact pinned version.
 5. Don't hand-edit `src/generated/` (regenerate it with `npm run verify`) and don't hand-type expected outputs.
-6. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium` (`playwright.config.ts` falls back to Playwright's own Chromium; set `CHROMIUM_PATH` to use another).
+6. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium`. Browser setup: `e2e/AGENTS.md`.
 7. Write the PR description with the template in **Pull request rules** below. Say plainly what you could not verify; never claim a pass you didn't see.
 8. If the ticket is wrong, ambiguous or blocked, stop and say so (in the PR, or to the person who gave it to you) instead of working around it.
 9. No repository access, or can't run commands (for example a plain chat window)? Say so, return your change as a unified diff plus the exact commands a human should run to check it, and label everything unverified.
@@ -143,7 +143,7 @@ CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, re
 - **GitHub closes issues on negated keywords.** "Do not close #1" in a PR description closed #1 when the PR merged. For partial work write "Partial progress on #N" and never use close, closes, fix, fixes, resolve or resolves next to an issue number; the maintainer also re-checks the issue state after every merge.
 
 ## Environment (the cloud container)
-- **Chromium** is at `/opt/pw-browsers`. Don't run `playwright install` there. Open-source Chromium can't play H.264, so e2e tests use a WebM fixture.
+- **Chromium** is at `/opt/pw-browsers`. Don't run `playwright install` there.
 - **GitHub.** Web and API access is limited to repos attached to the session. `gh repo create` and GraphQL are blocked; use repo-scoped REST. API quirks, local PR review and branch clean-up: the `review-and-merge-pr` skill.
 - **YouTube and HyperFrames** recipes are in `tools/videos/README.md` and `animations/README.md`.
 
