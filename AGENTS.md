@@ -57,9 +57,9 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 
 ## Status
 - **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/ (GitHub Pages; the `deploy` job in `ci.yml` publishes `main`).
-- Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12 (public repo → GitHub Pages; MP4s committed; allocator-only capstone; dark-only animation renders).
+- Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12.
 - Stage 2 (app shell + Module 1) is **built and on `main`** (since 2026-10-15).
-- Module 2 (Bits, Bytes & Numbers) is **merged and open to learners** since 2026-10-18 (PRs #48 to #56; `m02` is `available: true` in `content/course.yaml`). The owner's issue #42 was its brief.
+- Module 2 (Bits, Bytes & Numbers) is **merged and open to learners** since 2026-10-18 (`m02` is `available: true` in `content/course.yaml`; issue #42 was its brief).
 - **Module 3 is not started** (`available: false`, no folder); its brief is issue #73. **There is no review gate between modules** (PLAN.md §12 item 11): the owner audits the course while it is built and files issues for any gap, so start the next module when its ticket is assigned. Other open work, such as the AI tutor (#47), is in issues and PRs.
 
 ## Non-negotiables (client spec)
