@@ -36,6 +36,8 @@ Stop and ask the owner (in the PR, or the person who gave you the ticket) before
 7. **Post the report on the right PR**, once, in the description or in a single comment that names the PR number and head SHA. Never post a report on another PR.
 8. **Answer review with commits.** Push a new commit (no force-push) and reply to each point: fixed (commit), not fixed (why), or disagree (why). Don't mark a point resolved without one.
 9. **UI changes** also report the axe result in light and dark (`npm run e2e`) and how the change behaves with the keyboard.
+10. **Subscribe to the PR you open.** Right after creating it, watch it for CI results and review comments, and drive it to green and mergeable without waiting to be asked.
+11. **UI changes need screenshots** at desktop (about 1400px) and phone (390px) widths, in the PR description, hosted by GitHub (drag them in) and never committed as files. Add light and dark only when the PR is about colours or themes. If you cannot upload images, say so and give the Playwright command that takes them.
 
 PR description template (under about 300 words):
 ```
