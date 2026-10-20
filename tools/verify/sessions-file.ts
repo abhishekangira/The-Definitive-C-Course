@@ -17,7 +17,7 @@ export interface TargetSessionsFile {
   module: string;
   target: string;
   generatedBy: string;
-  /** Every session that has macOS steps; one with `problems` is kept for diagnosis and never merged. */
+  /** Every session with steps on macOS (`all` and `macos`); one with `problems` is kept for diagnosis and never merged. */
   sessions: Record<string, { hash: string; steps: SessionResult['runs']['macos']; problems?: string[] }>;
 }
 
@@ -105,10 +105,15 @@ export async function verifySessions(o: {
   return rep;
 }
 
-/** `--target-run macos-arm64-appleclang`: the macOS steps of every session, for the Targets workflow to commit. */
-export async function targetRunSessions(o: { contentRoot: string; outDir: string; cacheDir: string; workRoot: string; module?: string; force?: boolean; tc: NativeToolchain; log?: (l: string) => void }): Promise<{ problems: string[]; written: string[] }> {
+/**
+ * `--target-run macos-arm64-appleclang`: the `all` and `macos` steps of every session, for the Targets workflow to
+ * commit. A session problem (an unexpected exit, unstable output, an invalid session.yaml) is written into the file and
+ * returned as a warning, never as a failure: the file is committed for diagnosis, `verify` never merges a run with
+ * problems, and the macOS sample results of the same run are still stored. The Linux `verify` fails on the same problems.
+ */
+export async function targetRunSessions(o: { contentRoot: string; outDir: string; cacheDir: string; workRoot: string; module?: string; force?: boolean; tc: NativeToolchain; log?: (l: string) => void }): Promise<{ warnings: string[]; written: string[] }> {
   const found = discoverSessions(o.contentRoot, o.module);
-  const problems = [...found.errors];
+  const warnings = [...found.errors];
   const written: string[] = [];
   const runs = await runSessions(found.sessions, 'macos', o.tc, o);
   const versions = Object.entries(sessionToolVersions('macos')).map(([k, v]) => `${k}: ${v}`).join('; ');
@@ -117,7 +122,7 @@ export async function targetRunSessions(o: { contentRoot: string; outDir: string
     for (const spec of found.sessions.filter(s => s.module === m)) {
       const r = runs.get(spec.id);
       if (!r) continue;
-      problems.push(...r.problems.map(p => `${spec.rel} (macos): ${p}`));
+      warnings.push(...r.problems.map(p => `${spec.rel} (macos): ${p}`));
       file.sessions[spec.id] = { hash: spec.hash, steps: r.steps, ...(r.problems.length ? { problems: r.problems } : {}) };
     }
     const target = path.join(o.outDir, `${m}.sessions.json`);
@@ -125,7 +130,7 @@ export async function targetRunSessions(o: { contentRoot: string; outDir: string
     written.push(target);
     o.log?.(`wrote ${target} (${Object.keys(file.sessions).length} sessions)`);
   }
-  return { problems, written };
+  return { warnings, written };
 }
 
 function readJson<T>(f: string): T | null {

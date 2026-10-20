@@ -127,6 +127,7 @@ async function main(): Promise<void> {
   if (a.targetRun) {
     const r = await targetRun({ target: a.targetRun, outDir: a.out!, contentRoot: a.contentRoot, cacheDir: path.join(a.cacheDir, 'targets'), module: a.module, force: a.force, log: console.log });
     for (const p of r.problems) console.log(`[FAIL] ${p}`);
+    if (r.warnings.length) console.log(`${r.warnings.length} native session problem(s), written into <module>.sessions.json for diagnosis (never merged; exit status unaffected)`);
     process.exit(r.problems.length ? 1 : 0);
   }
   const report = await verify({

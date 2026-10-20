@@ -52,7 +52,7 @@ export function discoverSessions(contentRoot: string, module?: string): { sessio
       const rel = `modules/${moduleDir}/sessions/${name}`;
       const err = (m: string) => errors.push(`${rel}/session.yaml: ${m}`);
       if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) { err('the folder name is the session id and must be lower-case kebab-case'); continue; }
-      if (sessions.some(s => s.id === name)) { err(`duplicate session id "${name}"`); continue; }
+      if (sessions.some(s => s.id === name)) { err(`duplicate session id "${name}" (ids are unique across the course, like exercise folders)`); continue; }
       let doc: unknown;
       try { doc = parseYaml(readFileSync(path.join(dir, 'session.yaml'), 'utf8')); } catch (e) { err((e as Error).message); continue; }
       const groups = parseGroups(doc, err);
@@ -115,12 +115,15 @@ const DROP_LINE = [
 ];
 
 /**
- * Makes one step's output the same on every run and machine: the work dir → `<dir>`, other temp files → `<tmpN>`
- * (keeping the extension), PIDs → `<pid>` / `==PID==`, hex addresses of 5+ digits → `<addrN>` (numbered by first
- * appearance in the step, stdout then stderr, so equal addresses stay equal), and banner lines that carry versions,
- * dates or PIDs are dropped. Shorter hex (`0x1f`, a breakpoint offset) and all-zero values are left as they are.
+ * Makes one step's output the same on every run and machine: the work dir → `<dir>` and other temp files → `<tmpN>`
+ * (keeping the extension), always. A tool step (`tool`, a step with `as:`) also gets PIDs → `<pid>` / `==PID==`, build
+ * ids → `<id>`, hex addresses of 5+ digits → `<addrN>` (numbered by first appearance in the step, stdout then stderr,
+ * so equal addresses stay equal), and its banner lines that carry versions, dates or PIDs are dropped. Shorter hex
+ * (`0x1f`, a breakpoint offset) and all-zero values are left as they are. A step without `as:` is the program's own
+ * output, so `mask = 0xDEADBEEF` or `process 3 items` stays as printed.
  */
-export function normaliseSession(texts: string[], workDirs: string[]): string[] {
+export function normaliseSession(texts: string[], workDirs: string[], o: { tool?: boolean } = {}): string[] {
+  const tool = o.tool ?? true;
   const tmp = new Map<string, string>();
   const addr = new Map<string, string>();
   const dirs = [...new Set(workDirs)].sort((a, b) => b.length - a.length);
@@ -132,6 +135,7 @@ export function normaliseSession(texts: string[], workDirs: string[]): string[] 
       if (!tmp.has(key)) tmp.set(key, `<tmp${tmp.size + 1}>`);
       return tmp.get(key)! + ext;
     });
+    if (!tool) return t;
     t = t.replace(/==\d+==/g, '==PID==').replace(/--\d+--/g, '--PID--')
       .replace(/\b(Process|process|LWP|pid|PID:?) \d+\b/g, '$1 <pid>')
       .replace(/^(Process: +\S+) \[\d+\]/gm, '$1 [<pid>]')
@@ -176,7 +180,7 @@ async function runOnce(spec: SessionSpec, steps: SessionStep[], tools: SessionTo
     for (const [i, s] of steps.entries()) {
       const r = await run('bash', ['-c', s.run], { cwd: work, input: s.stdin, env, timeoutMs: tools.timeoutMs ?? 60_000 });
       const exit = r.status ?? 128 + signalNumber(r.signal);
-      const [stdout, stderr] = normaliseSession([r.stdout, r.stderr], [work, realpathSync(work)]);
+      const [stdout, stderr] = normaliseSession([r.stdout, r.stderr], [work, realpathSync(work)], { tool: !!s.as });
       out.steps.push({ cmd: s.run, ...(s.as ? { as: s.as } : {}), stdout, stderr, exit });
       const where = `step ${i + 1} \`${s.run}\``;
       if (r.timedOut) { out.timedOut = true; out.problems.push(`${where} timed out after ${(tools.timeoutMs ?? 60_000) / 1000} s`); break; }

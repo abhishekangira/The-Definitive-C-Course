@@ -6,6 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { discoverSessions, normaliseSession, runSession, stepsFor, type SessionSpec } from './session';
+import { targetRunSessions, type TargetSessionsFile } from './sessions-file';
+import type { NativeToolchain } from './native';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DIR = '/tmp/tdcc-capture-7Kq2';
@@ -84,6 +86,16 @@ function contentWith(sessions: Record<string, Record<string, string>>): string {
   return root;
 }
 
+describe('normaliseSession on a program\'s own output', () => {
+  const out = 'mask = 0xDEADBEEF\nprocess 3 items\n0x10000 vs 0x00010000\nPID: 7\n';
+  it('a step without `as:` keeps hex, PIDs and numbers as printed; only the work dir and temp files change', () => {
+    expect(normaliseSession([out + 'in /w/x and /tmp/ccAbC123.o\n'], ['/w'], { tool: false })).toEqual([out + 'in <dir>/x and <tmp1>.o\n']);
+  });
+  it('a tool step (`as:`) gets the address and PID rules', () => {
+    expect(normaliseSession([out], [], { tool: true })).toEqual(['mask = <addr1>\nprocess <pid> items\n<addr2> vs <addr2>\nPID: <pid>\n']);
+  });
+});
+
 describe('discoverSessions', () => {
   it('reads the step groups, with exit defaulting to ok', () => {
     const root = contentWith({ hello: { 'session.yaml': 'steps:\n  all:\n    - run: echo hi\n  linux:\n    - run: "false"\n      exit: fail\n      as: ld\n' } });
@@ -102,6 +114,16 @@ describe('discoverSessions', () => {
     expect(bad('steps:\n  all: []\n')).toMatch(/has no steps/);
     expect(bad('title: x\n')).toMatch(/needs `steps:`/);
     expect(bad('steps:\n  all:\n    - run: x\n', 'Bad_Id')).toMatch(/lower-case kebab-case/);
+  });
+
+  it('rejects a session id used in two modules (ids are unique across the course)', () => {
+    const root = contentWith({ same: { 'session.yaml': 'steps:\n  all:\n    - run: x\n' } });
+    const other = path.join(root, 'modules/m96-other/sessions/same');
+    mkdirSync(other, { recursive: true });
+    writeFileSync(path.join(other, 'session.yaml'), 'steps:\n  all:\n    - run: x\n');
+    const { sessions, errors } = discoverSessions(root);
+    expect(sessions).toHaveLength(1);
+    expect(errors.join('\n')).toMatch(/duplicate session id "same" \(ids are unique across the course/);
   });
 });
 
@@ -129,6 +151,11 @@ describe('runSession', () => {
     expect(r.problems).toEqual(['step 1 `echo oops >&2; exit 1`: expected exit ok, got 1\noops']);
   });
 
+  it('normalises addresses only in steps with `as:`', async () => {
+    const r = await runSession(one('steps:\n  all:\n    - run: echo "mask = 0xDEADBEEF, process 3 items"\n    - run: echo "mask = 0xDEADBEEF, process 3 items"\n      as: tool\n'), 'linux-gcc', tools());
+    expect(r.steps.map(s => s.stdout)).toEqual(['mask = 0xDEADBEEF, process 3 items\n', 'mask = <addr1>, process <pid> items\n']);
+  });
+
   it('rejects a step whose output differs between two runs (the stability check)', async () => {
     const r = await runSession(one('steps:\n  all:\n    - run: echo stable\n    - run: date +%N\n'), 'linux-gcc', tools());
     expect(r.problems).toHaveLength(1);
@@ -138,5 +165,21 @@ describe('runSession', () => {
   it('reports a signal death as 128 + the signal number, as the shell does', async () => {
     const r = await runSession(one('steps:\n  all:\n    - run: kill -SEGV $$\n      exit: fail\n'), 'linux-gcc', tools());
     expect(r.steps[0].exit).toBe(139);
+  });
+});
+
+describe('targetRunSessions (macOS on the Targets workflow)', () => {
+  it('writes a failing session into the file with its problems and returns them as warnings, not failures', async () => {
+    const root = contentWith({ good: { 'session.yaml': 'steps:\n  macos:\n    - run: echo ok\n' }, broken: { 'session.yaml': 'steps:\n  all:\n    - run: exit 3\n' } });
+    const outDir = mkdtempSync(path.join(tmpdir(), 'tdcc-session-out-'));
+    roots.push(outDir);
+    const tc = { target: 'macos-arm64-appleclang', kind: 'clang', cc: 'cc', version: 'cc test', sanitizers: false } as const satisfies NativeToolchain;
+    const r = await targetRunSessions({ contentRoot: root, outDir, cacheDir: path.join(outDir, 'cache'), workRoot: path.join(outDir, 'work'), tc });
+    expect(r).not.toHaveProperty('problems');
+    expect(r.warnings).toEqual(['modules/m97-sessions/sessions/broken (macos): step 1 `exit 3`: expected exit ok, got 3']);
+    const file = JSON.parse(readFileSync(path.join(outDir, 'm97.sessions.json'), 'utf8')) as TargetSessionsFile;
+    expect(file.sessions.good).toMatchObject({ steps: [{ stdout: 'ok\n', exit: 0 }] });
+    expect(file.sessions.good.problems).toBeUndefined();
+    expect(file.sessions.broken).toMatchObject({ steps: [{ exit: 3 }], problems: ['step 1 `exit 3`: expected exit ok, got 3'] });
   });
 });
