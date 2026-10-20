@@ -20,6 +20,8 @@ export interface QuizItemYaml {
 export interface ModuleInfo {
   id: string;
   dir: string;
+  /** True for a module course.yaml does not release: the app opens it only through `?preview=<id>` (src/content-runtime/release.ts). */
+  preview: boolean;
   meta: ModuleMeta;
   samples: SamplesFile;
   lessons: Array<{ stem: string; id: string; title: string }>;
@@ -28,23 +30,49 @@ export interface ModuleInfo {
 
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
 
-export function availableModules(): ModuleInfo[] {
-  const course = parse(read('content/course.yaml')) as { modules: Array<{ id: string; dir: string; available: boolean }> };
-  return course.modules.filter(m => m.available).map(m => {
-    const dir = `content/modules/${m.dir}`;
-    const meta = parse(read(`${dir}/module.yaml`)) as ModuleMeta;
-    const samples = JSON.parse(read(`src/generated/samples/${m.id}.json`)) as SamplesFile;
-    const lessons = meta.lessons.map(stem => {
-      const fm = parse(read(`${dir}/lessons/${stem}.mdx`).split(/^---$/m)[1]) as { id: string; title: string };
-      return { stem, id: fm.id, title: fm.title };
-    });
-    const quiz = (kind: 'retrieval' | 'checkpoint') => {
-      const p = `${dir}/quizzes/${kind}.yaml`;
-      return existsSync(join(ROOT, p)) ? (parse(read(p)) as QuizItemYaml[]) : [];
-    };
-    return { id: m.id, dir, meta, samples, lessons, quiz };
+interface CourseEntry { id: string; dir: string; available: boolean }
+const courseEntries = (): CourseEntry[] => (parse(read('content/course.yaml')) as { modules: CourseEntry[] }).modules;
+
+function loadModule(m: CourseEntry): ModuleInfo {
+  const dir = `content/modules/${m.dir}`;
+  const meta = parse(read(`${dir}/module.yaml`)) as ModuleMeta;
+  // A draft has no generated samples until its first sample exists.
+  const samplesFile = `src/generated/samples/${m.id}.json`;
+  const samples = m.available || existsSync(join(ROOT, samplesFile))
+    ? JSON.parse(read(samplesFile)) as SamplesFile
+    : { module: m.id, generatedBy: '', samples: {} } satisfies SamplesFile;
+  const lessons = meta.lessons.map(stem => {
+    const fm = parse(read(`${dir}/lessons/${stem}.mdx`).split(/^---$/m)[1]) as { id: string; title: string };
+    return { stem, id: fm.id, title: fm.title };
   });
+  const quiz = (kind: 'retrieval' | 'checkpoint') => {
+    const p = `${dir}/quizzes/${kind}.yaml`;
+    return existsSync(join(ROOT, p)) ? (parse(read(p)) as QuizItemYaml[]) : [];
+  };
+  return { id: m.id, dir, preview: !m.available, meta, samples, lessons, quiz };
 }
+
+/** Ids of the modules course.yaml does not release (`available: false`), whether or not they have a folder yet. */
+export const unreleasedModuleIds = (): string[] => courseEntries().filter(m => !m.available).map(m => m.id);
+
+/** The released modules (course.yaml `available: true`). */
+export function availableModules(): ModuleInfo[] {
+  return courseEntries().filter(m => m.available).map(loadModule);
+}
+
+/**
+ * The modules the click-through covers: every released module, or with `E2E_MODULE=mNN` just that one. That one may be
+ * unreleased (a draft on disk): the spec then opens it through the preview switch, which `ModuleInfo.preview` tells it.
+ */
+export function clickThroughModules(only: string | undefined = process.env.E2E_MODULE): ModuleInfo[] {
+  if (!only) return availableModules();
+  const entry = courseEntries().find(m => m.id === only);
+  if (!entry || !existsSync(join(ROOT, 'content', 'modules', entry.dir))) throw new Error(`E2E_MODULE=${only} matches no module with a folder under content/modules/`);
+  return [loadModule(entry)];
+}
+
+/** The base URL that opens a draft: the app's own address plus `?preview=<id>`, which relative `goto('#/…')` calls keep. */
+export const previewBase = (baseURL: string | undefined, mod: ModuleInfo): string => `${baseURL ?? ''}?preview=${mod.id}`;
 
 /** The course title on the map's h1 (content/course.yaml), so the map is told apart from any other page. */
 export function courseTitle(): string {
@@ -325,8 +353,9 @@ export async function expectAccessible(page: Page, what: string): Promise<void> 
   expect(serious.map(v => `${v.id}: ${v.help} (${v.nodes.map(n => n.target.join(' ')).slice(0, 3).join(', ')})`), `axe on ${what}`).toEqual([]);
 }
 
-export async function progressJson(page: Page): Promise<Record<string, any>> {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('tdcc:v1:progress') ?? '{}'));
+/** The progress document in localStorage. While a draft is previewed the app writes its own document, so ask for that one. */
+export async function progressJson(page: Page, preview = false): Promise<Record<string, any>> {
+  return page.evaluate(key => JSON.parse(localStorage.getItem(key) ?? '{}'), preview ? 'tdcc:v1:progress-preview' : 'tdcc:v1:progress');
 }
 
 /**
@@ -335,13 +364,18 @@ export async function progressJson(page: Page): Promise<Record<string, any>> {
  * Module ids and project ids come from the content, never from a hand-kept list. `undefined` for the first module.
  */
 export function priorModulesProgress(mod: ModuleInfo): Record<string, unknown> | undefined {
-  const all = availableModules();
-  const earlier = all.slice(0, all.findIndex(m => m.id === mod.id));
+  const order = courseEntries().map(m => m.id);
+  const earlier = availableModules().filter(m => order.indexOf(m.id) < order.indexOf(mod.id));
   if (!earlier.length) return undefined;
+  return completeProgress(earlier);
+}
+
+/** Progress in which every module in `done` is complete (its retrieval quiz done, checkpoint and project passed). */
+export function completeProgress(done: ModuleInfo[]): Record<string, unknown> {
   const at = new Date().toISOString();
   const quizzes: Record<string, unknown> = {};
   const projects: Record<string, unknown> = {};
-  for (const m of earlier) {
+  for (const m of done) {
     quizzes[`${m.id}:retrieval`] = { score: 1, total: 1, passed: true, at, answers: {} };
     quizzes[`${m.id}:checkpoint`] = { score: 1, total: 1, passed: true, at, answers: {} };
     projects[m.meta.project] = { passed: true, at };
