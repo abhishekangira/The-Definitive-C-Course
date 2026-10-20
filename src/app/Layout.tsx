@@ -3,7 +3,8 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useTheme, type ThemeChoice } from './theme';
 import { useProgress, daysSinceExport, storageWorks } from '../progress/store';
-import { course } from '../content-runtime/course';
+import { course, previewed } from '../content-runtime/course';
+import { moduleLabel } from '../progress/next';
 import { StreakChip } from '../components/StreakChip';
 import { BrandMark } from '../components/BrandMark';
 import { Icon } from '../components/Icon';
@@ -11,6 +12,8 @@ import styles from './Layout.module.css';
 
 const THEME_LABEL: Record<ThemeChoice, string> = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
 const NEXT: Record<ThemeChoice, ThemeChoice> = { system: 'light', light: 'dark', dark: 'system' };
+
+const previewLabels = previewed.map(id => moduleLabel(course.modules.find(e => e.id === id)!));
 
 /** Inline SVG icons: the Unicode glyphs (sun, moon, half circle) are missing from most UI fonts. */
 function ThemeIcon({ theme }: { theme: ThemeChoice }) {
@@ -73,6 +76,14 @@ export function Layout({ children }: { children?: ReactNode }) {
           </nav>
         </div>
       </header>
+      {previewed.length > 0 && (
+        <div className={styles.frame}>
+          <div className={styles.banner} role="note">
+            Preview: {previewLabels.join(' and ')} {previewed.length === 1 ? 'is' : 'are'} not released yet. Progress made here is kept apart from your real progress.
+            {' '}<a href={`${window.location.pathname}#/`}>Leave the preview</a>
+          </div>
+        </div>
+      )}
       {!persistent && (
         <div className={styles.frame}>
           <div className={styles.banner} role="status">

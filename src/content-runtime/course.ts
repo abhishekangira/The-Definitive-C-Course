@@ -6,6 +6,11 @@ import type {
 } from '../content-model/types';
 import courseYaml from '../../content/course.yaml';
 import videosJson from '../../videos.json';
+import { previewed } from './preview';
+import { buildRegistry, indexExercises, type ModuleEntry } from './release';
+
+export type { ExerciseEntry, ModuleEntry } from './release';
+export { previewed };
 
 export const course = courseYaml as CourseManifest;
 export const videos = videosJson as VideoEntry[];
@@ -43,26 +48,11 @@ export interface QuizItem {
   line?: number;
 }
 
-export interface ModuleEntry {
-  dir: string;
-  meta: ModuleMeta;
-  lessons: Array<{ stem: string; frontmatter: LessonFrontmatter }>;
-}
-
-const dirOf = (path: string) => path.split('/')[3];
 /** Folder files that are learner-provided support code (headers, harness helpers), not tests or solutions. */
 export const isSupportFile = (path: string) => /\.(c|h)$/.test(path) && !/^(starter|solution)(\.c$|\/)/.test(path) && !path.startsWith('tests/');
 
-export const modules: Record<string, ModuleEntry> = {};
-for (const [path, meta] of Object.entries(moduleMetas)) {
-  const dir = dirOf(path);
-  const lessons = meta.lessons.map(stem => {
-    const fm = lessonFrontmatter[`/content/modules/${dir}/lessons/${stem}.mdx`];
-    if (!fm) throw new Error(`module ${meta.id}: lesson "${stem}" not found`);
-    return { stem, frontmatter: fm };
-  });
-  modules[meta.id] = { dir, meta, lessons };
-}
+/** The modules the app opens: the released ones, plus any `?preview=` names (release.ts). */
+export const modules = buildRegistry(course.modules, moduleMetas, lessonFrontmatter, previewed);
 
 export function moduleById(id: string): ModuleEntry | undefined { return modules[id]; }
 
@@ -76,23 +66,7 @@ export function projectLoader(moduleId: string) {
   return m ? projectPages[`/content/modules/${m.dir}/project/${m.meta.project}/project.mdx`] : undefined;
 }
 
-export interface ExerciseEntry {
-  id: string;
-  moduleId: string;
-  /** Folder (relative to the module) e.g. "exercises/hello-its-me" or "exercises/cash/variants/2". */
-  folder: string;
-  meta: ExerciseMeta;
-}
-
-export const exercises: Record<string, ExerciseEntry> = {};
-for (const [path, meta] of Object.entries(exerciseMetas)) {
-  const dir = dirOf(path);
-  const moduleId = Object.values(modules).find(m => m.dir === dir)?.meta.id ?? dir.slice(0, 3);
-  const folder = path.split('/').slice(4, -1).join('/');
-  // Variants are addressed as "<exercise>/variants/<n>"; projects as "project/<id>".
-  const key = folder.replace(/^exercises\//, '');
-  exercises[key] = { id: key, moduleId, folder, meta };
-}
+export const exercises = indexExercises(exerciseMetas, modules);
 
 /** Loads all raw files of an exercise/project folder: { "starter.c": "...", "tests.json": "..." }. */
 export async function folderFiles(moduleId: string, folder: string): Promise<Record<string, string>> {

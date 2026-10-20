@@ -25,7 +25,7 @@ export const moduleLabel = (entry: CourseModuleEntry): string => (entry.number =
 export function nextStep(p: ProgressV1): NextStep {
   for (const entry of course.modules) {
     const m: ModuleEntry | undefined = modules[entry.id];
-    if (!m) break; // this and every later module is not built yet
+    if (!m) break; // this module is not open (unbuilt, or not released), and so is none after it
     const st = moduleStatus(p, entry.id);
     if (st.complete) continue;
     const label = moduleLabel(entry);

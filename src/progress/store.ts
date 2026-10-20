@@ -4,10 +4,15 @@
 import { useSyncExternalStore } from 'react';
 
 export const STORAGE_PREFIX = 'tdcc:v1:';
-const KEY = `${STORAGE_PREFIX}progress`;
+const REAL_KEY = `${STORAGE_PREFIX}progress`;
 
 import { addDay, cleanDays, dayKey, emptyStreak, longestRun, mergeStreaks, type StreakData } from './streak';
 import { parseCode } from '../testing/token';
+import { previewed } from '../content-runtime/preview';
+
+// While an unreleased module is previewed (`?preview=m03`), everything done on the page is written to a document of its own,
+// so the learner's real progress never records anything from a module that is not released.
+const KEY = previewed.length > 0 ? `${STORAGE_PREFIX}progress-preview` : REAL_KEY;
 
 export type Platform = 'mac-arm' | 'mac-intel' | 'wsl' | 'linux-x86' | 'linux-arm';
 
@@ -208,11 +213,20 @@ export function storageWorks(): boolean {
 let state: ProgressV1 = load();
 const listeners = new Set<() => void>();
 
+function readDocument(key: string): ProgressV1 | null {
+  const raw = storageGet(key);
+  if (!raw) return null;
+  try { return migrate(JSON.parse(raw)); } catch { return null; }
+}
+
 function load(): ProgressV1 {
-  const raw = storageGet(KEY);
-  if (raw) {
-    try { return migrate(JSON.parse(raw)); } catch { /* fall through to a fresh document */ }
+  const real = readDocument(REAL_KEY);
+  if (KEY !== REAL_KEY) {
+    // A preview starts from the real progress (so earlier modules count as done), adds its own on top, and never writes the real key.
+    const own = readDocument(KEY);
+    return real && own ? mergeProgress(real, own) : own ?? real ?? emptyProgress();
   }
+  if (real) return real;
   const fresh = emptyProgress();
   storageSet(KEY, JSON.stringify(fresh));
   return fresh;

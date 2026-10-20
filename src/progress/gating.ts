@@ -51,7 +51,10 @@ export function moduleStatus(p: ProgressV1, moduleId: string): ModuleStatus {
   };
 }
 
-/** A module is unlocked when every earlier available module is complete. */
+/**
+ * A module is unlocked when every earlier module is complete. A module the app does not open (unbuilt, or on disk but not
+ * released: content-runtime/release.ts) is not in `modules`, so it is never unlocked and keeps every later module locked.
+ */
 export function isModuleUnlocked(p: ProgressV1, moduleId: string): boolean {
   for (const entry of course.modules) {
     if (entry.id === moduleId) return Boolean(modules[moduleId]);

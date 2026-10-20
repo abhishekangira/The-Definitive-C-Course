@@ -1,21 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import { emptyProgress, type ExerciseProgress, type ProgressV1 } from './store';
 
-// Fixture course so the rules are tested at their boundaries independent of the real content:
-// m01, m02 and m04 are built; m03 is listed in the manifest between them but not built yet.
-vi.mock('../content-runtime/course', () => {
-  const mod = (id: string, lessons: string[], core: string[], project: string) => ({
-    dir: id,
-    meta: { id, project, coreExercises: core, lessons },
-    lessons: lessons.map(stem => ({ stem, frontmatter: { id: `${id}-${stem}` } })),
-  });
+// Fixture course so the rules are tested at their boundaries independent of the real content. The modules go through the
+// app's own registry (release.ts), so the release guard is part of what these tests run: m01, m02 and m04 are released;
+// m03 sits between them with a folder on disk (a draft being built) but is not released.
+vi.mock('../content-runtime/course', async () => {
+  const { buildRegistry } = await import('../content-runtime/release');
+  const mod = (id: string, lessons: string[], core: string[], project: string) => ({ id, project, coreExercises: core, lessons });
+  const specs = [mod('m01', ['a', 'b'], ['ex1', 'ex2'], 'proj1'), mod('m02', ['a'], [], 'proj2'), mod('m03', ['a'], [], 'proj3'), mod('m04', ['a'], [], 'proj4')];
+  const manifest = specs.map(m => ({ id: m.id, dir: m.id, available: m.id !== 'm03' }));
+  const metas = Object.fromEntries(specs.map(m => [`/content/modules/${m.id}/module.yaml`, m]));
+  const frontmatter = Object.fromEntries(specs.flatMap(m => m.lessons.map(stem =>
+    [`/content/modules/${m.id}/lessons/${stem}.mdx`, { id: `${m.id}-${stem}`, title: stem, minutes: 10, summary: '' }])));
   return {
-    course: { modules: [{ id: 'm01' }, { id: 'm02' }, { id: 'm03' }, { id: 'm04' }] },
-    modules: {
-      m01: mod('m01', ['a', 'b'], ['ex1', 'ex2'], 'proj1'),
-      m02: mod('m02', ['a'], [], 'proj2'),
-      m04: mod('m04', ['a'], [], 'proj4'),
-    },
+    course: { modules: manifest },
+    modules: buildRegistry(manifest, metas, frontmatter),
     // m01 has a retrieval quiz; m02 has none.
     quizFor: (id: string, name: string) => (id === 'm01' && name === 'retrieval' ? [{ id: 'q' }] : []),
   };
@@ -174,6 +173,11 @@ describe('moduleStatus', () => {
     expect(moduleStatus(doc(), 'zzz')).toMatchObject({ lessonsTotal: 0, complete: false, outstandingVariants: [] });
   });
 
+  it('counts nothing for a module that is on disk but not released, even with its lessons recorded', () => {
+    const p = doc({ lessons: { 'm03-a': { completedAt: at } }, quizzes: { 'm03:checkpoint': checkpoint(9, true) }, projects: { proj3: { passed: true, at } } });
+    expect(moduleStatus(p, 'm03')).toMatchObject({ lessonsDone: 0, lessonsTotal: 0, checkpointPassed: false, projectPassed: false, complete: false });
+  });
+
   it('counts completed lessons', () => {
     const s = moduleStatus(doc({ lessons: { 'm01-a': { completedAt: at } } }), 'm01');
     expect(s).toMatchObject({ lessonsDone: 1, lessonsTotal: 2 });
@@ -260,10 +264,10 @@ describe('isModuleUnlocked', () => {
     expect(isModuleUnlocked(completeM01({ quizzes: { 'm01:checkpoint': checkpoint(7, false) } }), 'm02')).toBe(false);
     expect(isModuleUnlocked(completeM01({ exercises: { ex1: ex({ passed: true, solutionViewed: true }) } }), 'm02')).toBe(false);
   });
-  it('a listed but unbuilt module (m03) is locked even when every built module before it is complete', () => {
+  it('a module that is on disk but not released (m03) is locked even when every module before it is complete', () => {
     expect(isModuleUnlocked(completeM02(), 'm03')).toBe(false);
   });
-  it('a built module behind an unbuilt one (m04 after m03) stays locked even though m01 and m02 are complete', () => {
+  it('a released module behind an unreleased one (m04 after m03) stays locked even though m01 and m02 are complete', () => {
     expect(isModuleUnlocked(completeM02(), 'm04')).toBe(false);
   });
   it('an unknown module is locked', () => {
