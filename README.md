@@ -66,11 +66,12 @@ Step through a program line by line with real debugger traces, explore the compi
 From Module 3 on, you build real projects with your own toolchain and `make`. A zero-dependency runner, `check.mjs`, tests your work locally and prints a **progress code and completion token** you paste back into the app.
 
 ### Animations and video
-Short, deterministic explainer animations rendered with **HyperFrames**, each followed by an interaction, plus a hand-picked few YouTube segments only where they clearly beat the app. Every animation has captions and a still-frame fallback.
+Short, deterministic explainer animations rendered with **HyperFrames**, each followed by an interaction, plus a hand-picked few CS50 lecture segments only where they clearly beat the app. The clips are embedded from YouTube (nothing loads until you press play), and each comes with a transcript of the segment from its CC BY-NC-SA 4.0 captions, credited under the clip. Every animation has captions and a still-frame fallback.
 
 ### An AI tutor, on your terms
-- **Bring your own key.** Nothing is sent until you accept a notice that names the exact host.
-- It only appears after a failed attempt on a browser exercise, sees the real failing output and only the hints you have already opened, and is told never to give the solution away. A guard checks every reply against the reference solution and replaces code that would leak it with a pointer to the next hint.
+- **Bring your own key.** Nothing is sent until you accept a notice that names the exact host and what goes with the request. Exercises and lessons each ask for their own consent.
+- **On exercises** it only appears after a failed attempt on a browser exercise, sees the real failing output and only the hints you have already opened, and is told never to give the solution away. A guard checks every reply against the reference solution and replaces code that would leak it with a pointer to the next hint.
+- **In lessons** a chat panel answers questions about the parts you have reached (with your edits to the samples and the video transcripts). Highlight a passage and choose Explain or Reply to start from it. The tutor's text appears as it streams in.
 - Works with OpenRouter (with a sensible default model list) or any compatible host, including `localhost`.
 
 ### Streaks, spirit beans and Rio
@@ -127,4 +128,4 @@ Read [`AGENTS.md`](AGENTS.md) first (the workflow, commands, pull-request rules,
 
 ## Licence
 
-MIT, for the code and the course content: see [`LICENSE`](LICENSE). Third-party notices (LLVM, wasi-libc, browser_wasi_shim, fonts and others) are listed on the site's About page.
+MIT, for the code and the course content: see [`LICENSE`](LICENSE). Third-party notices (LLVM, wasi-libc, browser_wasi_shim, fonts, the CS50 clips and caption excerpts, which are CC BY-NC-SA 4.0, and others) are listed on the site's About page.

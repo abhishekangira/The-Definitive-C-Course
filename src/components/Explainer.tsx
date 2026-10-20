@@ -134,7 +134,7 @@ export function Explainer({ id, pauses = [] }: { id: string; pauses?: PausePromp
         </ol>
       )}
       {transcript && (
-        <details className={styles.transcript}>
+        <details className={styles.transcript} data-transcript>
           <summary>Transcript</summary>
           <p>{transcript}</p>
         </details>

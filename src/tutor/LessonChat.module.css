@@ -1,0 +1,65 @@
+/* The lesson chat: a panel docked at the right edge of the lesson column, and the toolbar that follows a highlight.
+   Surfaces are told apart by a tone step or a 1px line, never by a shadow. On a phone the panel is a sheet at the bottom. */
+.panel {
+  position: fixed;
+  right: max(var(--space-4), calc(50vw - var(--column) / 2));
+  bottom: var(--space-4);
+  z-index: 30;
+  width: var(--chat-width);
+  height: min(680px, calc(100dvh - 88px));
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.panel[hidden] { display: none; }
+@media (max-width: 960px) {
+  .panel { left: var(--space-2); right: var(--space-2); bottom: var(--space-2); width: auto; height: min(72dvh, 640px); }
+}
+
+.head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--border); }
+.title { margin: 0; font-size: 0.9375rem; font-weight: 600; }
+.headActions { display: flex; align-items: center; gap: var(--space-1); }
+
+.note { margin: 0; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); background: var(--bg-sunken); font-size: 0.9rem; }
+.note > div { margin: 0; }
+
+.log { flex: 1; min-height: 0; overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); font-size: 0.9375rem; line-height: 1.55; }
+.empty, .muted { margin: 0; color: var(--text-muted); }
+.you { align-self: stretch; background: var(--bg-sunken); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); }
+.you p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.quote { margin: 0 0 var(--space-2); padding-left: var(--space-3); border-left: 3px solid var(--border-strong); color: var(--text-muted); font-size: 0.875rem; overflow-wrap: anywhere; }
+.tutor { min-width: 0; }
+.reply > :first-child { margin-top: 0; }
+.reply > :last-child { margin-bottom: 0; }
+.reply p, .reply ul, .reply ol { margin: 0 0 var(--space-2); }
+.reply ul, .reply ol { padding-left: 1.3rem; }
+.reply pre { margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3); background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow-x: auto; font-size: 0.85rem; }
+.reply pre code { background: none; border: 0; padding: 0; }
+.reply { overflow-wrap: anywhere; }
+.bad { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); background: var(--err-soft); color: var(--err-ink); border-radius: var(--radius-sm); }
+
+.composer { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-4); border-top: 1px solid var(--border); }
+.composer textarea {
+  font-family: inherit; font-size: 0.9375rem; color: var(--text); background: var(--bg-elev);
+  padding: var(--space-2) var(--space-3); border: 1px solid var(--control); border-radius: var(--radius-sm); resize: none; min-height: 3.2em; max-height: 9em;
+}
+.composerRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.hint { margin: 0; color: var(--text-muted); font-size: 0.8125rem; }
+.replying { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); background: var(--bg-sunken); border-radius: var(--radius-sm); font-size: 0.875rem; }
+.replyingLabel { flex: none; color: var(--text-muted); }
+.replyingText { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; quotes: none; }
+
+.toolbar {
+  position: fixed;
+  z-index: 40;
+  display: flex;
+  gap: var(--space-1);
+  width: max-content;
+  padding: var(--space-1);
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}

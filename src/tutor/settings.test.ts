@@ -213,6 +213,30 @@ describe('commitTutorDraft', () => {
   });
 });
 
+describe('exercise and lesson consent', () => {
+  it('are kept apart: old documents and exercise notices do not cover the lesson chat; Settings covers both; both clear together', () => {
+    const old = parseTutorSettings({ version: 1, apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, consentedHost: 'openrouter.ai' });
+    expect(consentCovers(old, 'exercise')).toBe(true);
+    expect(consentCovers(old, 'lesson'), 'consent saved before the lesson chat does not carry over').toBe(false);
+    expect(parseTutorSettings({ version: 1, apiKey: 'k', baseUrl: DEFAULT_TUTOR_BASE_URL, lessonConsentedHost: 'evil.test' }).lessonConsentedHost).toBe('');
+
+    replaceTutorSettings({ ...old, consentedHost: '' });
+    acceptTutorHost('openrouter.ai', 'exercise');
+    expect([consentCovers(getTutorSettings(), 'exercise'), consentCovers(getTutorSettings(), 'lesson')]).toEqual([true, false]);
+    replaceTutorSettings({ ...old, consentedHost: '' });
+    acceptTutorHost('openrouter.ai', 'lesson');
+    expect([consentCovers(getTutorSettings(), 'exercise'), consentCovers(getTutorSettings(), 'lesson')]).toEqual([false, true]);
+    acceptTutorHost('openrouter.ai');
+    expect([consentCovers(getTutorSettings(), 'exercise'), consentCovers(getTutorSettings(), 'lesson')]).toEqual([true, true]);
+
+    expect(commitTutorDraft({ apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', useDefaultModel: true }).settings.lessonConsentedHost).toBe('openrouter.ai');
+    expect(commitTutorDraft({ apiKey: 'sk-other', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', useDefaultModel: true }).settings.lessonConsentedHost).toBe('');
+    acceptTutorHost('openrouter.ai');
+    removeTutorKey();
+    expect(getTutorSettings().lessonConsentedHost).toBe('');
+  });
+});
+
 describe('the model choice', () => {
   const stored = (extra: Record<string, unknown> = {}) => parseTutorSettings({
     version: 1, apiKey: 'sk-keep', baseUrl: DEFAULT_TUTOR_BASE_URL, consentedHost: 'openrouter.ai', ...extra,

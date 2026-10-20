@@ -18,7 +18,8 @@ export function attributionNote(v: VideoEntry): string {
     `Excerpt of "${v.title}" (${v.channel}, https://www.youtube.com/watch?v=${v.id}),`,
     `cues from ${formatTimestamp(v.start - 60)} to ${formatTimestamp(v.end + 60)} (segment ${formatTimestamp(v.start)} to ${formatTimestamp(v.end)} plus 60 s either side).`,
     `Captions (c) CS50, Harvard University, CC BY-NC-SA 4.0 (https://cs50.harvard.edu/x/license/).`,
-    `Kept only so that tools/videos/check.ts can verify the anchor quotes offline.`,
+    `Shown under each clip as running text (the segment only, with this credit) and read by the lesson chat;`,
+    `also lets tools/videos/check.ts verify the anchor quotes offline. Shared under the same licence.`,
   ].join('\n');
 }
 

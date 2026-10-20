@@ -102,7 +102,7 @@ CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, re
 | `src/` | App: `app/` pages, `interactions/`, `visualizers/`, `lesson/` card engine, `progress/` store and gating, `runtime/` browser compiler, `testing/` shared test runner and tokens, `generated/` machine output | `src/AGENTS.md` |
 | `src/progress/`, `LocalTask`, the streak components | Progress document, gating, local tasks, the streak and Rio | `src/progress/AGENTS.md` |
 | `src/runtime/` | In-browser compiler and runtime, `learnc.h` | `src/runtime/AGENTS.md` |
-| `src/tutor/` | The optional AI tutor: settings, prompt, client, leak guard | `src/tutor/AGENTS.md`, PLAN.md §2.6 |
+| `src/tutor/` | The optional AI tutor: settings, prompt, client, leak guard, and the lesson chat (highlight, Explain, Reply) | `src/tutor/AGENTS.md`, PLAN.md §2.6 |
 | `src/testing/`, `tools/check/` | Shared test runner, tokens, the local runner `check.mjs` | `tools/check/README.md` |
 | `e2e/` | Playwright specs and helpers (`lib.ts` completes every interaction from generated data) | `e2e/AGENTS.md` |
 | `animations/`, `public/animations/<id>/`, `tools/anim/` | HyperFrames projects; the committed MP4, VTT, `steps.json`, stills; the check and render pipeline | `animations/README.md`, PLAN.md §4.6 |

@@ -13,6 +13,7 @@ import { tags as t } from '@lezer/highlight';
 import type { Diagnostic } from '../content-model/types';
 import { takeHandoff } from './editor-focus';
 import styles from './CodeEditor.module.css';
+import { registerEditorText } from './editorText';
 
 const darkHighlight = HighlightStyle.define([
   { tag: t.keyword, color: '#ff9ac1' },
@@ -123,13 +124,14 @@ export function CodeEditor({ value, onChange, onRun, readOnly, diagnostics = [],
       }),
     });
     view.current = v;
+    const unregister = registerEditorText(v.dom, () => v.state.doc.toString());
     // Re-theme highlighting when the app theme changes, or (with the "System" theme) when the operating system's does.
     const retheme = () => v.dispatch({ effects: highlight.current.reconfigure(syntaxHighlighting(dark() ? darkHighlight : lightHighlight)) });
     const obs = new MutationObserver(retheme);
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     const scheme = window.matchMedia('(prefers-color-scheme: dark)');
     scheme.addEventListener('change', retheme);
-    return () => { obs.disconnect(); scheme.removeEventListener('change', retheme); v.destroy(); view.current = null; };
+    return () => { obs.disconnect(); scheme.removeEventListener('change', retheme); unregister(); v.destroy(); view.current = null; };
     // The editor is created once; value/readOnly updates are applied by the effects below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

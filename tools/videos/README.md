@@ -42,7 +42,7 @@ padding; two segments of one video overlap.
 
 ## Transcript excerpts
 
-`transcripts/<id>.vtt` holds the WebVTT header, one `NOTE` block that attributes the captions (CS50, Harvard, CC BY-NC-SA 4.0),
+`transcripts/<id>.vtt` holds the WebVTT header, one `NOTE` block that attributes the captions (CS50, Harvard, CC BY-NC-SA 4.0) and says how they are used (the segment is shown under the clip with that credit, and read by the lesson chat; a file without the `Captions (c)` line is never shown),
 and only the cues that begin between `start - 60 s` and `end + 60 s`. To refresh one by hand (the only time yt-dlp runs),
 download the transcript, then cut it:
 
@@ -55,7 +55,7 @@ npm run videos:check
 The `web_embedded` client matters: the default clients hit a bot check, and bursts get HTTP 429, so fetch slowly. Commit
 only the excerpt; CI never calls yt-dlp. (Verified in the cloud container.)
 
-`vtt.ts` has no Node imports, so the app can reuse `parseVtt()` and `cuesBetween()` to show a segment's transcript:
+The app uses the excerpts too: `src/components/youtube-transcript.ts` cuts the segment at its two anchors, `<YouTube>` shows it under the clip, and the lesson chat sends it to the learner's AI provider with the rest of the lesson. `vtt.ts` has no Node imports, so the app reuses `parseVtt()`, `findAnchor()` and `cuesBetween()`:
 `import.meta.glob('/tools/videos/transcripts/*.vtt', { query: '?raw', import: 'default' })`.
 
 ## Embedding

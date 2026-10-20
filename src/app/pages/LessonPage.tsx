@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import { Link, Navigate, useParams } from 'react-router';
 import { MDXProvider } from '@mdx-js/react';
 import { lessonLoader, moduleById, samplesFor } from '../../content-runtime/course';
@@ -11,6 +11,10 @@ import { preloadCodeEditor } from '../../components/CodeEditor';
 import { getRuntime } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
 import { Cells } from '../../components/Cells';
+import { LESSON_CHAT_ID, LessonChat, type LessonChatHandle } from '../../tutor/LessonChat';
+import { lessonTextFrom } from '../../tutor/lessonText';
+import { SelectionToolbar } from '../../tutor/SelectionToolbar';
+import { useTutorSettings } from '../../tutor/settings';
 import styles from './Pages.module.css';
 
 export function LessonPage() {
@@ -20,6 +24,15 @@ export function LessonPage() {
   const [Lesson, setLesson] = useState<ComponentType<{ components?: Record<string, unknown> }> | null>(null);
   const [samples, setSamples] = useState<SamplesFile | null | undefined>(undefined);
   const storedMode = Boolean(progress.settings.storedOutputMode);
+  // The lesson chat and the highlight toolbar exist only for a learner who has set the tutor up.
+  const tutorOn = Boolean(useTutorSettings().apiKey);
+  const [chatOpen, setChatOpen] = useState(false);
+  const chat = useRef<LessonChatHandle>(null);
+  const prose = useRef<HTMLDivElement>(null);
+  const askButton = useRef<HTMLButtonElement>(null);
+  const readLesson = useCallback(() => (prose.current ? lessonTextFrom(prose.current) : ''), []);
+  const closeChat = useCallback(() => { setChatOpen(false); askButton.current?.focus(); }, []);
+  useEffect(() => { if (!tutorOn) setChatOpen(false); }, [tutorOn]);
 
   useEffect(() => {
     setLesson(null);
@@ -46,17 +59,25 @@ export function LessonPage() {
   const doneCount = m.lessons.filter(l => progress.lessons[l.frontmatter.id]).length;
 
   return (
-    <div className={styles.lessonLayout}>
+    <div className={styles.lessonLayout} data-chat={tutorOn && chatOpen ? 'open' : undefined}>
       <article className={styles.lesson}>
         <nav className={styles.crumbs} aria-label="Breadcrumb">
           <Link to="/">Course</Link> <span aria-hidden="true">/</span> <Link to={`/m/${moduleId}`}>{label}</Link>
         </nav>
         <h1>{lesson.frontmatter.title}</h1>
-        <p className={styles.meta}>Lesson {idx + 1} of {m.lessons.length} · {lesson.frontmatter.minutes} min</p>
+        <div className={styles.lessonMeta}>
+          <p className={styles.meta}>Lesson {idx + 1} of {m.lessons.length} · {lesson.frontmatter.minutes} min</p>
+          {tutorOn && (
+            <button
+              type="button" ref={askButton} className="btn btn-sm" aria-expanded={chatOpen} aria-controls={LESSON_CHAT_ID}
+              onClick={() => (chatOpen ? closeChat() : setChatOpen(true))}
+            ><Icon name="chat" /> Ask the tutor</button>
+          )}
+        </div>
         {Lesson && samples !== undefined ? (
           <LessonProvider lessonId={lesson.frontmatter.id} moduleId={moduleId} samples={samples}>
             <MDXProvider components={mdxComponents}>
-              <div className={styles.prose}><Lesson components={mdxComponents} /></div>
+              <div ref={prose} className={styles.prose}><Lesson components={mdxComponents} /></div>
             </MDXProvider>
           </LessonProvider>
         ) : <p>Loading lesson…</p>}
@@ -94,6 +115,15 @@ export function LessonPage() {
           <span className={styles.nextCount}>{doneCount} of {m.lessons.length} lessons</span>
         </div>
       </aside>
+      {tutorOn && (
+        <>
+          <SelectionToolbar container={prose} onAction={(action, quote) => { setChatOpen(true); chat.current?.ask(action, quote); }} />
+          <LessonChat
+            key={lesson.frontmatter.id} ref={chat} open={chatOpen} onClose={closeChat}
+            title={lesson.frontmatter.title} moduleLabel={label} readLesson={readLesson}
+          />
+        </>
+      )}
     </div>
   );
 }

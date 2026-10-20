@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 export type IconName =
   | 'check' | 'cross' | 'minus'
   | 'arrow-left' | 'arrow-right' | 'arrow-up' | 'arrow-down'
-  | 'indent' | 'outdent' | 'restart' | 'play' | 'flame' | 'sliders' | 'dot';
+  | 'indent' | 'outdent' | 'restart' | 'play' | 'flame' | 'sliders' | 'dot' | 'chat';
 
 const PATHS: Record<IconName, ReactNode> = {
   check: <path d="M3 8.5l3.2 3.2L13 4.5" />,
@@ -22,6 +22,7 @@ const PATHS: Record<IconName, ReactNode> = {
   play: <path d="M5 3l8 5-8 5z" fill="currentColor" stroke="none" />,
   sliders: <><path d="M2 5h5M11 5h3M2 11h2M8 11h6" /><circle cx="9" cy="5" r="1.7" /><circle cx="6" cy="11" r="1.7" /></>,
   dot: <circle cx="8" cy="8" r="3" fill="currentColor" stroke="none" />,
+  chat: <path d="M2.5 3h11v8h-6.2L4 13.5V11H2.5z" />,
   flame: <path d="M8 1C9 3.5 12.5 5 12.5 9.3 12.5 12.4 10.5 15 8 15 5.5 15 3.5 12.4 3.5 9.3 3.5 7.6 4.3 6.4 5.2 5.4 5.5 6.6 6.2 7.3 7 7.5 6.6 5.2 7 2.8 8 1Z" fill="currentColor" stroke="none" />,
 };
 
