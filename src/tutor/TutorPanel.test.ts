@@ -45,7 +45,7 @@ describe('TutorPanel renders model output as text', () => {
   let root: Root;
   beforeEach(() => {
     localStorage.clear();
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: 'tutor.test' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: 'tutor.test', lessonConsentedHost: '' });
     host = document.createElement('div');
     document.body.appendChild(host);
     root = createRoot(host);
@@ -192,17 +192,17 @@ describe('TutorPanel renders model output as text', () => {
   });
 
   it('says to choose a model, with a link to Settings, instead of offering Ask, when no model can be used', () => {
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: '', consentedHost: 'tutor.test' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: '', consentedHost: 'tutor.test', lessonConsentedHost: '' });
     act(() => { root.render(createElement(TutorPanel, baseProps)); });
     expect(host.textContent).toContain('Choose a model in Settings');
     expect(host.querySelector('a[href="#/settings"]')).not.toBeNull();
     expect(button(/Give me a nudge/)).toBeUndefined();
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: '', consentedHost: '' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: '', consentedHost: '', lessonConsentedHost: '' });
     expect(host.textContent, 'no consent notice for a request that cannot be made').not.toContain('The first request sends your API key');
   });
 
   it('moves focus to the nudge after accept and to the refusal after decline', () => {
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '', lessonConsentedHost: '' });
     act(() => { root.render(createElement(TutorPanel, baseProps)); });
     act(() => { button(/Don't send/).click(); });
     const refused = [...host.querySelectorAll('p')].find(p => p.textContent?.includes('Nothing was sent.'));

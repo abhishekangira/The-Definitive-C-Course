@@ -21,7 +21,7 @@ async function seed(context: BrowserContext, opts: { cards?: Record<string, numb
     // Once only: a later navigation must keep the progress the test made.
     if (!localStorage.getItem('tdcc:v1:progress')) localStorage.setItem('tdcc:v1:progress', progress);
     if (tutor && !localStorage.getItem('tdcc:v1:tutor')) {
-      localStorage.setItem('tdcc:v1:tutor', JSON.stringify({ version: 1, apiKey: key, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: 'tutor.test' }));
+      localStorage.setItem('tdcc:v1:tutor', JSON.stringify({ version: 1, apiKey: key, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: 'tutor.test', lessonConsentedHost: 'tutor.test' }));
     }
   }, [JSON.stringify(doc), opts.tutor ?? true, KEY] as const);
 }
@@ -184,7 +184,7 @@ test('the first request waits for the learner to agree, and the Explain that ask
   const page = await context.newPage();
   await seed(context, { cards: { 'm01-l1': [0] } });
   await context.addInitScript(key => {
-    localStorage.setItem('tdcc:v1:tutor', JSON.stringify({ version: 1, apiKey: key, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '' }));
+    localStorage.setItem('tdcc:v1:tutor', JSON.stringify({ version: 1, apiKey: key, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '', lessonConsentedHost: '' }));
   }, KEY);
   const { bodies } = await stubProvider(page, ['Allowed now.']);
   await page.goto('#/m/m01/01-hello-compiled-world');

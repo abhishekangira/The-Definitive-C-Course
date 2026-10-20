@@ -4,10 +4,11 @@ import { consentCovers, isOpenRouter, type TutorSettings } from './settings';
 
 export type TutorSetup = 'no-key' | 'needs-model' | 'needs-consent' | 'ready';
 
-export function tutorSetup(s: TutorSettings): TutorSetup {
+/** `scope` picks whose consent counts: the exercise tutor and the lesson chat each ask for their own. */
+export function tutorSetup(s: TutorSettings, scope: 'exercise' | 'lesson' = 'exercise'): TutorSetup {
   if (!s.apiKey) return 'no-key';
   // No model chosen and no course default for this host: asking cannot work.
   if (!s.model && !isOpenRouter(s.baseUrl)) return 'needs-model';
-  if (!consentCovers(s)) return 'needs-consent';
+  if (!consentCovers(s, scope)) return 'needs-consent';
   return 'ready';
 }

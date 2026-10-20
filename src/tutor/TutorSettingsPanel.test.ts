@@ -178,7 +178,7 @@ describe('TutorSettingsPanel', () => {
     type('tutor-key', KEY);
     expect(stored().apiKey).toBe(KEY);
     // Another tab clicked Remove key.
-    const removed = JSON.stringify({ version: 1, apiKey: '', baseUrl: 'https://openrouter.ai/api/v1', model: '', consentedHost: '' });
+    const removed = JSON.stringify({ version: 1, apiKey: '', baseUrl: 'https://openrouter.ai/api/v1', model: '', consentedHost: '', lessonConsentedHost: '' });
     localStorage.setItem(TUTOR_STORAGE_KEY, removed);
     act(() => { window.dispatchEvent(new StorageEvent('storage', { key: TUTOR_STORAGE_KEY, newValue: removed })); });
     expect((host.querySelector('#tutor-key') as HTMLInputElement).value).toBe('');

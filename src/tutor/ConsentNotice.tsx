@@ -1,4 +1,5 @@
 // Shown before the first request to a provider host, from Settings, an exercise and the lesson chat. Settings names every use.
+// Each notice records consent only for what it named (acceptTutorHost scope): exercise, lesson, or both from Settings.
 import styles from './Tutor.module.css';
 
 const SENDS = {

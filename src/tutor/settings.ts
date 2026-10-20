@@ -42,12 +42,24 @@ export interface TutorSettings {
   baseUrl: string;
   /** The learner's own model id. Empty means the course default (several models through OpenRouter), which only OpenRouter understands. */
   model: string;
-  /** `url.host` the learner agreed to send requests to. Empty until they accept, and after the host or the key changes. */
+  /**
+   * `url.host` the learner agreed to send exercise requests to (their code, the test results, a hidden copy of the
+   * solution). Empty until they accept, and after the host or the key changes.
+   */
   consentedHost: string;
+  /**
+   * The same for the lesson chat (the lesson text, their edits to its samples, highlights and the conversation). Kept
+   * apart on purpose: agreeing to one notice does not cover what the other sends, and consent saved before the lesson
+   * chat existed (only `consentedHost`) does not reach it.
+   */
+  lessonConsentedHost: string;
 }
 
+/** What a consent notice covers. `any` is the Settings notice, which names both uses. */
+export type ConsentScope = 'exercise' | 'lesson' | 'any';
+
 export function emptyTutorSettings(): TutorSettings {
-  return { apiKey: '', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', consentedHost: '' };
+  return { apiKey: '', baseUrl: DEFAULT_TUTOR_BASE_URL, model: '', consentedHost: '', lessonConsentedHost: '' };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -137,18 +149,24 @@ export function parseTutorSettings(raw: unknown): TutorSettings {
   if (raw.version !== undefined && raw.version !== 1) return empty;
   const baseUrl = typeof raw.baseUrl === 'string' ? (parseTutorBaseUrl(raw.baseUrl) ?? empty.baseUrl) : empty.baseUrl;
   const host = tutorHost(baseUrl);
-  const consented = typeof raw.consentedHost === 'string' ? raw.consentedHost.trim() : '';
+  const forHost = (v: unknown) => {
+    const consented = typeof v === 'string' ? v.trim() : '';
+    return host && consented === host ? consented : '';
+  };
   return {
     apiKey: cleanTutorKey(raw.apiKey),
     baseUrl,
     model: cleanTutorModel(raw.model),
-    consentedHost: host && consented === host ? consented : '',
+    consentedHost: forHost(raw.consentedHost),
+    lessonConsentedHost: forHost(raw.lessonConsentedHost),
   };
 }
 
-export function consentCovers(s: TutorSettings): boolean {
+/** Whether the learner agreed to send this kind of request to the current host. */
+export function consentCovers(s: TutorSettings, scope: Exclude<ConsentScope, 'any'> = 'exercise'): boolean {
   const host = tutorHost(s.baseUrl);
-  return Boolean(s.apiKey && host && s.consentedHost === host);
+  const consented = scope === 'lesson' ? s.lessonConsentedHost : s.consentedHost;
+  return Boolean(s.apiKey && host && consented === host);
 }
 
 interface StorageLike {
@@ -202,13 +220,20 @@ export function replaceTutorSettings(next: TutorSettings): void { write(next); }
 
 /** Drops the key and host consent. The next key asks for permission again. The URL and model stay. */
 export function removeTutorKey(): void {
-  write({ ...current, apiKey: '', consentedHost: '' });
+  write({ ...current, apiKey: '', consentedHost: '', lessonConsentedHost: '' });
 }
 
-/** Remembers that this host may be sent requests. No-op when `host` is not the current base URL's host. */
-export function acceptTutorHost(host: string): void {
+/**
+ * Remembers that this host may be sent the requests the accepted notice named: an exercise notice covers exercises,
+ * the lesson notice the lesson chat, and the Settings notice (`any`) both. No-op when `host` is not the current base URL's host.
+ */
+export function acceptTutorHost(host: string, scope: ConsentScope = 'any'): void {
   if (tutorHost(current.baseUrl) !== host) return;
-  write({ ...current, consentedHost: host });
+  write({
+    ...current,
+    ...(scope !== 'lesson' ? { consentedHost: host } : {}),
+    ...(scope !== 'exercise' ? { lessonConsentedHost: host } : {}),
+  });
 }
 
 export interface TutorDraft {
@@ -256,8 +281,8 @@ export function commitTutorDraft(draft: TutorDraft): DraftCommit {
   // Consent is for this key on this host. Clearing or replacing the key asks again.
   // A rejected key or URL keeps the previous value, and its consent.
   const sameKey = apiKey !== '' && apiKey === prev.apiKey;
-  const consentedHost = sameKey && host && prev.consentedHost === host ? prev.consentedHost : '';
-  write({ apiKey, baseUrl, model, consentedHost });
+  const kept = (consented: string) => (sameKey && host && consented === host ? consented : '');
+  write({ apiKey, baseUrl, model, consentedHost: kept(prev.consentedHost), lessonConsentedHost: kept(prev.lessonConsentedHost) });
   return { settings: current, problems };
 }
 

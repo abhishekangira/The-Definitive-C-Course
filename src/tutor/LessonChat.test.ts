@@ -5,7 +5,7 @@
 import { createElement, createRef, act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { emptyTutorSettings, replaceTutorSettings } from './settings';
+import { TUTOR_STORAGE_KEY, consentCovers, emptyTutorSettings, getTutorSettings, loadTutorSettings, replaceTutorSettings } from './settings';
 import { LessonChat, type LessonChatHandle } from './LessonChat';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -37,7 +37,7 @@ describe('LessonChat', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: 'tutor.test' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: 'tutor.test', lessonConsentedHost: 'tutor.test' });
     host = document.createElement('div');
     document.body.appendChild(host);
     root = createRoot(host);
@@ -209,7 +209,7 @@ describe('LessonChat', () => {
   });
 
   it('sends nothing until the learner agrees, then sends the Explain that was waiting', async () => {
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '', lessonConsentedHost: '' });
     stubFetch(whole('Now it is allowed.'));
     mount();
     expect(host.textContent).toContain('The first request sends your API key to tutor.test.');
@@ -225,8 +225,34 @@ describe('LessonChat', () => {
     expect(log()).toContain('Now it is allowed.');
   });
 
+  it('consent given for exercises (or saved before the lesson chat existed) does not cover the lesson chat', async () => {
+    // A document saved before this change has only `consentedHost`.
+    localStorage.setItem(TUTOR_STORAGE_KEY, JSON.stringify({ version: 1, apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: 'tutor.test' }));
+    replaceTutorSettings(loadTutorSettings());
+    expect(getTutorSettings().consentedHost).toBe('tutor.test');
+    stubFetch(whole('Allowed for lessons now.'));
+    mount();
+    expect(host.textContent, 'the lesson notice is shown').toContain('the text of the lesson parts you have reached');
+    await act(async () => { handle.current!.ask('explain', 'compiled first'); });
+    await flush();
+    expect(sent, 'nothing is sent on the exercise consent').toHaveLength(0);
+    await act(async () => { button(/Send to tutor\.test/).click(); });
+    await flush();
+    expect(sent).toHaveLength(1);
+    expect(getTutorSettings().lessonConsentedHost).toBe('tutor.test');
+  });
+
+  it('agreeing in the lesson chat does not cover the exercise tutor', async () => {
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '', lessonConsentedHost: '' });
+    stubFetch(whole('ok'));
+    mount();
+    await act(async () => { button(/Send to tutor\.test/).click(); });
+    expect(consentCovers(getTutorSettings(), 'lesson')).toBe(true);
+    expect(consentCovers(getTutorSettings(), 'exercise')).toBe(false);
+  });
+
   it('declining sends nothing and drops what was waiting', async () => {
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: 'test-model', consentedHost: '', lessonConsentedHost: '' });
     stubFetch(whole('should not be asked'));
     mount();
     await act(async () => { handle.current!.ask('explain', 'x'); });
@@ -243,7 +269,7 @@ describe('LessonChat', () => {
     replaceTutorSettings(emptyTutorSettings());
     mount();
     expect(host.textContent).toContain('Add an API key');
-    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: '', consentedHost: 'tutor.test' });
+    replaceTutorSettings({ apiKey: KEY, baseUrl: 'https://tutor.test/v1', model: '', consentedHost: 'tutor.test', lessonConsentedHost: 'tutor.test' });
     mount();
     expect(host.textContent).toContain('Choose a model');
     expect(host.querySelector('textarea')).toBeNull();

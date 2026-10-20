@@ -44,7 +44,7 @@ export function LessonChat({ ref, open, onClose, title, moduleLabel, readLesson 
   readLesson: () => string;
 }) {
   const settings = useTutorSettings();
-  const setup = tutorSetup(settings);
+  const setup = tutorSetup(settings, 'lesson');
   const host = tutorHost(settings.baseUrl);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState('');
@@ -83,7 +83,7 @@ export function LessonChat({ ref, open, onClose, title, moduleLabel, readLesson 
   const send = useCallback(async (text: string, quoted: string) => {
     const current = getTutorSettings();
     const question = text.trim();
-    if (busyRef.current || question === '' || tutorSetup(current) !== 'ready') return;
+    if (busyRef.current || question === '' || tutorSetup(current, 'lesson') !== 'ready') return;
     busyRef.current = true;
     setBusy(true);
     stickToEnd.current = true;
@@ -134,10 +134,10 @@ export function LessonChat({ ref, open, onClose, title, moduleLabel, readLesson 
       setFocusNonce(n => n + 1);
       setQuote(passage);
       if (action === 'reply') return;
-      if (tutorSetup(getTutorSettings()) === 'ready' && !busyRef.current) {
+      if (tutorSetup(getTutorSettings(), 'lesson') === 'ready' && !busyRef.current) {
         setQuote('');
         void send(EXPLAIN_REQUEST, passage);
-      } else if (tutorSetup(getTutorSettings()) === 'needs-consent') {
+      } else if (tutorSetup(getTutorSettings(), 'lesson') === 'needs-consent') {
         // After the learner accepts the notice the question goes out by itself.
         pending.current = { text: EXPLAIN_REQUEST, quote: passage };
         setQuote('');
@@ -213,7 +213,7 @@ export function LessonChat({ ref, open, onClose, title, moduleLabel, readLesson 
         <div className={styles.note}>
           <ConsentNotice
             host={host} scope="lesson"
-            onAccept={() => { focusWanted.current = pending.current ? 'log' : 'composer'; setFocusNonce(n => n + 1); acceptTutorHost(host); }}
+            onAccept={() => { focusWanted.current = pending.current ? 'log' : 'composer'; setFocusNonce(n => n + 1); acceptTutorHost(host, 'lesson'); }}
             onDecline={() => { pending.current = null; setDeclined(true); }}
           />
         </div>
