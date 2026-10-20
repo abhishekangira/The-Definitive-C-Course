@@ -29,6 +29,8 @@ export interface ExerciseProgress {
   mastered: boolean;
   /** LT progress codes pasted by the learner. */
   codes?: string[];
+  /** Tutor questions that received a reply. Not an attempt, and not a streak submission. */
+  tutorAsks: number;
 }
 export interface QuizProgress { score: number; total: number; passed: boolean; at: string; answers: Record<string, unknown> }
 export interface ProjectProgress { passed: boolean; at: string; token?: string }
@@ -63,6 +65,12 @@ export function emptyProgress(): ProgressV1 {
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 const num = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+/** A counter from untrusted JSON: non-negative, finite, and capped. Anything else is the fallback. */
+function countField(v: unknown, fallback: number): number {
+  const n = num(v);
+  if (n === undefined || n < 0) return fallback;
+  return Math.min(Math.floor(n), 1_000_000);
+}
 const bool = (v: unknown): boolean | undefined => (typeof v === 'boolean' ? v : undefined);
 const strList = (v: unknown): string[] | undefined => (Array.isArray(v) && v.every(x => typeof x === 'string') ? (v as string[]) : undefined);
 
@@ -128,6 +136,7 @@ function cleanExercise(x: Record<string, unknown>): ExerciseProgress {
     variantsTried: strList(x.variantsTried),
     mastered: bool(x.mastered) ?? d.mastered,
     codes,
+    tutorAsks: countField(x.tutorAsks, d.tutorAsks),
   });
 }
 
@@ -294,6 +303,7 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
       mastered: cur.mastered || v.mastered,
       variant: cur.variant ?? v.variant,
       codes,
+      tutorAsks: Math.max(cur.tutorAsks, v.tutorAsks),
     };
   }
   for (const [k, v] of Object.entries(b.quizzes)) {
@@ -313,7 +323,7 @@ export function daysSinceExport(p: ProgressV1, now = Date.now()): number | null 
 // ---------- small helpers used across components ----------
 
 export function exerciseProgress(p: ProgressV1, id: string): ExerciseProgress {
-  return (Object.hasOwn(p.exercises, id) ? p.exercises[id] : undefined) ?? { attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false };
+  return (Object.hasOwn(p.exercises, id) ? p.exercises[id] : undefined) ?? { attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false, tutorAsks: 0 };
 }
 
 /** Call inside an `update` when the learner submits a problem solution or a quiz answer: it counts for today's streak. */

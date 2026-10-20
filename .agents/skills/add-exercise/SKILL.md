@@ -18,4 +18,4 @@ Read the Exercises part of `content/AGENTS.md` and `tools/exercises/README.md` f
    - `npm run verify:exercises -- --only <id>` (the solution passes, the starter fails, variants too)
    - `npm run exercises:expect -- --check` (the committed `tests.json` is current)
    - `npm run lint:content -- --strict`
-   - if a lesson uses it: `npm run build`, then `E2E_MODULE=<mNN> npm run e2e`
+   - if a lesson, the problem set, a project or a quiz uses it (the e2e clicks through all of them): `npm run build`, then `E2E_MODULE=<mNN> npm run e2e`

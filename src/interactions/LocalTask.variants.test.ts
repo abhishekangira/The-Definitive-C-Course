@@ -111,7 +111,7 @@ function findButton(root: ParentNode, name: RegExp): HTMLButtonElement {
 const click = (root: ParentNode, name: RegExp) => act(async () => { findButton(root, name).click(); });
 function saveExercises(partials: Record<string, Partial<ExerciseProgress>>) {
   const blank = (): ExerciseProgress => ({
-    attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false,
+    attempts: 0, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false, tutorAsks: 0,
   });
   const p = getProgress();
   replaceProgress({

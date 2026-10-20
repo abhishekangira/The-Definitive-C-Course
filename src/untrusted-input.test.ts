@@ -77,6 +77,18 @@ describe('progress import: migrate', () => {
     expect(p.settings).toEqual({});
   });
 
+  it('keeps a capped tutorAsks on the exercise and drops a top-level tutor key', () => {
+    const secret = 'sk-hostile-tutor-secret';
+    const p = migrate(hostile(`{${head},"tutor":{"apiKey":"${secret}"},"apiKey":"${secret}",
+      "exercises":{"huge":{"tutorAsks":1000000000000},"neg":{"tutorAsks":-4},"bad":{"tutorAsks":"lots"},"frac":{"tutorAsks":3.9}}}`));
+    expect(Object.keys(p).sort()).toEqual(['cards', 'createdAt', 'exercises', 'lessons', 'projects', 'quizzes', 'samples', 'seed', 'settings', 'streak', 'version']);
+    expect(JSON.stringify(p)).not.toContain(secret);
+    expect(p.exercises.huge.tutorAsks).toBe(1_000_000);
+    expect(p.exercises.neg.tutorAsks).toBe(0);
+    expect(p.exercises.bad.tutorAsks).toBe(0);
+    expect(p.exercises.frac.tutorAsks).toBe(3);
+  });
+
   it('rejects non-objects, bad versions and bad seeds', () => {
     for (const raw of [null, 5, 'x', [], [1]]) expect(() => migrate(raw)).toThrow();
     expect(() => migrate({ version: 2, seed: SEED })).toThrow(/version/);
@@ -146,7 +158,7 @@ describe('progress import: mergeProgress', () => {
   });
 
   it('merging a hostile (migrated) file changes no prototype and keeps both sides', () => {
-    const mine: ProgressV1 = { ...emptyProgress(), seed: SEED, exercises: { a: { attempts: 1, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false } } };
+    const mine: ProgressV1 = { ...emptyProgress(), seed: SEED, exercises: { a: { attempts: 1, substantive: 0, activeMs: 0, hintsViewed: 0, passed: false, solutionViewed: false, mastered: false, tutorAsks: 0 } } };
     const theirs = migrate(hostile(`{"version":1,"seed":"${SEED}","createdAt":"${at}","cards":{"__proto__":[7]},"exercises":{"__proto__":{"attempts":99},"a":{"attempts":5,"passed":true}},"lessons":{"__proto__":{"completedAt":"x"}}}`));
     const merged = mergeProgress(mine, theirs);
     protoClean();
@@ -242,6 +254,19 @@ describe('MiniMarkdown (prompts, hints, explanations)', () => {
 
   it('still renders links, including text that has no brackets inside', () => {
     expect(html('see [the docs](https://example.com/x) now')).toContain('<a href="https://example.com/x"');
+  });
+
+  it('writes the href host when the link text names a different host', () => {
+    const mismatch = html('[https://good.com](https://evil.com/phish)');
+    expect(mismatch).toContain('href="https://evil.com/phish"');
+    expect(mismatch).toContain('https://good.com (host: evil.com)');
+    expect(mismatch).toContain('rel="noreferrer"');
+    expect(html('[the docs](https://example.com/x)')).not.toContain('(host:');
+    expect(html('[https://example.com/a](https://example.com/b)')).not.toContain('(host:');
+    expect(html('[https://GOOD.com/a](https://good.com/b)')).not.toContain('(host:');
+    const wide = 'https://' + 'evil.com'.replace(/[a-z.]/g, ch => ch === '.' ? '.' : String.fromCodePoint(ch.charCodeAt(0) + 0xFEE0));
+    expect(html(`[https://good.com](${wide})`)).toContain('(host: evil.com)');
+    expect(html(`[https://go\u200bod.com](https://evil.com)`)).toContain('(host: evil.com)');
   });
 });
 

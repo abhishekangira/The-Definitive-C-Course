@@ -45,7 +45,7 @@ function QuizItemView({ item, samples, index, onResult, result, assessment }: { 
   if (item.type === 'exercise' && item.exercise) {
     return (
       <div className={styles.quizItem} data-quiz-item={item.id}>{head}<MiniMarkdown text={item.prompt} />
-        <Exercise id={item.exercise} assessment={assessment} onPassed={() => !result && onResult({ correct: true })} onGiveUp={() => !result && onResult({ correct: false })} />
+        <Exercise id={item.exercise} assessment={assessment} allowTutor={false} onPassed={() => !result && onResult({ correct: true })} onGiveUp={() => !result && onResult({ correct: false })} />
         {feedback}
       </div>
     );

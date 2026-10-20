@@ -1,29 +1,50 @@
 // src/testing/ is shared by the app (browser), tools/exercises (Node) and check.mjs (a zero-dependency Node bundle),
 // so its modules must stay environment-neutral, as their headers say: no Node or DOM APIs, and no imports from the rest
-// of the repo, which may use either. Test files are exempt.
+// of the repo, which may use either. Test files are exempt. The sources are parsed rather than searched with regular
+// expressions, so a name inside a comment, a string or a regex literal is not a use, and code inside `${…}` is checked.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 /** Packages that run unchanged in the browser and in Node, and that the check.mjs bundle inlines. */
 const PACKAGES = new Set(['fflate']);
-const GLOBALS = /\b(document|window|localStorage|sessionStorage|navigator|process|require|Buffer|__dirname|__filename)\b/;
+/** Names that exist in only one of the two environments (`globalThis` itself is fine: sha256.ts feature-tests it). */
+const GLOBALS = new Set(['document', 'window', 'self', 'localStorage', 'sessionStorage', 'navigator', 'process', 'require', 'Buffer', '__dirname', '__filename']);
 
 const modules = readdirSync(DIR).filter(f => f.endsWith('.ts') && !f.endsWith('.test.ts'));
-const read = (f: string) => readFileSync(path.join(DIR, f), 'utf8');
-/** The source without comments and string contents, so prose that mentions `window` is not a hit. */
-const code = (src: string) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '').replace(/(['"`])(?:\\.|(?!\1)[^\\\n])*\1/g, '""');
 
-/** Every module specifier except type-only imports, which the compiler erases. */
-function specifiers(src: string): string[] {
-  const out: string[] = [];
-  for (const m of src.matchAll(/^\s*(import|export)\s+(type\s)?[^'"]*?\bfrom\s*['"]([^'"]+)['"]/gm)) if (!m[2]) out.push(m[3]);
-  for (const m of src.matchAll(/^\s*import\s*['"]([^'"]+)['"]/gm)) out.push(m[1]);
-  for (const m of src.matchAll(/\b(?:import|require)\s*\(\s*['"]([^'"]+)['"]/g)) out.push(m[1]);
-  return out;
+interface Use { line: number; text: string }
+
+/** The module specifiers a file loads at run time (type-only imports are erased) and the environment globals it names. */
+function inspect(file: string): { imports: Use[]; globals: Use[] } {
+  const sf = ts.createSourceFile(file, readFileSync(path.join(DIR, file), 'utf8'), ts.ScriptTarget.Latest, true);
+  const imports: Use[] = [];
+  const globals: Use[] = [];
+  const at = (n: ts.Node) => sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1;
+  const isMemberName = (n: ts.Identifier) => {
+    const p = n.parent;
+    return (ts.isPropertyAccessExpression(p) && p.name === n) || (ts.isQualifiedName(p) && p.right === n)
+      || ((ts.isPropertyAssignment(p) || ts.isPropertySignature(p) || ts.isPropertyDeclaration(p) || ts.isMethodDeclaration(p)
+        || ts.isMethodSignature(p) || ts.isEnumMember(p)) && p.name === n);
+  };
+  const visit = (n: ts.Node): void => {
+    if ((ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) && n.moduleSpecifier && ts.isStringLiteral(n.moduleSpecifier)) {
+      const bindings = ts.isImportDeclaration(n) ? n.importClause : n;
+      const typeOnly = !!bindings && ('isTypeOnly' in bindings) && bindings.isTypeOnly;
+      if (!typeOnly) imports.push({ line: at(n), text: n.moduleSpecifier.text });
+    } else if (ts.isCallExpression(n) && n.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const arg = n.arguments[0];
+      imports.push({ line: at(n), text: arg && ts.isStringLiteralLike(arg) ? arg.text : '<computed import()>' });
+    } else if (ts.isIdentifier(n) && GLOBALS.has(n.text) && !isMemberName(n)) {
+      globals.push({ line: at(n), text: n.text });
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(sf);
+  return { imports, globals };
 }
 
 describe('src/testing stays environment-neutral', () => {
@@ -33,17 +54,15 @@ describe('src/testing stays environment-neutral', () => {
   });
 
   it('imports only its own modules and neutral packages', () => {
-    const bad = modules.flatMap(f => specifiers(read(f))
-      .filter(s => !s.startsWith('./') && !PACKAGES.has(s))
-      .map(s => `${f}: imports '${s}' (src/testing also runs in the browser and in check.mjs: no node:*, no DOM code, nothing outside src/testing)`));
+    const bad = modules.flatMap(f => inspect(f).imports
+      .filter(u => !/^\.\/[\w.-]+$/.test(u.text) && !PACKAGES.has(u.text))
+      .map(u => `${f}:${u.line}: imports '${u.text}' (src/testing also runs in the browser and in check.mjs: no node:*, no DOM code, nothing outside src/testing)`));
     expect(bad).toEqual([]);
   });
 
   it('uses no Node or DOM globals', () => {
-    const bad = modules.flatMap(f => code(read(f)).split('\n').flatMap((line, i) => {
-      const m = GLOBALS.exec(line);
-      return m ? [`${f}:${i + 1}: uses '${m[1]}' (src/testing also runs in the browser and in check.mjs; take it as a parameter instead)`] : [];
-    }));
+    const bad = modules.flatMap(f => inspect(f).globals
+      .map(u => `${f}:${u.line}: uses '${u.text}' (src/testing also runs in the browser and in check.mjs; take it as a parameter instead)`));
     expect(bad).toEqual([]);
   });
 });

@@ -4,9 +4,9 @@ An interactive, static (no backend) React + TypeScript web app that teaches C17 
 
 ## Start here: when you are handed a ticket
 You were told to read this file and given a ticket. Do this, in order:
-1. Read this whole file, then the notes that **Where to find what** lists for every folder you will edit, then the PLAN.md sections your ticket cites. The non-negotiables, **Ask first** and the pitfalls apply to every change. (Claude Code loads a folder's `AGENTS.md` when it reads a file there; other tools may not, so open those notes yourself.)
+1. Read this whole file, then the notes that **Where to find what** lists for every folder you will edit, then the PLAN.md sections your ticket cites. The non-negotiables, **Ask first** and the pitfalls apply to every change. (Claude Code attaches a folder's `AGENTS.md` only when its Read tool opens a file there, never after `cat` in Bash, a search or a new file, and never a `README.md`; other tools differ. Open the listed notes yourself.)
 2. Branch from the latest `main` (`ticket/<short-name>`). **One ticket = one pull request.** Never push to `main` and never force-push.
-3. Stay in scope, and stop at anything under **Ask first**.
+3. Stay in scope, and stop at anything under **Ask first**. A new dependency needs a reason in the PR description and an exact pinned version.
 4. Don't hand-edit `src/generated/` (regenerate it with `npm run verify`) and don't hand-type expected outputs.
 5. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium` (`playwright.config.ts` falls back to Playwright's own Chromium; set `CHROMIUM_PATH` to use another).
 6. Write the PR description with the template in **Pull request rules** below. Say plainly what you could not verify; never claim a pass you didn't see.
@@ -18,8 +18,7 @@ You were told to read this file and given a ticket. Do this, in order:
 Stop and ask the owner (in the PR, or the person who gave you the ticket) before you:
 - start the next module before the client has signed off the current one (the client reviews after each stage and each module; see **Status**),
 - change the licence,
-- change a decision in PLAN.md or in `docs/adr/` (propose a new decision record instead),
-- add a dependency (say why, and pin the exact version),
+- change a decision in PLAN.md, in **Decisions** below or in `docs/adr/` (propose a new decision record instead),
 - add support or tests for a browser other than Chromium (see **Decisions**).
 
 ## Raising issues (for the owner and the lead session)
@@ -54,8 +53,9 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 ## Status
 - **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/ (GitHub Pages; the `deploy` job in `ci.yml` publishes `main`).
 - Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12 (public repo → GitHub Pages; MP4s committed; allocator-only capstone; dark-only animation renders).
-- Stage 2 (app shell + Module 1) is **built and awaiting client review**. Open items are listed in the review hand-off; do not start Module 2 before the client signs off.
-- The client reviews after each stage and after each module, so stop and ask for review at those points.
+- Stage 2 (app shell + Module 1) is **built and on `main`** (since 2026-10-15). No client sign-off of it is recorded in the repo, an issue or a PR.
+- Module 2 (Bits, Bytes & Numbers) is **merged and open to learners** since 2026-10-18 (PRs #48 to #56; `m02` is `available: true` in `content/course.yaml`). The owner's issue #42 was the go-ahead to start it. No client review of it is recorded yet.
+- **Module 3 is not started** (`available: false`, no folder). From Module 2 on, each module is its own stage (PLAN.md §11): the client reviews after each stage and each module, so stop and ask for review then (see **Ask first**). Other open work, such as the AI tutor (#47), is in issues and PRs.
 
 ## Non-negotiables (client spec)
 - **The learner is never passive.** At most ~250 words or one animation/video before an interaction.
@@ -97,13 +97,14 @@ CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, re
 | `src/` | App: `app/` pages, `interactions/`, `visualizers/`, `lesson/` card engine, `progress/` store and gating, `runtime/` browser compiler, `testing/` shared test runner and tokens, `generated/` machine output | `src/AGENTS.md` |
 | `src/progress/`, `LocalTask`, the streak components | Progress document, gating, local tasks, the streak and Rio | `src/progress/AGENTS.md` |
 | `src/runtime/` | In-browser compiler and runtime, `learnc.h` | `src/runtime/AGENTS.md` |
+| `src/tutor/` | The optional AI tutor: settings, prompt, client, leak guard | `src/tutor/AGENTS.md`, PLAN.md §2.6 |
 | `src/testing/`, `tools/check/` | Shared test runner, tokens, the local runner `check.mjs` | `tools/check/README.md` |
 | `e2e/` | Playwright specs and helpers (`lib.ts` completes every interaction from generated data) | `e2e/AGENTS.md` |
-| `animations/`, `public/animations/<id>/` | HyperFrames projects; the committed MP4, VTT, `steps.json`, stills | `animations/README.md`, PLAN.md §4.6 |
+| `animations/`, `public/animations/<id>/`, `tools/anim/` | HyperFrames projects; the committed MP4, VTT, `steps.json`, stills; the check and render pipeline | `animations/README.md`, PLAN.md §4.6 |
 | `tools/exercises/` | `verify:exercises`, `exercises:expect` | `tools/exercises/README.md` |
 | `tools/videos/`, `videos.json` | YouTube segments and transcript excerpts | `tools/videos/README.md` |
 | `tools/dod/` | The definition-of-done table | `tools/dod/README.md` |
-| `tools/` (the rest) | `verify`, `trace`, `anim`, `toolchain`, `mdx` (remark plugin), `shared`, `ci`, `docs` | — |
+| `tools/` (the rest) | `verify`, `trace`, `toolchain`, `mdx` (remark plugin), `shared`, `ci`, `docs` | — |
 | `.github/` | `workflows/ci.yml`, `workflows/targets.yml` | `.github/AGENTS.md` |
 | `docs/adr/` | Decision records: what was decided, the options and the evidence | `docs/adr/README.md` |
 | `.agents/skills/` (each linked from `.claude/skills/`) | Procedures: `add-exercise`, `review-and-merge-pr`; the HyperFrames skills are vendored (`skills-lock.json`) | that skill's `SKILL.md` |
@@ -117,8 +118,8 @@ CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, re
 - **Steps for a recurring task:** a skill, `.agents/skills/<name>/SKILL.md` (frontmatter `name` and `description`), plus the symlink `.claude/skills/<name>` → `../../.agents/skills/<name>`.
 - **A decision, with its options and evidence:** a new record in `docs/adr/`. Lead each note with the rule; keep run IDs and measurements in the record or the PR.
 - **A fixed bug that a test now covers:** delete its bullet.
-- **Status and plans:** issues and PRs, not these notes.
-- **Never add a `CLAUDE.md` or `CLAUDE.local.md`.** At the root, either one stops Claude Code from reading any `AGENTS.md` (`docs/adr/0001-agent-docs-layout.md`); nested ones are not allowed either, so there is one format. Personal notes go in `~/.claude/CLAUDE.md`.
+- **Detailed status and plans:** issues and PRs. The **Status** section above keeps only the current stage and review gate.
+- **Never add a `CLAUDE.md` or `CLAUDE.local.md`** in the repo, and don't keep one in a folder above your checkout (for example `~/CLAUDE.md`): either stops Claude Code from reading every `AGENTS.md` (`docs/adr/0001-agent-docs-layout.md`). The test in `tools/docs/` guards only the repo. Personal notes go in `~/.claude/CLAUDE.md`, which is safe.
 
 ## Decisions (details in PLAN.md §1–§4 and `docs/adr/`)
 - **Browsers: Chromium-based only** (Chrome, Edge, Brave and similar; JSPI needs Chrome 137 or newer). Firefox and Safari, including iOS, are not supported and not tested; the owner decided this on 2026-10-17. Don't raise cross-browser tickets or add Firefox/WebKit Playwright projects. (A pre-filled stdin box still exists for a Chromium without JSPI, as a graceful fallback; nothing tests it.)

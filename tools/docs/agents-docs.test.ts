@@ -13,8 +13,11 @@ const SKIP = new Set(['node_modules', '.git', 'dist', 'dist-tools', 'build', '.c
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) { if (!SKIP.has(e.name)) walk(path.join(dir, e.name), out); }
-    else out.push(path.relative(ROOT, path.join(dir, e.name)).split(path.sep).join('/'));
+    const p = path.join(dir, e.name);
+    // A folder with its own .git (a worktree has a file, a clone a folder) is another checkout, such as
+    // .claude/worktrees/<name>: its notes belong to its own branch, not to this one.
+    if (e.isDirectory()) { if (!SKIP.has(e.name) && !existsSync(path.join(p, '.git'))) walk(p, out); }
+    else out.push(path.relative(ROOT, p).split(path.sep).join('/'));
   }
   return out;
 }
@@ -52,14 +55,19 @@ describe('agent notes', () => {
     expect(named.filter(f => !existsSync(path.join(ROOT, f)))).toEqual([]);
   });
 
-  it('links every skill from .claude/skills', () => {
-    const skills = readdirSync(path.join(ROOT, '.agents/skills'), { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name);
+  it('links every skill from .claude/skills, and nothing else is there', () => {
+    const skillsDir = path.join(ROOT, '.agents/skills');
+    const linksDir = path.join(ROOT, '.claude/skills');
+    const skills = readdirSync(skillsDir, { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name);
     expect(skills).toContain('add-exercise');
-    const bad = skills.filter(name => {
-      const link = path.join(ROOT, '.claude/skills', name);
-      return !existsSync(link) || !lstatSync(link).isSymbolicLink()
-        || realpathSync(link) !== realpathSync(path.join(ROOT, '.agents/skills', name));
-    }).map(name => `.claude/skills/${name}: missing; run ln -s ../../.agents/skills/${name} .claude/skills/${name}`);
-    expect(bad).toEqual([]);
+    // rm first: onto an existing folder or link, a plain ln -s would create the link inside it.
+    const relink = (name: string) => `rm -rf .claude/skills/${name} && ln -s ../../.agents/skills/${name} .claude/skills/${name}`;
+    const isLinkTo = (link: string, dir: string) =>
+      existsSync(link) && lstatSync(link).isSymbolicLink() && realpathSync(link) === realpathSync(dir);
+    const unlinked = skills.filter(name => !isLinkTo(path.join(linksDir, name), path.join(skillsDir, name)))
+      .map(name => `.claude/skills/${name}: must be a link to .agents/skills/${name}; run ${relink(name)}`);
+    const stray = readdirSync(linksDir).filter(name => !name.startsWith('.') && !skills.includes(name))
+      .map(name => `.claude/skills/${name}: not a link to a skill in .agents/skills, so other agents cannot see it. A real folder: mv .claude/skills/${name} .agents/skills/${name} && ln -s ../../.agents/skills/${name} .claude/skills/${name}. A dangling link: rm .claude/skills/${name}`);
+    expect([...unlinked, ...stray]).toEqual([]);
   });
 });

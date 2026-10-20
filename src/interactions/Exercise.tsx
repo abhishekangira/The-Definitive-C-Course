@@ -15,6 +15,8 @@ import { useExerciseProgress } from './useExerciseProgress';
 import { GiveUp, Hints, SolutionGatePanel, TestResults, type AssessmentProps } from './ExerciseParts';
 import { Parsons } from './Parsons';
 import { LocalTask } from './LocalTask';
+import { ExerciseTutor } from '../tutor/TutorPanel';
+import type { TutorCheckSnapshot } from '../tutor/eligibility';
 import styles from './Interaction.module.css';
 
 const KIND_LABEL = { ct: 'Write the code', fb: 'Fix the bug', pa: 'Put the lines in order', lt: 'On your machine' } as const;
@@ -30,33 +32,33 @@ export function useFolder(entry: ExerciseEntry | undefined) {
   return files;
 }
 
-export function Exercise({ id, onPassed, assessment, onGiveUp }: { id: string; onPassed?: () => void } & AssessmentProps) {
+export function Exercise({ id, onPassed, assessment, onGiveUp, allowTutor = true }: { id: string; onPassed?: () => void; allowTutor?: boolean } & AssessmentProps) {
   const entry = exercises[id];
   if (!entry) return <p className={styles.warn} role="alert">Unknown exercise “{id}”.</p>;
   if (entry.meta.kind === 'lt') return <LocalTask entry={entry} onPassed={onPassed} assessment={assessment} onGiveUp={onGiveUp} />;
-  if (assessment) return <BrowserExercise entry={entry} onPassed={onPassed} assessment onGiveUp={onGiveUp} />;
-  return <ExerciseWithVariants entry={entry} onPassed={onPassed} />;
+  if (assessment) return <BrowserExercise entry={entry} onPassed={onPassed} assessment onGiveUp={onGiveUp} allowTutor={allowTutor} />;
+  return <ExerciseWithVariants entry={entry} onPassed={onPassed} allowTutor={allowTutor} />;
 }
 
-function ExerciseWithVariants({ entry, onPassed }: { entry: ExerciseEntry; onPassed?: () => void }) {
+function ExerciseWithVariants({ entry, onPassed, allowTutor }: { entry: ExerciseEntry; onPassed?: () => void; allowTutor: boolean }) {
   const progress = useProgress();
   const ep = progress.exercises[entry.id];
   const variantId = ep?.solutionViewed && ep.variant ? `${entry.id}/variants/${ep.variant}` : null;
   const variant = variantId ? exercises[variantId] : undefined;
   return (
     <>
-      <BrowserExercise entry={entry} onPassed={onPassed} />
+      <BrowserExercise entry={entry} onPassed={onPassed} allowTutor={allowTutor} />
       {variant && (
         <div className={styles.note}>
           <strong>Variant: solve this one on your own.</strong>
-          <BrowserExercise key={variant.id} entry={variant} parentId={entry.id} />
+          <BrowserExercise key={variant.id} entry={variant} parentId={entry.id} allowTutor={allowTutor} />
         </div>
       )}
     </>
   );
 }
 
-function BrowserExercise({ entry, parentId, onPassed, assessment, onGiveUp }: { entry: ExerciseEntry; parentId?: string; onPassed?: () => void } & AssessmentProps) {
+function BrowserExercise({ entry, parentId, onPassed, assessment, onGiveUp, allowTutor = true }: { entry: ExerciseEntry; parentId?: string; onPassed?: () => void; allowTutor?: boolean } & AssessmentProps) {
   const files = useFolder(entry);
   const spec: TestsSpec | null = useMemo(() => {
     const text = files?.['tests.json'] ?? files?.['check.json'];
@@ -64,11 +66,12 @@ function BrowserExercise({ entry, parentId, onPassed, assessment, onGiveUp }: { 
   }, [files]);
   const fileName = spec?.sources[0] ?? entry.meta.file ?? 'main.c';
   const isVariant = Boolean(parentId);
-  const { ep, touch, recordAttempt, viewHint, viewSolution, assignVariant } = useExerciseProgress(entry.id, parentId);
+  const { ep, touch, recordAttempt, recordTutorAsk, viewHint, viewSolution, assignVariant } = useExerciseProgress(entry.id, parentId);
   const markDone = useCardDone();
   const runner = useCRun();
   const [code, setCode] = useState<string | null>(null);
   const [results, setResults] = useState<TestResult[]>([]);
+  const [snapshot, setSnapshot] = useState<TutorCheckSnapshot | null>(null);
   const [checking, setChecking] = useState(false);
   const [stdin, setStdin] = useState(entry.meta.sampleStdin ?? '');
 
@@ -87,12 +90,14 @@ function BrowserExercise({ entry, parentId, onPassed, assessment, onGiveUp }: { 
     setChecking(false);
     setResults(report.results);
     const passed = report.allPassed;
+    // The panel reads substantive from the store on the next render. `ep` inside this closure is the previous render.
+    setSnapshot({ code, results: report.results, diagnostics: report.compile.raw, failed: !passed });
     recordAttempt(code, passed);
     if (passed) { setPassedNow(true); markDone(); onPassed?.(); }
   };
 
   if (entry.meta.kind === 'pa') {
-    return <Parsons entry={entry} files={files} spec={spec} fileName={fileName} isVariant={isVariant} parentId={parentId} assessment={assessment} onGiveUp={onGiveUp} onPassed={() => { markDone(); onPassed?.(); }} />;
+    return <Parsons entry={entry} files={files} spec={spec} fileName={fileName} isVariant={isVariant} parentId={parentId} assessment={assessment} allowTutor={allowTutor} onGiveUp={onGiveUp} onPassed={() => { markDone(); onPassed?.(); }} />;
   }
 
   return (
@@ -105,7 +110,7 @@ function BrowserExercise({ entry, parentId, onPassed, assessment, onGiveUp }: { 
         <button type="button" className="btn btn-primary" onClick={check} disabled={checking}>{checking ? 'Checking…' : 'Check my code'}</button>
         <button type="button" className="btn" onClick={() => void runner.run({ files: { ...supportFiles, [fileName]: code }, sources: spec.sources, stdin: stdin || undefined })}
           disabled={runner.phase === 'compiling' || runner.phase === 'running'}>Run</button>
-        <button type="button" className="btn btn-ghost" onClick={() => { setCode(starterOf(files, fileName)); setResults([]); }}>Reset</button>
+        <button type="button" className="btn btn-ghost" onClick={() => { setCode(starterOf(files, fileName)); setResults([]); setSnapshot(null); }}>Reset</button>
         {assessment ? <GiveUp onGiveUp={onGiveUp} disabled={passedNow} /> : ep.passed && <span className="badge badge-ok">Passed</span>}
       </div>
       <details className={styles.muted}>
@@ -123,6 +128,10 @@ function BrowserExercise({ entry, parentId, onPassed, assessment, onGiveUp }: { 
       {!assessment && (
         <>
           <Hints hints={entry.meta.hints} viewed={ep.hintsViewed} onView={viewHint} maxTier={isVariant ? 2 : 3} />
+          <ExerciseTutor
+            id={entry.id} kind={entry.meta.kind} runsIn={entry.meta.runsIn} title={entry.meta.title} statement={entry.meta.prompt}
+            hints={entry.meta.hints} hintsViewed={ep.hintsViewed} solution={files['solution.c'] ?? ''} substantive={ep.substantive}
+            assessment={false} isVariant={isVariant} allowTutor={allowTutor} currentCode={code} snapshot={snapshot} onAsked={recordTutorAsk} />
           <SolutionGatePanel ep={ep} isVariant={isVariant} solution={files['solution.c']} fileName={fileName}
             onView={viewSolution} onVariant={() => assignVariant(entry.meta.variants)} hasVariants={entry.meta.variants.length > 0} />
         </>
