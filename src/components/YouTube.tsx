@@ -43,7 +43,10 @@ export function YouTube({ video }: { video: string }) {
         <details className={styles.transcript} data-transcript>
           <summary>Transcript</summary>
           <p>{transcript.text}</p>
-          {transcript.credit && <p className={styles.credit}>{transcript.credit}</p>}
+          <p className={styles.credit}>
+            {transcript.credit} Excerpt of the YouTube captions for this segment, joined into running text; shared under the same
+            licence (<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>).
+          </p>
         </details>
       )}
     </figure>

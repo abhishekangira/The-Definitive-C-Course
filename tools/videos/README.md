@@ -42,7 +42,7 @@ padding; two segments of one video overlap.
 
 ## Transcript excerpts
 
-`transcripts/<id>.vtt` holds the WebVTT header, one `NOTE` block that attributes the captions (CS50, Harvard, CC BY-NC-SA 4.0),
+`transcripts/<id>.vtt` holds the WebVTT header, one `NOTE` block that attributes the captions (CS50, Harvard, CC BY-NC-SA 4.0) and says how they are used (the segment is shown under the clip with that credit, and read by the lesson chat; a file without the `Captions (c)` line is never shown),
 and only the cues that begin between `start - 60 s` and `end + 60 s`. To refresh one by hand (the only time yt-dlp runs),
 download the transcript, then cut it:
 

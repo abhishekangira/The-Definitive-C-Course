@@ -26,5 +26,6 @@ export async function loadSegmentTranscript(video: VideoEntry): Promise<SegmentT
   const load = excerpts[`/tools/videos/transcripts/${video.id}.vtt`];
   if (!load) return null;
   const transcript = segmentTranscript(await load(), video);
-  return transcript.text ? transcript : null;
+  // No credit line, no transcript: the captions are CC BY-NC-SA and may only be shown with their attribution.
+  return transcript.text && transcript.credit ? transcript : null;
 }

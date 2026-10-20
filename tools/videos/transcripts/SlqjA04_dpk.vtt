@@ -6,7 +6,8 @@ NOTE
 Excerpt of "CS50x - Lecture 1 - C" (CS50, https://www.youtube.com/watch?v=SlqjA04_dpk),
 cues from 02:21:11.000 to 02:25:59.000 (segment 02:22:11.000 to 02:24:59.000 plus 60 s either side).
 Captions (c) CS50, Harvard University, CC BY-NC-SA 4.0 (https://cs50.harvard.edu/x/license/).
-Kept only so that tools/videos/check.ts can verify the anchor quotes offline.
+Shown under each clip as running text (the segment only, with this credit) and read by the lesson chat;
+also lets tools/videos/check.ts verify the anchor quotes offline. Shared under the same licence.
 
 02:21:12.883 --> 02:21:13.274
 well,

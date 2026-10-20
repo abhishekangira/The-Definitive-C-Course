@@ -20,7 +20,7 @@ export function AboutPage() {
         <li><strong>HyperFrames</strong> (animation authoring, build time only): Apache-2.0. <strong>GSAP</strong>: standard no-charge licence (build time only; rendered videos contain no GSAP code).</li>
         <li><strong>Geist</strong> and <strong>Geist Mono</strong> (the page fonts, self-hosted via @fontsource-variable): SIL Open Font License 1.1.</li>
         <li><strong>Fonts in animations</strong>: SIL Open Font License 1.1.</li>
-        <li><strong>CS50 lecture clips</strong> are embedded from YouTube (Harvard CS50, CC BY-NC-SA 4.0) and are not re-hosted.</li>
+        <li><strong>CS50 lecture clips</strong> (Harvard CS50, <a href="https://cs50.harvard.edu/x/license/">CC BY-NC-SA 4.0</a>): the videos are embedded from YouTube and not re-hosted. Short excerpts of their English captions are kept in the repository and shown under each clip as a transcript (joined into running text, cut to the segment), credited there and shared under the same licence; the lesson chat sends that transcript, with the lesson, to the AI provider the learner set up.</li>
       </ul>
       <p>The course's own code and content: MIT licence, copyright 2026 Abhishek Angira (see the <code>LICENSE</code> file in the repository). The helper header <code>learnc.h</code> is part of the course (MIT).</p>
     </div>
