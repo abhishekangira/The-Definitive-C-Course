@@ -46,10 +46,10 @@ Notes: (the AGENTS.md or README files you updated, or why none needed it; always
 Acceptance criteria: (copied from the issue; each with ✓ or ✗ and the evidence)
 Commands run: (pasted output tails; for a module change, paste the `npm run dod -- --module mNN` table)
 Could not verify:
-Risk: (does it touch learner-facing app code, the generated-data format, or CI/deploy? yes or no, and what)
+Risk: (does it touch learner-facing app code, the generated-data format, or CI/deploy? yes or no, and what; a yes gets a thorough review)
 ```
 
-**Reviews** (by the maintainer, a review agent or any agent asked to review) follow the `review-and-merge-pr` skill. Its notes check is a merge rule: a note or the root `README.md` that the change made untrue blocks the merge, like a missing test.
+**Reviews** (by the maintainer, a review agent or any agent asked to review) follow the `review-and-merge-pr` skill (`.agents/skills/review-and-merge-pr/SKILL.md`). Its notes check is a merge rule: a note or the root `README.md` that the change made untrue blocks the merge, like a missing test.
 
 ## Status
 - **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/ (GitHub Pages; the `deploy` job in `ci.yml` publishes `main`).
@@ -72,8 +72,8 @@ Risk: (does it touch learner-facing app code, the generated-data format, or CI/d
 ## Commands (keep in sync with `package.json`)
 | Command | What it does |
 |---|---|
-| `npm run dev` | prepare the toolchain, start Vite |
-| `npm run build` | prepare the toolchain, typecheck, `vite build` |
+| `npm run dev` | prepare the toolchain, build `check.mjs` into `public/downloads/` (`tools/check/README.md`), start Vite |
+| `npm run build` | prepare the toolchain, typecheck, `vite build`, build `check.mjs` into `dist/downloads/` |
 | `npm run verify [-- --module m01 --check --force]` | compile/run every sample on gcc, clang, the browser compiler (+ stored macOS/arm/Windows results); writes `src/generated/samples/` and traces |
 | `npm run trace` | gdb stepper traces for `trace` samples → `src/generated/traces/` |
 | `npm run verify:exercises` | every solution passes, every starter fails, every variant passes (browser and native) |

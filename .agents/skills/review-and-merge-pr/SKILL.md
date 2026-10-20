@@ -1,6 +1,6 @@
 ---
 name: review-and-merge-pr
-description: Review a pull request of this repo in a separate worktree, check that its AGENTS.md and README notes are still true, check it against main before merging, retarget stacked PRs and clean up merged branches. Use when the lead session reviews, merges or retargets a PR, or deletes a merged ticket branch.
+description: Review a pull request of this repo in a separate worktree, check that its AGENTS.md and README notes are still true, check it against main before merging, retarget stacked PRs and clean up merged branches. Use when reviewing any PR in this repo (the maintainer, a review agent or any agent asked to review), or when the lead session merges or retargets a PR or deletes a merged ticket branch.
 ---
 
 # Review and merge a pull request
