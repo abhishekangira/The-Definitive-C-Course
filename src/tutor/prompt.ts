@@ -43,8 +43,11 @@ export interface TutorPromptInput {
   approach?: string;
 }
 
-/** The request carries one user message: the instructions come first, then the exercise data. */
-export interface TutorMessage { role: 'user'; content: string }
+/**
+ * The exercise tutor sends one user message: the instructions come first, then the exercise data.
+ * The lesson chat (lessonPrompt.ts) is a conversation, so it also uses `system` and `assistant`.
+ */
+export interface TutorMessage { role: 'system' | 'user' | 'assistant'; content: string }
 
 const CAP = {
   statement: 8_000,
