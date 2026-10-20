@@ -5,6 +5,8 @@
 // output appears only after it ran. So the tutor knows what the learner knows, and cannot give away the next
 // prediction. The source has all of it (`answer=` and `explain=` sit in the MDX).
 
+import { editorText } from '../components/editorText';
+
 /** Never part of the lesson text: controls, media, and things only a screen reader needs. */
 const SKIP_TAGS = new Set(['script', 'style', 'noscript', 'template', 'svg', 'button', 'textarea', 'input', 'select', 'canvas', 'video', 'audio', 'img', 'iframe']);
 /** Elements that are set apart from their neighbours by a blank line. */
@@ -34,6 +36,9 @@ function skipped(el: Element): boolean {
 }
 
 function codeLines(el: Element): string {
+  // The editor's whole document when it is registered: a long one renders only the lines near the viewport.
+  const whole = editorText(el);
+  if (whole !== null) return whole.replace(/\s+$/, '');
   const lines = [...el.querySelectorAll('.cm-line')];
   return (lines.length ? lines.map(l => l.textContent ?? '') : [el.textContent ?? '']).join('\n').replace(/\s+$/, '');
 }

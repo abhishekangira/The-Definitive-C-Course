@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // What the lesson chat reads from the page. It must be what the learner sees, as light Markdown, and nothing else.
 import { describe, expect, it } from 'vitest';
+import { registerEditorText } from '../components/editorText';
 import { lessonTextFrom, MAX_LESSON_TEXT } from './lessonText';
 
 function read(html: string): string {
@@ -29,6 +30,16 @@ describe('lessonTextFrom', () => {
       + '<div class="cm-content"><div class="cm-line">int main(void) {</div><div class="cm-line">    return 0;</div><div class="cm-line">}</div></div></div>';
     expect(read(`<p>Code:</p>${editor}`)).toBe('Code:\n\n```\nint main(void) {\n    return 0;\n}\n```');
     expect(read('<pre><code>a\n  b</code></pre>')).toBe('```\na\n  b\n```');
+  });
+
+  it('reads the whole document of a long editor, not just the lines CodeMirror has rendered', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<div class="cm-editor"><div class="cm-content"><div class="cm-line">line 1</div><div class="cm-line">line 2</div></div></div>';
+    const whole = Array.from({ length: 300 }, (_, i) => `line ${i + 1}`).join('\n');
+    const unregister = registerEditorText(root.querySelector('.cm-editor')!, () => `${whole}\n`);
+    expect(lessonTextFrom(root)).toBe(`\`\`\`\n${whole}\n\`\`\``);
+    unregister();
+    expect(lessonTextFrom(root), 'unregistered: the rendered lines').toBe('```\nline 1\nline 2\n```');
   });
 
   it('leaves out controls, hidden and decorative things, and a closed <details> body', () => {

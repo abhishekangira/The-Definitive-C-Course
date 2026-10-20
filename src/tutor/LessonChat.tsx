@@ -187,8 +187,10 @@ export function LessonChat({ ref, open, onClose, title, moduleLabel, readLesson 
     setQuote('');
     void send(text, passage);
   };
+  // A phone's soft keyboard has no Shift, so there Enter is a new line and the Send button sends.
+  const touch = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
   const onComposerKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === 'Enter' && !e.shiftKey && !touch && !e.nativeEvent.isComposing) {
       e.preventDefault();
       submit();
     }
@@ -263,7 +265,7 @@ export function LessonChat({ ref, open, onClose, title, moduleLabel, readLesson 
             onChange={e => setDraft(e.target.value)} onKeyDown={onComposerKey}
           />
           <div className={styles.composerRow}>
-            <p id={hintId} className={styles.hint}>Enter to send. Shift+Enter for a new line.</p>
+            <p id={hintId} className={styles.hint}>{touch ? 'Enter for a new line. Send sends.' : 'Enter to send. Shift+Enter for a new line.'}</p>
             {busy
               ? <button type="button" className="btn" onClick={() => abort.current?.abort()}>Stop</button>
               : <button type="submit" className="btn btn-primary" disabled={draft.trim() === ''}>Send</button>}

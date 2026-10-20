@@ -120,6 +120,20 @@ describe('LessonChat', () => {
     expect(log()).toContain('Second answer.');
   });
 
+  it('on a coarse pointer (a phone) Enter does not send, and the hint says so', async () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q === '(pointer: coarse)', media: q, addEventListener() {}, removeEventListener() {} }));
+    stubFetch(whole('Sent by the button.'));
+    mount();
+    expect(host.textContent).toContain('Enter for a new line. Send sends.');
+    type('two lines');
+    press('Enter');
+    await flush();
+    expect(sent, 'Enter does not send on a phone').toHaveLength(0);
+    await act(async () => { button(/^Send$/).click(); });
+    await flush();
+    expect(sent).toHaveLength(1);
+  });
+
   it('Reply quotes the passage above the box and sends nothing until the learner asks', async () => {
     stubFetch(whole('Because the quote is attached.'));
     mount();

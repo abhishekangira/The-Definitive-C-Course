@@ -248,3 +248,46 @@ test('the transcript of a YouTube clip goes with the lesson', async ({ browser }
   expect(bodies[0].messages[0].content, 'the words of the clip, the same as the page shows').toContain(shown);
   await context.close();
 });
+
+test('a keyboard selection does not show the toolbar it could not reach; the chat button is the keyboard route', async ({ browser }) => {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await seed(context, { cards: { 'm01-l1': [0] } });
+  await page.goto('#/m/m01/01-hello-compiled-world');
+  await page.locator('p', { hasText: 'In JavaScript you hand source code' }).selectText();
+  await expect(toolbar(page)).toBeVisible();
+  await page.keyboard.press('Shift+ArrowLeft');
+  await expect(toolbar(page), 'changed with the keyboard: hidden').toHaveCount(0);
+  await page.waitForTimeout(700);
+  await expect(toolbar(page), 'and it does not come back when the selection settles').toHaveCount(0);
+  await context.close();
+});
+
+test('phone width (390x844): the chat fits, Enter is a new line and Send sends', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  page.on('pageerror', e => { throw e; });
+  await seed(context, { cards: { 'm01-l1': [0] } });
+  const { bodies } = await stubProvider(page, ['Short answer.']);
+  await page.goto('#/m/m01/01-hello-compiled-world');
+  await page.getByRole('button', { name: 'Ask the tutor' }).tap();
+  await expect(panel(page)).toBeVisible();
+  const box = await panel(page).boundingBox();
+  expect(box!.x, 'the panel starts on screen').toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width, 'the panel ends on screen').toBeLessThanOrEqual(390);
+  const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+  expect(scroll, 'no sideways scroll with the chat open').toBeLessThanOrEqual(width);
+
+  const question = panel(page).getByRole('textbox', { name: 'Your question' });
+  await expect(panel(page).getByText('Enter for a new line. Send sends.')).toBeVisible();
+  await question.fill('First line');
+  await question.press('Enter');
+  await question.pressSequentially('second line');
+  await expect(question).toHaveValue('First line\nsecond line');
+  expect(bodies, 'Enter did not send').toEqual([]);
+  await panel(page).getByRole('button', { name: 'Send' }).tap();
+  await expect(log(page)).toContainText('Short answer.');
+  expect(bodies[0].messages[1].content).toBe('First line\nsecond line');
+  await expectAccessible(page, 'lesson chat at phone width');
+  await context.close();
+});
