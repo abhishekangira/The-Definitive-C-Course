@@ -248,10 +248,11 @@ if (typeof window !== 'undefined') {
   });
 }
 
-function subscribe(l: () => void) { listeners.add(l); return () => listeners.delete(l); }
+/** Calls `l` after every change to the document (this tab's updates and other tabs' writes). */
+export function subscribeProgress(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; }
 
 export function useProgress(): ProgressV1 {
-  return useSyncExternalStore(subscribe, getProgress, getProgress);
+  return useSyncExternalStore(subscribeProgress, getProgress, getProgress);
 }
 
 // ---------- export / import ----------
