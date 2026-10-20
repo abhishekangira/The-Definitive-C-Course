@@ -148,6 +148,28 @@ describe('the streaming request', () => {
     const done = await result;
     expect(done.ok && done.text).toBe('the key is [redacted] ok');
     expect(seen.at(-1)).toBe('the key is [redacted] ok');
+    expect(seen.filter(s => s.includes(KEY.slice(0, 6))), 'no frame shows the start of the key').toEqual([]);
+  });
+
+  it('never leaves the start of the key on screen when a provider error cuts the reply off', async () => {
+    const { result, seen } = run(async () => stream([delta(`the key is ${KEY.slice(0, 12)}`), 'data: {"error":{"message":"overloaded"}}\n\n']));
+    expect(await result).toMatchObject({ ok: false, code: 'provider' });
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.filter(s => s.includes(KEY.slice(0, 6))), 'no frame shows the start of the key').toEqual([]);
+  });
+
+  it('never shows the start of the key when the length cap cuts through it', async () => {
+    const { result, seen } = run(async () => stream([delta(`${'a'.repeat(100)}${KEY.slice(0, 10)}`), delta(`${KEY.slice(10)}${'b'.repeat(50)}`)]), { maxOutputChars: 108 });
+    const done = await result;
+    expect(done.ok).toBe(true);
+    for (const s of [...seen, done.ok ? done.text : '']) expect(s).not.toContain(KEY.slice(0, 6));
+  });
+
+  it('shows the whole reply once it ends, even when its last letters could start the key', async () => {
+    const { result, seen } = run(async () => stream([delta('pointers'), 'data: [DONE]\n\n']));
+    const done = await result;
+    expect(done.ok && done.text).toBe('pointers');
+    expect(seen.at(-1)).toBe('pointers');
   });
 
   it('stops reading and says so when the reply passes the cap', async () => {

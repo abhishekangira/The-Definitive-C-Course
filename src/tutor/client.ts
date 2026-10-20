@@ -34,7 +34,7 @@ export const TUTOR_ERROR_TEXT: Record<Exclude<TutorErrorCode, 'provider'>, strin
   unauthorized: 'The API key was rejected (401). Check it in Settings.',
   payment: 'The provider says this key is out of credit (402).',
   'rate-limit': 'The provider is rate-limiting requests (429). Wait and try again.',
-  network: 'The request did not finish (network error or timeout). Your code is still here.',
+  network: 'The request did not finish (network error or timeout). Nothing you wrote was lost.',
   empty: 'The provider sent an empty or unreadable reply.',
   'bad-url': 'The tutor URL is not allowed. Use https, or http on localhost only.',
   'no-model': 'Choose a model in Settings first. The course default models only work through OpenRouter.',
@@ -44,8 +44,8 @@ export const TUTOR_ERROR_TEXT: Record<Exclude<TutorErrorCode, 'provider'>, strin
 export function tutorErrorMessage(code: TutorErrorCode, status?: number): string {
   if (code === 'provider') {
     return status
-      ? `The provider returned an error (${status}). Your code is still here; try again later.`
-      : 'The provider returned an error. Your code is still here; try again later.';
+      ? `The provider returned an error (${status}). Nothing you wrote was lost; try again later.`
+      : 'The provider returned an error. Nothing you wrote was lost; try again later.';
   }
   return TUTOR_ERROR_TEXT[code];
 }
@@ -299,8 +299,18 @@ export async function streamTutorReply(req: TutorStreamRequest): Promise<TutorRe
   const max = req.maxOutputChars ?? TUTOR_CHAT_MAX_OUTPUT_CHARS;
   let reply = '';
   let lastShown = '';
-  const emit = () => {
-    const text = shown(reply, req.apiKey, max);
+  /** How much of the end of `text` could be the start of the key, which the next chunk may complete. */
+  const keyStartAtEnd = (text: string) => {
+    for (let n = Math.min(req.apiKey.length - 1, text.length); n > 0; n--) if (req.apiKey.startsWith(text.slice(-n))) return n;
+    return 0;
+  };
+  /**
+   * While the reply grows, hold back a tail that could be the start of the key: it is shown only once the next chunk
+   * proves it is not the key, or the reply ends normally (`whole`). A reply cut short (error, Stop, cap) never shows it.
+   */
+  const emit = (whole = false) => {
+    const redacted = redactKey(reply, req.apiKey);
+    const text = shown(whole ? redacted : redacted.slice(0, redacted.length - keyStartAtEnd(redacted)), '', max);
     if (text === lastShown) return;
     lastShown = text;
     req.onText(text);
@@ -329,7 +339,7 @@ export async function streamTutorReply(req: TutorStreamRequest): Promise<TutorRe
       const text = textFromChatBody(body);
       if (text === null || text.trim() === '') return fail('empty');
       reply = text;
-      emit();
+      emit(true);
       return { ok: true, text: lastShown };
     }
 
@@ -342,6 +352,7 @@ export async function streamTutorReply(req: TutorStreamRequest): Promise<TutorRe
     let bytes = 0;
     let finished = false;
     let broken = false;
+    let capped = false;
 
     /** One server-sent event: its `data:` lines, joined. Comments (`: keep-alive`) and other fields are ignored. */
     const handle = (event: string) => {
@@ -368,7 +379,7 @@ export async function streamTutorReply(req: TutorStreamRequest): Promise<TutorRe
         }
         if (buffer.length > MAX_EVENT_CHARS || bytes > TUTOR_MAX_RESPONSE_BYTES) { broken = true; break; }
         // Past the cap more text would not be shown, so stop paying for it.
-        if (redactKey(reply, req.apiKey).length > max) break;
+        if (redactKey(reply, req.apiKey).length > max) { capped = true; break; }
       }
       if (!finished && !broken) {
         buffer += decoder.decode();
@@ -385,6 +396,7 @@ export async function streamTutorReply(req: TutorStreamRequest): Promise<TutorRe
     if (reply.trim() === '') return fail('empty');
     // A provider error after some text: the learner keeps what arrived, and the caller is told the reply is not whole.
     if (broken) return fail('provider');
+    if (!capped) emit(true);
     return { ok: true, text: lastShown };
   } finally {
     clearTimeout(idle);
