@@ -60,7 +60,7 @@ describe('no Unicode glyphs as icons', () => {
     expect(content.length).toBeGreaterThan(10);
     const hits: string[] = [];
     for (const f of content) {
-      readFileSync(f, 'utf8').split('\n').forEach((line, i) => { if (ICON_GLYPHS.test(line)) hits.push(`${path.relative(ROOT, f)}:${i + 1}`); });
+      readFileSync(f, 'utf8').split('\n').forEach((line, i) => { if (ICON_GLYPHS.test(line)) hits.push(`${path.relative(ROOT, f)}:${i + 1}: icon glyph in lesson content (fonts lack it; write the word instead)`); });
     }
     expect(hits).toEqual([]);
   });

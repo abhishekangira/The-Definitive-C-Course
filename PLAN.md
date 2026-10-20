@@ -5,7 +5,7 @@ A self-paced, interactive web app that teaches C17 and low-level computer fundam
 - Learners write and run real C in the browser from the first lesson.
 - From Module 3 (weeks 5–6), they also use their own toolchain for debugging, sanitizers and projects.
 
-> **Status:** Stage 1 (research + plan) was reviewed and approved; the client's decisions are recorded in §12. Stage 2 (app shell + Module 1) is in progress.
+> **Status:** Stage 1 (research + plan) was reviewed and approved; the client's decisions are recorded in §12. Current status: the **Status** section of `AGENTS.md`.
 > - **[V]** marks a technical claim verified by running it in this repo's container during research.
 > - **[DOCS]** marks a claim read in documentation only.
 > - Raw reports and working prototypes are in `research/reports/` and `research/prototypes/`. Three independent adversarial reviews of the first draft are in `research/reports/review-*.md`; their confirmed findings are folded in below.
@@ -119,7 +119,7 @@ Steps are timeline labels (`data-steps`), exported to `steps.json`. Our player *
 
 ### 2.1 Repository layout
 ```
-PLAN.md  AGENTS.md  CLAUDE.md (imports AGENTS.md)  README.md  videos.json
+PLAN.md  AGENTS.md (+ an AGENTS.md in some folders)  README.md  videos.json
 package.json  vite.config.ts  tsconfig.json  playwright.config.ts
 content/                          # ← all course text; editable without touching components
   course.yaml                     # module order, ids, hours, success-criteria map
@@ -341,7 +341,7 @@ The tutor helps a learner whose code fails a check: it nudges them towards the n
 - **Grounded in real runs.** The tutor only receives outputs the app produced by running the learner's code with the browser compiler. The prompt requires it to quote those results for any claim about what the program prints, and to say "I'm not sure" rather than predict output it was not given. This keeps the course rule that outputs come from real runs, never from memory.
 - **Leak guard.** Before a reply is shown, the app compares it with the reference solution, ignoring whitespace and comments. If it contains a solution line that the learner's code doesn't already have, or a code block longer than a few lines, it is replaced by a short refusal and a pointer to the next unopened hint. A fragment the learner can already read (their code, the statement, the shown outputs, an opened hint, a Parsons bank) is not a leak, and the whole-line check is never relaxed. The comparison folds Cyrillic and Greek lookalikes to Latin, ignores invisible characters and typographic quotes, and reads the reply as it is rendered; a reply that reorders text with a bidi override is refused. For a Parsons exercise every bank line is visible, so the secret is the order: a reply that lists four or more bank lines the learner has not placed, forwards or backwards, is refused.
 - **Progress and gating.**
-  - Each answered question is recorded per exercise (`tutorAsks`), which needs the usual migrate, merge, round-trip and key-list changes (§2.5, AGENTS.md).
+  - Each answered question is recorded per exercise (`tutorAsks`), which needs the usual migrate, merge, round-trip and key-list changes (§2.5, `src/progress/AGENTS.md`).
   - It does not count towards the solution unlock and does not count as a submission for the streak.
 - **Failure handling.** A wrong key, an exhausted credit, a rate limit, a network error, a refusal or an empty reply each show a short, specific message; the exercise keeps working. The request has a timeout and a cap on output length.
 - **Accessibility.** The reply is announced through a polite live region. The panel works with the keyboard and passes axe in light and dark like the rest of the app.

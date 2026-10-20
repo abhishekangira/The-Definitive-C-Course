@@ -123,7 +123,7 @@ CI on every change: it regenerates and checks all sample output, runs the unit a
 
 ## Contributing
 
-Read [`AGENTS.md`](AGENTS.md) first (the workflow, commands and pull-request rules), then [`PLAN.md`](PLAN.md) (architecture and the course outline). One ticket is one pull request, and every claim of "it passes" needs pasted evidence.
+Read [`AGENTS.md`](AGENTS.md) first (the workflow, commands, pull-request rules, and the notes to read for each folder), then [`PLAN.md`](PLAN.md) (architecture and the course outline). Decisions and their evidence are in [`docs/adr/`](docs/adr/README.md). One ticket is one pull request, and every claim of "it passes" needs pasted evidence.
 
 ## Licence
 

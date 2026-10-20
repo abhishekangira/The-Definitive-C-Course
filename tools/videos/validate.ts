@@ -168,7 +168,7 @@ export function validateVideos(data: unknown, transcript: (id: string) => string
 
 export interface OnlineOptions {
   fetchImpl?: typeof fetch;
-  /** Milliseconds to wait after HTTP 429 before retrying (default 60 000, as AGENTS.md advises). */
+  /** Milliseconds to wait after HTTP 429 before retrying (default 60 000, as tools/videos/README.md advises). */
   retryDelayMs?: number;
   retries?: number;
   sleep?: (ms: number) => Promise<void>;
