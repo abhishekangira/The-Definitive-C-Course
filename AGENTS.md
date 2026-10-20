@@ -9,7 +9,7 @@ You were told to read this file and given a ticket. Do this, in order:
 3. **Install the CI toolchain before you run anything.** Run the commands of the `Install the native toolchain` step in `.github/workflows/ci.yml` (with `sudo` unless you are root), then check `gcc-13`, `clang-22`, `gdb`, `valgrind` and `node` with `--version` against **Pull request rules** 5. `tools/verify` falls back to plain `clang` with a warning, and those outputs are not comparable. A version mismatch is your setup to fix, not a finding to report. Only if the install fails (no network or no `sudo`), name your versions under **Could not verify**.
 4. Stay in scope, and stop at anything under **Ask first**. A new dependency needs a reason in the PR description and an exact pinned version.
 5. Don't hand-edit `src/generated/` (regenerate it with `npm run verify`) and don't hand-type expected outputs.
-6. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium` (`playwright.config.ts` falls back to Playwright's own Chromium; set `CHROMIUM_PATH` to use another).
+6. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium`. Browser setup: `e2e/AGENTS.md`.
 7. Write the PR description with the template in **Pull request rules** below. Say plainly what you could not verify; never claim a pass you didn't see.
 8. If the ticket is wrong, ambiguous or blocked, stop and say so (in the PR, or to the person who gave it to you) instead of working around it.
 9. No repository access, or can't run commands (for example a plain chat window)? Say so, return your change as a unified diff plus the exact commands a human should run to check it, and label everything unverified.
@@ -21,10 +21,8 @@ Stop and ask the owner (in the PR, or the person who gave you the ticket) before
 - change a decision in PLAN.md, in **Decisions** below or in `docs/adr/` (propose a new decision record instead),
 - add support or tests for a browser other than Chromium (see **Decisions**).
 
-## Raising issues (for the owner and the lead session)
-- Raise a GitHub issue only for **big** work: about M or L (half a day of human work or more, or several files), parallelizable and independently testable. Fix small things (S) directly instead of filing them: an issue costs a PR plus a review, which is more than a small fix.
-- Every issue states the goal, the **files the PR may touch** (and must not), and acceptance criteria that are each checkable with a command or a test, never "make sure X works". Add `Depends on #N` when another open issue edits the same files, and don't run two tickets that edit the same file in parallel.
-- Label it `complexity: M|L` plus an `area:` label. Don't write a criterion the code can only satisfy vacuously (for example "test that a constant equals itself").
+## Filing an issue
+Before you write, split or label a GitHub issue, read `.agents/skills/write-issue/SKILL.md`.
 
 ## Pull request rules (what makes review cheap)
 1. **Small and single-purpose.** One ticket, no unrelated edits (formatting, renames, drive-by fixes). If the diff is over about 400 changed lines (not counting fixtures and generated files), say why or split it.
@@ -48,19 +46,14 @@ Notes: (the AGENTS.md or README files you updated, or why none needed it; always
 Acceptance criteria: (copied from the issue; each with ✓ or ✗ and the evidence)
 Commands run: (pasted output tails; for a module change, paste the `npm run dod -- --module mNN` table)
 Could not verify:
-Risk: (does it touch learner-facing app code, the generated-data format, or CI/deploy? yes or no, and what)
+Risk: (does it touch learner-facing app code, the generated-data format, or CI/deploy? yes or no, and what; a yes gets a thorough review)
 ```
 
-Review depth, so you know where evidence matters most: the maintainer reviews thoroughly when a PR touches learner-facing app code, the verifier's data format, or CI/deploy. For tests-only changes, content text and refactors whose output can be diffed, it runs the checks and reads the diff.
-
-**Reviewers check the notes too** (the maintainer, a review agent, or any agent asked to review). For each folder the diff touches, read its `AGENTS.md` or README and this file, and ask whether the change made a statement in them untrue or taught a lesson that is not written down. On every PR, however small, also read the root `README.md` and ask whether the change made it untrue. A note or README the change made untrue blocks the merge, like a missing test; an unwritten lesson is a nit. Read the **Notes:** line of the PR description: if it is empty, says "none", or does not say the root `README.md` was checked, check that yourself.
+**Reviews** (by the maintainer, a review agent or any agent asked to review) follow the `review-and-merge-pr` skill (`.agents/skills/review-and-merge-pr/SKILL.md`). Its notes check is a merge rule: a note or the root `README.md` that the change made untrue blocks the merge, like a missing test.
 
 ## Status
 - **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/ (GitHub Pages; the `deploy` job in `ci.yml` publishes `main`).
-- Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12.
-- Stage 2 (app shell + Module 1) is **built and on `main`** (since 2026-10-15).
-- Module 2 (Bits, Bytes & Numbers) is **merged and open to learners** since 2026-10-18 (`m02` is `available: true` in `content/course.yaml`; issue #42 was its brief).
-- **Module 3 is not started** (`available: false`, no folder); its brief is issue #73. **There is no review gate between modules** (PLAN.md §12 item 11): the owner audits the course while it is built and files issues for any gap, so start the next module when its ticket is assigned. Other open work, such as the AI tutor (#47), is in issues and PRs.
+- Modules 1 and 2 are open to learners. **Module 3 is not started** (`available: false` in `content/course.yaml`, no folder); its brief is issue #73. **There is no review gate between modules** (PLAN.md §12 item 11): the owner audits the course while it is built and files issues for any gap, so start the next module when its ticket is assigned. Other open work, such as the AI tutor (#47), is in issues and PRs.
 
 ## Non-negotiables (client spec)
 - **The learner is never passive.** At most ~250 words or one animation/video before an interaction.
@@ -79,23 +72,21 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 ## Commands (keep in sync with `package.json`)
 | Command | What it does |
 |---|---|
-| `npm run dev` | prepare the toolchain, copy `check.mjs` to `public/downloads/`, start Vite |
-| `npm run build` | prepare toolchain → `tsc --noEmit` → `vite build` → copy `check.mjs` into `dist/downloads/` |
+| `npm run dev` | prepare the toolchain, build `check.mjs` into `public/downloads/` (`tools/check/README.md`), start Vite |
+| `npm run build` | prepare the toolchain, typecheck, `vite build`, build `check.mjs` into `dist/downloads/` |
 | `npm run verify [-- --module m01 --check --force]` | compile/run every sample on gcc, clang, the browser compiler (+ stored macOS/arm/Windows results); writes `src/generated/samples/` and traces |
 | `npm run trace` | gdb stepper traces for `trace` samples → `src/generated/traces/` |
 | `npm run verify:exercises` | every solution passes, every starter fails, every variant passes (browser and native) |
-| `npm run exercises:expect [-- --check]` | regenerate `tests.json`/`check.json` from each folder's `cases.yaml` by running the reference solution (gcc `-Werror` + ASan/UBSan); `--check` only reports drift |
+| `npm run exercises:expect [-- --check]` | regenerate `tests.json`/`check.json` from `cases.yaml` by running the reference solution; `--check` reports drift (`tools/exercises/README.md`) |
 | `npm run lint:content [-- --strict --stats]` | word budget, cadence, fence ids, analogies, quiz and module rules |
-| `npm run anim:check` / `anim:render` | HyperFrames lint, check and deterministic render (needs Chromium + ffmpeg; see `animations/README.md`); CI runs only `node tools/anim/check.mjs --static`, the full check is local |
-| `npm run videos:check [-- --online]` | `videos.json` schema and transcript anchors (CI never calls yt-dlp) |
+| `npm run anim:check` / `anim:render` | HyperFrames check and render (`animations/README.md`) |
+| `npm run videos:check [-- --online]` | `videos.json` schema and transcript anchors |
 | `npm test` / `npm run typecheck` | Vitest / `tsc --noEmit` |
-| `npm run dod -- --module m01 [--fast] [--json]` (use `npm run -s dod` for clean `--json`) | the per-module definition of done (PLAN §3.6) in one table: toolchain:prepare, typecheck, strict lint, `verify --check`, `trace --check`, exercises, videos, static animation check, all unit tests (`npm test`), build, e2e (`E2E_MODULE` limits e2e to the module); `--fast` skips build and e2e. See `tools/dod/README.md` |
-| `npm run e2e` | Playwright click-through of every lesson, problem set, project and checkpoint, plus axe (run `npm run build` first). CI uses 2 workers; outside CI the config uses 3 |
-| `npm run e2e:stress [-- <playwright args>]` | the full e2e suite repeated under CPU load with retries off; options in `e2e/AGENTS.md` |
+| `npm run dod -- --module m01 [--fast] [--json]` | the per-module definition of done (PLAN §3.6) as one table of every gate (`tools/dod/README.md`) |
+| `npm run e2e` | Playwright click-through of every lesson, problem set, project and checkpoint, plus axe (run `npm run build` first) |
+| `npm run e2e:stress [-- <playwright args>]` | the e2e suite repeated under CPU load (`e2e/AGENTS.md`) |
 
-A pull request that changes only root docs, `LICENSE` or `research/` skips the heavy CI steps; the rule and its allowlist are in `.github/AGENTS.md`.
-
-CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, regenerates `src/generated/{samples,traces}` on same-repo PRs (see **Decisions**), runs all of these, then deploys `dist` to GitHub Pages. The `Targets` workflow runs samples on macOS arm64, Linux arm64 and Windows MSVC and a bot commits `src/generated/targets/`, so **`git pull --rebase` before you push**. Details of both workflows: `.github/AGENTS.md`.
+CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub Pages; a PR that changes only notes (root docs, `AGENTS.md` files, skills), `LICENSE` or `research/` skips the heavy steps. The `Targets` workflow runs samples on macOS arm64, Linux arm64 and Windows MSVC and a bot commits `src/generated/targets/`. Details of both workflows: `.github/AGENTS.md`.
 
 ## Where to find what
 | Path | Contents | Read before editing |
@@ -114,7 +105,7 @@ CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, re
 | `tools/` (the rest) | `verify`, `trace`, `toolchain`, `mdx` (remark plugin), `shared`, `ci`, `docs` | — |
 | `.github/` | `workflows/ci.yml`, `workflows/targets.yml` | `.github/AGENTS.md` |
 | `docs/adr/` | Decision records: what was decided, the options and the evidence | `docs/adr/README.md` |
-| `.agents/skills/` (each linked from `.claude/skills/`) | Procedures: `add-exercise`, `review-and-merge-pr`; the HyperFrames skills are vendored (`skills-lock.json`) | that skill's `SKILL.md` |
+| `.agents/skills/` (each linked from `.claude/skills/`) | Procedures: `add-exercise`, `review-and-merge-pr`, `write-issue`; the HyperFrames skills are vendored (`skills-lock.json`) | that skill's `SKILL.md` |
 | `research/` | Stage-1 reports and prototypes. Reference only; never built or shipped | — |
 
 ## Where new knowledge goes
@@ -128,7 +119,7 @@ CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, re
 - **Detailed status and plans:** issues and PRs. The **Status** section above keeps only the current stage.
 - **Never add a `CLAUDE.md` or `CLAUDE.local.md`** in the repo, and don't keep one in a folder above your checkout (for example `~/CLAUDE.md`): either stops Claude Code from reading every `AGENTS.md` (`docs/adr/0001-agent-docs-layout.md`). The test in `tools/docs/` guards only the repo. Personal notes go in `~/.claude/CLAUDE.md`, which is safe.
 
-## Decisions (details in PLAN.md §1–§4 and `docs/adr/`)
+## Decisions (details in PLAN.md §1–§4, the client's in §12, and `docs/adr/`)
 - **Browsers: Chromium-based only** (Chrome, Edge, Brave and similar; JSPI needs Chrome 137 or newer). Firefox and Safari, including iOS, are not supported and not tested; the owner decided this on 2026-10-17. Don't raise cross-browser tickets or add Firefox/WebKit Playwright projects. (A pre-filled stdin box still exists for a Chromium without JSPI, as a graceful fallback; nothing tests it.)
 - **Reference environment:** CI on the GitHub Actions `ubuntu-24.04` runner is the authority for every check. Local and sandbox runs are advisory: say how your toolchain differs and let CI decide. There is no Docker (the agent sandboxes have no Docker daemon). Toolchain versions and what CI logs: `.github/AGENTS.md`.
 - **Generated files:** `src/generated/{samples,traces}` are **owned by CI**. Don't commit regenerated copies and never edit them by hand. For a same-repo PR, CI regenerates them on the `ubuntu-24.04` runner and a bot commit lands on your branch (so `git pull --rebase` before you push again). If you resolve a conflict in these files, take either side; CI regenerates them. `src/generated/targets/` is written by the `Targets` workflow on `main`. Run `npm run verify` locally to look at output, not to commit it: it keeps a committed file whose only difference is a compiler version string, but your machine's toolchain can still differ from CI's in behaviour. How the bot commit works: `.github/AGENTS.md`.
@@ -139,13 +130,11 @@ CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, re
 - **Judge a failure on a clean `main` under the same load before blaming a PR.** The e2e suite and the verifier fixture tests are timing-sensitive on a busy 4-CPU machine; we saw one-off failures at load 5 to 7 that passed on rerun. Run gates one at a time and don't run e2e while other heavy jobs run.
 - Never commit machine-dependent output (stack garbage, ASLR addresses). `verify --check` and `trace --check` must be stable across runs.
 - **Compiler diagnostics depend on the locale.** gcc and clang print Unicode quotes in UTF-8 locales, while the generated files and tests assume ASCII. Run `verify`, `trace` and the tests with `LC_ALL=C`.
-- **A mutation that leaves a variable unused fails `tsc`, so `npm run build` aborts and `dist/` stays stale.** The e2e then runs the old build and the mutation looks undetected. When mutation-checking, keep the variable used (for example `cond || true`) and check the build line says "built".
 - **GitHub closes issues on negated keywords.** "Do not close #1" in a PR description closed #1 when the PR merged. For partial work write "Partial progress on #N" and never use close, closes, fix, fixes, resolve or resolves next to an issue number; the maintainer also re-checks the issue state after every merge.
 
 ## Environment (the cloud container)
-- **Chromium** is at `/opt/pw-browsers`. Don't run `playwright install` there. Open-source Chromium can't play H.264, so e2e tests use a WebM fixture.
+- **Chromium** is at `/opt/pw-browsers`. Don't run `playwright install` there.
 - **GitHub.** Web and API access is limited to repos attached to the session. `gh repo create` and GraphQL are blocked; use repo-scoped REST. API quirks, local PR review and branch clean-up: the `review-and-merge-pr` skill.
-- **YouTube and HyperFrames** recipes are in `tools/videos/README.md` and `animations/README.md`.
 
 ## Git
 - The lead session works on `main`; everyone else uses a branch and a pull request (see **Start here**). Commit messages are descriptive; add the attribution lines your harness supplies.
