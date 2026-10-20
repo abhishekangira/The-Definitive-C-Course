@@ -1,0 +1,8 @@
+# The same session in lldb on the clang build (lldb-22 on Linux, Apple's lldb on macOS).
+steps:
+  all:
+    - run: $CC $CFLAGS -o prog w.c
+      only: clang
+    - run: $LLDB -b -x -o 'breakpoint set -f w.c -l 6' -o 'process launch -i in.txt' -o 'frame variable n' -o next -o 'frame variable total' -o bt -o 'breakpoint delete -f' -o continue ./prog
+      as: lldb
+      only: clang

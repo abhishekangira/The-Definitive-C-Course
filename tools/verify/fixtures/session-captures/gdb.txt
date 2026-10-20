@@ -1,0 +1,10 @@
+Breakpoint 1 at 0x1184: file w.c, line 6.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+
+Breakpoint 1, main () at w.c:6
+6	        total += n;
+$1 = 3
+#0  main () at w.c:6
+total = 7
+[Inferior 1 (process 223470) exited normally]

@@ -1,0 +1,4 @@
+/usr/bin/ld: /usr/bin/ld: DWARF error: mangled line number section (bad file number)
+/tmp/undef-fae6e5.o: in function `main':
+/tmp/tdcc-capture-7Kq2/undef.c:6:(.text+0x1a): undefined reference to `area'
+clang-22: error: linker command failed with exit code 1 (use -v to see invocation)

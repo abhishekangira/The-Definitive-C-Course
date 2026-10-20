@@ -1,0 +1,6 @@
+# A stack buffer overflow, found by AddressSanitizer at the write.
+steps:
+  all:
+    - run: $CC $CFLAGS -fsanitize=address -fno-omit-frame-pointer main.c -o prog && ./prog
+      as: asan
+      exit: fail

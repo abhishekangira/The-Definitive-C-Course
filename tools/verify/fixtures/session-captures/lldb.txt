@@ -1,0 +1,26 @@
+(lldb) settings set target.disable-aslr false
+(lldb) target create "./wc"
+Current executable set to '/tmp/tdcc-capture-7Kq2/wc' (x86_64).
+(lldb) breakpoint set -f w.c -l 6
+Breakpoint 1: where = wc`main + 52 at w.c:6:18, address = 0x0000000000001184
+(lldb) process launch -i in.txt
+Process 223487 launched: '/tmp/tdcc-capture-7Kq2/wc' (x86_64)
+Process 223487 stopped
+* thread #1, name = 'wc', stop reason = breakpoint 1.1
+    frame #0: 0x0000559903854184 wc`main at w.c:6:18
+   3   	int main(void) {
+   4   	    int n = 0, total = 0;
+   5   	    while (scanf("%d", &n) == 1) {
+-> 6   	        total += n;
+    	                 ^
+   7   	    }
+   8   	    printf("total = %d\n", total);
+   9   	    return 0;
+(lldb) frame variable n
+(int) n = 3
+(lldb) breakpoint delete -f
+All breakpoints removed. (1 breakpoint)
+(lldb) continue
+total = 7
+Process 223487 resuming
+Process 223487 exited with status = 0 (0x00000000)

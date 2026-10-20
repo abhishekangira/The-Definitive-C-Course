@@ -276,6 +276,38 @@ export interface SamplesFile {
   samples: Record<string, SampleResult>;
 }
 
+// ---------- native sessions (src/generated/sessions/<module>.json; written by tools/verify, docs/adr/0004) ----------
+
+/** Where a session's steps ran: Linux x86-64 with gcc 13 or clang 22 (every verify), macOS arm64 (Targets workflow). */
+export type SessionPlatform = 'linux-gcc' | 'linux-clang' | 'macos';
+
+/** One shell step of a session, as run and normalised (addresses, PIDs, temp paths, banners). */
+export interface SessionStepResult {
+  /** The command as written in session.yaml (`$CC` and friends unexpanded). */
+  cmd: string;
+  /** The tool the step shows ("gdb", "lldb", "valgrind", "leaks", "ld", "make", "nm"), for labels. */
+  as?: string;
+  stdout: string;
+  stderr: string;
+  /** Exit status of the shell step; a signal death is 128 + its number, as the shell reports it. */
+  exit: number;
+}
+
+export interface SessionResult {
+  id: string;
+  /** The session folder, relative to the module (for messages). */
+  dir: string;
+  /** Hash of the folder's files, so a stored macOS run can be matched to the current session. */
+  hash: string;
+  runs: Partial<Record<SessionPlatform, SessionStepResult[]>>;
+}
+
+export interface SessionsFile {
+  module: string;
+  generatedBy: string;
+  sessions: Record<string, SessionResult>;
+}
+
 // ---------- traces (src/generated/traces/<sample>.json; written by tools/trace) ----------
 
 export type TraceValue =

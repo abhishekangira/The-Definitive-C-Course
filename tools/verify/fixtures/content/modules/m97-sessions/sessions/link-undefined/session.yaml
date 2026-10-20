@@ -1,0 +1,9 @@
+# Declared but never defined: compiling works, linking fails.
+steps:
+  all:
+    - run: $CC $CFLAGS -c main.c
+    - run: $CC main.o -o prog
+      as: ld
+      exit: fail
+    - run: nm main.o
+      as: nm

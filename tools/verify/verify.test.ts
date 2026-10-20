@@ -2,12 +2,12 @@
 // throwaway fixture modules in tools/verify/fixtures. Results are cached in .cache/verify-test,
 // so reruns take well under a second; a cold run takes a few seconds per module.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
-import type { SamplesFile, TraceFile } from '../../src/content-model/types';
+import type { SamplesFile, SessionsFile, TraceFile } from '../../src/content-model/types';
 import { ROOT } from '../shared/wasm-node';
 import { isCacheable } from './cache';
 import { checkFragment, checkProjection, cleanupScratch, verify } from './verify';
@@ -20,6 +20,8 @@ afterAll(() => { rmSync(generatedRoot, { recursive: true, force: true }); cleanu
 
 const toolchainReady = existsSync(path.join(ROOT, 'src/generated/toolchain-version.json'));
 const hasGdb = spawnSync('gdb', ['--version']).status === 0 && process.platform === 'linux' && process.arch === 'x64';
+// The m97 sessions need the CI toolchain (.github/AGENTS.md), lldb-22 included.
+const hasSessionTools = hasGdb && ['valgrind', 'make', process.env.LLDB22 ?? 'lldb-22'].every(t => spawnSync(t, ['--version']).status === 0);
 
 describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtures)', () => {
   it('m99: every sample passes and the generated file has the expected answers', async () => {
@@ -100,6 +102,64 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     expect(rerun.files.written).toEqual([]);
     writeFileSync(samplesPath, onDisk);
   }, 120_000);
+
+  it.skipIf(!hasSessionTools)('m97: every native session runs twice, stable, and stores the real tool output', async () => {
+    const r = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm97', trace: false });
+    expect(r.problems).toEqual([]);
+    const file = JSON.parse(readFileSync(path.join(generatedRoot, 'sessions/m97.json'), 'utf8')) as SessionsFile;
+    expect(Object.keys(file.sessions).sort()).toEqual(['analyser', 'asan', 'compile-error', 'gdb', 'libm', 'link-multiple', 'link-order', 'link-undefined', 'lldb', 'make', 'ubsan', 'valgrind-leak', 'valgrind-uninit']);
+    expect(file.generatedBy).toMatch(/gcc: .*13\.\d.*clang22: .*22\.\d.*gdb: GNU gdb.*valgrind: valgrind-3.*lldb: lldb version 22.*make: GNU Make/);
+    const step = (id: string, platform: 'linux-gcc' | 'linux-clang', i: number) => file.sessions[id].runs[platform]![i];
+    for (const p of ['linux-gcc', 'linux-clang'] as const) {
+      expect(step('compile-error', p, 0)).toMatchObject({ exit: 1, cmd: '$CC $CFLAGS -c main.c' });
+      expect(step('compile-error', p, 0).stderr).toMatch(/^main\.c:5:\d+: error: /m);
+      expect(step('link-undefined', p, 1)).toMatchObject({ as: 'ld', exit: 1 });
+      expect(step('link-undefined', p, 1).stderr).toContain("<dir>/main.c:6:(.text+0x");
+      expect(step('link-undefined', p, 1).stderr).toContain("undefined reference to `area'");
+      expect(step('link-undefined', p, 2).stdout).toMatch(/^ +U area\n(.*\n)?0+ T main\n +U printf\n$/m);
+      expect(step('link-multiple', p, 1).stderr).toMatch(/multiple definition of `count'/);
+      expect(step('link-order', p, 1).stderr).toContain("undefined reference to `b'");
+      expect(step('link-order', p, 2)).toMatchObject({ stdout: '42\n', exit: 0 });
+      expect(step('libm', p, 0).stderr).toMatch(/<tmp1>\.o: in function `main':\n<dir>\/main\.c:7:.*undefined reference to `sqrt'/);
+      expect(step('libm', p, 2)).toMatchObject({ stdout: '1.414\n', exit: 0 });
+      // UBSan reports and continues by default; with -fno-sanitize-recover=all it stops before printing.
+      expect(step('ubsan', p, 0)).toMatchObject({ stdout: 'done\n', exit: 0 });
+      expect(step('ubsan', p, 0).stderr).toMatch(/^main\.c:6:\d+: runtime error: signed integer overflow: 2147483647 \+ 1 cannot be represented in type 'int'/m);
+      expect(step('ubsan', p, 1).stdout).toBe('');
+      expect(step('ubsan', p, 1).exit).not.toBe(0);
+      expect(step('asan', p, 0).stderr).toMatch(/==PID==ERROR: AddressSanitizer: stack-buffer-overflow on address <addr1>[^]*#0 <addr\d+> in main <dir>\/main\.c:5/);
+      expect(step('valgrind-uninit', p, 1).stderr).toMatch(/Conditional jump or move depends on uninitialised value\(s\)\n==PID== {4}at <addr\d+>: main \(u\.c:8\)\n==PID== {2}Uninitialised value was created by a stack allocation\n==PID== {4}at <addr\d+>: main \(u\.c:5\)/);
+      expect(step('valgrind-leak', p, 1).stderr).toMatch(/40 bytes in 1 blocks are definitely lost/);
+      expect(step('make', p, 1).stdout).toBe("make: 'credit' is up to date.\n");
+      expect(step('make', p, 2).stdout).toMatch(/-c main\.c\n.*-c luhn\.c\n.*-o credit main\.o luhn\.o\n$/);
+      expect(step('make', p, 3)).toMatchObject({ exit: 2, stderr: 'spaces.mk:2: *** missing separator.  Stop.\n' });
+    }
+    expect(step('analyser', 'linux-gcc', 0).stderr).toMatch(/u\.c:3:\d+: warning: use of uninitialized value '\*sum' .*\[-Wanalyzer-use-of-uninitialized-value\]/);
+    expect(step('analyser', 'linux-clang', 0).stderr).toMatch(/\[core\.uninitialized\.Assign\]/);
+    expect(step('gdb', 'linux-gcc', 1).stdout).toMatch(/^Breakpoint 1, main \(\) at w\.c:6\n6\t {8}total \+= n;\n\$1 = 3\n/m);
+    expect(step('gdb', 'linux-gcc', 1).stdout).toContain('[Inferior 1 (process <pid>) exited normally]');
+    expect(step('lldb', 'linux-clang', 1).stdout).toMatch(/\(lldb\) frame variable n\n\(int\) n = 3\n/);
+    expect(file.sessions.gdb.runs['linux-clang']).toBeUndefined(); // only: gcc
+    expect(file.sessions.lldb.runs['linux-gcc']).toBeUndefined(); // only: clang
+
+    // Two more runs without the cache: --check finds the stored file up to date.
+    const again = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm97', check: true, force: true, trace: false });
+    expect(again.problems).toEqual([]);
+    expect(again.files.stale).toEqual([]);
+
+    // A stored macOS run is merged in while the session is unchanged, and reported stale when it changed.
+    const macDir = path.join(generatedRoot, 'targets/macos-arm64-appleclang');
+    mkdirSync(macDir, { recursive: true });
+    const mac = [{ cmd: 'make', stdout: 'make: `credit\' is up to date.\n', stderr: '', exit: 0 }];
+    const stored = (hash: string) => writeFileSync(path.join(macDir, 'm97.sessions.json'), JSON.stringify({ module: 'm97', target: 'macos-arm64-appleclang', generatedBy: 'x', sessions: { make: { hash, steps: mac } } }));
+    stored(file.sessions.make.hash);
+    await verify({ contentRoot, generatedRoot, cacheDir, module: 'm97', trace: false });
+    expect((JSON.parse(readFileSync(path.join(generatedRoot, 'sessions/m97.json'), 'utf8')) as SessionsFile).sessions.make.runs.macos).toEqual(mac);
+    stored('0000000000000000');
+    const staleMac = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm97', trace: false });
+    expect(staleMac.notes).toContain('modules/m97-sessions/sessions/make: the stored macOS run is stale (the session changed); rerun the Targets workflow');
+    rmSync(macDir, { recursive: true, force: true });
+  }, 180_000);
 
   it('never caches a timed-out run, so a later run is not poisoned by it', async () => {
     const freshCache = mkdtempSync(path.join(tmpdir(), 'tdcc-verify-cache-'));

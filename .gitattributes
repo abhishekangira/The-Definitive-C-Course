@@ -11,3 +11,6 @@
 *.zip binary
 *.tgz binary
 *.wasm binary
+
+# Raw tool captures keep their exact bytes (lldb prints the program's output with CRLF from its terminal).
+tools/verify/fixtures/session-captures/*.txt -text

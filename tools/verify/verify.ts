@@ -17,6 +17,7 @@ import { mapLimit } from './proc';
 import { NATIVE_TARGETS, STORED_TARGETS, type SampleRuns, type TargetsFile, type VerifiedSample } from './types';
 import { WasmTarget } from './wasm';
 import { runTraces } from '../trace/run-traces';
+import { targetRunSessions, verifySessions } from './sessions-file';
 
 export interface VerifyOptions {
   contentRoot: string;
@@ -29,6 +30,8 @@ export interface VerifyOptions {
   check?: boolean;
   /** Generate stepper traces for `trace` samples (default true). */
   trace?: boolean;
+  /** Run native sessions (session.ts; default true). */
+  sessions?: boolean;
   log?: (line: string) => void;
 }
 
@@ -240,6 +243,17 @@ export async function verify(o: VerifyOptions): Promise<VerifyReport> {
     report.files.written.push(target);
   }
 
+  // Native sessions (docs/adr/0004-native-sessions.md).
+  if (o.sessions !== false && !o.only) {
+    const sr = await verifySessions({ contentRoot: o.contentRoot, generatedRoot: o.generatedRoot, cacheDir: path.join(o.cacheDir, 'sessions'), workRoot: path.join(scratch, 'sessions'), module: o.module, check: o.check, force: o.force, toolchains, log });
+    report.problems.push(...sr.problems);
+    report.notes.push(...sr.notes);
+    report.files.written.push(...sr.written);
+    report.files.unchanged.push(...sr.unchanged);
+    report.files.stale.push(...sr.stale);
+    for (const [m, text] of Object.entries(sr.outputs)) report.outputs[`sessions:${m}`] = text;
+  }
+
   // Traces.
   if (o.trace !== false && !o.only) {
     const tr = runTraces(samples, { generatedRoot: o.generatedRoot, cacheDir: path.join(o.cacheDir, 'traces'), workDir: path.join(scratch, 'traces'), check: o.check, force: o.force, log });
@@ -313,6 +327,12 @@ export async function targetRun(o: TargetRunOptions): Promise<{ problems: string
     writeFileSync(target, stableStringify(file));
     written.push(target);
     log(`wrote ${target} (${Object.keys(file.samples).length} samples)`);
+  }
+  // Sessions have a macOS group only (Linux x86-64 runs on every verify; docs/adr/0004-native-sessions.md).
+  if (o.target === 'macos-arm64-appleclang') {
+    const sr = await targetRunSessions({ contentRoot: o.contentRoot, outDir: o.outDir, cacheDir: path.join(o.cacheDir, 'sessions'), workRoot: path.join(scratch, 'sessions'), module: o.module, force: o.force, tc, log });
+    problems.push(...sr.problems);
+    written.push(...sr.written);
   }
   return { problems, written };
 }

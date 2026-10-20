@@ -64,7 +64,7 @@ describe('discovery', () => {
   it('finds lesson samples, quiz samples and fragments in the fixture module', () => {
     const d = discover({ contentRoot: FIXTURES, module: 'm99' });
     expect(d.errors).toEqual([]);
-    expect(d.modules).toEqual(['m98', 'm99']);
+    expect(d.modules).toEqual(['m97', 'm98', 'm99']);
     const ids = d.samples.map(s => s.id);
     expect(ids).toEqual(['fx-hello', 'fx-sum-stdin', 'fx-pointers', 'fx-sizeof-long', 'fx-warning', 'fx-compile-error', 'fx-null-deref', 'fx-uninit', 'fx-swap', 'fx-args', 'fx-learnc', 'fx-buffering', 'fx-fork', 'fx-choice']);
     const choice = d.samples.find(s => s.id === 'fx-choice')!;

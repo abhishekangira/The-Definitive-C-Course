@@ -1,0 +1,7 @@
+# A tentative definition in a header, included by two files (-fno-common is the default since gcc 10 and clang 11).
+steps:
+  all:
+    - run: $CC $CFLAGS -c main.c bump.c
+    - run: $CC main.o bump.o -o prog
+      as: ld
+      exit: fail

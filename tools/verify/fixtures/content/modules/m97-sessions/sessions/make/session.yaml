@@ -1,0 +1,12 @@
+# Build, nothing to do, a header change rebuilds both objects, and a recipe indented with spaces.
+steps:
+  all:
+    - run: make && ./credit
+      as: make
+    - run: make
+      as: make
+    - run: touch luhn.h && make
+      as: make
+    - run: make -f spaces.mk
+      as: make
+      exit: fail

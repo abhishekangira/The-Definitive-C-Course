@@ -1,0 +1,7 @@
+# An accumulator passed by pointer is never initialised: no -Wall warning at -O0, but Valgrind sees the use.
+steps:
+  linux:
+    - run: $CC $CFLAGS -o prog u.c
+    - run: valgrind --track-origins=yes --error-exitcode=1 ./prog
+      as: valgrind
+      exit: fail

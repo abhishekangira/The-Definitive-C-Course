@@ -1,10 +1,12 @@
-// npm run verify [-- --module m01] [--force] [--check] [--only <id>] [--no-trace] [--verbose]
+// npm run verify [-- --module m01] [--force] [--check] [--only <id>] [--no-trace] [--no-sessions] [--verbose]
 // npm run verify -- --target-run <TargetId|host> --out <dir> [--module m01]
 //
 // Build-time sample verification (PLAN §3.1–§3.4). For every C sample in content/ (lesson fences
 // and quiz items) it compiles and runs gcc 13, clang 22 (+ ASan/UBSan) and the browser toolchain
 // in Node, checks `expect`, flags browser-vs-64-bit differences, and writes
 // src/generated/samples/<module>.json; samples with `trace` also get src/generated/traces/<id>.json.
+// Native sessions (modules/<mNN-…>/sessions/<id>/session.yaml) run their shell steps with gcc 13 and clang 22 and
+// write src/generated/sessions/<module>.json (tools/verify/session.ts; --no-sessions skips them).
 //
 //   --module   only that module (its generated file is still complete)
 //   --force    ignore .cache/verify (results are cached per sample by content + toolchain hash)
@@ -37,6 +39,7 @@ interface Args {
   force: boolean;
   check: boolean;
   trace: boolean;
+  sessions: boolean;
   verbose: boolean;
   targetRun?: TargetId;
   out?: string;
@@ -47,14 +50,14 @@ interface Args {
 
 function usage(msg?: string): never {
   if (msg) console.error(`verify: ${msg}`);
-  console.error('usage: tsx tools/verify/cli.ts [--module mNN] [--force] [--check] [--only <id>] [--no-trace] [--verbose]\n' +
+  console.error('usage: tsx tools/verify/cli.ts [--module mNN] [--force] [--check] [--only <id>] [--no-trace] [--no-sessions] [--verbose]\n' +
     '       tsx tools/verify/cli.ts --target-run <TargetId|host> --out <dir> [--module mNN] [--force]');
   process.exit(2);
 }
 
 function parseArgs(argv: string[]): Args {
   const a: Args = {
-    force: false, check: false, trace: true, verbose: false,
+    force: false, check: false, trace: true, sessions: true, verbose: false,
     contentRoot: path.join(ROOT, 'content'),
     generatedRoot: path.join(ROOT, 'src/generated'),
     cacheDir: path.join(ROOT, '.cache/verify'),
@@ -68,6 +71,7 @@ function parseArgs(argv: string[]): Args {
       case '--force': a.force = true; break;
       case '--check': a.check = true; break;
       case '--no-trace': a.trace = false; break;
+      case '--no-sessions': a.sessions = false; break;
       case '--verbose': case '-v': a.verbose = true; break;
       case '--target-run': { const t = val(); a.targetRun = (t === 'host' ? hostTarget() : t) as TargetId; break; }
       case '--out': a.out = path.resolve(val()); break;
@@ -127,7 +131,7 @@ async function main(): Promise<void> {
   }
   const report = await verify({
     contentRoot: a.contentRoot, generatedRoot: a.generatedRoot, cacheDir: a.cacheDir,
-    module: a.module, only: a.only, force: a.force, check: a.check, trace: a.trace,
+    module: a.module, only: a.only, force: a.force, check: a.check, trace: a.trace, sessions: a.sessions,
     log: a.verbose ? console.log : undefined,
   });
   printReport(report, a, performance.now() - t0);

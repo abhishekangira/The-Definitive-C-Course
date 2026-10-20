@@ -1,0 +1,12 @@
+# A heap block that is never freed: Valgrind on Linux, leaks on macOS.
+steps:
+  all:
+    - run: $CC $CFLAGS -o prog l.c
+  linux:
+    - run: valgrind --leak-check=full --error-exitcode=1 ./prog
+      as: valgrind
+      exit: fail
+  macos:
+    - run: leaks --atExit -- ./prog
+      as: leaks
+      exit: any
