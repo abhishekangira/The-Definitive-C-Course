@@ -6,17 +6,17 @@ An interactive, static (no backend) React + TypeScript web app that teaches C17 
 You were told to read this file and given a ticket. Do this, in order:
 1. Read this whole file, then the notes that **Where to find what** lists for every folder you will edit, then the PLAN.md sections your ticket cites. The non-negotiables, **Ask first** and the pitfalls apply to every change. (Claude Code attaches a folder's `AGENTS.md` only when its Read tool opens a file there, never after `cat` in Bash, a search or a new file, and never a `README.md`; other tools differ. Open the listed notes yourself.)
 2. Branch from the latest `main` (`ticket/<short-name>`). **One ticket = one pull request.** Never push to `main` and never force-push.
-3. Stay in scope, and stop at anything under **Ask first**. A new dependency needs a reason in the PR description and an exact pinned version.
-4. Don't hand-edit `src/generated/` (regenerate it with `npm run verify`) and don't hand-type expected outputs.
-5. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium` (`playwright.config.ts` falls back to Playwright's own Chromium; set `CHROMIUM_PATH` to use another).
-6. Write the PR description with the template in **Pull request rules** below. Say plainly what you could not verify; never claim a pass you didn't see.
-7. If the ticket is wrong, ambiguous or blocked, stop and say so (in the PR, or to the person who gave it to you) instead of working around it.
-8. No repository access, or can't run commands (for example a plain chat window)? Say so, return your change as a unified diff plus the exact commands a human should run to check it, and label everything unverified.
-9. **Keeping these notes up to date is the PR author's duty.** Before you open the PR, make sure this file and the `AGENTS.md` (or README) of every folder you touched are still true after your change. Correct any path, command, rule or number your change made wrong, delete a bullet whose bug you fixed, and write down a gotcha or practice that would have saved you time, in the place **Where new knowledge goes** names. Only write down what you observed or verified. **Check the root `README.md` on every PR, whatever folders you touched:** it is the first page a person reads (what the app is, how to run it, where to read next, the licence), so a change to any of those updates it in the same PR.
+3. **Install the CI toolchain before you run anything.** Run the commands of the `Install the native toolchain` step in `.github/workflows/ci.yml` (with `sudo` unless you are root), then check `gcc-13`, `clang-22`, `gdb`, `valgrind` and `node` with `--version` against **Pull request rules** 5. `tools/verify` falls back to plain `clang` with a warning, and those outputs are not comparable. A version mismatch is your setup to fix, not a finding to report. Only if the install fails (no network or no `sudo`), name your versions under **Could not verify**.
+4. Stay in scope, and stop at anything under **Ask first**. A new dependency needs a reason in the PR description and an exact pinned version.
+5. Don't hand-edit `src/generated/` (regenerate it with `npm run verify`) and don't hand-type expected outputs.
+6. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium` (`playwright.config.ts` falls back to Playwright's own Chromium; set `CHROMIUM_PATH` to use another).
+7. Write the PR description with the template in **Pull request rules** below. Say plainly what you could not verify; never claim a pass you didn't see.
+8. If the ticket is wrong, ambiguous or blocked, stop and say so (in the PR, or to the person who gave it to you) instead of working around it.
+9. No repository access, or can't run commands (for example a plain chat window)? Say so, return your change as a unified diff plus the exact commands a human should run to check it, and label everything unverified.
+10. **Keeping these notes up to date is the PR author's duty.** Before you open the PR, make sure this file and the `AGENTS.md` (or README) of every folder you touched are still true after your change. Correct any path, command, rule or number your change made wrong, delete a bullet whose bug you fixed, and write down a gotcha or practice that would have saved you time, in the place **Where new knowledge goes** names. Only write down what you observed or verified. **Check the root `README.md` on every PR, whatever folders you touched:** it is the first page a person reads (what the app is, how to run it, where to read next, the licence), so a change to any of those updates it in the same PR.
 
 ## Ask first
 Stop and ask the owner (in the PR, or the person who gave you the ticket) before you:
-- start the next module before the client has signed off the current one (the client reviews after each stage and each module; see **Status**),
 - change the licence,
 - change a decision in PLAN.md, in **Decisions** below or in `docs/adr/` (propose a new decision record instead),
 - add support or tests for a browser other than Chromium (see **Decisions**).
@@ -58,9 +58,9 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 ## Status
 - **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/ (GitHub Pages; the `deploy` job in `ci.yml` publishes `main`).
 - Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12 (public repo → GitHub Pages; MP4s committed; allocator-only capstone; dark-only animation renders).
-- Stage 2 (app shell + Module 1) is **built and on `main`** (since 2026-10-15). No client sign-off of it is recorded in the repo, an issue or a PR.
-- Module 2 (Bits, Bytes & Numbers) is **merged and open to learners** since 2026-10-18 (PRs #48 to #56; `m02` is `available: true` in `content/course.yaml`). The owner's issue #42 was the go-ahead to start it. No client review of it is recorded yet.
-- **Module 3 is not started** (`available: false`, no folder). From Module 2 on, each module is its own stage (PLAN.md §11): the client reviews after each stage and each module, so stop and ask for review then (see **Ask first**). Other open work, such as the AI tutor (#47), is in issues and PRs.
+- Stage 2 (app shell + Module 1) is **built and on `main`** (since 2026-10-15).
+- Module 2 (Bits, Bytes & Numbers) is **merged and open to learners** since 2026-10-18 (PRs #48 to #56; `m02` is `available: true` in `content/course.yaml`). The owner's issue #42 was its brief.
+- **Module 3 is not started** (`available: false`, no folder); its brief is issue #73. **There is no review gate between modules** (PLAN.md §12 item 11): the owner audits the course while it is built and files issues for any gap, so start the next module when its ticket is assigned. Other open work, such as the AI tutor (#47), is in issues and PRs.
 
 ## Non-negotiables (client spec)
 - **The learner is never passive.** At most ~250 words or one animation/video before an interaction.
@@ -125,7 +125,7 @@ CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, re
 - **Steps for a recurring task:** a skill, `.agents/skills/<name>/SKILL.md` (frontmatter `name` and `description`), plus the symlink `.claude/skills/<name>` → `../../.agents/skills/<name>`.
 - **A decision, with its options and evidence:** a new record in `docs/adr/`. Lead each note with the rule; keep run IDs and measurements in the record or the PR.
 - **A fixed bug that a test now covers:** delete its bullet.
-- **Detailed status and plans:** issues and PRs. The **Status** section above keeps only the current stage and review gate.
+- **Detailed status and plans:** issues and PRs. The **Status** section above keeps only the current stage.
 - **Never add a `CLAUDE.md` or `CLAUDE.local.md`** in the repo, and don't keep one in a folder above your checkout (for example `~/CLAUDE.md`): either stops Claude Code from reading every `AGENTS.md` (`docs/adr/0001-agent-docs-layout.md`). The test in `tools/docs/` guards only the repo. Personal notes go in `~/.claude/CLAUDE.md`, which is safe.
 
 ## Decisions (details in PLAN.md §1–§4 and `docs/adr/`)
