@@ -10,6 +10,7 @@
 - **Never `pkill -f` a pattern that is also in your own command line.** `pkill -f "vite preview" && …` in one Bash call kills that shell (exit 144) and the rest of the line never runs. Start the preview server in its own call (`nohup npx vite preview --port 4173 --strictPort &`) and stop it by PID.
 
 ## Pitfalls
+- **A mutation that leaves a variable unused fails `tsc`, so `npm run build` aborts and `dist/` stays stale.** The e2e then runs the old build and the mutation looks undetected. When mutation-checking, keep the variable used (for example `cond || true`) and check the build line says "built".
 - Test harness: `AxeBuilder` needs pages from `browser.newContext()`; scope `summary` locators with `:scope >` because exercises contain nested `<details>`.
 - **Playwright `getByText` with a regex does not trim.** An icon before the words leaves a leading space, so `/^Right\./` misses and `/^\s*Right\./` matches; a plain string (with `exact: true`) is trimmed. Check the button name too: an `aria-hidden` icon adds nothing to it, so `name: 'Step', exact: true`.
 - **Wait for a signal that identifies the page.** A bare `h1` also matches the page you are leaving; use the specific heading text or a `data-*` attribute.

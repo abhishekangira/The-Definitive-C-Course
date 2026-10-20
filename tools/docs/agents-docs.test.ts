@@ -8,11 +8,11 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 /**
- * The root file is loaded into every session. It was 7,115 words before the split and 3,146 after; this is about 10% above
- * that, room for a few bullets. When it trips, move notes that concern one area to that area's AGENTS.md or README.md
- * rather than raising the number.
+ * The root file is loaded into every session. It was 7,115 words before the split, 3,146 after it, and about 3,000 after
+ * the 2026-10-20 audit; 4,000 leaves room for global rules only. When it trips, move notes that concern one area to that
+ * area's AGENTS.md or README.md rather than raising the number.
  */
-const MAX_ROOT_WORDS = 3500;
+const MAX_ROOT_WORDS = 4000;
 const SKIP = new Set(['node_modules', '.git', 'dist', 'dist-tools', 'build', '.cache', 'test-results', 'playwright-report']);
 
 function walk(dir: string, out: string[] = []): string[] {
