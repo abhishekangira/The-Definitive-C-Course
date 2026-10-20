@@ -12,9 +12,9 @@
 
 ## What is this?
 
-An interactive course for **front-end engineers** who know JavaScript and want to understand what is underneath it: memory, pointers, the CPU, linking, the OS. There is no backend and nothing to install to begin. Open the site in a Chromium-based browser (Chrome, Edge, Brave and similar), and you are compiling and running C within seconds.
+An interactive course for **front-end engineers** who know JavaScript and want to understand what is underneath it: memory, pointers, the CPU, linking, the OS. There is no backend and nothing to install to begin. Open the site in a Chromium-based browser (Chrome, Edge, Brave and similar; Chrome 137 or newer), and you are compiling and running C within seconds. Firefox and Safari, including iOS, are not supported.
 
-The course has 13 modules and a capstone (about 190 hours, at roughly 5 hours a week). Modules 1 and 2 are live; the rest are planned in [`PLAN.md`](PLAN.md).
+The course has 13 modules and a capstone (about 200 hours, or 40 weeks at 5 hours a week). Modules 1 and 2 are live; the rest are planned in [`PLAN.md`](PLAN.md).
 
 | | Module | Hours |
 |---|---|---|
@@ -55,7 +55,7 @@ The course has 13 modules and a capstone (about 190 hours, at roughly 5 hours a 
 Step through a program line by line with real debugger traces, explore the compiler pipeline stage by stage, draw memory diagrams, hit **compiler-error drills**, practise number-base conversion, and play with a number playground. Later modules add visualizers for lists, trees, hash tables, a tiny CPU and a cache simulator.
 
 ### Every answer is generated, never typed
-- Every expected output and prediction answer comes from **actually running the code** with `tools/verify` on **gcc 13**, **clang 22** and the **browser compiler**, with stored results from **macOS arm64**, **Linux arm64** and **Windows MSVC**.
+- Every expected output and prediction answer comes from **actually running the code** with `tools/verify` on **gcc 13**, **clang 22** and the **browser compiler**, with stored results from **macOS arm64** and **Linux arm64** (plus **Windows MSVC** for the platform-specific samples).
 - Samples must compile cleanly and run **ASan + UBSan clean** unless the lesson deliberately shows an error.
 - Output that differs between 32-bit WebAssembly and your 64-bit machine is **flagged automatically** and shown side by side.
 - Undefined behaviour is only ever asked about categorically (crash? same every run? what does the sanitizer say?), and garbage values are never shown.
@@ -70,7 +70,7 @@ Short, deterministic explainer animations rendered with **HyperFrames**, each fo
 
 ### An AI tutor, on your terms
 - **Bring your own key.** Nothing is sent until you accept a notice that names the exact host.
-- It only appears after a failed attempt on a browser exercise, sees the real failing output and only the hints you have already opened, and **never reveals the solution**. A guard checks every reply against the reference solution and replaces leaks with a pointer to the next hint.
+- It only appears after a failed attempt on a browser exercise, sees the real failing output and only the hints you have already opened, and is told never to give the solution away. A guard checks every reply against the reference solution and replaces code that would leak it with a pointer to the next hint.
 - Works with OpenRouter (with a sensible default model list) or any compatible host, including `localhost`.
 
 ### Streaks, spirit beans and Rio
@@ -100,7 +100,7 @@ npm run dev        # prepares the in-browser toolchain, then starts Vite
 |---|---|
 | `npm run build` | Typecheck and produce the static site in `dist/` |
 | `npm test` | Unit tests (Vitest) |
-| `npm run verify` | Compile and run every sample on every target, and regenerate the answer data |
+| `npm run verify` | Compile and run every sample with this machine's gcc, clang and the browser compiler (CI owns the committed results; don't commit them) |
 | `npm run verify:exercises` | Check that solutions pass and starters fail |
 | `npm run lint:content` | Enforce word budgets, cadence and fence rules |
 | `npm run e2e` | Playwright click-through of every lesson, plus axe (run `build` first) |
@@ -119,7 +119,7 @@ The full command list is in [`AGENTS.md`](AGENTS.md).
 | `e2e/` | Playwright specs |
 | `research/` | Stage-1 research, for reference only |
 
-CI on every change: it regenerates and checks all sample output, runs the unit and end-to-end suites with axe, and deploys to **GitHub Pages**.
+CI checks every pull request that touches code: it regenerates and checks all sample output and runs the unit and end-to-end suites with axe. Pushes to `main` deploy the site to **GitHub Pages**.
 
 ## Contributing
 
