@@ -17,7 +17,6 @@ You were told to read this file and given a ticket. Do this, in order:
 
 ## Ask first
 Stop and ask the owner (in the PR, or the person who gave you the ticket) before you:
-- start the next module before the client has signed off the current one (the client reviews after each stage and each module; see **Status**),
 - change the licence,
 - change a decision in PLAN.md, in **Decisions** below or in `docs/adr/` (propose a new decision record instead),
 - add support or tests for a browser other than Chromium (see **Decisions**).
@@ -57,9 +56,9 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 ## Status
 - **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/ (GitHub Pages; the `deploy` job in `ci.yml` publishes `main`).
 - Stage 1 (research + PLAN.md) is approved; the client's decisions are in PLAN.md §12 (public repo → GitHub Pages; MP4s committed; allocator-only capstone; dark-only animation renders).
-- Stage 2 (app shell + Module 1) is **built and on `main`** (since 2026-10-15). No client sign-off of it is recorded in the repo, an issue or a PR.
-- Module 2 (Bits, Bytes & Numbers) is **merged and open to learners** since 2026-10-18 (PRs #48 to #56; `m02` is `available: true` in `content/course.yaml`). The owner's issue #42 was the go-ahead to start it. No client review of it is recorded yet.
-- **Module 3 is not started** (`available: false`, no folder). From Module 2 on, each module is its own stage (PLAN.md §11): the client reviews after each stage and each module, so stop and ask for review then (see **Ask first**). Other open work, such as the AI tutor (#47), is in issues and PRs.
+- Stage 2 (app shell + Module 1) is **built and on `main`** (since 2026-10-15).
+- Module 2 (Bits, Bytes & Numbers) is **merged and open to learners** since 2026-10-18 (PRs #48 to #56; `m02` is `available: true` in `content/course.yaml`). The owner's issue #42 was its brief.
+- **Module 3 is not started** (`available: false`, no folder); its brief is issue #73. **There is no review gate between modules** (PLAN.md §12 item 11): the owner audits the course while it is built and files issues for any gap, so start the next module when its ticket is assigned. Other open work, such as the AI tutor (#47), is in issues and PRs.
 
 ## Non-negotiables (client spec)
 - **The learner is never passive.** At most ~250 words or one animation/video before an interaction.
@@ -124,7 +123,7 @@ CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, re
 - **Steps for a recurring task:** a skill, `.agents/skills/<name>/SKILL.md` (frontmatter `name` and `description`), plus the symlink `.claude/skills/<name>` → `../../.agents/skills/<name>`.
 - **A decision, with its options and evidence:** a new record in `docs/adr/`. Lead each note with the rule; keep run IDs and measurements in the record or the PR.
 - **A fixed bug that a test now covers:** delete its bullet.
-- **Detailed status and plans:** issues and PRs. The **Status** section above keeps only the current stage and review gate.
+- **Detailed status and plans:** issues and PRs. The **Status** section above keeps only the current stage.
 - **Never add a `CLAUDE.md` or `CLAUDE.local.md`** in the repo, and don't keep one in a folder above your checkout (for example `~/CLAUDE.md`): either stops Claude Code from reading every `AGENTS.md` (`docs/adr/0001-agent-docs-layout.md`). The test in `tools/docs/` guards only the repo. Personal notes go in `~/.claude/CLAUDE.md`, which is safe.
 
 ## Decisions (details in PLAN.md §1–§4 and `docs/adr/`)

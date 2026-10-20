@@ -1275,7 +1275,7 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 |---|---|---|---|
 | **1** | this one | Research; prototypes saved in `research/`; **PLAN.md**; initial AGENTS.md | **yes (now)** |
 | **2** | 2–3 | App shell (HashRouter, theme, namespaced progress store with export/import and reminders, gating, card engine, MDX pipeline); in-browser runtime (compiler + run workers, JSPI stdin, `sleep` override, full guardrail UBSan runtime, `leakcheck.c`, caching); `tools/verify` (native + browser-in-Node + targets workflow), `tools/trace`, `tools/check` with the shared token module, content lint, e2e harness; CI workflows; **Module 1 end to end** (every spec-named interaction type plus PR and SP; V1 basic, V3, V7 basic; animation **A1**; P1 Mario-more); `videos.json` (YT-1, YT-2) for review. **Exit criteria:** AGENTS.md updated with the content format, schemas and real npm scripts; the §3.6 checklist green for M1 | **yes** |
-| 3.n | one per module | M2 … M13, then the capstone, each passing §3.6 and adding its visualizers and animations as listed | **yes, after each** |
+| 3.n | one per module | M2 … M13, then the capstone, each passing §3.6 and adding its visualizers and animations as listed | no: continuous audit (§12 item 11) |
 
 ### Risks and mitigations
 | Risk | Mitigation |
@@ -1303,3 +1303,4 @@ Both video IDs are confirmed via oEmbed as official CS50 channel uploads **[V]**
 8. **Local toolchain timing.** Module 3 (weeks 5–6) stays.
 9. **Chromium only (2026-10-17).** The owner runs the course in Chromium-based browsers only. Firefox and Safari (including iOS) are not supported, tested or tracked: no cross-browser tickets, no WebKit or Firefox Playwright projects, no manual Safari check.
 10. **AI tutor (2026-10-17).** The owner chose bring-your-own-key over a server proxy: an optional tutor that calls an OpenAI-compatible chat API (OpenRouter by default) from the browser with the learner's own key and model. The site stays static and the course pays nothing for it (§2.6).
+11. **No review gate between modules (2026-10-20).** The owner audits the course while it is built, raising an issue for every gap they find and fixing it then, so a module starts when its ticket is assigned, without waiting for a review of the previous one. This replaces the "stop for review after each module" of §11. The per-module definition of done (§3.6) still applies to every module.
