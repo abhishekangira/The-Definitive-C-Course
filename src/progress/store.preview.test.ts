@@ -114,6 +114,13 @@ describe('resetting progress on an ordinary page', () => {
   });
 });
 
+describe('the previewing flag (what export and any sync check before sending the document out of the page)', () => {
+  it('is true while a draft is previewed, and false on an ordinary page', async () => {
+    expect((await loadStore(['m03'])).store.previewing).toBe(true);
+    expect((await loadStore([])).store.previewing).toBe(false);
+  });
+});
+
 describe('progress on an ordinary page', () => {
   it('writes the real document and never the preview one', async () => {
     const { store, storage } = await loadStore([], { [REAL]: doc({}) });

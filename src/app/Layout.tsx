@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useTheme, type ThemeChoice } from './theme';
-import { useProgress, daysSinceExport, storageWorks } from '../progress/store';
+import { useProgress, daysSinceExport, previewing, storageWorks } from '../progress/store';
 import { course, previewed } from '../content-runtime/course';
 import { moduleLabel } from '../progress/next';
 import { StreakChip } from '../components/StreakChip';
@@ -37,7 +37,8 @@ export function Layout({ children }: { children?: ReactNode }) {
   const [persistent] = useState(storageWorks);
   const days = daysSinceExport(progress);
   const hasProgress = Object.keys(progress.lessons).length > 0;
-  const remindExport = hasProgress && (days === null || days >= 7);
+  // No reminder while previewing: export is off then (Settings explains why).
+  const remindExport = hasProgress && !previewing && (days === null || days >= 7);
 
   // Move focus to the main heading on navigation, so screen readers announce the new page.
   useEffect(() => {

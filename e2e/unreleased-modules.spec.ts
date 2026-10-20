@@ -114,6 +114,28 @@ test.describe('an unreleased module that is on disk', () => {
     expect(await stored(page, REAL_KEY)).toBe(SEED);
   });
 
+  test('export, import and reset are off while previewing, and on again on the ordinary page', async ({ page }) => {
+    const controls = (p: Page) => [p.getByRole('button', { name: 'Export progress' }), p.getByRole('button', { name: 'Import from file' }), p.getByRole('button', { name: 'Reset all progress' })];
+    await page.goto(`${url}?preview=m02#/settings`);
+    for (const c of controls(page)) await expect(c).toBeDisabled();
+    await expect(page.getByText(/Export, import and reset are off while you preview an unreleased module/)).toBeVisible();
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme });
+      await expectAccessible(page, `settings page while previewing (${colorScheme} scheme)`);
+    }
+    await page.goto(`${url}#/settings`); // no query: a different document, so the page reloads without the preview
+    for (const c of controls(page)) await expect(c).toBeEnabled();
+    await expect(page.getByText(/Export, import and reset are off/)).toHaveCount(0);
+  });
+
+  test('the "export a backup" reminder is not shown while previewing, because export is off', async ({ page }) => {
+    await page.goto(`${url}?preview=m02#/m/m02/01-draft`);
+    await expect(page.getByText('Lesson complete.')).toBeVisible(); // there is progress now, and no export yet, so the ordinary page would remind
+    await page.goto(`${url}?preview=m02#/`);
+    await expect(mapTitle(page)).toBeVisible();
+    await expect(page.getByText('Your progress lives only in this browser.')).toHaveCount(0);
+  });
+
   test('"Leave the preview" returns to the ordinary course, where the draft is closed again', async ({ page }) => {
     await page.goto(`${url}?preview=m02`);
     const leave = page.getByRole('link', { name: 'Leave the preview' });

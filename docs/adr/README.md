@@ -2,7 +2,7 @@
 
 One file per decision that the code alone does not explain: what was decided, the options, the evidence, and what follows from it. Read the record before changing what it covers, so a settled question is not reopened without new evidence.
 
-- Name them `NNNN-short-title.md`, numbered in order.
+- Name them `NNNN-short-title.md`, numbered in order. Take the next free number when you merge, not when you open the pull request: two open pull requests can pick the same one. If yours merges second, renumber it and fix every reference to it (this index, the notes, `PLAN.md`).
 - Don't rewrite an accepted record. To change a decision, write a new record that says which one it replaces, and change only the old record's status line to `Superseded by NNNN`.
 - Changing a decision is on the root `AGENTS.md` **Ask first** list.
 - Decisions made before this folder existed are in `PLAN.md` §0 and §12 and in the **Decisions** section of the root `AGENTS.md`.

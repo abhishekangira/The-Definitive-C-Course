@@ -13,7 +13,13 @@ import { previewed } from '../content-runtime/preview';
 // While an unreleased module is previewed (`?preview=m03`), everything done on the page is written to a document of its own,
 // so the learner's real progress never records anything from a module that is not released.
 const PREVIEW_KEY = `${STORAGE_PREFIX}progress-preview`;
-const KEY = previewed.length > 0 ? PREVIEW_KEY : REAL_KEY;
+/**
+ * True while an unreleased module is previewed. The page then holds the real progress plus draft progress, so anything that
+ * sends the document out of the page (a file export, a sync to another device) must stay off: it would carry the draft's
+ * progress into the real progress somewhere else.
+ */
+export const previewing = previewed.length > 0;
+const KEY = previewing ? PREVIEW_KEY : REAL_KEY;
 
 export type Platform = 'mac-arm' | 'mac-intel' | 'wsl' | 'linux-x86' | 'linux-arm';
 

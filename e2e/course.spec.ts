@@ -79,6 +79,7 @@ for (const mod of modules) {
     });
 
     test('progress survives export and import into a fresh browser', async ({ browser }) => {
+      test.skip(mod.preview, 'Settings export and import are off while previewing a draft (e2e/unreleased-modules.spec.ts covers that); the released modules cover the feature');
       await page.goto('#/settings');
       const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export progress' }).click()]);
       const file = await download.path();
