@@ -31,7 +31,7 @@ npx vitest run tools/anim           # the pipeline's unit tests and the A1 facts
 ```
 
 The CLI is run as `npx --yes hyperframes@0.8.162` (pinned in `tools/anim/lib.mjs`; it is a 157 MB dev tool and is
-deliberately **not** in `package.json`). Chromium comes from `/opt/pw-browsers` (do not run `playwright install`).
+deliberately **not** in `package.json`). It needs Node ≥22 and FFmpeg. Chromium comes from `/opt/pw-browsers` (do not run `playwright install`).
 Pixels can differ between Chrome versions, so each manifest entry records the browser it was rendered with and
 `render.mjs` re-renders when it changes. A1 (45 s) renders in about 3 minutes here (the CLI chose 1 capture worker on this 4-core
 container: software GL), and a render of unchanged sources is skipped.
@@ -201,6 +201,18 @@ content, so the deploy transcode uses the fast preset.
   motion sidecar runs 300 samples regardless. `tools/anim/check.mjs` passes every step's end and midpoint.
 * A render started from a shell that exits is cancelled (`render_cancelled_parent_exited`). Keep the render's parent alive.
 * Fonts that are not declared with `@font-face` are fetched from Google Fonts at render time. Declare every face.
+
+Found later (A3, A4):
+
+* **`render.mjs` re-renders other animations when your browser differs.** The manifest records the browser that rendered
+  each MP4; with another local Chrome, `render.mjs <id>` also redid a01 (observed three times). Restore the untouched
+  animations (`git checkout public/animations/<id>` and put their old manifest entry back) and commit only the ids you
+  authored. Set `HYPERFRAMES_BROWSER_PATH` when `/opt/pw-browsers` is absent.
+* `svgOrigin` is rejected by the validator, so rotate an HTML element whose centre is the pivot instead of an SVG group.
+* The card class is `<prefix>-card` (copied with the prefix of the new animation), so a scene written for another
+  prefix renders unstyled.
+* A hand-computed value on screen was wrong once (the fraction of `0.1f` is 5033165; 4992205 was a mental slip), which
+  is why the facts test must parse the scene text and compare with a real C run.
 
 ## Adding an animation
 

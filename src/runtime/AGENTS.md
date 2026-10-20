@@ -1,0 +1,17 @@
+# src/runtime/: the in-browser compiler and runtime
+
+Details in PLAN.md §2.3. Testing the toolchain download from Playwright is described in `e2e/AGENTS.md`.
+
+- **In-browser compiler:** `@yowasp/clang@22.0.0-git20542-10` (pinned). Programs run with `@bjorn3/browser_wasi_shim@0.4.2` in a per-run worker, under `WebAssembly.promising` when JSPI exists (Chromium), otherwise with preset stdin.
+- **Browser flags:**
+  ```
+  -std=c17 -Wall -Wextra -pedantic -O0 -g -fno-color-diagnostics -D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL
+  -lc-printscan-long-double -lwasi-emulated-process-clocks -lwasi-emulated-signal
+  -Wl,-z,stack-size=1048576 -Wl,--max-memory=268435456
+  ```
+  - Always link `course_rt.c`, which flushes stdout before stdin reads.
+  - Guardrail mode adds `-fsanitize=undefined -fno-sanitize-recover=all` plus `ubsan_rt.c`, which must implement *all* handlers.
+  - Leak checks link `leakcheck.c` with `-Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=free`, which is what makes them correct for every translation unit. `-include leakcheck.h` only adds `file:line` tags through function-like macros, so `free` passed as a function pointer still reaches the wrapped function; blocks with no learner location are ignored.
+- **Gotchas found in research:** prefetch with `runClang(null, {}, {fetchProgress})`; pass `{debug:false}` to `new WASI(...)`; pass `decodeASCII:false`; patch `fetch` before importing the yowasp bundle; never `await cache.put()` in the fetch hook; override `poll_oneoff` (`sleep` busy-waits).
+- **The compiler download is cache-first and distrusts what a failed load touched** (`toolchain-cache.ts`, used by `compiler.worker.ts`; tests in `toolchain-cache.test.ts` and `e2e/toolchain-download.spec.ts`). `bundle.js` goes through the same cache-first fetch and is imported from a `blob:` URL with `import.meta.url` replaced by the real URL (a plain `import()` always asks the network). The pinned bundle uses it six times, all as `new URL(x, import.meta.url)`; `patchBundleSource` throws on anything else, so a new yowasp build fails a unit test instead of at runtime. `loadToolchain` returns only after every `cache.put` settled, and classifies a failure: `download` (network TypeError, HTTP error) drops what this attempt stored; `corrupt` (CompileError, LinkError, a bundle the patch rejects, any unknown error, a TypeError that is not about the network such as a wrong MIME type) also drops everything it read from the cache, so a bad cached file heals on Retry; `startup` (out of memory) keeps the cache. The alert text differs per kind. Retry moves focus to the progress box; `toolchainView` decides what shows, and a terminal that only explains failures (`errorOnly`) ignores a download it did not start. A truncated body (`lengthChecked`) and late progress after a failed load (`CRuntime.ts`) are explained where they are handled.
+- **e2e cannot see a race that unit tests can.** Dropping `await tf.settled()` before "ready" in the worker passed 12 of 12 under CPU load; the unit test of `settled()` and `discardAttempt()` catches it. Prefer a fake `Cache` with a gate over repeating an e2e.
