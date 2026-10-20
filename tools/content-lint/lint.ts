@@ -165,8 +165,11 @@ export function lintContent(o: LintOptions): LintResult {
 
   // Exercise ids are global too: the app keys an exercise by its folder name without the module (src/content-runtime/release.ts),
   // so a second module with the same name would replace the first one's exercise. This applies to drafts as well.
+  // The first module in course order owns a name and every later one is blamed (directory order would put cap- before m01-).
+  const courseOrder = (site.course?.modules ?? []).map(e => e.id);
+  const rank = (id: string) => { const i = courseOrder.indexOf(id); return i < 0 ? courseOrder.length : i; };
   const exerciseOwner = new Map<string, ModuleCtx>();
-  for (const { mod } of loaded) {
+  for (const { mod } of [...loaded].sort((a, b) => rank(a.mod.id) - rank(b.mod.id))) {
     for (const ex of mod.exercises.values()) {
       if (ex.id.includes('/variants/')) continue; // a variant collides only when its exercise does
       const first = exerciseOwner.get(ex.id);

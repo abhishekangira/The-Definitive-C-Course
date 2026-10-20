@@ -116,7 +116,7 @@ export async function traceFor(sampleId: string): Promise<TraceFile | null> {
 
 export function videoByKey(key: string): VideoEntry | undefined { return videos.find(v => v.key === key); }
 
-/** Ordered list of available modules (course.yaml order). */
+/** Every course.yaml entry in order, with its registry entry when the app opens that module. */
 export function orderedModules(): Array<{ entry: CourseManifest['modules'][number]; module?: ModuleEntry }> {
   return course.modules.map(entry => ({ entry, module: modules[entry.id] }));
 }

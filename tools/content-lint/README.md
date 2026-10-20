@@ -14,7 +14,7 @@ npm run lint:content [-- --content-root dir] [--module m01] [--strict] [--errors
 | `--content-root dir` | The folder holding `modules/` and `course.yaml` (default `content/`). Everything else is found relative to its parent, the *site root*: `videos.json`, `public/animations/`, `animations/`. |
 | `--module m01` | Only report this module (id or directory name). Cross-module checks (duplicate sample ids, lesson ids) still look at everything. |
 | `--strict` | Warnings also fail the run. |
-| `--errors-only` | Hide warnings in the report. |
+| `--errors-only` | Hide warnings and notes in the report. |
 | `--stats` | Also print, for every lesson, its minutes, card count and the prose words of each card (red above 250, yellow above 200). |
 | `--json` | Machine-readable result instead of the report. |
 | `--videos`, `--public`, `--animations` | Override those three locations. |
@@ -44,7 +44,7 @@ error or warning, so `--strict` passes while the pieces arrive one pull request 
 | `module-time` | the lesson minutes written so far do not add up to `time.lessons` (lessons are added one by one) |
 | `course-yaml` | the folder exists but `available` is `false` (always a note, since that is what a draft is) |
 
-**Every other rule still applies to a draft**, on every file that exists: a lesson over its word budget, a listed lesson
+**Every other rule still applies to a draft**, on every file that exists (so `exercise-unused` still warns, and `--strict` fails on it: add an exercise in the same pull request as the lesson, problem set, core list or quiz that uses it): a lesson over its word budget, a listed lesson
 with no file, a bad `module.yaml` field, a broken exercise reference, a duplicate exercise id. A draft is not an excuse for
 a broken file. Setting `available: true` turns the notes back into the errors and warnings above.
 
@@ -102,7 +102,7 @@ is measured on the cards learners see: a fence that has an `id` ends a card, a `
 | `module-exercise` | error / warning | `problemSet` and `coreExercises` exist under `exercises/`; a core exercise with no variants warns (both notes in a draft). |
 | `module-project` | error | `project/<id>/` exists with `check.json`, `project.mdx` and `exercise.yaml` (a note in a draft). |
 | `exercise-unused` | warning | An exercise that no lesson, quiz, problem set or core list uses. |
-| `duplicate-exercise` | error | Exercise folder names (and `project/<id>`) are unique across the whole course: the app keys an exercise by its folder name without the module, so a second module with `cash` would replace the first one's. Applies to drafts too. New modules prefix their folders (`m03-gdb-hunt`). A variant collides only with its exercise. |
+| `duplicate-exercise` | error | Exercise folder names (and `project/<id>`) are unique across the whole course: the app keys an exercise by its folder name without the module, so a second module with `cash` would replace the first one's. Applies to drafts too. New modules prefix their folders (`m03-gdb-hunt`). A variant collides only with its exercise. The error is reported on the module that comes later in `course.yaml` order (the first one owns the name). |
 | `quiz-missing` | error | `quizzes/checkpoint.yaml` and `quizzes/retrieval.yaml` exist (a note in a draft). |
 | `quiz-file` | warning | Another file in `quizzes/` (the app reads only those two). |
 | `course-yaml` | error / warning / note | `course.yaml` lists every module directory with matching `dir`, `number`, `hours`; `available: true` modules exist; a folder whose entry says `available: false` is a draft (note). |

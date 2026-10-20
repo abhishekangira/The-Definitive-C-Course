@@ -67,7 +67,7 @@ export function availableModules(): ModuleInfo[] {
 export function clickThroughModules(only: string | undefined = process.env.E2E_MODULE): ModuleInfo[] {
   if (!only) return availableModules();
   const entry = courseEntries().find(m => m.id === only);
-  if (!entry || !existsSync(join(ROOT, 'content', 'modules', entry.dir))) throw new Error(`E2E_MODULE=${only} matches no module with a folder under content/modules/`);
+  if (!entry || !existsSync(join(ROOT, 'content', 'modules', entry.dir, 'module.yaml'))) throw new Error(`E2E_MODULE=${only} matches no module with a content/modules/<dir>/module.yaml`);
   return [loadModule(entry)];
 }
 

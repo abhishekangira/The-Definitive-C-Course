@@ -58,7 +58,7 @@ export function moduleStatus(p: ProgressV1, moduleId: string): ModuleStatus {
 export function isModuleUnlocked(p: ProgressV1, moduleId: string): boolean {
   for (const entry of course.modules) {
     if (entry.id === moduleId) return Boolean(modules[moduleId]);
-    if (!modules[entry.id]) return false; // an earlier module isn't built yet
+    if (!modules[entry.id]) return false; // an earlier module is not open (unbuilt, or not released)
     if (!moduleStatus(p, entry.id).complete) return false;
   }
   return false;

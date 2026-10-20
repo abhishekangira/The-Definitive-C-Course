@@ -91,8 +91,12 @@ test.describe('an unreleased module that is on disk', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Draft lesson' })).toBeVisible();
     await expect(page.getByText('Lesson complete.')).toBeVisible();
 
+    // Reload on the module page, not on the lesson: opening the one-card lesson completes it again by itself, which would
+    // hide whether the preview document was read back. The module page only shows what the stored progress says.
+    await page.getByRole('link', { name: 'Module 2', exact: true }).first().click();
+    await expect(page.getByText('1/1', { exact: true })).toBeVisible();
     await page.reload();
-    await expect(page.getByText('Lesson complete.')).toBeVisible(); // the preview document keeps it
+    await expect(page.getByText('1/1', { exact: true })).toBeVisible();
     await expect(banner(page)).toBeVisible();
     expect(new URL(page.url()).searchParams.get('preview')).toBe('m02');
   });

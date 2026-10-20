@@ -61,9 +61,9 @@ export interface ExerciseEntry<E = ExerciseMeta> {
 }
 
 /**
- * Exercises by key, for the modules in `registry` only. The key is the folder name without the module, so two modules
- * that use one name would replace each other: a draft's exercise must never shadow a released module's (lint reports
- * a duplicate between modules too, `duplicate-exercise`).
+ * Exercises by key, for the modules in `registry` only, so an unreleased module's exercises are not indexed unless it is
+ * previewed. The key is the folder name without the module, so two modules that use one name would replace each other
+ * (even in a preview, which opens the draft); lint reports it as `duplicate-exercise`.
  */
 export function indexExercises<E>(metas: Record<string, E>, registry: Record<string, ModuleEntry<RegistryMeta>>): Record<string, ExerciseEntry<E>> {
   const out: Record<string, ExerciseEntry<E>> = {};

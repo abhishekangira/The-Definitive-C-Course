@@ -628,6 +628,16 @@ describe('draft modules', () => {
     expect(r.infos).toBe(r.messages.length);
   });
 
+  it('reports a core exercise with no variants as a note in a draft, and as a warning in a released module', () => {
+    const noVariants: Record<string, Edit> = { [`${M2}/exercises/m2-write/exercise.yaml`]: sub("variants: ['1']", 'variants: []') };
+    const released = lintGoodWith(noVariants).result;
+    expect(warningsOf(released, 'module-exercise')[0].message).toContain('"m2-write" has no variants');
+    const draft = lintGoodWith({ ...noVariants, ...unreleased }).result;
+    expect(infosOf(draft, 'module-exercise')[0].message).toContain('"m2-write" has no variants');
+    expect(warningsOf(draft, 'module-exercise')).toEqual([]);
+    expect(exitCode(draft, true)).toBe(0);
+  });
+
   it('keeps every rule on a file that exists: a broken lesson in a draft is still an error', () => {
     const lesson = `${M2}/lessons/02-posix-free.mdx`;
     const r = lintGoodWith({ ...half, ...unreleased, [lesson]: sub('Predict the output.', words(251)) }).result;
@@ -644,9 +654,13 @@ describe('draft modules', () => {
     expect(errorsOf(bad, 'module-yaml')).toHaveLength(1);
   });
 
-  it('does not excuse an unreleased module that course.yaml lacks, or a released one that is missing', () => {
-    expect(errorsOf(lintGoodWith({ ...half, ...unreleased, [course]: sub(/ {2}- \{ id: m02.*\n/, '') }).result, 'course-yaml')[0].message).toContain('not listed in course.yaml');
-    expect(errorsOf(lintGoodWith({ [course]: sub('id: m02, dir: m02-more', 'id: m02, dir: m02-more') }).result, 'course-yaml')).toEqual([]);
+  it('does not excuse a module that course.yaml does not list: it is not a draft, so its gaps stay errors', () => {
+    // m02 is taken out of course.yaml (not marked unreleased), with the same gaps as the draft above.
+    const r = lintGoodWith({ ...half, [course]: sub(/ {2}- \{ id: m02.*\n/, '') }).result;
+    expect(errorsOf(r, 'course-yaml')[0].message).toContain('not listed in course.yaml');
+    expect(errorsOf(r, 'quiz-missing')).toHaveLength(2);
+    expect(errorsOf(r, 'module-project')).toHaveLength(3);
+    expect(r.infos).toBe(0);
   });
 
   it('prints notes apart from errors and warnings (a clean draft is still "All good"), and --errors-only hides them', () => {
@@ -684,6 +698,18 @@ describe('duplicate exercise ids (the app keys exercises by folder name across m
       [`${M2}/exercises/fix-bug/exercise.yaml`]: copyOf(`${M1}/exercises/fix-bug/exercise.yaml`),
     });
     expect(errorsOf(result, 'duplicate-exercise')).toHaveLength(1);
+  });
+
+  it('blames the module that comes later in the course, not the one that sorts later by directory name (cap- sorts before m01-)', () => {
+    const { result } = lintGoodWith({
+      'content/course.yaml': old => `${old}  - { id: cap, dir: cap-final, number: cap, title: "Capstone", hours: 5, available: false }\n`,
+      'content/modules/cap-final/exercises/fix-bug/exercise.yaml': copyOf(`${M1}/exercises/fix-bug/exercise.yaml`),
+    });
+    const dup = errorsOf(result, 'duplicate-exercise');
+    expect(dup).toHaveLength(1);
+    expect(dup[0].file).toContain('cap-final');
+    expect(dup[0].message).toContain('also in m01-basics');
+    expect(dup[0].module).toBe('cap');
   });
 
   it('counts a variant with its exercise, not again', () => {

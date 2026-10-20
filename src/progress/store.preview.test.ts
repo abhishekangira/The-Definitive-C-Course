@@ -15,7 +15,7 @@ function memoryStorage(initial: Record<string, string>) {
     getItem: (k: string) => items.get(k) ?? null,
     setItem: (k: string, v: string) => { items.set(k, String(v)); },
     removeItem: (k: string) => { items.delete(k); },
-  };
+  } satisfies Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> & { items: Map<string, string> };
 }
 
 async function loadStore(previewed: string[], initial: Record<string, string> = {}) {
@@ -62,6 +62,22 @@ describe('progress while an unreleased module is previewed', () => {
     expect(store.getProgress().seed).toBe(SEED);
   });
 
+  it('keeps a setting chosen in the preview across a reload (the real document is a copy underneath, not the last word)', async () => {
+    const first = await loadStore(['m03'], { [REAL]: real });
+    first.store.update(p => { p.settings.platform = 'linux-x86'; p.settings.storedOutputMode = true; });
+    const { store } = await loadStore(['m03'], { [REAL]: real, [PREVIEW]: first.storage.items.get(PREVIEW)! });
+    expect(store.getProgress().settings).toEqual({ platform: 'linux-x86', storedOutputMode: true });
+  });
+
+  it('keeps the later of the two export dates, so the export reminder is not reset by a reload', async () => {
+    const older = '2026-02-01T00:00:00.000Z';
+    const newer = '2026-03-01T00:00:00.000Z';
+    const previewNewer = await loadStore(['m03'], { [REAL]: doc({ lastExportedAt: older }), [PREVIEW]: doc({ lastExportedAt: newer }) });
+    expect(previewNewer.store.getProgress().lastExportedAt).toBe(newer);
+    const realNewer = await loadStore(['m03'], { [REAL]: doc({ lastExportedAt: newer }), [PREVIEW]: doc({ lastExportedAt: older }) });
+    expect(realNewer.store.getProgress().lastExportedAt).toBe(newer);
+  });
+
   it('uses the real learner seed, so a completion token made for it stays valid in the preview', async () => {
     const { store } = await loadStore(['m03'], { [REAL]: real, [PREVIEW]: doc({ seed: OTHER_SEED }) });
     expect(store.getProgress().seed).toBe(SEED);
@@ -78,6 +94,23 @@ describe('progress while an unreleased module is previewed', () => {
     const { store, storage } = await loadStore(['m03'], { [REAL]: real });
     store.replaceProgress(store.emptyProgress());
     expect(storage.items.get(REAL)).toBe(real);
+  });
+});
+
+describe('resetting progress on an ordinary page', () => {
+  const copy = doc({ lessons: { 'm01-l1': { completedAt: at }, 'm03-l1': { completedAt: at } } });
+
+  it('also deletes the preview document, which holds a copy of the old progress', async () => {
+    const { store, storage } = await loadStore([], { [REAL]: doc({ lessons: { 'm01-l1': { completedAt: at } } }), [PREVIEW]: copy });
+    store.replaceProgress(store.emptyProgress());
+    expect(storage.items.has(PREVIEW)).toBe(false);
+  });
+
+  it('so the next preview starts from the reset progress, not from the old copy', async () => {
+    const reset = await loadStore([], { [REAL]: doc({ lessons: { 'm01-l1': { completedAt: at } } }), [PREVIEW]: copy });
+    reset.store.replaceProgress(reset.store.emptyProgress());
+    const { store } = await loadStore(['m03'], Object.fromEntries(reset.storage.items));
+    expect(store.getProgress().lessons).toEqual({});
   });
 });
 
