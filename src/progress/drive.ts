@@ -13,7 +13,9 @@
 // - The client id comes from VITE_GOOGLE_CLIENT_ID at build time. Without it the feature is hidden.
 // - tdcc:v1:drive is outside the progress document, so export, import and reset never touch it.
 import { useSyncExternalStore } from 'react';
-import { STORAGE_PREFIX, getProgress, mergeProgress, parseProgressFile, replaceProgress, subscribeProgress, type ProgressV1 } from './store';
+import {
+  STORAGE_PREFIX, getProgress, mergeProgress, parseProgressFile, replaceProgress, subscribeProgress, type ProgressChangeSource, type ProgressV1,
+} from './store';
 
 export const DRIVE_STORAGE_KEY = `${STORAGE_PREFIX}drive`;
 export const DRIVE_FILE_NAME = 'tdcc-progress.json';
@@ -171,11 +173,20 @@ async function call(deps: SyncDeps, step: string, url: string, init: RequestInit
     throw new Error(`Couldn't reach Google Drive while ${step} (${e instanceof Error ? e.message : String(e)}). Check your connection, and that no extension or shield blocks www.googleapis.com.`);
   }
   if (res.status === 401) throw new DriveAuthError('Google Drive refused the sign-in.');
-  if (res.status === 403) {
-    // Not an expired sign-in: the Drive box was unticked on Google's consent screen, or the API is off or over quota.
+  if (res.status === 403 || res.status === 429) {
+    // Not an expired sign-in: a rate limit (429, or 403 with a *RateLimitExceeded reason), or Drive access not granted
+    // (the box unticked on Google's consent screen) or the API turned off.
+    let message = '';
     let reason = '';
-    try { reason = String(((await res.json()) as { error?: { message?: unknown } }).error?.message ?? ''); } catch { /* no JSON body */ }
-    throw new Error(`Google Drive refused ${step}${reason ? `: ${reason.slice(0, 300)}` : ''}. Disconnect, connect again and allow Google Drive access.`);
+    try {
+      const err = ((await res.json()) as { error?: { message?: unknown; errors?: Array<{ reason?: unknown }> } }).error;
+      message = String(err?.message ?? '');
+      reason = String(err?.errors?.[0]?.reason ?? '');
+    } catch { /* no JSON body */ }
+    if (res.status === 429 || /ratelimitexceeded/i.test(reason)) {
+      throw new Error(`Google Drive is busy and refused ${step} for now. Your progress is saved in this browser; try Sync now again in a few minutes.`);
+    }
+    throw new Error(`Google Drive refused ${step}${message ? `: ${message.slice(0, 300)}` : ''}. Disconnect, connect again and allow Google Drive access.`);
   }
   return res;
 }
@@ -230,7 +241,8 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncResult> {
     if (res) {
       if (!res.ok) throw new Error(`Couldn't read the Drive copy (HTTP ${res.status}).`);
       const text = await res.text();
-      try { remote = parseProgressFile(text); remoteEpoch = epochOf(text); } catch (e) {
+      // Empty: the file was created but the upload into it failed. It is no copy yet; the upload below fills it.
+      if (text.trim() !== '') try { remote = parseProgressFile(text); remoteEpoch = epochOf(text); } catch (e) {
         // Never overwrite a Drive copy we cannot read: it may hold progress this browser lacks.
         throw new Error(`The progress file in Drive can't be read (${(e as Error).message}) Nothing was changed.`);
       }
@@ -250,6 +262,20 @@ export async function syncOnce(deps: SyncDeps): Promise<SyncResult> {
   const uploaded = !remote || epoch !== remoteEpoch || progressOnly(next) !== progressOnly(remote);
   if (uploaded) fileId = await upload(deps, fileId, next, epoch);
   return { fileId, epoch, applied, uploaded };
+}
+
+/**
+ * Whether a round that started with the settings `start` must stop before it changes anything: a Reset or Replace
+ * happened meanwhile, in this tab (`replacedHere`) or in another tab, which shows in the shared settings `now` as a new
+ * `replaceNext` or a new epoch. Merging the old Drive copy then would bring the replaced progress back.
+ */
+export function roundCancelled(start: DriveSettings, now: DriveSettings, replacedHere: boolean): boolean {
+  return replacedHere || !now.connected || (!start.replaceNext && Boolean(now.replaceNext)) || now.epoch !== start.epoch;
+}
+
+/** `replaceNext` after a finished round: cleared only by the replace round itself, never one that a later Reset (here or in another tab) overtook. */
+export function replaceNextAfter(start: DriveSettings, now: DriveSettings, replacedHere: boolean): true | undefined {
+  return start.replaceNext && !replacedHere ? undefined : now.replaceNext || undefined;
 }
 
 // ---------- sign-in (Google Identity Services) ----------
@@ -330,13 +356,13 @@ export function syncNow(): Promise<void> {
           fetch: (...a) => fetch(...a), token: s.token, fileId: s.fileId, replace: s.replaceNext, epoch: s.epoch,
           getLocal: getProgress,
           apply: next => { applying = true; try { replaceProgress(next); } finally { applying = false; } },
-          cancelled: () => gen !== replaceGen,
+          cancelled: () => roundCancelled(s, view.settings, gen !== replaceGen),
         });
-        if (r.cancelled) { again = true; continue; }
         // Disconnected while this round ran: leave the cleared settings alone.
         if (!view.settings.connected) return;
+        if (r.cancelled) { again = true; continue; }
         lastPull = Date.now();
-        const replaceNext = gen === replaceGen ? undefined : view.settings.replaceNext;
+        const replaceNext = replaceNextAfter(s, view.settings, gen !== replaceGen);
         setView({ ...view.settings, fileId: r.fileId, epoch: r.epoch, lastSyncAt: new Date().toISOString(), replaceNext }, { state: 'idle' });
         if (replaceNext) again = true;
       } catch (e) {
@@ -349,8 +375,9 @@ export function syncNow(): Promise<void> {
   return running;
 }
 
-function scheduleSync() {
-  if (applying || !view.settings.connected) return;
+/** Autosave after a change made in this tab. Another tab's write (`storage`) is that tab's to upload, or every open tab would. */
+function scheduleSync(source?: ProgressChangeSource) {
+  if (source === 'storage' || applying || !view.settings.connected) return;
   clearTimeout(timer);
   timer = setTimeout(() => { timer = undefined; void syncNow(); }, AUTOSAVE_DELAY_MS);
 }

@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { DRIVE_FILE_NAME, DriveAuthError, canonical, driveSyncedWithin, reconcile, syncOnce, type SyncDeps } from './drive';
+import {
+  DRIVE_FILE_NAME, DriveAuthError, canonical, driveSyncedWithin, reconcile, replaceNextAfter, roundCancelled, syncOnce,
+  type DriveSettings, type SyncDeps,
+} from './drive';
 import { emptyProgress, migrate, type ProgressV1 } from './store';
 
 const at = '2026-01-01T00:00:00.000Z';
@@ -14,6 +17,8 @@ class FakeDrive {
   files = new Map<string, string>();
   calls: string[] = [];
   status: number | null = null;
+  /** JSON body sent with `status`, like Drive's `{ error: { message, errors: [{ reason }] } }`. */
+  errorBody: unknown = null;
   /** Requests ("METHOD /path") that fail like a blocked request: fetch rejects with a TypeError. */
   unreachable = new Set<string>();
   private next = 1;
@@ -24,7 +29,7 @@ class FakeDrive {
     this.calls.push(`${method} ${url.pathname}`);
     if (this.unreachable.has(`${method} ${url.pathname}`)) throw new TypeError('Failed to fetch');
     expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer tok');
-    if (this.status) return new Response('', { status: this.status });
+    if (this.status) return new Response(this.errorBody === null ? '' : JSON.stringify(this.errorBody), { status: this.status });
     const json = (v: unknown) => new Response(JSON.stringify(v), { status: 200 });
     const m = /\/files\/([^/]+)$/.exec(url.pathname);
     if (method === 'GET' && url.pathname === '/drive/v3/files') {
@@ -165,6 +170,33 @@ describe('syncOnce', () => {
     expect(String(err)).toMatch(/refused listing the Drive folder.*allow Google Drive access/);
   });
 
+  it('recovers when the upload right after creating the file failed (an empty Drive file is no copy yet)', async () => {
+    const drive = new FakeDrive();
+    const local = { doc: doc('bbbbbbbbbbbbbbbb', { lessons: { b: { completedAt: at } } }) };
+    drive.unreachable.add('PATCH /upload/drive/v3/files/f1');
+    await expect(syncOnce(deps(drive, local))).rejects.toThrow(/while saving to Drive/);
+    expect(drive.files.get('f1')).toBe('');
+
+    drive.unreachable.clear();
+    const r = await syncOnce(deps(drive, local));
+    expect(r).toMatchObject({ fileId: 'f1', uploaded: true });
+    expect(Object.keys(JSON.parse(drive.files.get('f1')!).lessons)).toEqual(['b']);
+  });
+
+  it('tells a rate limit (429, or 403 with a rate-limit reason) from a missing grant', async () => {
+    const run = async (status: number, reason?: string) => {
+      const drive = new FakeDrive();
+      drive.status = status;
+      if (reason) drive.errorBody = { error: { code: status, message: 'Nope.', errors: [{ reason }] } };
+      return String(await syncOnce(deps(drive, { doc: doc('bbbbbbbbbbbbbbbb') })).catch((e: unknown) => e));
+    };
+    for (const busy of [await run(429), await run(403, 'userRateLimitExceeded'), await run(403, 'rateLimitExceeded')]) {
+      expect(busy).toMatch(/busy.*try Sync now again in a few minutes/);
+      expect(busy).not.toMatch(/connect again/);
+    }
+    expect(await run(403, 'insufficientPermissions')).toMatch(/refused listing the Drive folder: Nope\..*allow Google Drive access/);
+  });
+
   it('reports an expired sign-in as DriveAuthError', async () => {
     const drive = new FakeDrive();
     drive.status = 401;
@@ -190,5 +222,34 @@ describe('driveSyncedWithin', () => {
     expect(driveSyncedWithin({ connected: true, lastSyncAt: at }, 7, now)).toBe(false);
     expect(driveSyncedWithin({ connected: false, lastSyncAt: '2026-01-30T00:00:00.000Z' }, 7, now)).toBe(false);
     expect(driveSyncedWithin({ connected: true }, 7, now)).toBe(false);
+  });
+});
+
+describe('cross-tab rounds', () => {
+  const base: DriveSettings = { connected: true, token: 't', epoch: 'aa' };
+
+  it('stops a merge round when a Reset happens in this tab or another', () => {
+    expect(roundCancelled(base, base, false)).toBe(false);
+    expect(roundCancelled(base, base, true)).toBe(true);
+    // Another tab's Reset: it sets replaceNext in the shared settings...
+    expect(roundCancelled(base, { ...base, replaceNext: true }, false)).toBe(true);
+    // ...or has already uploaded under a new epoch.
+    expect(roundCancelled(base, { ...base, epoch: 'bb' }, false)).toBe(true);
+    expect(roundCancelled(base, { connected: false }, false)).toBe(true);
+  });
+
+  it('does not stop a replace round for its own flag', () => {
+    const replacing = { ...base, replaceNext: true };
+    expect(roundCancelled(replacing, replacing, false)).toBe(false);
+  });
+
+  it('clears replaceNext only after the replace round itself', () => {
+    const replacing = { ...base, replaceNext: true };
+    expect(replaceNextAfter(replacing, replacing, false)).toBeUndefined();
+    // A merge round that another tab's Reset overtook during the upload keeps that tab's flag.
+    expect(replaceNextAfter(base, replacing, false)).toBe(true);
+    // A replace round overtaken by a newer Reset in this tab keeps the flag for one more replace.
+    expect(replaceNextAfter(replacing, replacing, true)).toBe(true);
+    expect(replaceNextAfter(base, base, false)).toBeUndefined();
   });
 });
