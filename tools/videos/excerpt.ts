@@ -1,5 +1,5 @@
 // Maintenance helper (run by hand, never in CI): cut the committed transcript excerpt for one entry of
-// videos.json out of a full transcript downloaded with yt-dlp (recipe in AGENTS.md).
+// videos.json out of a full transcript downloaded with yt-dlp (command in tools/videos/README.md).
 //
 //   tsx tools/videos/excerpt.ts <key> <full-transcript.vtt>      e.g.  tsx tools/videos/excerpt.ts yt-1 /tmp/SlqjA04_dpk.en.vtt
 //

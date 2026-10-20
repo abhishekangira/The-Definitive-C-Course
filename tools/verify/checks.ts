@@ -137,7 +137,7 @@ export function checkSample(i: CheckInput): CheckOutput {
   if (meta.posix) {
     const firstCode = i.code.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => l.replace(/\/\/.*$/, '').trim()).find(Boolean) ?? '';
     if (!/^#\s*define\s+_POSIX_C_SOURCE\s+200809L\b/.test(firstCode)) {
-      problems.push('posix samples must start with `#define _POSIX_C_SOURCE 200809L` (AGENTS.md conventions)');
+      problems.push('posix samples must start with `#define _POSIX_C_SOURCE 200809L` (content/AGENTS.md conventions)');
     }
   }
   if (meta.files?.length) problems.push('files= (multi-file samples) is not supported by tools/verify yet');
