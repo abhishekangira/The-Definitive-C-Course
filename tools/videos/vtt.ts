@@ -3,7 +3,7 @@
 // cuesBetween() to show a segment's transcript (PLAN §4.5) via
 //   import.meta.glob('/tools/videos/transcripts/*.vtt', { query: '?raw', import: 'default' }).
 //
-// Assumes "clean" cues, as downloaded by the yt-dlp recipe in AGENTS.md (web_embedded client): one
+// Assumes "clean" cues, as downloaded by the yt-dlp command in tools/videos/README.md (web_embedded client): one
 // short caption per cue, no rolling duplicates. Inline timing tags (<00:00:01.000>, <c>) are stripped.
 
 export interface Cue {

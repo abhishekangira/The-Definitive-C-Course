@@ -44,14 +44,18 @@ padding; two segments of one video overlap.
 
 `transcripts/<id>.vtt` holds the WebVTT header, one `NOTE` block that attributes the captions (CS50, Harvard, CC BY-NC-SA 4.0),
 and only the cues that begin between `start - 60 s` and `end + 60 s`. To refresh one by hand (the only time yt-dlp runs),
-with the recipe in `AGENTS.md`, then:
+download the transcript, then cut it:
 
 ```
+yt-dlp --js-runtimes node --extractor-args "youtube:player_client=web_embedded" --ignore-no-formats-error --skip-download --write-subs --write-auto-subs --sub-langs "en" --sub-format vtt -o "%(id)s" "https://www.youtube.com/watch?v=<ID>"
 tsx tools/videos/excerpt.ts yt-1 /path/to/SlqjA04_dpk.en.vtt     # rewrites tools/videos/transcripts/SlqjA04_dpk.vtt
 npm run videos:check
 ```
 
-The app does this: `src/components/youtube-transcript.ts` cuts the segment at its two anchors, `<YouTube>` shows it under the clip, and the lesson chat sends it to the learner's AI provider with the rest of the lesson. `vtt.ts` has no Node imports, so the app reuses `parseVtt()`, `findAnchor()` and `cuesBetween()`:
+The `web_embedded` client matters: the default clients hit a bot check, and bursts get HTTP 429, so fetch slowly. Commit
+only the excerpt; CI never calls yt-dlp. (Verified in the cloud container.)
+
+The app uses the excerpts too: `src/components/youtube-transcript.ts` cuts the segment at its two anchors, `<YouTube>` shows it under the clip, and the lesson chat sends it to the learner's AI provider with the rest of the lesson. `vtt.ts` has no Node imports, so the app reuses `parseVtt()`, `findAnchor()` and `cuesBetween()`:
 `import.meta.glob('/tools/videos/transcripts/*.vtt', { query: '?raw', import: 'default' })`.
 
 ## Embedding
@@ -68,6 +72,6 @@ Keep `referrerpolicy="strict-origin-when-cross-origin"` on the iframe (YouTube r
 ## Adding a segment
 
 1. Find the video and the exact second range; check it with oEmbed (`curl "https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=<ID>&format=json"`).
-2. Download the transcript with the `AGENTS.md` recipe, add the entry to `videos.json` (anchors quoted from the transcript).
+2. Download the transcript with the yt-dlp command in "Transcript excerpts", add the entry to `videos.json` (anchors quoted from the transcript).
 3. `tsx tools/videos/excerpt.ts <key> <transcript.vtt>`, then `npm run videos:check -- --online`.
 4. No more than 2 segments per module, and only when the clip clearly beats the app's own visualizers.
