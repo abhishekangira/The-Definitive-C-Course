@@ -91,6 +91,8 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 | `npm run e2e` | Playwright click-through of every lesson, problem set, project and checkpoint, plus axe (run `npm run build` first). CI uses 2 workers; outside CI the config uses 3 |
 | `npm run e2e:stress [-- <playwright args>]` | the full e2e suite repeated under CPU load with retries off; options in `e2e/AGENTS.md` |
 
+A pull request that changes only root docs, `LICENSE` or `research/` skips the heavy CI steps; the rule and its allowlist are in `.github/AGENTS.md`.
+
 CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, regenerates `src/generated/{samples,traces}` on same-repo PRs (see **Decisions**), runs all of these, then deploys `dist` to GitHub Pages. The `Targets` workflow runs samples on macOS arm64, Linux arm64 and Windows MSVC and a bot commits `src/generated/targets/`, so **`git pull --rebase` before you push**. Details of both workflows: `.github/AGENTS.md`.
 
 ## Where to find what
