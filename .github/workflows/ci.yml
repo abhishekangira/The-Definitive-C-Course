@@ -137,6 +137,9 @@ jobs:
         if: needs.changes.outputs.code == 'true'
         run: npm test
       - run: npm run lint:content
+      - name: Agent-notes and CI-classifier tests (docs-only PRs; npm test covers them otherwise)
+        if: needs.changes.outputs.code != 'true'
+        run: npx vitest run tools/docs tools/ci
       - name: Generated sample outputs are up to date
         if: needs.changes.outputs.code == 'true'
         run: npm run verify -- --check

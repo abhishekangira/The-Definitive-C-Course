@@ -4,11 +4,12 @@ import { isDocsOnly } from './docs-only.mjs';
 
 describe('isDocsOnly', () => {
   it('accepts the root docs, the licence and research/', () => {
-    expect(isDocsOnly(['README.md', 'AGENTS.md', 'CLAUDE.md', 'PLAN.md', 'LICENSE', 'research/a/b.md'])).toBe(true);
+    expect(isDocsOnly(['README.md', 'AGENTS.md', 'PLAN.md', 'LICENSE', 'research/a/b.md'])).toBe(true);
   });
   it('treats Markdown anywhere else as code, because the tooling reads it', () => {
     expect(isDocsOnly(['content/modules/m01-c-in-your-browser/project/mario/README.md'])).toBe(false);
     expect(isDocsOnly(['tools/dod/README.md'])).toBe(false);
+    expect(isDocsOnly(['CLAUDE.md'])).toBe(false);
     expect(isDocsOnly(['animations/README.md'])).toBe(false);
   });
   it('is false as soon as one file is code, and for an empty change', () => {
