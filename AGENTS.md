@@ -80,6 +80,8 @@ Review depth, so you know where evidence matters most: the maintainer reviews th
 | `npm run e2e` | Playwright click-through of every lesson, problem set, project and checkpoint, plus axe (run `npm run build` first). CI uses 2 workers; outside CI the config uses 3 |
 | `npm run e2e:stress [-- <playwright args>]` | the full e2e suite with `--repeat-each=$E2E_STRESS_REPEAT` (default 5) while `$E2E_STRESS_LOAD` busy-loop processes (default: one per usable CPU) run, with `--retries=0`; select whole spec files, not `-g` (the lesson tests are a serial group); `E2E_DELIBERATE_FAIL=1 npx playwright test failure-artifacts` shows the failure artifacts |
 
+A pull request that changes only the root docs (`README.md`, `AGENTS.md`, `CLAUDE.md`, `PLAN.md`), `LICENSE` or `research/` skips the toolchain install, verify, build and e2e steps: the `changes` job runs `tools/ci/docs-only.mjs` on the merge commit's diff, and `check` still reports (so a required status never hangs). It is an allowlist because the tooling reads Markdown under `content/` and `tools/`; pushes to `main` and manual runs always run everything. Add a path there only if no tool reads it.
+
 CI (`.github/workflows/ci.yml`) logs the runner image and every tool version, regenerates `src/generated/{samples,traces}` on same-repo PRs (see **Pitfalls**), runs all of these, then deploys `dist` to GitHub Pages. The `Targets` workflow runs samples on macOS arm64, Linux arm64 and Windows MSVC and a bot commits `src/generated/targets/`, so **`git pull --rebase` before you push**.
 
 ## Repo map

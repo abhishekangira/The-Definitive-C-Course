@@ -16,7 +16,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Decides whether the change is documentation only (tools/ci/docs-only.mjs: an allowlist of root docs and research/).
+  # `check` always runs, so a required status check still reports, but a docs-only pull request skips the native
+  # toolchain, verify, build and e2e steps. Pushes, manual runs and anything outside the allowlist run everything.
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.docs.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # On a pull request this is the merge commit: HEAD^1 is the base, so the diff is what merging brings in.
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Classify the change
+        id: docs
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ] \
+             && [ "$(git diff --name-only HEAD^1 HEAD | node tools/ci/docs-only.mjs)" = "true" ]; then
+            echo "code=false" >> "$GITHUB_OUTPUT"
+            echo "Documentation only: the heavy checks are skipped."
+          else
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          fi
+
   check:
+    needs: changes
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     # This job runs PR-authored code (npm ci, tests, e2e), so it only ever gets a read-only token.
@@ -40,6 +66,7 @@ jobs:
           cache: npm
 
       - name: Install the native toolchain
+        if: needs.changes.outputs.code == 'true'
         run: |
           sudo install -d -m 0755 /etc/apt/keyrings
           wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/keyrings/apt.llvm.org.asc >/dev/null
@@ -49,6 +76,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends gcc-13 clang-22 lld-22 libclang-rt-22-dev gdb valgrind ffmpeg python3
 
       - name: Log the reference environment
+        if: needs.changes.outputs.code == 'true'
         run: |
           echo "ImageOS=$ImageOS ImageVersion=$ImageVersion"
           grep PRETTY_NAME /etc/os-release
@@ -59,9 +87,11 @@ jobs:
       - run: npm ci
 
       - name: Prepare the browser toolchain
+        if: needs.changes.outputs.code == 'true'
         run: npm run toolchain:prepare
 
       - name: Cache sample verification
+        if: needs.changes.outputs.code == 'true'
         uses: actions/cache@v4
         with:
           path: .cache/verify
@@ -76,7 +106,7 @@ jobs:
       # fence produces no commit.
       - name: Regenerate samples and traces
         id: regen
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         run: |
           npm run verify
           if [ -n "$(git status --porcelain src/generated/samples src/generated/traces)" ]; then
@@ -100,28 +130,41 @@ jobs:
           echo "The remaining checks would judge a head that is about to be replaced, so this run fails here on purpose."
           exit 1
 
-      - run: npm run typecheck
-      - run: npm test
+      - name: Typecheck
+        if: needs.changes.outputs.code == 'true'
+        run: npm run typecheck
+      - name: Unit tests
+        if: needs.changes.outputs.code == 'true'
+        run: npm test
       - run: npm run lint:content
       - name: Generated sample outputs are up to date
+        if: needs.changes.outputs.code == 'true'
         run: npm run verify -- --check
       - name: Generated traces are up to date
+        if: needs.changes.outputs.code == 'true'
         run: npm run trace -- --check
       - name: Solutions pass, starters fail
+        if: needs.changes.outputs.code == 'true'
         run: npm run verify:exercises
       - name: Videos (offline checks; CI never calls yt-dlp)
+        if: needs.changes.outputs.code == 'true'
         run: npm run videos:check
       - name: Animations (static checks, no browser)
+        if: needs.changes.outputs.code == 'true'
         run: node tools/anim/check.mjs --static
 
-      - run: npm run build
+      - name: Build
+        if: needs.changes.outputs.code == 'true'
+        run: npm run build
 
       - name: Install Playwright's Chromium
+        if: needs.changes.outputs.code == 'true'
         run: npx playwright install --with-deps chromium
       - name: End-to-end click-through
+        if: needs.changes.outputs.code == 'true'
         run: npm run e2e
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && needs.changes.outputs.code == 'true'
         with:
           name: playwright-report
           path: |
@@ -130,6 +173,7 @@ jobs:
           retention-days: 7
 
       - name: Transcode animations to WebM
+        if: needs.changes.outputs.code == 'true'
         run: node tools/anim/render.mjs --webm dist/animations
 
       - uses: actions/upload-pages-artifact@v3
