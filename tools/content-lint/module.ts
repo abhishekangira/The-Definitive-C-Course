@@ -61,9 +61,9 @@ function checkExerciseList(mod: ModuleCtx, y: YamlFile, key: 'problemSet' | 'cor
     mod.exerciseRefs.add(id);
     const ex: ExerciseInfo | undefined = mod.exercises.get(id);
     if (!ex) {
-      r.error(at, 'module-exercise', `${key} lists exercise "${id}", but there is no exercises/${id}/exercise.yaml in ${mod.name}`);
+      r.gap(at, 'module-exercise', `${key} lists exercise "${id}", but there is no exercises/${id}/exercise.yaml in ${mod.name}`);
     } else if (key === 'coreExercises' && ex.variants.length === 0) {
-      r.warn(at, 'module-exercise', `core exercise "${id}" has no variants: viewing its solution assigns a variant to master (PLAN §2.5)`);
+      r.gap(at, 'module-exercise', `core exercise "${id}" has no variants: viewing its solution assigns a variant to master (PLAN §2.5)`, 'warning');
     }
   });
 }
@@ -81,7 +81,7 @@ function checkLessonTime(mod: ModuleCtx, y: YamlFile, lessons: Map<string, Loade
   }
   const hours = minutes / 60;
   if (Math.abs(hours - time.lessons) > 0.75) {
-    r.warn(y.lineOf(['time', 'lessons']), 'module-time', `lesson minutes add up to ${hours.toFixed(1)} h but time.lessons is ${time.lessons} h`);
+    r.gap(y.lineOf(['time', 'lessons']), 'module-time', `lesson minutes add up to ${hours.toFixed(1)} h but time.lessons is ${time.lessons} h`, 'warning');
   }
 }
 
@@ -91,7 +91,7 @@ export function checkModule(mod: ModuleCtx, y: YamlFile | null, site: SiteCtx, l
   const quizzesDir = path.join(mod.dir, 'quizzes');
   for (const q of ['checkpoint', 'retrieval']) {
     if (!existsSync(path.join(quizzesDir, `${q}.yaml`))) {
-      r.error(1, 'quiz-missing', `${mod.name}/quizzes/${q}.yaml is missing: every module has a retrieval quiz and a checkpoint`);
+      r.gap(1, 'quiz-missing', `${mod.name}/quizzes/${q}.yaml is missing: every module has a retrieval quiz and a checkpoint`);
     }
   }
   if (!y || !mod.meta) return;
@@ -198,11 +198,11 @@ export function checkModule(mod: ModuleCtx, y: YamlFile | null, site: SiteCtx, l
     else {
       const dir = path.join(mod.dir, 'project', id);
       const at = y.lineOf(['project']);
-      if (!existsSync(dir)) r.error(at, 'module-project', `project "${id}": ${mod.name}/project/${id}/ does not exist`);
+      if (!existsSync(dir)) r.gap(at, 'module-project', `project "${id}": ${mod.name}/project/${id}/ does not exist`);
       else {
-        if (!existsSync(path.join(dir, 'check.json'))) r.error(at, 'module-project', `project "${id}" has no check.json (the tests the runner and the app use)`);
-        if (!existsSync(path.join(dir, 'project.mdx'))) r.error(at, 'module-project', `project "${id}" has no project.mdx (the brief learners read)`);
-        if (!existsSync(path.join(dir, 'exercise.yaml'))) r.error(at, 'module-project', `project "${id}" has no exercise.yaml (the app loads it like an exercise)`);
+        if (!existsSync(path.join(dir, 'check.json'))) r.gap(at, 'module-project', `project "${id}" has no check.json (the tests the runner and the app use)`);
+        if (!existsSync(path.join(dir, 'project.mdx'))) r.gap(at, 'module-project', `project "${id}" has no project.mdx (the brief learners read)`);
+        if (!existsSync(path.join(dir, 'exercise.yaml'))) r.gap(at, 'module-project', `project "${id}" has no exercise.yaml (the app loads it like an exercise)`);
       }
     }
   }
@@ -278,7 +278,7 @@ export function checkCourse(site: SiteCtx, rep: Collector): void {
     if (e.available === true && !mod) r.error(at, 'course-yaml', `module "${id}" is available: true but ${String(e.dir)}/ does not exist under content/modules/`);
     if (mod) {
       if (mod.name !== e.dir) r.error(at, 'course-yaml', `module "${id}": dir is "${String(e.dir)}" but the directory is "${mod.name}"`);
-      if (e.available !== true) r.warn(at, 'course-yaml', `module "${id}" exists on disk but course.yaml has available: false`);
+      if (e.available !== true) r.info(at, 'course-yaml', `module "${id}" is a draft: it exists on disk but course.yaml has available: false, so learners cannot open it`);
       if (e.number !== moduleNumber(id)) r.error(at, 'course-yaml', `module "${id}": number ${JSON.stringify(e.number)} does not match its id`);
       const mh = mod.meta?.hours;
       if (num(mh) && num(e.hours) && mh !== e.hours) r.error(at, 'course-yaml', `module "${id}": hours is ${String(e.hours)} here but ${mh} in module.yaml`);

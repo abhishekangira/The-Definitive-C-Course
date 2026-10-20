@@ -29,6 +29,8 @@ export interface LintResult {
   messages: LintMessage[];
   errors: number;
   warnings: number;
+  /** Notes, mostly what a draft (unreleased) module is still missing. They never fail a run. */
+  infos: number;
   stats: { modules: number; lessons: number; cards: number; quizItems: number; samples: number };
   /** Per lesson: card count and the prose words of each card (for --stats). */
   lessons: Array<LessonStats & { file: string; module: string; minutes?: number }>;
@@ -107,6 +109,8 @@ export function lintContent(o: LintOptions): LintResult {
   };
   loadVideos(site, rep);
   loadCourse(site);
+  // A module course.yaml does not release is a draft: what it is still missing is a note, not an error (see FileReporter.gap).
+  for (const e of site.course?.modules ?? []) if (e.available === false) rep.drafts.add(e.id);
 
   const modulesDir = path.join(contentRoot, 'modules');
   if (!existsSync(modulesDir)) {
@@ -159,6 +163,20 @@ export function lintContent(o: LintOptions): LintResult {
     }
   }
 
+  // Exercise ids are global too: the app keys an exercise by its folder name without the module (src/content-runtime/release.ts),
+  // so a second module with the same name would replace the first one's exercise. This applies to drafts as well.
+  const exerciseOwner = new Map<string, ModuleCtx>();
+  for (const { mod } of loaded) {
+    for (const ex of mod.exercises.values()) {
+      if (ex.id.includes('/variants/')) continue; // a variant collides only when its exercise does
+      const first = exerciseOwner.get(ex.id);
+      if (!first) exerciseOwner.set(ex.id, mod);
+      else if (first.id !== mod.id) {
+        rep.at(ex.file, mod.id).error(1, 'duplicate-exercise', `duplicate exercise id "${ex.id}" (also in ${first.name}): the app keys exercises by folder name across all modules, so one would replace the other; give this folder a name no other module uses (new modules prefix theirs, for example ${mod.id}-gdb-hunt)`);
+      }
+    }
+  }
+
   // Phase 2: the rules.
   let cardCount = 0;
   let quizItems = 0;
@@ -180,11 +198,13 @@ export function lintContent(o: LintOptions): LintResult {
   const selected = o.module ? site.modules.find(m => m.id === o.module || m.name === o.module) : undefined;
   if (o.module && !selected) rep.at(modulesDir).error(0, 'content-root', `no module "${o.module}" under ${modulesDir}`);
   const messages = sortMessages(rep.messages.filter(m => !o.module || m.module === selected?.id || (m.module === undefined && !selected)));
-  const errors = messages.filter(m => m.severity === 'error').length;
+  const count = (severity: LintMessage['severity']) => messages.filter(m => m.severity === severity).length;
+  const errors = count('error');
   return {
     messages,
     errors,
-    warnings: messages.length - errors,
+    warnings: count('warning'),
+    infos: count('info'),
     stats: {
       modules: site.modules.length,
       lessons: loaded.reduce((n, l) => n + l.lessons.size, 0),
