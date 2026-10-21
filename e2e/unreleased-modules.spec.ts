@@ -31,6 +31,9 @@ let viteCache: string;
 
 test.beforeAll(async () => {
   viteCache = mkdtempSync(path.join(os.tmpdir(), 'tdcc-e2e-vite-'));
+  // The Drive panel exists only in a build that has a client id; Vite reads the variable while it starts, so it is put back right after.
+  const clientId = process.env.VITE_GOOGLE_CLIENT_ID;
+  process.env.VITE_GOOGLE_CLIENT_ID = 'e2e.apps.googleusercontent.com';
   server = await createServer({
     configFile: path.join(ROOT, 'vite.config.ts'),
     root: FIXTURE,
@@ -41,6 +44,8 @@ test.beforeAll(async () => {
     // course.yaml by a relative path instead, so that one import is pointed at the fixture's file.
     resolve: { alias: [{ find: /^(\.\.\/)+content\/course\.yaml$/, replacement: path.join(FIXTURE, 'content', 'course.yaml') }] },
     server: { port: 0, host: '127.0.0.1', hmr: false, fs: { strict: false } },
+  }).finally(() => {
+    if (clientId === undefined) delete process.env.VITE_GOOGLE_CLIENT_ID; else process.env.VITE_GOOGLE_CLIENT_ID = clientId;
   });
   await server.listen();
   url = `http://127.0.0.1:${(server.httpServer!.address() as AddressInfo).port}/`;
@@ -119,6 +124,9 @@ test.describe('an unreleased module that is on disk', () => {
     await page.goto(`${url}?preview=m02#/settings`);
     for (const c of controls(page)) await expect(c).toBeDisabled();
     await expect(page.getByText(/Export, import and reset are off while you preview an unreleased module/)).toBeVisible();
+    // Google Drive sync is off too (it would upload the draft's progress): a note, and no button that would do nothing.
+    await expect(page.getByText(/Google Drive sync is off while you preview an unreleased module/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Connect Google Drive' })).toHaveCount(0);
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme });
       await expectAccessible(page, `settings page while previewing (${colorScheme} scheme)`);
@@ -126,6 +134,7 @@ test.describe('an unreleased module that is on disk', () => {
     await page.goto(`${url}#/settings`); // no query: a different document, so the page reloads without the preview
     for (const c of controls(page)) await expect(c).toBeEnabled();
     await expect(page.getByText(/Export, import and reset are off/)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Connect Google Drive' })).toBeVisible(); // the panel is there, so the note above is not an empty check
   });
 
   test('the "export a backup" reminder is not shown while previewing, because export is off', async ({ page }) => {

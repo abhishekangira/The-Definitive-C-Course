@@ -302,6 +302,7 @@ Short explanation of the wheel (≤ 250 words)…
   - Export downloads `c-course-progress-YYYY-MM-DD.json`.
   - Import validates the file, shows a diff ("this file has M1–M4 complete"), then merges or replaces.
   - Browsers can lose site data (the user clears it, or it is evicted). So the app shows "last exported N days ago" and prompts for an export after each module.
+- **Google Drive sync (optional, owner's request 2026-10-20; `docs/adr/0003-google-drive-sync.md`).** The learner connects their Google account in Settings; the document is mirrored to one file in their Drive app-data folder (`drive.appdata` scope) with the browser token flow, so there is still no backend. Each sync downloads the Drive copy, merges it like an import, and uploads the result; changes autosave a few seconds later, and the Drive copy is pulled on start-up and when the tab returns. A sync in the last week stands in for the export reminder. The OAuth client id is a build-time variable; without it the feature is hidden.
 - **Gate.** A module unlocks only when the previous one is complete:
   - its **checkpoint** scored ≥80%;
   - its **project** passed, via the in-browser runner (M1–M2) or a native completion token (M3+);

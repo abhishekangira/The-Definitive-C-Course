@@ -78,8 +78,9 @@ Short, deterministic explainer animations rendered with **HyperFrames**, each fo
 Submit something each day to build a streak. Spirit beans save a missed day, and **Rio**, an original pixel-art warrior, powers up as your streak grows: Warrior at 3 days, Golden Warrior at 7, Golden Mane at 14, Crimson Fur at 30 and Great Ape at 50. Skip too long and Rio is defeated.
 
 ### Your progress is yours
-- Everything lives in `localStorage`; there are no accounts and no tracking.
+- Everything lives in `localStorage`; there are no course accounts and no tracking.
 - **Export and import** your progress as a file, with safe merge and validation of untrusted input.
+- **Optional Google Drive sync** (Settings): connect once and your progress saves to a hidden app folder in your own Drive and merges into every browser you sign in on. Nothing loads from Google until you click to connect.
 - Playground drafts and tutor settings sit outside the progress document, so a reset never wipes them.
 
 ### Designed to be used by everyone

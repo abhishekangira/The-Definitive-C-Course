@@ -58,7 +58,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
       - run: npm ci
-      # On macOS this also runs the macOS steps of every native session (<module>.sessions.json, docs/adr/0004).
+      # On macOS this also runs the macOS steps of every native session (<module>.sessions.json, docs/adr/0005).
       - name: Run samples natively
         run: npx tsx tools/verify/cli.ts --target-run ${{ matrix.target }} --out targets-out/${{ matrix.target }}
       # The fixture sessions (tools/verify/fixtures, one per kind of tool output) show that the macOS capture works on this

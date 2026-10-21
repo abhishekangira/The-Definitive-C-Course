@@ -74,7 +74,7 @@ Risk: (does it touch learner-facing app code, the generated-data format, or CI/d
 |---|---|
 | `npm run dev` | prepare the toolchain, build `check.mjs` into `public/downloads/` (`tools/check/README.md`), start Vite |
 | `npm run build` | prepare the toolchain, typecheck, `vite build`, build `check.mjs` into `dist/downloads/` |
-| `npm run verify [-- --module m01 --check --force]` | compile/run every sample on gcc, clang, the browser compiler (+ stored macOS/arm/Windows results); writes `src/generated/samples/`, traces and native sessions (`src/generated/sessions/`, `docs/adr/0004-native-sessions.md`) |
+| `npm run verify [-- --module m01 --check --force]` | compile/run every sample on gcc, clang, the browser compiler (+ stored macOS/arm/Windows results); writes `src/generated/samples/`, traces and native sessions (`src/generated/sessions/`, `docs/adr/0005-native-sessions.md`) |
 | `npm run trace` | gdb stepper traces for `trace` samples → `src/generated/traces/` |
 | `npm run verify:exercises` | every solution passes, every starter fails, every variant passes (browser and native) |
 | `npm run exercises:expect [-- --check]` | regenerate `tests.json`/`check.json` from `cases.yaml` by running the reference solution; `--check` reports drift (`tools/exercises/README.md`) |

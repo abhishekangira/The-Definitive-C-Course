@@ -243,7 +243,7 @@ export async function verify(o: VerifyOptions): Promise<VerifyReport> {
     report.files.written.push(target);
   }
 
-  // Native sessions (docs/adr/0004-native-sessions.md).
+  // Native sessions (docs/adr/0005-native-sessions.md).
   if (o.sessions !== false && !o.only) {
     const sr = await verifySessions({ contentRoot: o.contentRoot, generatedRoot: o.generatedRoot, cacheDir: path.join(o.cacheDir, 'sessions'), workRoot: path.join(scratch, 'sessions'), module: o.module, check: o.check, force: o.force, toolchains, log });
     report.problems.push(...sr.problems);
@@ -335,7 +335,7 @@ export async function targetRun(o: TargetRunOptions): Promise<{ problems: string
     log(`wrote ${target} (${Object.keys(file.samples).length} samples)`);
   }
   // Of the stored targets only macOS runs sessions (its `all` and `macos` steps); Linux x86-64 runs them on every
-  // verify (docs/adr/0004-native-sessions.md). Session problems are warnings here: they are kept in the written file.
+  // verify (docs/adr/0005-native-sessions.md). Session problems are warnings here: they are kept in the written file.
   if (o.target === 'macos-arm64-appleclang') {
     const sr = await targetRunSessions({ contentRoot: o.contentRoot, outDir: o.outDir, cacheDir: path.join(o.cacheDir, 'sessions'), workRoot: path.join(scratch, 'sessions'), module: o.module, force: o.force, tc, log });
     for (const w of sr.warnings) log(`${process.env.GITHUB_ACTIONS ? '::warning title=native session::' : 'warning: '}${w.replace(/\n/g, process.env.GITHUB_ACTIONS ? '%0A' : '\n  ')}`);

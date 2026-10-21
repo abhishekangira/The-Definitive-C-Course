@@ -10,6 +10,8 @@ import { detectStdinMode } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
 import { SpiritBeans, StreakWarrior, WarriorGallery } from '../../components/StreakWarrior';
 import { TutorSettingsPanel } from '../../tutor/TutorSettingsPanel';
+import { DriveSyncPanel } from '../../components/DriveSyncPanel';
+import { replaceDriveOnNextSync, useDrive } from '../../progress/drive';
 import { BeanArt } from '../../components/WarriorArt';
 import { useNow } from '../../components/useNow';
 import { BEAN_EVERY, dayWord, MAX_BEANS, recentDays, START_BEANS, streakStatus } from '../../progress/streak';
@@ -23,6 +25,7 @@ export function SettingsPage() {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const days = daysSinceExport(progress);
+  const driveOn = useDrive().settings.connected;
   const now = useNow();
   const streak = streakStatus(progress.streak, now);
   const week = recentDays(progress.streak, 14, now);
@@ -97,7 +100,7 @@ export function SettingsPage() {
           <p>Clearing this site's data in your browser erases your progress, so export a backup now and then.</p>
         </div>
         <div className="setting-body">
-          <p>Your progress is stored only in this browser ({Object.keys(progress.lessons).length} lessons done). Export it to a file to keep it safe or move to another computer.
+          <p>Your progress is stored {driveOn ? 'in this browser and synced to Google Drive' : 'only in this browser'} ({Object.keys(progress.lessons).length} lessons done). Export it to a file to keep it safe or move to another computer.
             {' '}{days === null ? 'You haven’t exported yet.' : `Last export: ${days === 0 ? 'today' : `${days} days ago`}.`}</p>
           {previewing && (
             <p id="preview-off" className={styles.muted}>
@@ -123,12 +126,13 @@ export function SettingsPage() {
                 {!summary.seedMatches && ' It comes from a different browser profile (different learner seed).'}</p>
               <div className={styles.row2}>
                 <button type="button" className="btn btn-primary" onClick={() => { replaceProgress(mergeProgress(getProgress(), pending)); setPending(null); setMessage({ ok: true, text: 'Merged: you kept the furthest progress from both.' }); }}>Merge with my progress</button>
-                <button type="button" className="btn" onClick={() => { replaceProgress(pending); setPending(null); setMessage({ ok: true, text: 'Replaced your progress with the file.' }); }}>Replace my progress</button>
+                <button type="button" className="btn" onClick={() => { replaceProgress(pending); replaceDriveOnNextSync(); setPending(null); setMessage({ ok: true, text: 'Replaced your progress with the file.' }); }}>Replace my progress</button>
                 <button type="button" className="btn btn-ghost" onClick={() => setPending(null)}>Cancel</button>
               </div>
             </div>
           )}
           {message && <p className={message.ok ? styles.okBox : styles.warnBox} role="status">{message.text}</p>}
+          <DriveSyncPanel />
         </div>
       </section>
 
@@ -170,10 +174,10 @@ export function SettingsPage() {
       <section className="setting" aria-labelledby="reset-title">
         <div className="setting-head">
           <h2 id="reset-title">Start over</h2>
-          <p>Deletes all progress in this browser. Export first if you might want it back.</p>
+          <p>Deletes all progress in this browser{driveOn ? ', in Google Drive and in every browser that syncs with it' : ''}. Export first if you might want it back.</p>
         </div>
         <div className="setting-body">
-          <div><button type="button" className={`btn ${styles.danger}`} disabled={previewing} aria-describedby={previewing ? 'preview-off' : undefined} onClick={() => { if (window.confirm('Delete all progress in this browser? This cannot be undone.')) { replaceProgress(emptyProgress()); setMessage({ ok: true, text: 'Progress reset.' }); } }}>Reset all progress</button></div>
+          <div><button type="button" className={`btn ${styles.danger}`} disabled={previewing} aria-describedby={previewing ? 'preview-off' : undefined} onClick={() => { if (window.confirm(`Delete all progress in this browser${driveOn ? ' and in Google Drive' : ''}? This cannot be undone.`)) { replaceProgress(emptyProgress()); replaceDriveOnNextSync(); setMessage({ ok: true, text: 'Progress reset.' }); } }}>Reset all progress</button></div>
         </div>
       </section>
     </div>

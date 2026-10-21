@@ -276,7 +276,7 @@ export interface SamplesFile {
   samples: Record<string, SampleResult>;
 }
 
-// ---------- native sessions (src/generated/sessions/<module>.json; written by tools/verify, docs/adr/0004) ----------
+// ---------- native sessions (src/generated/sessions/<module>.json; written by tools/verify, docs/adr/0005) ----------
 
 /** Where a session's steps ran: Linux x86-64 with gcc 13 or clang 22 (every verify), macOS arm64 (Targets workflow). */
 export type SessionPlatform = 'linux-gcc' | 'linux-clang' | 'macos';

@@ -1,4 +1,4 @@
-# 0004: Native sessions store real terminal output from tools the browser can't run
+# 0005: Native sessions store real terminal output from tools the browser can't run
 
 Status: Accepted (2026-10-21)
 
@@ -33,4 +33,4 @@ Fixture module `tools/verify/fixtures/content/modules/m97-sessions` has 13 sessi
 - CI's commit-generated flow (the regen step and `tools/ci/unpack-generated.mjs`) does not yet carry `src/generated/sessions`. The first pull request that adds a session under `content/modules` must add it.
 - On a machine where the debugger can't turn ASLR off (some containers), `lldb process launch` hangs. Set `LLDB22` to a wrapper that runs `lldb-22 -O "settings set target.disable-aslr false"`. GitHub runners don't need it. Don't use `settings set plugin.symbol-locator.debuginfod.server-urls ""`: it made lldb 22 hang on launch; `DEBUGINFOD_URLS=` is enough.
 - gdb shows Linux only and lldb shows clang only, so a lesson can show either debugger on its usual platform.
-- Number: PR #78 uses 0003 and PR #79 also uses 0003. This record takes 0004; renumber it if the order of merges changes (see the README).
+- Number: proposed and accepted as 0004 (2026-10-21). #79 merged first with 0003 and #78 then renumbered its record to 0004, so this record became 0005 when PR #80 merged `main`.

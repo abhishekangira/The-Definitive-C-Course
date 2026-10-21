@@ -1,4 +1,4 @@
-// Native sessions (docs/adr/0004-native-sessions.md): a folder `content/modules/<mNN-…>/sessions/<id>/` holds
+// Native sessions (docs/adr/0005-native-sessions.md): a folder `content/modules/<mNN-…>/sessions/<id>/` holds
 // `session.yaml` and the files its shell steps use. Each platform runs `all` and then its own group in a fresh temp dir:
 // Linux twice (CC = gcc 13, then clang 22), macOS on the Targets workflow (CC = Apple clang). Every step's stdout,
 // stderr and exit status is normalised (normaliseSession) and stored, so lessons show real tool output, never typed text.
