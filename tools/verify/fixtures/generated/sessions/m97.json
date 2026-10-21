@@ -6,6 +6,11 @@
       "dir": "sessions/analyser",
       "hash": "39b57a553c2b4a38",
       "id": "analyser",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -31,6 +36,11 @@
       "dir": "sessions/asan",
       "hash": "62c48312136a0554",
       "id": "asan",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -56,6 +66,11 @@
       "dir": "sessions/compile-error",
       "hash": "8781e62f96191309",
       "id": "compile-error",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -79,6 +94,9 @@
       "dir": "sessions/gdb",
       "hash": "faa2c9e93c8b0871",
       "id": "gdb",
+      "platforms": [
+        "linux-gcc"
+      ],
       "runs": {
         "linux-gcc": [
           {
@@ -101,6 +119,11 @@
       "dir": "sessions/libm",
       "hash": "e428d008f9fdbff1",
       "id": "libm",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -152,6 +175,11 @@
       "dir": "sessions/link-multiple",
       "hash": "b5a99b4ccfc682ad",
       "id": "link-multiple",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -189,6 +217,11 @@
       "dir": "sessions/link-order",
       "hash": "ab30d5b1d5e35535",
       "id": "link-order",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -238,6 +271,11 @@
       "dir": "sessions/link-undefined",
       "hash": "6df8a373eeb09b6c",
       "id": "link-undefined",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -289,6 +327,10 @@
       "dir": "sessions/lldb",
       "hash": "cf626481985ef02e",
       "id": "lldb",
+      "platforms": [
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -311,6 +353,11 @@
       "dir": "sessions/make",
       "hash": "306f470eafb37bbc",
       "id": "make",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -378,6 +425,11 @@
       "dir": "sessions/ubsan",
       "hash": "769bad52468f720f",
       "id": "ubsan",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -417,6 +469,11 @@
       "dir": "sessions/valgrind-leak",
       "hash": "9722393f05141d7c",
       "id": "valgrind-leak",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
       "runs": {
         "linux-clang": [
           {
@@ -454,6 +511,10 @@
       "dir": "sessions/valgrind-uninit",
       "hash": "808d33d74123ed10",
       "id": "valgrind-uninit",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang"
+      ],
       "runs": {
         "linux-clang": [
           {
