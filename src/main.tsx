@@ -8,6 +8,9 @@ import '@fontsource-variable/geist/wght-italic.css';
 import '@fontsource-variable/geist-mono/index.css';
 import './styles/tokens.css';
 import './styles/base.css';
+import { startDriveSync } from './progress/drive';
+
+startDriveSync();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

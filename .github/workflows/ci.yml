@@ -158,6 +158,9 @@ jobs:
 
       - name: Build
         if: needs.changes.outputs.code == 'true'
+        # Public OAuth client id for Google Drive sync (a repository variable, not a secret); unset hides the feature.
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
         run: npm run build
 
       - name: Install Playwright's Chromium
