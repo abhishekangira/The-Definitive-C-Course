@@ -1,4 +1,5 @@
 // Static code listing with line numbers, an optional highlighted line and optional clickable lines.
+import type { CSSProperties } from 'react';
 import styles from './CodeListing.module.css';
 
 export function CodeListing({ code, current, onPick, picked, pickCorrect, label }: {
@@ -11,8 +12,10 @@ export function CodeListing({ code, current, onPick, picked, pickCorrect, label 
   label: string;
 }) {
   const lines = code.replace(/\n$/, '').split('\n');
+  // The number column fits the longest number (PipelineExplorer shows up to 1500 lines), so every line's code starts at one x.
+  const digits = Math.max(3, String(lines.length).length);
   return (
-    <ol className={styles.listing} aria-label={label}>
+    <ol className={styles.listing} aria-label={label} style={{ '--digits': digits } as CSSProperties} data-digits={digits}>
       {lines.map((text, i) => {
         const n = i + 1;
         const cls = [

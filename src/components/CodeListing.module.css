@@ -1,6 +1,9 @@
 .listing { list-style: none; margin: 0; padding: var(--space-2) 0; background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow-x: auto; font-family: var(--font-mono); font-size: 14px; line-height: 1.55; }
 .line { display: block; border-left: 3px solid transparent; }
-.line > .no, .pick > .no { display: inline-block; min-width: 3ch; padding: 0 var(--space-2); text-align: right; color: var(--text-faint); user-select: none; }
+/* One width for every number: --digits (set by CodeListing, at least 3) digits plus both paddings. Under the global
+   box-sizing: border-box (styles/base.css) a min-width of just 3ch had the padding taken out of it, so line 10 came out
+   wider than line 9 and pushed its code one character right. */
+.line > .no, .pick > .no { display: inline-block; min-width: calc(var(--digits, 3) * 1ch + 2 * var(--space-2)); padding: 0 var(--space-2); text-align: right; color: var(--text-faint); user-select: none; }
 .text { background: none !important; border: 0 !important; padding: 0 var(--space-3) 0 0 !important; white-space: pre; font-size: inherit; }
 .current { background: var(--data-soft); border-left-color: var(--data); }
 .picked { background: var(--data-soft); }

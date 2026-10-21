@@ -501,3 +501,8 @@ export function exerciseWithVariants(mod: ModuleInfo): string {
 }
 
 export { escapeRe };
+
+/** Where each line's code text starts (its left edge in CSS px), in a <CodeListing>, line 1 first. */
+export async function codeStartXs(listing: Locator): Promise<number[]> {
+  return listing.locator(':scope > li code').evaluateAll(els => els.map(e => e.getBoundingClientRect().left));
+}

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { SessionsFile, TraceFile } from '../src/content-model/types';
 import { callStack, spSteps } from '../src/interactions/quiz-answers';
-import { arrangeOrder, expectAccessible, fixtureModule, ROOT, spStackRadio } from './lib';
+import { arrangeOrder, codeStartXs, expectAccessible, fixtureModule, ROOT, spStackRadio } from './lib';
 import { FIXTURE, startSessionsFixture } from './sessions-fixture';
 
 const m97 = JSON.parse(readFileSync(path.join(ROOT, 'tools/verify/fixtures/generated/sessions/m97.json'), 'utf8')) as SessionsFile;
@@ -48,6 +48,7 @@ test.describe('QuizRunner sp and session-backed items', () => {
     const at = spSteps(trace, item('q-sp-step-into').line!)!;
     const over = trace.source.split('\n').findIndex(l => l.includes('printf')) + 1; // where `next` would stop
     expect(over).not.toBe(at.next.line);
+    expect(new Set(await codeStartXs(sp.locator('ol[aria-label^="Program"]'))).size, 'every line of the program starts at one x').toBe(1);
     // Before submitting, nothing is marked and no stack is singled out.
     await expect(sp.locator('[data-stack]')).toHaveCount(0);
     await sp.getByRole('button', { name: new RegExp(`^Line ${over}: `) }).click();
