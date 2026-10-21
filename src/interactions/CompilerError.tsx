@@ -13,6 +13,7 @@ import { useCRun } from '../runtime/useCRun';
 import { useCardDone, useSamples, useSessions } from '../lesson/LessonContext';
 import { nestedSamples } from './nested';
 import { TARGET_LABEL } from './platform';
+import { Question } from './Question';
 import { firstUserFrame, fixProblem, fixRunFlags, STAGE_LABEL, STAGES, type FixCheck, type Stage } from './report-questions';
 import { Mark } from '../components/Icon';
 import styles from './Interaction.module.css';
@@ -143,8 +144,7 @@ export function CompilerError(props: Props) {
       {src.report}
 
       {asksLine && (
-        <fieldset className={styles.choices}>
-          <legend>{++n}. Which line {session ? <>of <code>{src.file}</code> is the report</> : 'is the compiler'} pointing at? Click it.</legend>
+        <Question n={++n} legend={<>Which line {session ? <>of <code>{src.file}</code> is the report</> : 'is the compiler'} pointing at? Click it.</>}>
           <ol className={styles.codeLines}>
             {lines.map((l, i) => (
               <li key={i}>
@@ -157,29 +157,27 @@ export function CompilerError(props: Props) {
             ))}
           </ol>
           {lineGuess !== null && <p className={lineRight ? styles.goodText : styles.badText} data-line-right={String(lineRight)}><Mark ok={lineRight} /> {lineRight ? `Yes: ${session ? 'its first frame in your code' : 'the file:line:col prefix'} says so.` : src.lineHelp}</p>}
-        </fieldset>
+        </Question>
       )}
 
       <form className={styles.predict} onSubmit={e => { e.preventDefault(); if (ready) { setSubmitted(true); if (!fixCheck) markDone(); } }}>
-        <fieldset className={styles.choices}>
-          <legend>{++n}. <InlineMarkdown text={question} /></legend>
+        <Question n={++n} legend={<InlineMarkdown text={question} />}>
           {options.map((o, i) => (
             <label key={i} className={`${styles.choice} ${submitted ? (i === answer ? styles.choiceRight : i === picked ? styles.choiceWrong : '') : ''}`} data-correct={submitted ? String(i === answer) : undefined}>
               <input type="radio" name={`${name}-q`} checked={picked === i} onChange={() => setPicked(i)} />
               <MiniMarkdown text={o} />
             </label>
           ))}
-        </fieldset>
+        </Question>
         {stage !== undefined && (
-          <fieldset className={styles.choices} data-question="stage">
-            <legend>{++n}. Which stage failed?</legend>
+          <Question n={++n} legend="Which stage failed?" data-question="stage">
             {STAGES.map(s => (
               <label key={s} className={`${styles.choice} ${submitted ? (s === stage ? styles.choiceRight : s === stagePicked ? styles.choiceWrong : '') : ''}`} data-correct={submitted ? String(s === stage) : undefined}>
                 <input type="radio" name={`${name}-stage`} checked={stagePicked === s} onChange={() => setStagePicked(s)} />
                 {STAGE_LABEL[s]}
               </label>
             ))}
-          </fieldset>
+          </Question>
         )}
         <div className={styles.actions}><button type="submit" className="btn btn-primary" disabled={!ready}>Check</button></div>
       </form>

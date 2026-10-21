@@ -59,11 +59,27 @@ const stackOption = (which: keyof typeof STACK) => [...host.querySelectorAll('[d
 const answerSp = (line: number, stack: keyof typeof STACK) => { click(lineButton(line)); click(stackOption(stack)!.querySelector('input')); submit(); };
 
 describe('QuizRunner sp items', () => {
+  it('asks both parts the same way CompilerError asks its questions: a fieldset with a numbered legend, the same class', async () => {
+    await render(sp, ce);
+    const spBox = host.querySelector('[data-quiz-item="q-sp"]')!;
+    const parts = [spBox.querySelector('[data-question="line"]')!, spBox.querySelector('[data-question="stack"]')!];
+    for (const p of parts) {
+      expect(p.tagName).toBe('FIELDSET');
+      expect(p.firstElementChild!.tagName).toBe('LEGEND');
+    }
+    expect(parts.map(p => p.firstElementChild!.textContent!.slice(0, 3))).toEqual(['1. ', '2. ']);
+    // The program to click is inside part 1, so its legend names the group of line buttons.
+    expect(parts[0].querySelector('ol[aria-label^="Program"] button')).not.toBeNull();
+    const ceQuestions = [...host.querySelectorAll('[data-quiz-item="q-ce"] fieldset')];
+    expect(ceQuestions.length).toBeGreaterThan(1);
+    expect(new Set([...parts, ...ceQuestions].map(f => f.className)).size).toBe(1);
+  });
+
   it('shows the paused line and its call stack, and asks two numbered parts: the next line and the stack', async () => {
     await render(sp);
     expect(host.querySelector('[aria-current="step"]')!.textContent).toContain('int result = add(x, y);');
     expect(host.textContent).toContain(`Paused before line ${srcLine('int result = add(x, y);')}`);
-    expect(host.querySelector('[data-question="line"]')!.textContent).toMatch(/^1\. After one step, which line/);
+    expect(host.querySelector('[data-question="line"] legend')!.textContent).toBe('1. After one step, which line is about to run? Click it in the program.');
     expect(host.querySelector('[data-question="stack"] legend')!.textContent).toBe('2. After that step, what does bt show?');
     expect(host.querySelector('[data-question="stack"] ol, [data-question="stack"] ul')).toBeNull(); // no Markdown list numbers
     // Three options, all from the trace, and none marked before submitting.

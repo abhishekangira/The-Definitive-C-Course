@@ -8,6 +8,7 @@ import { CodeListing } from '../../components/CodeListing';
 import { Mark } from '../../components/Icon';
 import { MiniMarkdown } from '../../components/MiniMarkdown';
 import { seededShuffle } from '../../interactions/hash';
+import { Question } from '../../interactions/Question';
 import { callStack, spStackOptions, spSteps, type Frames, type SpStackKey } from '../../interactions/quiz-answers';
 import ix from '../../interactions/Interaction.module.css';
 import styles from './Pages.module.css';
@@ -39,15 +40,15 @@ export function SpItem({ item, head, feedback, result, onResult }: { item: QuizI
     : !options ? <p className={ix.warn} role="alert">Line {item.line} of <code>{item.sample}</code> calls no function, so the stack after <code>step</code> has nothing to tell apart (lint reports this item).</p>
     : (
       <>
-        <CodeListing code={trace!.source} current={at.now.line} label={`Program for question ${item.id}`} onPick={result ? undefined : setPick} picked={pick} pickCorrect={result ? lineRight : null} />
         <div>
-          <p className={ix.muted}>Paused before line {at.now.line}. The call stack (innermost first, as gdb&apos;s <code>bt</code> lists it):</p>
+          <p className={ix.muted}>Paused before line {at.now.line} (highlighted in the program). The call stack (innermost first, as gdb&apos;s <code>bt</code> lists it):</p>
           <StackLines frames={callStack(at.now)} />
         </div>
         <form className={ix.predict} onSubmit={e => { e.preventDefault(); if (!result && pick !== null && stackPick) onResult({ correct: lineRight && stackPick === 'step', given: [pick, stackPick] }); }}>
-          <p className={ix.prompt} data-question="line">1. After one <code>step</code>, which line is about to run? Click it in the program.</p>
-          <fieldset className={ix.choices} data-question="stack">
-            <legend>2. After that <code>step</code>, what does <code>bt</code> show?</legend>
+          <Question n={1} legend={<>After one <code>step</code>, which line is about to run? Click it in the program.</>} data-question="line">
+            <CodeListing code={trace!.source} current={at.now.line} label={`Program for question ${item.id}`} onPick={result ? undefined : setPick} picked={pick} pickCorrect={result ? lineRight : null} />
+          </Question>
+          <Question n={2} legend={<>After that <code>step</code>, what does <code>bt</code> show?</>} data-question="stack">
             {options.map(o => (
               <label key={o.key} className={ix.choice} data-stack={result ? (o.key === 'step' ? 'right' : o.key === stackPick ? 'wrong' : undefined) : undefined}>
                 <input type="radio" name={`${item.id}-stack`} checked={stackPick === o.key} onChange={() => setStackPick(o.key)} disabled={Boolean(result)} />
@@ -55,7 +56,7 @@ export function SpItem({ item, head, feedback, result, onResult }: { item: QuizI
                 {result && (o.key === 'step' || o.key === stackPick) && <><Mark ok={o.key === 'step'} /><span className="visually-hidden">{o.key === 'step' ? ' (the stack after step)' : ' (your answer)'}</span></>}
               </label>
             ))}
-          </fieldset>
+          </Question>
           {!result && <div className={ix.actions}><button type="submit" className="btn btn-primary" disabled={pick === null || !stackPick}>Submit answer</button></div>}
         </form>
         {result && (
