@@ -1,0 +1,5 @@
+title: Unreleased modules fixture
+hoursPerWeek: 5
+modules:
+  - { id: m01, dir: m01-first, number: 1, title: "Released module", hours: 1, available: true }
+  - { id: m02, dir: m02-draft, number: 2, title: "Draft module", hours: 1, available: false }

@@ -24,6 +24,7 @@ The steps run one after another on purpose: the checks (browser compiler, e2e) a
 | 11 | `npm run e2e` with `E2E_MODULE=mNN` (skipped by `--fast`) | 6 |
 | 12 | platform targets: always `SKIPPED`, the Targets workflow checks them in CI | 7 |
 
+- For a module that `course.yaml` does not release yet (`available: false`), the lint step reports its gaps as notes and the e2e step opens it through `?preview=mNN` (`clickThroughModules` in `e2e/lib.ts`; `e2e/AGENTS.md`). The other steps read the module's folder, not `course.yaml`. Observed so far on a scratch copy only (lint and `E2E_MODULE=m03`); the whole table has not been run on a draft.
 - `--fast` skips build and e2e.
 - `--json` prints `{module, fast, ok, steps[{id, point, name, status, reason?, durationMs, tail?, failing?}]}` and nothing else from `dod` on stdout. Use `npm run -s` (silent): plain `npm run dod` makes npm print its banner to stdout before the program starts, which `dod` cannot suppress.
 - `anim:check` runs with `--static` (no browser: validation, `hyperframes lint`, manifest freshness). The full browser gate stays in CI.

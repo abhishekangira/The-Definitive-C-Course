@@ -19,7 +19,7 @@ export interface CourseModuleEntry {
   number: number | 'cap';
   title: string;
   hours: number;
-  /** false while the module is planned but not yet built. */
+  /** true once the module is released. false while it is planned or a draft on disk: the app does not open it (content-runtime/release.ts), except through ?preview=<id>. */
   available: boolean;
 }
 

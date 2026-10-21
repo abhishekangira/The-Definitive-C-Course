@@ -1,6 +1,6 @@
 // Lint messages and the collector every rule reports into.
 
-export type Severity = 'error' | 'warning';
+export type Severity = 'error' | 'warning' | 'info';
 
 export interface LintMessage {
   severity: Severity;
@@ -20,34 +20,52 @@ export interface FileReporter {
   readonly file: string;
   error(line: number, rule: string, message: string): void;
   warn(line: number, rule: string, message: string): void;
+  /** A note. It never fails a run, not even with `--strict`. */
+  info(line: number, rule: string, message: string): void;
+  /**
+   * Something a module must have before it is released: a quiz file, its project, an exercise it lists. It is reported
+   * with `severity` for a released module and as a note for a draft (an unreleased module), which is still being built.
+   */
+  gap(line: number, rule: string, message: string, severity?: 'error' | 'warning'): void;
 }
 
 export class Collector {
   readonly messages: LintMessage[] = [];
+  /** Ids of the modules course.yaml does not release (`available: false`). */
+  readonly drafts = new Set<string>();
 
   add(m: LintMessage): void {
     this.messages.push(m);
   }
 
   at(file: string, module?: string): FileReporter {
+    const report = (severity: Severity) => (line: number, rule: string, message: string) => this.add({ severity, rule, file, line, message, module });
     return {
       file,
-      error: (line, rule, message) => this.add({ severity: 'error', rule, file, line, message, module }),
-      warn: (line, rule, message) => this.add({ severity: 'warning', rule, file, line, message, module }),
+      error: report('error'),
+      warn: report('warning'),
+      info: report('info'),
+      gap: (line, rule, message, severity = 'error') => report(module !== undefined && this.drafts.has(module) ? 'info' : severity)(line, rule, message),
     };
   }
 
+  private count(severity: Severity): number {
+    return this.messages.filter(m => m.severity === severity).length;
+  }
+
   get errorCount(): number {
-    return this.messages.filter(m => m.severity === 'error').length;
+    return this.count('error');
   }
 
   get warningCount(): number {
-    return this.messages.length - this.errorCount;
+    return this.count('warning');
   }
 }
 
-/** Stable order for printing: file, then line, then errors before warnings. */
+const RANK: Record<Severity, number> = { error: 0, warning: 1, info: 2 };
+
+/** Stable order for printing: file, then line, then errors before warnings before notes. */
 export function sortMessages(messages: readonly LintMessage[]): LintMessage[] {
   return [...messages].sort((a, b) =>
-    a.file.localeCompare(b.file) || a.line - b.line || (a.severity === b.severity ? 0 : a.severity === 'error' ? -1 : 1) || a.rule.localeCompare(b.rule));
+    a.file.localeCompare(b.file) || a.line - b.line || RANK[a.severity] - RANK[b.severity] || a.rule.localeCompare(b.rule));
 }

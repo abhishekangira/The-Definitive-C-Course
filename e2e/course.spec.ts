@@ -3,20 +3,23 @@
 // complete. Separate tests cover the hint/solution/variant gates, export/import and accessibility.
 import { test, expect, type Page } from '@playwright/test';
 import {
-  answerQuiz, availableModules, courseTitle, completeExercise, completeLesson, exerciseWithVariants, expectAccessible, progressJson, reachCard, seedPriorModules, setEditor, solutionOf, starterOf,
+  answerQuiz, availableModules, clickThroughModules, completeExercise, completeLesson, completeProgress, courseTitle, exerciseWithVariants, expectAccessible, previewBase, progressJson,
+  reachCard, seedPriorModules, setEditor, solutionOf, starterOf, unreleasedModuleIds,
 } from './lib';
 
-// E2E_MODULE=m01 limits the run to one module (used by `npm run dod`); default is every available module.
-const only = process.env.E2E_MODULE;
-const modules = availableModules().filter(m => !only || m.id === only);
-if (only && !modules.length) throw new Error(`E2E_MODULE=${only} matches no available module`);
+// E2E_MODULE=m01 limits the run to one module (used by `npm run dod`); default is every available module. A module that
+// course.yaml does not release yet (a draft) can be named too: it is then opened through ?preview=<id>.
+const modules = clickThroughModules();
 
 for (const mod of modules) {
   test.describe.serial(`${mod.id}: ${mod.meta.title}`, () => {
     let page: Page;
-    test.beforeAll(async ({ browser }) => {
-      // AxeBuilder needs a page that came from a browser context, not browser.newPage().
-      const context = await browser.newContext();
+    // While a draft is previewed the app keeps its progress in a document of its own.
+    const progress = () => progressJson(page, mod.preview);
+    test.beforeAll(async ({ browser }, testInfo) => {
+      // AxeBuilder needs a page that came from a browser context, not browser.newPage(). A draft opens through ?preview=<id>
+      // on the base URL, which every relative page.goto('#/…') below keeps.
+      const context = await browser.newContext(mod.preview ? { baseURL: previewBase(testInfo.project.use.baseURL, mod) } : {});
       await seedPriorModules(context, mod); // modules after the first stay locked until the earlier ones are complete
       page = await context.newPage();
       page.on('pageerror', e => { throw e; });
@@ -43,7 +46,7 @@ for (const mod of modules) {
     for (const lesson of mod.lessons) {
       test(`lesson: ${lesson.title}`, async () => {
         await completeLesson(page, mod, lesson.stem);
-        expect((await progressJson(page)).lessons?.[lesson.id], 'lesson marked complete').toBeTruthy();
+        expect((await progress()).lessons?.[lesson.id], 'lesson marked complete').toBeTruthy();
         if (lesson === mod.lessons[0]) await expectAccessible(page, `lesson ${lesson.stem}`);
       });
     }
@@ -76,6 +79,7 @@ for (const mod of modules) {
     });
 
     test('progress survives export and import into a fresh browser', async ({ browser }) => {
+      test.skip(mod.preview, 'Settings export and import are off while previewing a draft (e2e/unreleased-modules.spec.ts covers that); the released modules cover the feature');
       await page.goto('#/settings');
       const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export progress' }).click()]);
       const file = await download.path();
@@ -84,8 +88,8 @@ for (const mod of modules) {
       await fresh.locator('input[type=file]').setInputFiles(file);
       await fresh.getByRole('button', { name: 'Replace my progress' }).click();
       await expect(fresh.getByText('Replaced your progress with the file.')).toBeVisible();
-      const before = await progressJson(page);
-      const after = await progressJson(fresh);
+      const before = await progress();
+      const after = await progressJson(fresh); // the fresh browser is an ordinary page, so its document is the real one
       expect(after.lessons).toEqual(before.lessons);
       expect(after.quizzes).toEqual(before.quizzes);
       await expectAccessible(fresh, 'settings');
@@ -96,6 +100,7 @@ for (const mod of modules) {
 
 test('hint tiers, solution gate and variants', async ({ page }) => {
   const mod = modules[0];
+  test.skip(mod.preview, 'a draft opens through the preview; this checks the app, not the module, and runs on the released ones');
   await seedPriorModules(page.context(), mod);
   page.on('dialog', d => void d.accept());
   await page.goto(`#/m/${mod.id}/retrieval`);
@@ -144,6 +149,7 @@ test('hint tiers, solution gate and variants', async ({ page }) => {
 
 test('low-memory mode shows stored output without downloading the compiler', async ({ page }) => {
   const mod = modules[0];
+  test.skip(mod.preview, 'a draft opens through the preview; this checks the app, not the module, and runs on the released ones');
   const toolchainRequests: string[] = [];
   await seedPriorModules(page.context(), mod);
   page.on('request', r => { if (/toolchain\/clang-/.test(r.url())) toolchainRequests.push(r.url()); });
@@ -164,4 +170,22 @@ test('low-memory mode shows stored output without downloading the compiler', asy
   // A fixed sleep proved nothing; wait for the network to settle after the stored output shows, then count compiler requests.
   await page.waitForLoadState('networkidle');
   expect(toolchainRequests).toEqual([]);
+});
+
+// A module course.yaml does not release stays closed on the real build, even for a learner who finished every released one.
+// No shipped module is a draft yet, so today this holds because none is on disk; the day one is, this is the test that
+// guards the deployed app. e2e/unreleased-modules.spec.ts runs the same rules over a draft that does exist.
+test('an unreleased module is not offered or openable, even after every released module is complete', async ({ page }) => {
+  await page.addInitScript(([key, json]) => {
+    try { if (!localStorage.getItem(key)) localStorage.setItem(key, json); } catch { /* an opaque frame has no storage */ }
+  }, ['tdcc:v1:progress', JSON.stringify(completeProgress(availableModules()))] as const);
+  await page.goto('');
+  await expect(page.getByRole('heading', { level: 1, name: courseTitle() })).toBeVisible();
+  await expect(page.getByText('Everything built so far is done')).toBeVisible();
+  for (const id of unreleasedModuleIds()) {
+    await expect(page.locator(`a[href$="#/m/${id}"]`), `${id} has no link on the map`).toHaveCount(0);
+    await page.goto(`#/m/${id}`);
+    await expect(page, `${id} sends the learner back`).toHaveURL(/#\/$/);
+    await expect(page.getByRole('heading', { level: 1, name: courseTitle() })).toBeVisible();
+  }
 });

@@ -43,11 +43,16 @@ const colour = !process.env.NO_COLOR && (!!process.env.FORCE_COLOR || !!process.
 const paint = (code: number) => (s: string) => (colour ? `\x1b[${code}m${s}\x1b[0m` : s);
 const red = paint(31), green = paint(32), yellow = paint(33), dim = paint(2), bold = paint(1);
 
+/** 1 on an error, or on a warning with `--strict`. Notes (what a draft module is still missing) never fail a run. */
+export const exitCode = (result: Pick<LintResult, 'errors' | 'warnings'>, strict: boolean): 0 | 1 => (result.errors > 0 || (strict && result.warnings > 0) ? 1 : 0);
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 /** `path:line  severity  message  [rule]`, with the path relative to `cwd` so terminals can click through. */
 export function formatMessage(m: LintMessage, cwd = process.cwd()): string {
   const rel = path.relative(cwd, m.file) || m.file;
   const where = m.line > 0 ? `${rel}:${m.line}` : rel;
-  const sev = m.severity === 'error' ? red('error  ') : yellow('warning');
+  const sev = m.severity === 'error' ? red('error  ') : m.severity === 'warning' ? yellow('warning') : dim('info   ');
   return `  ${where}  ${sev}  ${m.message}  ${dim(`[${m.rule}]`)}`;
 }
 
@@ -64,14 +69,16 @@ export function renderReport(result: LintResult, cwd = process.cwd(), errorsOnly
   for (const key of order) {
     const list = groups.get(key);
     if (!list) continue;
-    const errors = list.filter(m => m.severity === 'error').length;
-    out.push('', `${bold(key)} ${dim(`(${errors} error${errors === 1 ? '' : 's'}, ${list.length - errors} warning${list.length - errors === 1 ? '' : 's'})`)}`);
+    const n = (severity: LintMessage['severity']) => list.filter(m => m.severity === severity).length;
+    const notes = n('info') ? `, ${plural(n('info'), 'note')}` : '';
+    out.push('', `${bold(key)} ${dim(`(${plural(n('error'), 'error')}, ${plural(n('warning'), 'warning')}${notes})`)}`);
     for (const m of list) out.push(formatMessage(m, cwd));
   }
   const { stats } = result;
   const what = `${stats.modules} module${stats.modules === 1 ? '' : 's'}, ${stats.lessons} lesson${stats.lessons === 1 ? '' : 's'}, ${stats.quizItems} quiz item${stats.quizItems === 1 ? '' : 's'}, ${stats.samples} sample${stats.samples === 1 ? '' : 's'}`;
-  const counts = `${result.errors} error${result.errors === 1 ? '' : 's'}, ${result.warnings} warning${result.warnings === 1 ? '' : 's'}`;
-  out.push('', result.errors ? red(`${counts} (${what})`) : result.warnings ? yellow(`${counts} (${what})`) : green(`All good: ${what}.`));
+  const notes = !errorsOnly && result.infos ? `${plural(result.infos, 'note')} on unreleased modules` : '';
+  const counts = `${plural(result.errors, 'error')}, ${plural(result.warnings, 'warning')}${notes ? `, ${notes}` : ''}`;
+  out.push('', result.errors ? red(`${counts} (${what})`) : result.warnings ? yellow(`${counts} (${what})`) : green(`All good: ${what}${notes ? `; ${notes}` : ''}.`));
   return out.join('\n');
 }
 
@@ -96,7 +103,7 @@ function main() {
     console.log(renderReport(result, process.cwd(), args.errorsOnly));
     if (args.stats) console.log(renderStats(result));
   }
-  process.exitCode = result.errors > 0 || (args.strict && result.warnings > 0) ? 1 : 0;
+  process.exitCode = exitCode(result, args.strict);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

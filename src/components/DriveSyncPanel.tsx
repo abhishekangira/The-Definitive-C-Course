@@ -2,6 +2,7 @@
 // The sign-in script loads only when the learner points at or focuses a sign-in button (src/progress/drive.ts).
 import { useState } from 'react';
 import { connectDrive, disconnectDrive, driveClientId, loadGoogleSignIn, syncNow, useDrive } from '../progress/drive';
+import { previewing } from '../progress/store';
 import styles from '../app/pages/Pages.module.css';
 
 function when(iso: string | undefined): string {
@@ -14,6 +15,15 @@ export function DriveSyncPanel() {
   const { settings, status } = useDrive();
   const [problem, setProblem] = useState<string | null>(null);
   if (!driveClientId()) return null;
+  // The sign-in, "Sync now" and autosave are all off in a preview (progress/drive.ts), so no buttons that would do nothing.
+  if (previewing) {
+    return (
+      <div aria-labelledby="drive-title" role="group">
+        <h3 id="drive-title" className={styles.streakSub}>Google Drive</h3>
+        <p>Google Drive sync is off while you preview an unreleased module: it would upload that module's progress with your real progress.</p>
+      </div>
+    );
+  }
 
   const preload = () => { loadGoogleSignIn().catch(() => { /* the click reports it */ }); };
   const signIn = () => {

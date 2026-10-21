@@ -2,9 +2,10 @@ import type { ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useTheme, type ThemeChoice } from './theme';
-import { useProgress, daysSinceExport, storageWorks } from '../progress/store';
+import { useProgress, daysSinceExport, previewing, storageWorks } from '../progress/store';
 import { driveSyncedWithin, useDrive } from '../progress/drive';
-import { course } from '../content-runtime/course';
+import { course, previewed } from '../content-runtime/course';
+import { moduleLabel } from '../progress/next';
 import { StreakChip } from '../components/StreakChip';
 import { BrandMark } from '../components/BrandMark';
 import { Icon } from '../components/Icon';
@@ -12,6 +13,8 @@ import styles from './Layout.module.css';
 
 const THEME_LABEL: Record<ThemeChoice, string> = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
 const NEXT: Record<ThemeChoice, ThemeChoice> = { system: 'light', light: 'dark', dark: 'system' };
+
+const previewLabels = previewed.map(id => moduleLabel(course.modules.find(e => e.id === id)!));
 
 /** Inline SVG icons: the Unicode glyphs (sun, moon, half circle) are missing from most UI fonts. */
 function ThemeIcon({ theme }: { theme: ThemeChoice }) {
@@ -35,9 +38,9 @@ export function Layout({ children }: { children?: ReactNode }) {
   const [persistent] = useState(storageWorks);
   const days = daysSinceExport(progress);
   const hasProgress = Object.keys(progress.lessons).length > 0;
-  // A Drive sync in the last week is a backup too.
+  // A Drive sync in the last week is a backup too. No reminder while previewing: export is off then (Settings explains why).
   const synced = driveSyncedWithin(useDrive().settings, 7);
-  const remindExport = hasProgress && !synced && (days === null || days >= 7);
+  const remindExport = hasProgress && !previewing && !synced && (days === null || days >= 7);
 
   // Move focus to the main heading on navigation, so screen readers announce the new page.
   useEffect(() => {
@@ -76,6 +79,14 @@ export function Layout({ children }: { children?: ReactNode }) {
           </nav>
         </div>
       </header>
+      {previewed.length > 0 && (
+        <div className={styles.frame}>
+          <div className={styles.banner} role="note">
+            Preview: {previewLabels.join(' and ')} {previewed.length === 1 ? 'is' : 'are'} not released yet. Progress made here is kept apart from your real progress.
+            {' '}<a href={`${window.location.pathname}#/`}>Leave the preview</a>
+          </div>
+        </div>
+      )}
       {!persistent && (
         <div className={styles.frame}>
           <div className={styles.banner} role="status">

@@ -7,7 +7,7 @@ description: Add or change a course exercise (ct write, fb fix-a-bug, pa Parsons
 
 Read the Exercises part of `content/AGENTS.md` and `tools/exercises/README.md` first. Expected outputs are never typed by hand: they come from running the reference solution.
 
-1. **Create the folder** `content/modules/<module>/exercises/<id>/` with `exercise.yaml`, `starter.c` and `solution.c`. `exercise.yaml` needs `id kind title prompt runsIn hints variants` and `file`; `id` equals the folder name and `file` equals the first source in `tests.json`. Give exactly three hints: nudge, concept, partial code.
+1. **Create the folder** `content/modules/<module>/exercises/<id>/` with `exercise.yaml`, `starter.c` and `solution.c`. `exercise.yaml` needs `id kind title prompt runsIn hints variants` and `file`; `id` equals the folder name (which must be unique across all modules, because the app keys exercises by it: a new module prefixes its folders, for example `m03-gdb-hunt`) and `file` equals the first source in `tests.json`. Give exactly three hints: nudge, concept, partial code.
 2. **Write the tests.**
    - stdin/args/stdout/exit tests: write `cases.yaml` (`cases: [{name, stdin?, args?, hint?}]`) and run `npm run exercises:expect -- --only <id>`. It writes `tests.json` from the reference solution and rejects a solution that warns, trips ASan or UBSan, or times out.
    - Unit, `make` and `scan` tests are written by hand. For `scan`, read "Operator-restricted exercises" in `tools/exercises/README.md` first.

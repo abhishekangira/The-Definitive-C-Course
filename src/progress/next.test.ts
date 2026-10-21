@@ -1,26 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
 import { emptyProgress, type ProgressV1 } from './store';
 
-// A fixture course, so the order of steps is tested without depending on the real content:
-// m01 (with a retrieval quiz) and m02 are built; m03 is listed but not built.
-vi.mock('../content-runtime/course', () => {
-  const mod = (id: string, lessons: Array<[string, string, number]>, project: string) => ({
-    dir: id,
-    meta: { id, project, coreExercises: [], lessons: lessons.map(l => l[0]) },
-    lessons: lessons.map(([stem, title, minutes]) => ({ stem, frontmatter: { id: `${id}-${stem}`, title, minutes } })),
-  });
+// A fixture course, so the order of steps is tested without depending on the real content. The modules go through the app's
+// own registry (release.ts): m01 (with a retrieval quiz) and m02 are released; m03 has a folder on disk (a draft) but is not.
+vi.mock('../content-runtime/course', async () => {
+  const { buildRegistry } = await import('../content-runtime/release');
+  const mod = (id: string, lessons: Array<[string, string, number]>, project: string) => ({ id, project, coreExercises: [], lessons: lessons.map(l => l[0]) });
+  const lessons: Record<string, Array<[string, string, number]>> = {
+    m01: [['a', 'Alpha', 30], ['b', 'Beta', 45]],
+    m02: [['a', 'Gamma', 20]],
+    m03: [['a', 'Draft lesson', 25]],
+  };
+  const manifest = [
+    { id: 'm01', dir: 'm01', number: 1, title: 'One', available: true },
+    { id: 'm02', dir: 'm02', number: 2, title: 'Two', available: true },
+    { id: 'm03', dir: 'm03', number: 3, title: 'Three', available: false },
+  ];
+  const metas = Object.fromEntries(Object.entries(lessons).map(([id, ls]) => [`/content/modules/${id}/module.yaml`, mod(id, ls, `proj${Number(id.slice(1))}`)]));
+  const frontmatter = Object.fromEntries(Object.entries(lessons).flatMap(([id, ls]) => ls.map(([stem, title, minutes]) =>
+    [`/content/modules/${id}/lessons/${stem}.mdx`, { id: `${id}-${stem}`, title, minutes, summary: '' }])));
   return {
-    course: {
-      modules: [
-        { id: 'm01', number: 1, title: 'One' },
-        { id: 'm02', number: 2, title: 'Two' },
-        { id: 'm03', number: 3, title: 'Three' },
-      ],
-    },
-    modules: {
-      m01: mod('m01', [['a', 'Alpha', 30], ['b', 'Beta', 45]], 'proj1'),
-      m02: mod('m02', [['a', 'Gamma', 20]], 'proj2'),
-    },
+    course: { modules: manifest },
+    modules: buildRegistry(manifest, metas, frontmatter),
     quizFor: (id: string, name: string) => (id === 'm01' && name === 'retrieval' ? [{ id: 'q' }] : []),
   };
 });
@@ -64,7 +65,7 @@ describe('nextStep', () => {
     expect(nextStep(p)).toMatchObject({ kind: 'lesson', moduleId: 'm02', title: 'Gamma', where: 'Module 2 · Lesson 1 of 1 · 20 min' });
   });
 
-  it('is done when every built module is complete, and does not point at the unbuilt one', () => {
+  it('is done when every released module is complete, and does not point at the unreleased one that is on disk', () => {
     const p = doc({
       quizzes: { 'm01:retrieval': quiz(true), 'm01:checkpoint': quiz(true), 'm02:checkpoint': quiz(true) },
       lessons: lessonsDone('m01-a', 'm01-b', 'm02-a'),

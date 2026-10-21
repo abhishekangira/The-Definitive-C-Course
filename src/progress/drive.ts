@@ -14,7 +14,7 @@
 // - tdcc:v1:drive is outside the progress document, so export, import and reset never touch it.
 import { useSyncExternalStore } from 'react';
 import {
-  STORAGE_PREFIX, getProgress, mergeProgress, parseProgressFile, replaceProgress, subscribeProgress, type ProgressChangeSource, type ProgressV1,
+  STORAGE_PREFIX, getProgress, mergeProgress, parseProgressFile, previewing, replaceProgress, subscribeProgress, type ProgressChangeSource, type ProgressV1,
 } from './store';
 
 export const DRIVE_STORAGE_KEY = `${STORAGE_PREFIX}drive`;
@@ -340,8 +340,13 @@ let lastPull = 0;
 /** Bumped by replaceDriveOnNextSync, so a round that started before a reset neither merges the old copy back nor clears the flag. */
 let replaceGen = 0;
 
-/** Pull, merge and push now. Concurrent calls share one round, plus one more if a change arrived meanwhile. */
+/**
+ * Pull, merge and push now. Concurrent calls share one round, plus one more if a change arrived meanwhile.
+ * Never while an unreleased module is previewed: the document is then the real progress plus the draft's, and uploading it
+ * would carry the draft into the real progress on every other device (docs/adr/0004-unreleased-modules.md).
+ */
 export function syncNow(): Promise<void> {
+  if (previewing) return Promise.resolve();
   if (running) { again = true; return running; }
   running = (async () => {
     do {

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  daysSinceExport, emptyProgress, exportFileName, exportProgress, getProgress, MAX_IMPORT_BYTES, mergeProgress, parseProgressFile, replaceProgress, summarise,
+  daysSinceExport, emptyProgress, exportFileName, exportProgress, getProgress, MAX_IMPORT_BYTES, mergeProgress, parseProgressFile, previewing, replaceProgress, summarise,
   update, useProgress, type ProgressV1,
 } from '../../progress/store';
 import { useTheme, type ThemeChoice } from '../theme';
@@ -102,12 +102,22 @@ export function SettingsPage() {
         <div className="setting-body">
           <p>Your progress is stored {driveOn ? 'in this browser and synced to Google Drive' : 'only in this browser'} ({Object.keys(progress.lessons).length} lessons done). Export it to a file to keep it safe or move to another computer.
             {' '}{days === null ? 'You haven’t exported yet.' : `Last export: ${days === 0 ? 'today' : `${days} days ago`}.`}</p>
+          {previewing && (
+            <p id="preview-off" className={styles.muted}>
+              Export, import and reset are off while you preview an unreleased module: the file would carry that module's progress into your real progress,
+              and a reset would not stick, because your real progress is merged back in every time. <a href={`${window.location.pathname}#/settings`}>Leave the preview</a> to use them.
+            </p>
+          )}
           <div className={styles.row2}>
-            <button type="button" className="btn btn-primary" onClick={() => downloadBlob(exportProgress(), exportFileName())}>Export progress</button>
-            <label className="btn">
-              Import from file
-              <input ref={fileRef} type="file" accept="application/json,.json" className="visually-hidden" onChange={e => void onFile(e.target.files?.[0])} />
-            </label>
+            <button type="button" className="btn btn-primary" disabled={previewing} aria-describedby={previewing ? 'preview-off' : undefined} onClick={() => downloadBlob(exportProgress(), exportFileName())}>Export progress</button>
+            {previewing ? (
+              <button type="button" className="btn" disabled aria-describedby="preview-off">Import from file</button>
+            ) : (
+              <label className="btn">
+                Import from file
+                <input ref={fileRef} type="file" accept="application/json,.json" className="visually-hidden" onChange={e => void onFile(e.target.files?.[0])} />
+              </label>
+            )}
           </div>
           {pending && summary && (
             <div className={styles.importBox} role="dialog" aria-label="Import progress">
@@ -167,7 +177,7 @@ export function SettingsPage() {
           <p>Deletes all progress in this browser{driveOn ? ', in Google Drive and in every browser that syncs with it' : ''}. Export first if you might want it back.</p>
         </div>
         <div className="setting-body">
-          <div><button type="button" className={`btn ${styles.danger}`} onClick={() => { if (window.confirm(`Delete all progress in this browser${driveOn ? ' and in Google Drive' : ''}? This cannot be undone.`)) { replaceProgress(emptyProgress()); replaceDriveOnNextSync(); setMessage({ ok: true, text: 'Progress reset.' }); } }}>Reset all progress</button></div>
+          <div><button type="button" className={`btn ${styles.danger}`} disabled={previewing} aria-describedby={previewing ? 'preview-off' : undefined} onClick={() => { if (window.confirm(`Delete all progress in this browser${driveOn ? ' and in Google Drive' : ''}? This cannot be undone.`)) { replaceProgress(emptyProgress()); replaceDriveOnNextSync(); setMessage({ ok: true, text: 'Progress reset.' }); } }}>Reset all progress</button></div>
         </div>
       </section>
     </div>

@@ -4,10 +4,22 @@
 import { useSyncExternalStore } from 'react';
 
 export const STORAGE_PREFIX = 'tdcc:v1:';
-const KEY = `${STORAGE_PREFIX}progress`;
+const REAL_KEY = `${STORAGE_PREFIX}progress`;
 
 import { addDay, cleanDays, dayKey, emptyStreak, longestRun, mergeStreaks, type StreakData } from './streak';
 import { parseCode } from '../testing/token';
+import { previewed } from '../content-runtime/preview';
+
+// While an unreleased module is previewed (`?preview=m03`), everything done on the page is written to a document of its own,
+// so the learner's real progress never records anything from a module that is not released.
+const PREVIEW_KEY = `${STORAGE_PREFIX}progress-preview`;
+/**
+ * True while an unreleased module is previewed. The page then holds the real progress plus draft progress, so anything that
+ * sends the document out of the page (a file export, a sync to another device) must stay off: it would carry the draft's
+ * progress into the real progress somewhere else.
+ */
+export const previewing = previewed.length > 0;
+const KEY = previewing ? PREVIEW_KEY : REAL_KEY;
 
 export type Platform = 'mac-arm' | 'mac-intel' | 'wsl' | 'linux-x86' | 'linux-arm';
 
@@ -194,6 +206,9 @@ function storageGet(key: string): string | null {
 function storageSet(key: string, value: string): boolean {
   try { localStorage.setItem(key, value); return true; } catch { return false; }
 }
+function storageRemove(key: string): void {
+  try { localStorage.removeItem(key); } catch { /* nothing to remove from */ }
+}
 
 /** False when the browser blocks localStorage (private windows, blocked site data): progress then lives in memory only. */
 export function storageWorks(): boolean {
@@ -207,11 +222,26 @@ export function storageWorks(): boolean {
 
 let state: ProgressV1 = load();
 
+function readDocument(key: string): ProgressV1 | null {
+  const raw = storageGet(key);
+  if (!raw) return null;
+  try { return migrate(JSON.parse(raw)); } catch { return null; }
+}
+
 function load(): ProgressV1 {
-  const raw = storageGet(KEY);
-  if (raw) {
-    try { return migrate(JSON.parse(raw)); } catch { /* fall through to a fresh document */ }
+  const real = readDocument(REAL_KEY);
+  if (KEY !== REAL_KEY) {
+    // A preview starts from the real progress (so earlier modules count as done), adds its own on top, and never writes the real key.
+    const own = readDocument(KEY);
+    if (!real || !own) return own ?? real ?? emptyProgress();
+    // mergeProgress keeps the real document's settings and export date, so what was chosen while previewing is laid back over it.
+    const merged = mergeProgress(real, own);
+    merged.settings = { ...real.settings, ...own.settings };
+    const exported = [real.lastExportedAt, own.lastExportedAt].filter((d): d is string => Boolean(d)).sort().pop();
+    if (exported) merged.lastExportedAt = exported;
+    return merged;
   }
+  if (real) return real;
   const fresh = emptyProgress();
   storageSet(KEY, JSON.stringify(fresh));
   return fresh;
@@ -241,6 +271,8 @@ export function getProgress(): ProgressV1 { return state; }
 export function replaceProgress(next: ProgressV1): void {
   state = next;
   storageSet(KEY, JSON.stringify(state));
+  // The preview document holds a copy of the real progress, so resetting or replacing the real one must not leave it behind.
+  if (KEY === REAL_KEY) storageRemove(PREVIEW_KEY);
   emit();
 }
 
