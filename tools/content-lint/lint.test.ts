@@ -456,6 +456,15 @@ describe('component props', () => {
     expect(lintGoodWith(choice('question="Q" options={["a", "b"]} answer={0} explain="x"')).result.messages).toEqual([]);
   });
 
+  it('checks a CompilerError that reads a session report: fix says how the browser checks it, stage is a build stage', () => {
+    const ce = (props: string) => ({ [lesson]: sub(/<Choice\n {2}question="What does `return 0;`[\s\S]*?\/>/, `<CompilerError session="asan" question="Q" options={["a", "b"]} answer={0} explain="x" ${props} />`) });
+    expect(lintGoodWith(ce('stage="run" fix={false}')).result.messages).toEqual([]);
+    expect(lintGoodWith(ce('fix="leak"')).result.messages).toEqual([]);
+    expect(errorsOf(lintGoodWith(ce('stage="run"')).result, 'interaction-props')[0].message).toContain('needs `fix`');
+    expect(errorsOf(lintGoodWith(ce('fix={true}')).result, 'interaction-props')[0].message).toContain('`fix` must be "compile", "ubsan", "leak" or {false}');
+    expect(errorsOf(lintGoodWith(ce('stage="linking" fix={false}')).result, 'interaction-props')[0].message).toContain('`stage` must be one of preprocess, compile, assemble, link, run');
+  });
+
   it('does not judge props it cannot evaluate, or elements that spread props', () => {
     expect(lintGoodWith(choice('question={q} options={opts} answer={n} explain={e}')).result.messages).toEqual([]);
     expect(lintGoodWith(choice('{...props}')).result.messages).toEqual([]);

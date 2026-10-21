@@ -163,6 +163,9 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     expect(file.sessions.lldb.platforms).toEqual(['linux-clang', 'macos']);
     expect(file.sessions['valgrind-uninit'].platforms).toEqual(['linux-gcc', 'linux-clang']);
     expect(file.sessions['link-undefined'].platforms).toEqual(['linux-gcc', 'linux-clang', 'macos']);
+    // The session's sources, as committed, for the line a report points at.
+    expect(Object.keys(file.sessions['link-multiple'].sources)).toEqual(['bump.c', 'count.h', 'main.c']);
+    expect(file.sessions.asan.sources['main.c']).toBe(readFileSync(path.join(contentRoot, 'modules/m97-sessions/sessions/asan/main.c'), 'utf8'));
     expect(file.sessions.lldb.runs['linux-gcc']).toBeUndefined(); // only: clang
 
     // Two more runs without the cache: --check finds the stored file up to date.

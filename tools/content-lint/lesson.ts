@@ -255,8 +255,25 @@ function checkSampleSource(node: JsxNode, el: string, mod: ModuleCtx, site: Site
   }
 }
 
+const STAGES = ['preprocess', 'compile', 'assemble', 'link', 'run'];
+const FIX_CHECKS = [false, 'compile', 'ubsan', 'leak'];
+
 function checkCompilerError(node: JsxNode, r: FileReporter): void {
   const nested = nestedLowered(node).map(n => n.data?.sample as SampleInfo | undefined).filter((s): s is SampleInfo => !!s);
+  const at = line(node);
+  const stage = attr(node, 'stage');
+  if (stage.present && stage.value !== UNKNOWN && !STAGES.includes(stage.value as string)) {
+    r.error(at, 'interaction-props', `<CompilerError> \`stage\` must be one of ${STAGES.join(', ')}`);
+  }
+  if (attr(node, 'session').present) {
+    // A stored native report: the browser can check a fix only for plain compile errors, UBSan (its guardrail runtime)
+    // and heap leaks (leakcheck), so the author says which, or fix={false} and the next LT carries the fix.
+    if (nested.length) r.error(at, 'interaction-props', '<CompilerError session> reads the session\'s report and source: remove the nested fence');
+    const fix = attr(node, 'fix');
+    if (!fix.present) r.error(at, 'interaction-props', '<CompilerError session> needs `fix`: "compile", "ubsan" or "leak" (how the browser checks the fix), or fix={false} when the browser can\'t check it');
+    else if (fix.value !== UNKNOWN && !FIX_CHECKS.includes(fix.value as string | boolean)) r.error(at, 'interaction-props', '<CompilerError session> `fix` must be "compile", "ubsan", "leak" or {false}');
+    return;
+  }
   if (nested.length === 0) {
     r.error(line(node), 'interaction-props', '<CompilerError> needs a nested ```c fence: the program whose compiler message the learner reads');
     return;

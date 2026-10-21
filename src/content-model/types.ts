@@ -305,6 +305,8 @@ export interface SessionResult {
    * one not listed never runs, by design (gdb is gcc only).
    */
   platforms: SessionPlatform[];
+  /** The `.c` and `.h` files of the session folder by name, as committed (a report question shows the lines a report names). */
+  sources: Record<string, string>;
   runs: Partial<Record<SessionPlatform, SessionStepResult[]>>;
 }
 

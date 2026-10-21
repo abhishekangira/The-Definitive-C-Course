@@ -1,0 +1,22 @@
+---
+id: m97-l2
+title: Reading tool reports
+minutes: 20
+summary: Report questions over the m97 fixture sessions.
+---
+
+A program that writes past the end of an array, built with AddressSanitizer:
+
+<CompilerError session="asan" stage="run" fix={false} question="What does AddressSanitizer report?" options={["A write past the end of a stack array", "A memory leak", "A read of an uninitialised variable"]} answer={0} explain="`stack-buffer-overflow` and `WRITE of size 4`: the loop writes one `int` past the end of `a`." />
+
+A function that is declared but never defined:
+
+<CompilerError session="link-undefined" step={2} stage="link" fix={false} question="What does the linker say is wrong?" options={["Nothing defines `area`", "`area` is not declared", "`main.o` is missing"]} answer={0} explain="Compiling worked, because `area` is declared; the linker found no definition of it." />
+
+Signed overflow, reported by UBSan:
+
+<CompilerError session="ubsan" stage="run" fix="ubsan" question="What does UBSan report?" options={["Signed integer overflow", "A division by zero", "A null pointer"]} answer={0} explain="`INT_MAX + 1` cannot be represented in an `int`." />
+
+A block that is never freed:
+
+<CompilerError session="valgrind-leak" stage="run" fix="leak" question="What does the report find?" options={["40 bytes that are never freed", "A write past the end of the block", "A double free"]} answer={0} explain="`definitely lost: 40 bytes in 1 blocks`: the `malloc` result is never freed." />

@@ -2,7 +2,7 @@
 // Linux x86-64 gcc 13 and clang 22 run here; macOS results come from `--target-run macos-arm64-appleclang` on the Targets
 // workflow (src/generated/targets/macos-arm64-appleclang/<module>.sessions.json) and are merged in when the hash matches.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 import path from 'node:path';
 import type { SessionPlatform, SessionResult, SessionsFile } from '../../src/content-model/types';
@@ -55,6 +55,12 @@ export async function runSessions(specs: SessionSpec[], platform: SessionPlatfor
   return new Map(runs);
 }
 
+/** The session's C sources and headers, so a report question can show the lines the report points at. */
+function sourcesOf(dir: string): Record<string, string> {
+  const files = readdirSync(dir).filter(f => /\.[ch]$/.test(f)).sort();
+  return Object.fromEntries(files.map(f => [f, readFileSync(path.join(dir, f), 'utf8')]));
+}
+
 const projection = (f: SessionsFile) => stableStringify({ ...f, generatedBy: '<version>' });
 
 export interface SessionsReport { problems: string[]; notes: string[]; written: string[]; unchanged: string[]; stale: string[]; outputs: Record<string, string> }
@@ -79,7 +85,7 @@ export async function verifySessions(o: {
     const stored = readJson<TargetSessionsFile>(path.join(o.generatedRoot, 'targets', 'macos-arm64-appleclang', `${m}.sessions.json`));
     for (const spec of found.sessions.filter(s => s.module === m)) {
       const platforms = (['linux-gcc', 'linux-clang', 'macos'] as const).filter(p => stepsFor(spec, p).length);
-      const res: SessionResult = { id: spec.id, dir: spec.rel.split('/').slice(2).join('/'), hash: spec.hash, platforms, runs: {} };
+      const res: SessionResult = { id: spec.id, dir: spec.rel.split('/').slice(2).join('/'), hash: spec.hash, platforms, sources: sourcesOf(spec.dir), runs: {} };
       for (const [platform, runs] of byPlatform) {
         const r = runs.get(spec.id);
         if (!r) continue;

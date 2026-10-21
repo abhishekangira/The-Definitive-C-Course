@@ -32,13 +32,18 @@ function Step({ s }: { s: SessionStepResult }) {
   );
 }
 
-function TranscriptPane({ file, id, step }: { file: SessionsFile | null; id: string; step?: number }) {
+/** One session's output with its platform tabs. <CompilerError session> controls the selected tab to grade against it. */
+export function TranscriptPane({ file, id, step, selected: controlled, onSelect }: {
+  file: SessionsFile | null; id: string; step?: number | 'last'; selected?: number; onSelect?: (i: number) => void;
+}) {
   const name = useId();
-  const [selected, setSelected] = useState(0);
+  const [own, setOwn] = useState(0);
+  const selected = controlled ?? own;
+  const setSelected = onSelect ?? setOwn;
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const result = file?.sessions[id];
   if (!result) return <p className={ix.warn} role="alert">The output of session <code>{id}</code> hasn't been generated yet (run <code>npm run verify</code>).</p>;
-  if (step !== undefined && !(Number.isInteger(step) && step > 0)) return <p className={ix.warn} role="alert">Transcript <code>{id}</code>: <code>step</code> must be a whole number from 1.</p>;
+  if (step !== undefined && step !== 'last' && !(Number.isInteger(step) && step > 0)) return <p className={ix.warn} role="alert">Transcript <code>{id}</code>: <code>step</code> must be a whole number from 1.</p>;
   const { tabs, pending, linuxOnly } = transcriptTabs(result, step);
   if (!tabs.length) return <p className={ix.warn} role="alert">Session <code>{id}</code> stored no step {step}{pending.length ? ` (no stored run for ${pending.map(p => SESSION_PLATFORM_LABEL[p]).join(' or ')})` : ''}.</p>;
   const sel = Math.min(selected, tabs.length - 1);

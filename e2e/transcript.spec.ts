@@ -1,38 +1,17 @@
 // <Transcript> in the real app: a lesson (MDX pipeline, lesson page, session loading through sessionsFor) over the m97
-// fixture sessions that tools/verify wrote (tools/verify/fixtures/generated/sessions). No shipped module has a session
-// yet, so this runs a throwaway Vite server rooted in e2e/fixtures/sessions, like unreleased-modules.spec.ts.
-import { mkdtempSync, rmSync } from 'node:fs';
-import type { AddressInfo } from 'node:net';
-import os from 'node:os';
-import path from 'node:path';
+// fixture sessions that tools/verify wrote, served by e2e/sessions-fixture.ts.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { createServer, type ViteDevServer } from 'vite';
-import { expectAccessible, ROOT } from './lib';
+import { expectAccessible } from './lib';
+import { startSessionsFixture } from './sessions-fixture';
 
-const FIXTURE = path.join(ROOT, 'e2e', 'fixtures', 'sessions');
-// Stored output mode keeps the lesson page from downloading the compiler, which this fixture does not serve.
+// Stored output mode keeps the lesson page from downloading the compiler, which these tests don't need.
 const SEED = JSON.stringify({ version: 1, seed: '00e2e00e2e00e2e0', createdAt: '2026-01-01T00:00:00.000Z', settings: { storedOutputMode: true } });
 
-let server: ViteDevServer;
+let fixture: Awaited<ReturnType<typeof startSessionsFixture>>;
 let url: string;
-let viteCache: string;
-
-test.beforeAll(async () => {
-  viteCache = mkdtempSync(path.join(os.tmpdir(), 'tdcc-e2e-vite-'));
-  server = await createServer({
-    configFile: path.join(ROOT, 'vite.config.ts'),
-    root: FIXTURE,
-    publicDir: false,
-    cacheDir: viteCache,
-    logLevel: 'error',
-    resolve: { alias: [{ find: /^(\.\.\/)+content\/course\.yaml$/, replacement: path.join(FIXTURE, 'content', 'course.yaml') }] },
-    server: { port: 0, host: '127.0.0.1', hmr: false, fs: { strict: false } },
-  });
-  await server.listen();
-  url = `http://127.0.0.1:${(server.httpServer!.address() as AddressInfo).port}/`;
-});
-test.afterAll(async () => { await server?.close(); if (viteCache) rmSync(viteCache, { recursive: true, force: true }); });
+test.beforeAll(async () => { fixture = await startSessionsFixture(); url = fixture.url; });
+test.afterAll(async () => { await fixture?.close(); });
 
 async function openLesson(page: Page): Promise<void> {
   await page.context().addInitScript(json => { try { if (!localStorage.getItem('tdcc:v1:progress')) localStorage.setItem('tdcc:v1:progress', json); } catch { /* no storage */ } }, SEED);

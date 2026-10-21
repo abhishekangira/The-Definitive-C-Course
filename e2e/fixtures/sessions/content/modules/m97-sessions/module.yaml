@@ -14,6 +14,7 @@ resources:
     detail: Chapter 1
 lessons:
   - 01-transcripts
+  - 02-reports
 problemSet: []
 project: p97
 coreExercises: []
