@@ -1,0 +1,21 @@
+id: m97
+number: 1
+title: Sessions module
+why: A fixture module for the transcript e2e.
+hours: 1
+weeks: 1
+time: { lessons: 0.5, project: 0.25, variants: 0.125, quizCheckpoint: 0.125 }
+lessonsRunIn: native
+projectRunsIn: native
+successCriteria:
+  - { sc: SC4, level: I }
+resources:
+  - title: A book
+    detail: Chapter 1
+lessons:
+  - 01-transcripts
+problemSet: []
+project: p97
+coreExercises: []
+retrieval:
+  sources: [js]

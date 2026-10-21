@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import { Link, Navigate, useParams } from 'react-router';
 import { MDXProvider } from '@mdx-js/react';
-import { lessonLoader, moduleById, samplesFor } from '../../content-runtime/course';
+import { lessonLoader, moduleById, samplesFor, sessionsFor } from '../../content-runtime/course';
 import { mdxComponents } from '../../content-runtime/mdx-components';
 import { LessonProvider } from '../../lesson/LessonContext';
 import { isModuleUnlocked, moduleStatus } from '../../progress/gating';
 import { useProgress } from '../../progress/store';
-import type { SamplesFile } from '../../content-model/types';
+import type { SamplesFile, SessionsFile } from '../../content-model/types';
 import { preloadCodeEditor } from '../../components/CodeEditor';
 import { getRuntime } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
@@ -24,6 +24,7 @@ export function LessonPage() {
   const progress = useProgress();
   const [Lesson, setLesson] = useState<ComponentType<{ components?: Record<string, unknown> }> | null>(null);
   const [samples, setSamples] = useState<SamplesFile | null | undefined>(undefined);
+  const [sessions, setSessions] = useState<SessionsFile | null | undefined>(undefined);
   const storedMode = Boolean(progress.settings.storedOutputMode);
   // The lesson chat and the highlight toolbar exist only for a learner who has set the tutor up.
   const tutorOn = Boolean(useTutorSettings().apiKey);
@@ -46,6 +47,7 @@ export function LessonPage() {
     const load = lessonLoader(moduleId, lessonStem);
     if (load) void load().then(mod => setLesson(() => mod.default));
     void samplesFor(moduleId).then(setSamples);
+    void sessionsFor(moduleId).then(setSessions);
     // Warm the compiler in the background once the learner is reading a lesson (not in low-memory mode).
     if (storedMode) return;
     const t = setTimeout(() => getRuntime().prefetch(), 1500);
@@ -81,8 +83,8 @@ export function LessonPage() {
         <div className={styles.lessonMeta}>
           <p className={styles.meta}>Lesson {idx + 1} of {m.lessons.length} · {lesson.frontmatter.minutes} min</p>
         </div>
-        {Lesson && samples !== undefined ? (
-          <LessonProvider lessonId={lesson.frontmatter.id} moduleId={moduleId} samples={samples}>
+        {Lesson && samples !== undefined && sessions !== undefined ? (
+          <LessonProvider lessonId={lesson.frontmatter.id} moduleId={moduleId} samples={samples} sessions={sessions}>
             <MDXProvider components={mdxComponents}>
               <div ref={prose} className={styles.prose}><Lesson components={mdxComponents} /></div>
             </MDXProvider>
