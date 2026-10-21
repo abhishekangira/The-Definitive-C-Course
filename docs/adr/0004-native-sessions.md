@@ -1,6 +1,6 @@
 # 0004: Native sessions store real terminal output from tools the browser can't run
 
-Status: Proposed (2026-10-21, issue #73 PR 2)
+Status: Accepted (2026-10-21)
 
 ## Context
 Module 3 teaches the linker, sanitizers, Valgrind, `make`, gdb and lldb. None of these runs in the browser toolchain, and a `c` fence holds one file run one way, so `tools/verify` has nowhere to put a multi-file, multi-command example. Issue #73 needs every terminal transcript in the module to be real output (root `AGENTS.md`: never typed by hand), on Linux and on macOS, and stable across runs.
