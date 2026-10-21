@@ -158,6 +158,11 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     expect(step('gdb', 'linux-gcc', 1).stdout).toContain('[Inferior 1 (process <pid>) exited normally]');
     expect(step('lldb', 'linux-clang', 1).stdout).toMatch(/\(lldb\) frame variable n\n\(int\) n = 3\n/);
     expect(file.sessions.gdb.runs['linux-clang']).toBeUndefined(); // only: gcc
+    // Which platforms have steps, so the app can tell a run still to come (macOS before Targets) from one that never runs.
+    expect(file.sessions.gdb.platforms).toEqual(['linux-gcc']);
+    expect(file.sessions.lldb.platforms).toEqual(['linux-clang', 'macos']);
+    expect(file.sessions['valgrind-uninit'].platforms).toEqual(['linux-gcc', 'linux-clang']);
+    expect(file.sessions['link-undefined'].platforms).toEqual(['linux-gcc', 'linux-clang', 'macos']);
     expect(file.sessions.lldb.runs['linux-gcc']).toBeUndefined(); // only: clang
 
     // Two more runs without the cache: --check finds the stored file up to date.

@@ -19,17 +19,30 @@ beforeEach(() => { host = document.createElement('div'); document.body.appendChi
 afterEach(() => { act(() => root.unmount()); host.remove(); });
 const render = (props: Parameters<typeof Transcript>[0]) => act(() => root.render(createElement(Transcript, props)));
 const tabs = () => [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-const panel = () => host.querySelector<HTMLElement>('[role="tabpanel"]')!;
+const panel = () => host.querySelector<HTMLElement>('[role="tabpanel"], [role="region"]')!;
 const key = (k: string) => act(() => { document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })); });
 const run = (id: string, p: 'linux-gcc' | 'linux-clang', i: number) => m97.sessions[id].runs[p]![i];
 
 describe('<Transcript>', () => {
-  it('shows the stored command, output and exit status, and says that no macOS run is stored', () => {
+  it('pending: shows the stored command, output and exit status, and says that the expected macOS run is not stored', () => {
     render({ session: 'link-undefined', step: '2' });
     const s = run('link-undefined', 'linux-gcc', 1);
     expect(tabs().map(t => t.textContent)).toEqual(['Linux/WSL · gcc 13 · ld', 'Linux/WSL · clang 22 · ld']);
     expect(panel().textContent).toBe(`$ ${s.cmd}stderr${s.stderr}exit status ${s.exit}`);
-    expect(host.querySelector('[data-missing]')!.textContent).toBe('No stored run for macOS · Apple clang.');
+    expect(host.querySelector('[data-pending]')!.textContent).toBe('No stored run for macOS · Apple clang.');
+    expect(host.querySelector('figcaption')!.textContent).toBe('Terminal output, recorded by running these commands');
+  });
+
+  it('by design: a gcc-only session (gdb) says nothing is missing, and one platform is a plain label, not a tab bar', () => {
+    render({ session: 'gdb', step: 2 });
+    expect(host.textContent).not.toContain('No stored run');
+    expect(host.querySelector('[data-by-design]')!.textContent).toBe('On Linux/WSL, gdb runs on the gcc 13 build only.');
+    expect(tabs()).toEqual([]);
+    expect(host.querySelector('[role="tablist"]')).toBeNull();
+    const region = host.querySelector<HTMLElement>('[role="region"]')!;
+    expect(region.getAttribute('aria-label')).toBe('Linux/WSL · gcc 13 · gdb: terminal output');
+    expect(region.tabIndex).toBe(0);
+    expect(region.textContent).toContain(run('gdb', 'linux-gcc', 1).stdout);
   });
 
   it('draws placeholders as placeholders and explains each kind it shows', () => {
@@ -39,7 +52,7 @@ describe('<Transcript>', () => {
     expect(marked).toContain('<pid>');
     expect(marked).toContain('<dir>');
     expect([...host.querySelectorAll('dt')].map(d => d.textContent)).toEqual(['<addrN>', '<pid>, ==PID==', '<dir>']);
-    expect(host.querySelector('[data-missing]')!.textContent).toBe('No stored run for Linux/WSL · gcc 13 or macOS · Apple clang.');
+    expect(host.querySelector('[data-pending]')!.textContent).toBe('No stored run for macOS · Apple clang.');
   });
 
   it('moves between platforms with the arrow keys, Home and End, focus following the selection', () => {
@@ -67,7 +80,7 @@ describe('<Transcript>', () => {
   it('puts a second session beside the first (gdb and lldb)', () => {
     render({ session: 'gdb', step: 2, beside: 'lldb', besideStep: 2 });
     expect([...host.querySelectorAll('figure')].map(f => f.getAttribute('data-transcript'))).toEqual(['gdb', 'lldb']);
-    expect(tabs().map(t => t.textContent)).toEqual(['Linux/WSL · gcc 13 · gdb', 'Linux/WSL · clang 22 · lldb']);
+    expect([...host.querySelectorAll('[role="region"]')].map(r => r.getAttribute('aria-label'))).toEqual(['Linux/WSL · gcc 13 · gdb: terminal output', 'Linux/WSL · clang 22 · lldb: terminal output']);
   });
 
   it('says when a session or step is not stored instead of showing nothing', () => {

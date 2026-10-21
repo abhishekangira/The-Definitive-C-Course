@@ -299,6 +299,12 @@ export interface SessionResult {
   dir: string;
   /** Hash of the folder's files, so a stored macOS run can be matched to the current session. */
   hash: string;
+  /**
+   * The platforms the session has steps for (`all` and the platform's group, minus `only:` steps for the other compiler).
+   * One listed here without a run in `runs` is still to come (macOS before the Targets workflow ran, or a stale macOS run);
+   * one not listed never runs, by design (gdb is gcc only).
+   */
+  platforms: SessionPlatform[];
   runs: Partial<Record<SessionPlatform, SessionStepResult[]>>;
 }
 

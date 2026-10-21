@@ -9,15 +9,13 @@ const m97 = JSON.parse(readFileSync(new URL('../../tools/verify/fixtures/generat
 const runs = (id: string) => m97.sessions[id].runs;
 
 describe('transcriptTabs', () => {
-  it('shows each stored platform once, with every step, and names the platforms that stored nothing', () => {
-    const { tabs, missing } = transcriptTabs(m97.sessions['link-undefined']);
+  it('shows each stored platform once, with every step', () => {
+    const { tabs } = transcriptTabs(m97.sessions['link-undefined']);
     expect(tabs.map(t => t.platform)).toEqual(['linux-gcc', 'linux-clang']);
     expect(tabs[0].steps).toBe(runs('link-undefined')['linux-gcc']);
     expect(tabs[1].steps).toBe(runs('link-undefined')['linux-clang']);
     // Its steps are three tools (none, ld, nm), so the label is the platform alone.
     expect(tabs.map(t => t.label)).toEqual(['Linux/WSL · gcc 13', 'Linux/WSL · clang 22']);
-    // No macOS run is stored in the fixture (Targets writes those), so the transcript must say so.
-    expect(missing).toEqual(['macos']);
   });
 
   it('picks the step-th step of each platform and labels the tab with its tool', () => {
@@ -26,15 +24,28 @@ describe('transcriptTabs', () => {
     expect(tabs.map(t => t.label)).toEqual(['Linux/WSL · gcc 13 · ld', 'Linux/WSL · clang 22 · ld']);
   });
 
-  it('leaves out a platform the session never ran on (gdb is gcc only), and says so', () => {
-    const { tabs, missing } = transcriptTabs(m97.sessions.gdb, 2);
-    expect(tabs).toEqual([{ platform: 'linux-gcc', label: 'Linux/WSL · gcc 13 · gdb', steps: [runs('gdb')['linux-gcc']![1]] }]);
-    expect(missing).toEqual(['linux-clang', 'macos']);
+  it('pending: a platform the session has steps for but no stored run (macOS before Targets) is reported', () => {
+    expect(m97.sessions['link-undefined'].platforms).toContain('macos');
+    expect(runs('link-undefined').macos).toBeUndefined();
+    expect(transcriptTabs(m97.sessions['link-undefined'], 2)).toMatchObject({ pending: ['macos'], linuxOnly: undefined });
+    // lldb has macOS steps (macOS counts as clang) but only clang steps on Linux: macOS is pending, gcc is not.
+    expect(transcriptTabs(m97.sessions.lldb, 2)).toMatchObject({ pending: ['macos'], linuxOnly: 'On Linux/WSL, lldb runs on the clang 22 build only.' });
+  });
+
+  it('by design: a platform with no steps (gdb is only: gcc, with no macOS group) is not reported as missing', () => {
+    const view = transcriptTabs(m97.sessions.gdb, 2);
+    expect(view).toEqual({
+      tabs: [{ platform: 'linux-gcc', label: 'Linux/WSL · gcc 13 · gdb', steps: [runs('gdb')['linux-gcc']![1]] }],
+      pending: [],
+      linuxOnly: 'On Linux/WSL, gdb runs on the gcc 13 build only.',
+    });
+    // No macOS group and both Linux compilers: nothing missing, nothing to say.
+    expect(transcriptTabs(m97.sessions['valgrind-uninit'])).toMatchObject({ pending: [], linuxOnly: undefined });
   });
 
   it('has no tab for a step that no platform stored', () => {
     const n = runs('gdb')['linux-gcc']!.length;
-    expect(transcriptTabs(m97.sessions.gdb, n + 1)).toEqual({ tabs: [], missing: ['linux-gcc', 'linux-clang', 'macos'] });
+    expect(transcriptTabs(m97.sessions.gdb, n + 1)).toEqual({ tabs: [], pending: [], linuxOnly: undefined });
   });
 });
 

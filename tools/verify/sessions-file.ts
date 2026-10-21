@@ -78,7 +78,8 @@ export async function verifySessions(o: {
     const file: SessionsFile = { module: m, generatedBy, sessions: {} };
     const stored = readJson<TargetSessionsFile>(path.join(o.generatedRoot, 'targets', 'macos-arm64-appleclang', `${m}.sessions.json`));
     for (const spec of found.sessions.filter(s => s.module === m)) {
-      const res: SessionResult = { id: spec.id, dir: spec.rel.split('/').slice(2).join('/'), hash: spec.hash, runs: {} };
+      const platforms = (['linux-gcc', 'linux-clang', 'macos'] as const).filter(p => stepsFor(spec, p).length);
+      const res: SessionResult = { id: spec.id, dir: spec.rel.split('/').slice(2).join('/'), hash: spec.hash, platforms, runs: {} };
       for (const [platform, runs] of byPlatform) {
         const r = runs.get(spec.id);
         if (!r) continue;

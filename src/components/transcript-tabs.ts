@@ -18,23 +18,39 @@ export interface TranscriptTab {
   steps: SessionStepResult[];
 }
 
+const COMPILER_OF: Record<SessionPlatform, string> = { 'linux-gcc': 'gcc 13', 'linux-clang': 'clang 22', macos: 'Apple clang' };
+
+export interface TranscriptView {
+  tabs: TranscriptTab[];
+  /** Platforms the session has steps for but no stored run yet (macOS before the Targets workflow, or a stale run). */
+  pending: SessionPlatform[];
+  /** Said instead when Linux runs it with one compiler on purpose (`only:`), e.g. "On Linux/WSL, gdb runs on the gcc 13 build only." */
+  linuxOnly?: string;
+}
+
 /**
  * The tabs for a session: every stored step, or only the `step`-th (1-based) of each platform's own list. A platform's
  * list is the session's `all` steps, then its own group, minus steps for the other compiler, so the step number counts
- * in that list. `missing` names the platforms with nothing to show, which the transcript says.
+ * in that list. A platform with no run is `pending` only when the session has steps for it (`platforms`); one without
+ * steps (gdb has no clang or macOS steps) is missing by design, and so is a step past the end of a shorter list.
  */
-export function transcriptTabs(session: SessionResult, step?: number): { tabs: TranscriptTab[]; missing: SessionPlatform[] } {
+export function transcriptTabs(session: SessionResult, step?: number): TranscriptView {
   const tabs: TranscriptTab[] = [];
-  const missing: SessionPlatform[] = [];
+  const pending: SessionPlatform[] = [];
   for (const platform of SESSION_PLATFORMS) {
-    const run = session.runs[platform] ?? [];
+    const run = session.runs[platform];
+    if (!run) { if (session.platforms.includes(platform)) pending.push(platform); continue; }
     const steps = step === undefined ? run : run.slice(step - 1, step);
-    if (!steps.length) { missing.push(platform); continue; }
+    if (!steps.length) continue;
     const tools = [...new Set(steps.map(s => s.as))];
     const tool = tools.length === 1 ? tools[0] : undefined;
     tabs.push({ platform, label: tool ? `${SESSION_PLATFORM_LABEL[platform]} · ${tool}` : SESSION_PLATFORM_LABEL[platform], steps });
   }
-  return { tabs, missing };
+  const linux = session.platforms.filter(p => p !== 'macos');
+  const tab = tabs.find(t => t.platform === linux[0]);
+  const tool = tab && new Set(tab.steps.map(s => s.as)).size === 1 ? tab.steps[0].as : undefined;
+  const linuxOnly = linux.length === 1 && tab ? `On Linux/WSL, ${tool ?? 'this session'} runs on the ${COMPILER_OF[linux[0]]} build only.` : undefined;
+  return { tabs, pending, linuxOnly };
 }
 
 export type PlaceholderKind = 'addr' | 'pid' | 'dir' | 'tmp' | 'id';

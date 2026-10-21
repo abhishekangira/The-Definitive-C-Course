@@ -39,8 +39,8 @@ function TranscriptPane({ file, id, step }: { file: SessionsFile | null; id: str
   const result = file?.sessions[id];
   if (!result) return <p className={ix.warn} role="alert">The output of session <code>{id}</code> hasn't been generated yet (run <code>npm run verify</code>).</p>;
   if (step !== undefined && !(Number.isInteger(step) && step > 0)) return <p className={ix.warn} role="alert">Transcript <code>{id}</code>: <code>step</code> must be a whole number from 1.</p>;
-  const { tabs, missing } = transcriptTabs(result, step);
-  if (!tabs.length) return <p className={ix.warn} role="alert">Session <code>{id}</code> stored no step {step}.</p>;
+  const { tabs, pending, linuxOnly } = transcriptTabs(result, step);
+  if (!tabs.length) return <p className={ix.warn} role="alert">Session <code>{id}</code> stored no step {step}{pending.length ? ` (no stored run for ${pending.map(p => SESSION_PLATFORM_LABEL[p]).join(' or ')})` : ''}.</p>;
   const sel = Math.min(selected, tabs.length - 1);
   const current = tabs[sel];
   const kinds = placeholderKinds(current.steps);
@@ -55,21 +55,31 @@ function TranscriptPane({ file, id, step }: { file: SessionsFile | null; id: str
     tabRefs.current[next]?.focus();
   };
 
+  const steps = current.steps.map((s, i) => <Step key={i} s={s} />);
   return (
     <figure className={styles.transcript} data-transcript={id}>
-      <figcaption className={ix.kicker}>Terminal output, recorded by running these commands{step !== undefined ? ` (step ${step})` : ''}</figcaption>
-      <div role="tablist" className={ix.tabs} aria-label={`Platform for ${id}`} onKeyDown={onKeyDown}>
-        {tabs.map((t, i) => (
-          <button
-            key={t.platform} ref={el => { tabRefs.current[i] = el; }} type="button" role="tab" id={`${name}-tab-${i}`} aria-controls={`${name}-panel`}
-            aria-selected={i === sel} tabIndex={i === sel ? 0 : -1} className={ix.tab} data-platform={t.platform} onClick={() => setSelected(i)}
-          >{t.label}</button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`${name}-panel`} aria-labelledby={`${name}-tab-${sel}`} tabIndex={0} className={styles.screen}>
-        {current.steps.map((s, i) => <Step key={i} s={s} />)}
-      </div>
-      {missing.length > 0 && <p className={styles.note} data-missing={missing.join(' ')}>No stored run for {missing.map(p => SESSION_PLATFORM_LABEL[p]).join(' or ')}.</p>}
+      <figcaption className={ix.kicker}>Terminal output, recorded by running these commands</figcaption>
+      {tabs.length === 1 ? (
+        <>
+          <p className={styles.platform}>{current.label}</p>
+          {/* Long lines keep their columns and scroll sideways; the box takes focus so the arrow keys scroll it. */}
+          <div role="region" aria-label={`${current.label}: terminal output`} tabIndex={0} className={styles.screen}>{steps}</div>
+        </>
+      ) : (
+        <>
+          <div role="tablist" className={ix.tabs} aria-label={`Platform for ${id}`} onKeyDown={onKeyDown}>
+            {tabs.map((t, i) => (
+              <button
+                key={t.platform} ref={el => { tabRefs.current[i] = el; }} type="button" role="tab" id={`${name}-tab-${i}`} aria-controls={`${name}-panel`}
+                aria-selected={i === sel} tabIndex={i === sel ? 0 : -1} className={ix.tab} data-platform={t.platform} onClick={() => setSelected(i)}
+              >{t.label}</button>
+            ))}
+          </div>
+          <div role="tabpanel" id={`${name}-panel`} aria-labelledby={`${name}-tab-${sel}`} tabIndex={0} className={styles.screen}>{steps}</div>
+        </>
+      )}
+      {linuxOnly && <p className={styles.note} data-by-design="">{linuxOnly}</p>}
+      {pending.length > 0 && <p className={styles.note} data-pending={pending.join(' ')}>No stored run for {pending.map(p => SESSION_PLATFORM_LABEL[p]).join(' or ')}.</p>}
       {kinds.length > 0 && (
         <dl className={styles.key} aria-label="Placeholders in this output">
           {kinds.map(k => <div key={k}><dt><code>{PLACEHOLDER_HELP[k].token}</code></dt><dd>{PLACEHOLDER_HELP[k].help}</dd></div>)}

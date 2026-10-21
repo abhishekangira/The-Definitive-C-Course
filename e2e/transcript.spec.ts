@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { createServer, type ViteDevServer } from 'vite';
 import { expectAccessible, ROOT } from './lib';
@@ -43,7 +44,7 @@ async function openLesson(page: Page): Promise<void> {
 test.describe('<Transcript> over stored native sessions', () => {
   test.setTimeout(120_000); // the first page load compiles the app on demand
 
-  test('shows the stored output with placeholders marked, and says which platforms have no stored run', async ({ page }) => {
+  test('shows the stored output with placeholders marked, and says no stored run only for a platform that has steps', async ({ page }) => {
     await openLesson(page);
     const link = page.locator('figure[data-transcript="link-undefined"]');
     await expect(link.getByRole('tab')).toHaveText(['Linux/WSL · gcc 13 · ld', 'Linux/WSL · clang 22 · ld']);
@@ -51,7 +52,16 @@ test.describe('<Transcript> over stored native sessions', () => {
     await expect(link.getByText('No stored run for macOS · Apple clang.')).toBeVisible();
     await expect(link.locator('[data-placeholder="dir"]').first()).toHaveText('<dir>');
     const lldb = page.locator('figure[data-transcript="lldb"]');
-    await expect(lldb.getByText('No stored run for Linux/WSL · gcc 13 or macOS · Apple clang.')).toBeVisible();
+    // lldb has macOS steps but only clang steps on Linux: macOS is pending, the gcc build is not missing.
+    await expect(lldb.locator('[data-pending]')).toHaveText('No stored run for macOS · Apple clang.');
+    await expect(lldb.locator('[data-by-design]')).toHaveText('On Linux/WSL, lldb runs on the clang 22 build only.');
+    // gdb is gcc only with no macOS group: one platform, so a plain label instead of a tab bar, and nothing missing.
+    const gdb = page.locator('figure[data-transcript="gdb"]');
+    await expect(gdb.getByRole('tab')).toHaveCount(0);
+    await expect(gdb.getByRole('region', { name: 'Linux/WSL · gcc 13 · gdb: terminal output' })).toBeVisible();
+    await expect(gdb.locator('[data-pending]')).toHaveCount(0);
+    await expect(gdb).not.toContainText('No stored run');
+    await expect(gdb.locator('figcaption')).toHaveText('Terminal output, recorded by running these commands');
     await expect(lldb.locator('[data-placeholder="addr"]').first()).toHaveText('<addr1>');
     await expect(lldb.getByRole('definition').first()).toContainText('the same number is the same address');
   });
@@ -82,5 +92,21 @@ test.describe('<Transcript> over stored native sessions', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     // The output scrolls inside its own box; the page itself must not scroll sideways.
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+
+  test('long lines keep their columns and scroll sideways, by keyboard too, on a phone screen', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openLesson(page);
+    const screen = page.locator('figure[data-transcript="link-undefined"]').getByRole('tabpanel', { name: 'Linux/WSL · gcc 13 · ld' });
+    expect(await screen.evaluate(el => [getComputedStyle(el).whiteSpace, el.scrollWidth > el.clientWidth])).toEqual(['pre', true]);
+    await screen.focus();
+    await expect(screen).toBeFocused();
+    expect(await screen.evaluate(el => el.scrollLeft)).toBe(0);
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(() => screen.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+    // Every output box can be reached with Tab and has a name, so axe's scrollable-region-focusable rule passes on them.
+    const results = await new AxeBuilder({ page: page as unknown as ConstructorParameters<typeof AxeBuilder>[0]['page'] }).include('figure[data-transcript]').withRules(['scrollable-region-focusable']).analyze();
+    expect(results.violations.map(v => v.id)).toEqual([]);
+    expect(results.passes.flatMap(v => v.nodes).length).toBeGreaterThan(0);
   });
 });

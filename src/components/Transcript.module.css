@@ -17,6 +17,7 @@
 .err { color: var(--terminal-err); }
 .label, .exit { display: block; color: var(--terminal-muted); font-family: var(--font-sans); font-size: 12px; }
 .placeholder { color: var(--terminal-in); border-bottom: 1px dashed currentColor; }
+.platform { margin: 0; font-weight: 500; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
 .note { margin: 0; color: var(--text-muted); font-size: 0.875rem; }
 .key { margin: 0; font-size: 0.875rem; color: var(--text-muted); display: grid; gap: 2px; }
 .key div { display: flex; gap: var(--space-2); }
