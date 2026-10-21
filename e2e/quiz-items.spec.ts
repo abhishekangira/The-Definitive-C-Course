@@ -101,8 +101,13 @@ test.describe('QuizRunner sp and session-backed items', () => {
     await page.keyboard.press('Enter');
     await expect(link.getByText('Correct.', { exact: true })).toBeVisible();
 
-    // order: Move up buttons with Enter (arrangeOrder uses only the keyboard).
+    // order: Move up buttons with Enter (arrangeOrder uses only the keyboard). Moving a row to the top disables its
+    // Move up button; focus goes to its Move down button instead of the page.
     const order = box(page, 'q-order-make');
+    const second = (await order.locator('ol > li > span:first-child').allTextContents())[1];
+    await order.getByRole('button', { name: `Move up: ${second}`, exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(order.getByRole('button', { name: `Move down: ${second}`, exact: true })).toBeFocused();
     await arrangeOrder(order, MAKE);
     await order.getByRole('button', { name: 'Submit answer' }).focus();
     await page.keyboard.press('Enter');

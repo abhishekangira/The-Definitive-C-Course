@@ -127,13 +127,15 @@ function QuizItemView({ item, samples, sessions, index, onResult, result, assess
           </fieldset>
         )}
         {item.type === 'order' && (
+          // Keyed by the line, so a moved row keeps its focused button; a move to the end that disables the button hands focus
+          // to the other one, so a keyboard user is not dropped to the top of the page.
           <ol className={styles.orderList}>
             {order.map((o, i) => (
               <li key={o} data-place-right={locked ? String(o === accepted[i]) : undefined}>
                 <span>{locked && <><Mark ok={o === accepted[i]} /><span className="visually-hidden">{o === accepted[i] ? 'Right place: ' : 'Wrong place: '}</span></>}{item.session ? <code>{o}</code> : o}</span>
                 <span>
-                  <button type="button" className="btn btn-sm btn-ghost" disabled={locked || i === 0} aria-label={`Move up: ${o}`} onClick={() => setOrder(x => { const n = [...x]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; })}><Icon name="arrow-up" /></button>
-                  <button type="button" className="btn btn-sm btn-ghost" disabled={locked || i === order.length - 1} aria-label={`Move down: ${o}`} onClick={() => setOrder(x => { const n = [...x]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; return n; })}><Icon name="arrow-down" /></button>
+                  <button type="button" className="btn btn-sm btn-ghost" disabled={locked || i === 0} aria-label={`Move up: ${o}`} onClick={e => { if (i === 1) (e.currentTarget.nextElementSibling as HTMLElement | null)?.focus(); setOrder(x => { const n = [...x]; [n[i - 1], n[i]] = [n[i], n[i - 1]]; return n; }); }}><Icon name="arrow-up" /></button>
+                  <button type="button" className="btn btn-sm btn-ghost" disabled={locked || i === order.length - 1} aria-label={`Move down: ${o}`} onClick={e => { if (i === order.length - 2) (e.currentTarget.previousElementSibling as HTMLElement | null)?.focus(); setOrder(x => { const n = [...x]; [n[i + 1], n[i]] = [n[i], n[i + 1]]; return n; }); }}><Icon name="arrow-down" /></button>
                 </span>
               </li>
             ))}
