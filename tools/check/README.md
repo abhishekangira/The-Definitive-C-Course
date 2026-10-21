@@ -171,13 +171,16 @@ starter, a reference solution, a unit-test harness and a memory check) using gcc
 the solution passes everything and earns the token; the starter fails with explanations and a progress
 code that `verifyCode()` accepts; a leak-only variant fails only the memory check; a syntax error
 skips everything after the compile check; the valgrind fallback (clang-18, no sanitizers), the macOS
-`leaks` path (simulated), make tests, the zips and the generated Makefile are covered too.
+`leaks` path (simulated), make tests, file tests (present, missing, wrong, binary), `--doctor` (this machine,
+`CHECK_PLATFORM=darwin` with and without stand-in macOS commands, `CHECK_NO_SANITIZERS=1`, no compiler), the zips
+and the generated Makefile are covered too.
 
 ## Platforms verified by CI
 
-The `project-runner` job in `.github/workflows/targets.yml` builds the Mario project zip, runs `make test` on the starter
+The `project-runner` job in `.github/workflows/targets.yml` builds the Mario and Credit project zips, runs `make test` on the starter
 (must exit non-zero and print a progress code) and on the `--solution` zip (must exit 0 and print a completion token), and
-checks each code with `verifyCode()`. It runs on pushes to `main` touching these files and on pull requests that do.
+checks each code with `verifyCode()`. Before that, once per runner (in the Mario job), it runs `node check.mjs --doctor`; the
+grading steps don't use its output, but a non-zero exit fails the job, because these runners have a compiler and Node 22. It runs on pushes to `main` touching these files and on pull requests that do.
 
 | Platform | Status |
 |---|---|
@@ -186,4 +189,4 @@ checks each code with `verifyCode()`. It runs on pushes to `main` touching these
 | Linux arm64 (`ubuntu-24.04-arm`, gcc) | `project-runner` |
 | Windows | **not run**: use WSL Ubuntu 24.04 (the Linux path); native Windows is unsupported and untested |
 
-`project-runner` uses only the Mario project, so the macOS `leaks` path (Mario has no `memory` check) is still only simulated.
+Neither Mario nor Credit has a `memory` check, so the macOS `leaks` path is still only simulated.
