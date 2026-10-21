@@ -30,6 +30,9 @@
             "stdout": ""
           }
         ]
+      },
+      "sources": {
+        "u.c": "#include <stdio.h>\n\nstatic void add_digit(int *sum, int d) { *sum += d; }\n\nint main(void) {\n    int sum;\n    for (int d = 1; d <= 3; d++) add_digit(&sum, d);\n    if (sum == 123456789) puts(\"lucky\");\n    return 0;\n}\n"
       }
     },
     "asan": {
@@ -60,6 +63,9 @@
             "stdout": ""
           }
         ]
+      },
+      "sources": {
+        "main.c": "#include <stdio.h>\n\nint main(void) {\n    int a[4] = {0, 0, 0, 0};\n    for (int i = 0; i <= 4; i++) a[i] = i; /* i == 4 writes past the end */\n    printf(\"%d\\n\", a[0]);\n    return 0;\n}\n"
       }
     },
     "compile-error": {
@@ -88,6 +94,9 @@
             "stdout": ""
           }
         ]
+      },
+      "sources": {
+        "main.c": "#include <stdio.h>\n\nint main(void) {\n    int n = 5;\n    n.digits = 1; /* n is an int, not a struct */\n    printf(\"%d\\n\", n);\n    return 0;\n}\n"
       }
     },
     "gdb": {
@@ -113,6 +122,9 @@
             "stdout": "Breakpoint 1 at 0x11b4: file w.c, line 6.\n\nBreakpoint 1, main () at w.c:6\n6\t        total += n;\n$1 = 3\n5\t    while (scanf(\"%d\", &n) == 1) {\n$2 = 3\n#0  main () at w.c:5\ntotal = 7\n[Inferior 1 (process <pid>) exited normally]\n"
           }
         ]
+      },
+      "sources": {
+        "w.c": "#include <stdio.h>\n\nint main(void) {\n    int n = 0, total = 0;\n    while (scanf(\"%d\", &n) == 1) {\n        total += n;\n    }\n    printf(\"total = %d\\n\", total);\n    return 0;\n}\n"
       }
     },
     "libm": {
@@ -169,6 +181,9 @@
             "stdout": "1.414\n"
           }
         ]
+      },
+      "sources": {
+        "main.c": "#include <math.h>\n#include <stdio.h>\n#include <stdlib.h>\n\nint main(int argc, char **argv) {\n    double x = argc > 1 ? strtod(argv[1], NULL) : 2.0; /* a runtime value, so the call is not folded */\n    printf(\"%.3f\\n\", sqrt(x));\n    return 0;\n}\n"
       }
     },
     "link-multiple": {
@@ -211,6 +226,11 @@
             "stdout": ""
           }
         ]
+      },
+      "sources": {
+        "bump.c": "#include \"count.h\"\n\nvoid bump(void) { count++; }\n",
+        "count.h": "#ifndef COUNT_H\n#define COUNT_H\nint count = 0; /* a definition in a header: every file that includes it defines count */\nvoid bump(void);\n#endif\n",
+        "main.c": "#include <stdio.h>\n#include \"count.h\"\n\nint main(void) {\n    bump();\n    printf(\"%d\\n\", count);\n    return 0;\n}\n"
       }
     },
     "link-order": {
@@ -265,6 +285,11 @@
             "stdout": "42\n"
           }
         ]
+      },
+      "sources": {
+        "a.c": "int b(void);\n\nint a(void) { return b() + 1; }\n",
+        "b.c": "int b(void) { return 41; }\n",
+        "main.c": "#include <stdio.h>\n\nint a(void);\n\nint main(void) {\n    printf(\"%d\\n\", a());\n    return 0;\n}\n"
       }
     },
     "link-undefined": {
@@ -321,6 +346,9 @@
             "stdout": "                 U area\n0000000000000000 T main\n                 U printf\n"
           }
         ]
+      },
+      "sources": {
+        "main.c": "#include <stdio.h>\n\nint area(int w, int h); /* declared, never defined */\n\nint main(void) {\n    printf(\"%d\\n\", area(3, 4));\n    return 0;\n}\n"
       }
     },
     "lldb": {
@@ -347,6 +375,9 @@
             "stdout": "(lldb) target create \"./prog\"\nCurrent executable set to '<dir>/prog' (x86_64).\n(lldb) breakpoint set -f w.c -l 6\nBreakpoint 1: where = prog`main + 52 at w.c:6:18, address = <addr1>\n(lldb) process launch -i in.txt\nProcess <pid> launched: '<dir>/prog' (x86_64)\nProcess <pid> stopped\n* thread #1, name = 'prog', stop reason = breakpoint 1.1\n    frame #0: <addr2> prog`main at w.c:6:18\n   3   \tint main(void) {\n   4   \t    int n = 0, total = 0;\n   5   \t    while (scanf(\"%d\", &n) == 1) {\n-> 6   \t        total += n;\n    \t                 ^\n   7   \t    }\n   8   \t    printf(\"total = %d\\n\", total);\n   9   \t    return 0;\n(lldb) frame variable n\n(int) n = 3\n(lldb) next\nProcess <pid> stopped\n* thread #1, name = 'prog', stop reason = step over\n    frame #0: <addr3> prog`main at w.c:5:5\n   2   \t\n   3   \tint main(void) {\n   4   \t    int n = 0, total = 0;\n-> 5   \t    while (scanf(\"%d\", &n) == 1) {\n    \t    ^\n   6   \t        total += n;\n   7   \t    }\n   8   \t    printf(\"total = %d\\n\", total);\n(lldb) frame variable total\n(int) total = 3\n(lldb) bt\n* thread #1, name = 'prog', stop reason = step over\n  * frame #0: <addr3> prog`main at w.c:5:5\n    frame #1: <addr4> libc.so.6`__libc_start_call_main(main=(prog`main at w.c:3), argc=1, argv=<addr5>) at libc_start_call_main.h:58:16\n    frame #2: <addr6> libc.so.6`__libc_start_main_impl(main=(prog`main at w.c:3), argc=1, argv=<addr5>, init=<unavailable>, fini=<unavailable>, rtld_fini=<unavailable>, stack_end=<addr7>) at libc-start.c:360:3\n    frame #3: <addr8> prog`_start + 37\n(lldb) breakpoint delete -f\nAll breakpoints removed. (1 breakpoint)\n(lldb) continue\ntotal = 7\r\nProcess <pid> resuming\nProcess <pid> exited with status = 0 (0x00000000)\n"
           }
         ]
+      },
+      "sources": {
+        "w.c": "#include <stdio.h>\n\nint main(void) {\n    int n = 0, total = 0;\n    while (scanf(\"%d\", &n) == 1) {\n        total += n;\n    }\n    printf(\"total = %d\\n\", total);\n    return 0;\n}\n"
       }
     },
     "make": {
@@ -419,6 +450,11 @@
             "stdout": ""
           }
         ]
+      },
+      "sources": {
+        "luhn.c": "#include \"luhn.h\"\n\nint luhn_sum(long long n) {\n    int sum = 0;\n    for (int pos = 0; n > 0; pos++, n /= 10) {\n        int d = (int)(n % 10);\n        if (pos % 2) { d *= 2; if (d > 9) d -= 9; }\n        sum += d;\n    }\n    return sum;\n}\n",
+        "luhn.h": "#ifndef LUHN_H\n#define LUHN_H\nint luhn_sum(long long n);\n#endif\n",
+        "main.c": "#include <stdio.h>\n#include \"luhn.h\"\n\nint main(void) {\n    printf(\"%d\\n\", luhn_sum(4003600000000014LL));\n    return 0;\n}\n"
       }
     },
     "ubsan": {
@@ -463,6 +499,9 @@
             "stdout": ""
           }
         ]
+      },
+      "sources": {
+        "main.c": "#include <limits.h>\n#include <stdio.h>\n\nint main(void) {\n    int big = INT_MAX;\n    int next = big + 1; /* signed overflow: undefined behaviour */\n    printf(\"done\\n\");\n    return next == 0;\n}\n"
       }
     },
     "valgrind-leak": {
@@ -505,6 +544,9 @@
             "stdout": ""
           }
         ]
+      },
+      "sources": {
+        "l.c": "#include <stdlib.h>\n\nint main(void) {\n    int *p = malloc(10 * sizeof *p); /* never freed */\n    p[0] = 1;\n    return p[0] - 1;\n}\n"
       }
     },
     "valgrind-uninit": {
@@ -546,6 +588,9 @@
             "stdout": ""
           }
         ]
+      },
+      "sources": {
+        "u.c": "#include <stdio.h>\n\nstatic void add_digit(int *sum, int d) { *sum += d; }\n\nint main(void) {\n    int sum;\n    for (int d = 1; d <= 3; d++) add_digit(&sum, d);\n    if (sum == 123456789) puts(\"lucky\");\n    return 0;\n}\n"
       }
     }
   }
