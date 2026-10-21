@@ -14,7 +14,7 @@ import remarkGfm from 'remark-gfm';
 import { visit } from 'unist-util-visit';
 import type { Code, Root, RootContent } from 'mdast';
 import { countWords, groupCards, INTERACTIONS, MEDIA, NEUTRAL } from '../../src/content-model/cards';
-import type { SampleMeta, SessionsFile } from '../../src/content-model/types';
+import type { SampleMeta, SessionResult, SessionsFile } from '../../src/content-model/types';
 import { transcriptTabs } from '../../src/components/transcript-tabs';
 import { isLinkerReport } from '../../src/interactions/report-questions';
 import { floatDrillBits, floatFromBits, hasExactDecimal } from '../../src/visualizers/numbers';
@@ -257,14 +257,19 @@ function checkSampleSource(node: JsxNode, el: string, mod: ModuleCtx, site: Site
   }
 }
 
-const STAGES = ['preprocess', 'compile', 'assemble', 'link', 'run'];
+export const STAGES = ['preprocess', 'compile', 'assemble', 'link', 'run'];
 const FIX_CHECKS = [false, 'compile', 'ubsan', 'leak'];
 
 const sessionFiles = new Map<string, SessionsFile | null>();
-function storedSessions(site: SiteCtx, module: string): SessionsFile | null {
+export function storedSessions(site: SiteCtx, module: string): SessionsFile | null {
   const file = path.join(site.sessionsRoot, `${module}.json`);
   if (!sessionFiles.has(file)) sessionFiles.set(file, existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) as SessionsFile : null);
   return sessionFiles.get(file)!;
+}
+
+/** stage="link" must be about a linker's report: the platforms whose stored report at `step` is not a linker's. */
+export function notLinkerReports(result: SessionResult, step: number | 'last'): string[] {
+  return transcriptTabs(result, step).tabs.filter(t => !isLinkerReport(t.steps)).map(t => t.platform);
 }
 
 function checkCompilerError(node: JsxNode, r: FileReporter, mod: ModuleCtx, site: SiteCtx): void {
@@ -291,8 +296,8 @@ function checkCompilerError(node: JsxNode, r: FileReporter, mod: ModuleCtx, site
     const step = attr(node, 'step');
     const result = typeof id === 'string' ? storedSessions(site, mod.id)?.sessions[id] : undefined;
     if (stage.value === 'link' && result && step.value !== UNKNOWN) {
-      const notLinker = transcriptTabs(result, step.present ? Number(step.value) : 'last').tabs.filter(t => !isLinkerReport(t.steps));
-      if (notLinker.length) r.error(at, 'interaction-props', `<CompilerError session="${String(id)}"> has stage="link", but the stored ${notLinker.map(t => t.platform).join(' and ')} report${step.present ? ` at step ${String(step.value)}` : ''} is not a linker's (no "undefined reference", "multiple definition" or "ld returned"): pick the step that links, or the stage that failed`);
+      const notLinker = notLinkerReports(result, step.present ? Number(step.value) : 'last');
+      if (notLinker.length) r.error(at, 'interaction-props', `<CompilerError session="${String(id)}"> has stage="link", but the stored ${notLinker.join(' and ')} report${step.present ? ` at step ${String(step.value)}` : ''} is not a linker's (no "undefined reference", "multiple definition" or "ld returned"): pick the step that links, or the stage that failed`);
     }
     return;
   }
