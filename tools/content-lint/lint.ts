@@ -21,6 +21,7 @@ export interface LintOptions {
   videosFile?: string;
   publicRoot?: string;
   animationsRoot?: string;
+  sessionsRoot?: string;
   /** Only report this module (id "m01" or directory name). Cross-module checks still look at everything. */
   module?: string;
 }
@@ -102,6 +103,7 @@ export function lintContent(o: LintOptions): LintResult {
     publicRoot: path.resolve(o.publicRoot ?? path.join(siteRoot, 'public')),
     animationsRoot: path.resolve(o.animationsRoot ?? path.join(siteRoot, 'animations')),
     videosFile: path.resolve(o.videosFile ?? path.join(siteRoot, 'videos.json')),
+    sessionsRoot: path.resolve(o.sessionsRoot ?? path.join(siteRoot, 'src', 'generated', 'sessions')),
     videos: null,
     course: null,
     modules: [],

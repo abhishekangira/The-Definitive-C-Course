@@ -36,7 +36,12 @@ interface Props {
 }
 
 /** The program and the line a message points at, from a nested fence (wasm32's first diagnostic) or a session report. */
-interface Source { file: string; code: string; files: Record<string, string>; stdin: string; line?: number; report: ReactNode; lineHelp: string }
+interface Source {
+  file: string; code: string; files: Record<string, string>; stdin: string;
+  /** The right answers to "which line?": every stored platform's first user frame in `file` (they normally agree). */
+  lines: number[];
+  report: ReactNode; lineHelp: string;
+}
 
 /**
  * Sample mode wraps one or two ```c fences: the broken program (expect=compile-error|warning) and, optionally, a fixed
@@ -78,13 +83,17 @@ export function CompilerError(props: Props) {
     if (!result) return warn(<>The report of session <code>{session}</code> hasn't been generated yet (run <code>npm run verify</code>).</>);
     const tabs = transcriptTabs(result, step).tabs;
     if (!tabs.length) return <TranscriptPane file={sessions} id={session} step={step} />; // says what is missing
-    const frame = firstUserFrame(tabs[Math.min(platform, tabs.length - 1)]?.steps ?? [], result.sources);
+    // Graded against every platform's report, not just the tab on screen, so switching tabs never turns a right answer
+    // wrong (verify's `bug:` check keeps the Linux reports on one line).
+    const frames = tabs.map(t => firstUserFrame(t.steps, result.sources));
+    const frame = frames[Math.min(platform, tabs.length - 1)] ?? frames.find(f => f);
     const cFiles = Object.keys(result.sources).filter(f => f.endsWith('.c'));
     const file = frame?.file ?? cFiles[0];
     if (stage !== 'link' && !frame) return warn(<>The report of session <code>{session}</code> names no line of its own files, so it can&apos;t ask which line: add <code>stage=&quot;link&quot;</code> or pick another <code>step</code>.</>);
     if (fixCheck && cFiles.length !== 1) return warn(<>The browser can only check a fix to a session with one <code>.c</code> file; give <code>{session}</code> <code>fix={'{false}'}</code>.</>);
     src = {
-      file, code: result.sources[file] ?? '', files: result.sources, stdin: '', line: frame?.line,
+      file, code: result.sources[file] ?? '', files: result.sources, stdin: '',
+      lines: [...new Set(frames.filter(f => f?.file === file).map(f => f!.line))],
       report: <TranscriptPane file={sessions} id={session} step={step} selected={platform} onSelect={setPlatform} />,
       lineHelp: `Look for the first line of the report that names your file, ${file}, with a line number after it.`,
     };
@@ -94,7 +103,7 @@ export function CompilerError(props: Props) {
     const tabs = COMPILER_TABS.filter(t => sample.results[t]);
     src = {
       file: 'main.c', code: sampleRef.code, files: {}, stdin: sampleRef.meta.stdin ?? '',
-      line: (sample.results['wasm32-clang22']?.compile.diagnostics ?? []).find(d => d.severity !== 'note')?.line,
+      lines: [(sample.results['wasm32-clang22']?.compile.diagnostics ?? []).find(d => d.severity !== 'note')?.line].filter((l): l is number => l !== undefined),
       report: (
         <>
           <div role="tablist" className={styles.tabs} aria-label="Compiler">
@@ -112,7 +121,7 @@ export function CompilerError(props: Props) {
   const fixedOutput = fixedSample && fixedSample.meta.expect !== 'ub' ? fixedSample.answer.stdout : undefined;
   const asksLine = stage !== 'link';
   const lines = src.code.split('\n');
-  const lineRight = src.line !== undefined && lineGuess === src.line;
+  const lineRight = lineGuess !== null && src.lines.includes(lineGuess);
   const stageRight = stage === undefined || stagePicked === stage;
   const allRight = picked === answer && stageRight;
   const code = source ?? src.code;

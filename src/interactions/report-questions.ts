@@ -24,6 +24,13 @@ export function firstUserFrame(steps: SessionStepResult[], sources: Record<strin
   return undefined;
 }
 
+// What a linker says when it stops the build: GNU ld and lld (undefined reference, multiple definition, "ld returned"),
+// Apple ld (Undefined symbols, duplicate symbol) and the clang driver's summary line.
+const LINKER_TEXT = /undefined reference to|multiple definition of|ld returned \d+ exit status|Undefined symbols for architecture|duplicate symbol|linker command failed/;
+
+/** True when a report is a linker's: what `stage="link"` claims, checked by content-lint against the stored report. */
+export const isLinkerReport = (steps: SessionStepResult[]): boolean => steps.some(s => LINKER_TEXT.test(s.stderr) || LINKER_TEXT.test(s.stdout));
+
 /**
  * How the browser checks a fix: it compiles with no errors or warnings (`compile`), and also runs to the end under the
  * guardrail UBSan runtime (`ubsan`) or with no leak reported by leakcheck (`leak`). Anything else cannot be checked in

@@ -469,6 +469,17 @@ describe('component props', () => {
     expect(errorsOf(lintGoodWith(ce('stage="linking" fix={false}')).result, 'interaction-props')[0].message).toContain('`stage` must be one of preprocess, compile, assemble, link, run');
   });
 
+  it('checks stage="link" against the stored report: it must be a linker\'s', () => {
+    // tools/verify's real output for the m97 fixture sessions, stored as this fixture module's sessions file.
+    const stored = { 'src/generated/sessions/m01.json': readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/generated/sessions/m97.json'), 'utf8') };
+    const ce = (props: string) => ({ ...stored, [lesson]: sub(/<Choice\n {2}question="What does `return 0;`[\s\S]*?\/>/, `<CompilerError ${props} question="Q" options={["a", "b"]} answer={0} explain="x" fix={false} />`) });
+    expect(lintGoodWith(ce('session="link-undefined" step={2} stage="link"')).result.messages).toEqual([]);
+    expect(lintGoodWith(ce('session="link-multiple" stage="link"')).result.messages).toEqual([]);
+    // An ASan report, and link-undefined's first step (the compile, which succeeds), are not a linker's.
+    expect(errorsOf(lintGoodWith(ce('session="asan" stage="link"')).result, 'interaction-props')[0].message).toContain('the stored linux-gcc and linux-clang report is not a linker\'s');
+    expect(errorsOf(lintGoodWith(ce('session="link-undefined" step={1} stage="link"')).result, 'interaction-props')[0].message).toContain('at step 1 is not a linker\'s');
+  });
+
   it('does not judge props it cannot evaluate, or elements that spread props', () => {
     expect(lintGoodWith(choice('question={q} options={opts} answer={n} explain={e}')).result.messages).toEqual([]);
     expect(lintGoodWith(choice('{...props}')).result.messages).toEqual([]);

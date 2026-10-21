@@ -41,6 +41,8 @@ export interface SiteCtx {
   publicRoot: string;
   animationsRoot: string;
   videosFile: string;
+  /** src/generated/sessions: tools/verify's stored native reports, which `<CompilerError session stage="link">` is checked against. */
+  sessionsRoot: string;
   /** null when videos.json is missing or unreadable. */
   videos: Map<string, VideoEntry> | null;
   course: CourseManifest | null;

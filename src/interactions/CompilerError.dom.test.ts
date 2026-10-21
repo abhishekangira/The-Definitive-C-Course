@@ -62,6 +62,24 @@ describe('<CompilerError session>', () => {
     expect(lineFeedback()!.getAttribute('data-line-right')).toBe('true');
   });
 
+  it('line: a line any platform\'s report names is right, whichever tab is on screen', () => {
+    // Two real reports that disagree: ASan's gcc run (main.c:5) and UBSan's clang run (main.c:6), over ASan's main.c.
+    const asan = m97.sessions.asan;
+    m97.sessions['asan-ubsan'] = { ...asan, id: 'asan-ubsan', runs: { 'linux-gcc': asan.runs['linux-gcc'], 'linux-clang': m97.sessions.ubsan.runs['linux-clang'] } };
+    try {
+      render({ session: 'asan-ubsan', fix: false });
+      const pick = (n: number) => click(host.querySelector(`label[data-line="${n}"] input`));
+      pick(bug('ubsan').line); // clang's frame, while the gcc tab is on screen
+      expect(lineFeedback()!.getAttribute('data-line-right')).toBe('true');
+      click(host.querySelectorAll('[role="tab"]')[1]);
+      expect(lineFeedback()!.getAttribute('data-line-right')).toBe('true');
+      pick(bug('asan').line); // gcc's frame, while the clang tab is on screen
+      expect(lineFeedback()!.getAttribute('data-line-right')).toBe('true');
+      pick(bug('asan').line - 1);
+      expect(lineFeedback()!.getAttribute('data-line-right')).toBe('false');
+    } finally { delete m97.sessions['asan-ubsan']; }
+  });
+
   it('kind: a wrong option is marked wrong and the card is still done (no fix step)', () => {
     render({ session: 'asan', fix: false });
     click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));

@@ -14,7 +14,9 @@ import remarkGfm from 'remark-gfm';
 import { visit } from 'unist-util-visit';
 import type { Code, Root, RootContent } from 'mdast';
 import { countWords, groupCards, INTERACTIONS, MEDIA, NEUTRAL } from '../../src/content-model/cards';
-import type { SampleMeta } from '../../src/content-model/types';
+import type { SampleMeta, SessionsFile } from '../../src/content-model/types';
+import { transcriptTabs } from '../../src/components/transcript-tabs';
+import { isLinkerReport } from '../../src/interactions/report-questions';
 import { floatDrillBits, floatFromBits, hasExactDecimal } from '../../src/visualizers/numbers';
 import { lowerCodeFence } from '../mdx/remark-course';
 import { parseFenceMeta } from '../verify/meta';
@@ -258,7 +260,14 @@ function checkSampleSource(node: JsxNode, el: string, mod: ModuleCtx, site: Site
 const STAGES = ['preprocess', 'compile', 'assemble', 'link', 'run'];
 const FIX_CHECKS = [false, 'compile', 'ubsan', 'leak'];
 
-function checkCompilerError(node: JsxNode, r: FileReporter): void {
+const sessionFiles = new Map<string, SessionsFile | null>();
+function storedSessions(site: SiteCtx, module: string): SessionsFile | null {
+  const file = path.join(site.sessionsRoot, `${module}.json`);
+  if (!sessionFiles.has(file)) sessionFiles.set(file, existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) as SessionsFile : null);
+  return sessionFiles.get(file)!;
+}
+
+function checkCompilerError(node: JsxNode, r: FileReporter, mod: ModuleCtx, site: SiteCtx): void {
   const nested = nestedLowered(node).map(n => n.data?.sample as SampleInfo | undefined).filter((s): s is SampleInfo => !!s);
   const at = line(node);
   const stage = attr(node, 'stage');
@@ -277,6 +286,14 @@ function checkCompilerError(node: JsxNode, r: FileReporter): void {
     else if (fix.value !== false && fix.value !== UNKNOWN && nested.length !== 1) r.error(at, 'interaction-props', '<CompilerError session> with a fix needs exactly one nested ```c fence: the fixed version of the session\'s program (predict=none)');
     const bad = nested.find(n => [n.meta.expect, ...Object.values(n.meta.expectBy ?? {})].some(e => e === 'compile-error' || e === 'warning' || e === 'ub') || n.warns);
     if (bad) r.error(bad.line, 'interaction-props', `the nested fence of <CompilerError session> ("${bad.meta.id}") is the fixed version: it must compile cleanly and have defined behaviour`);
+    // stage="link" must be about a linker's report. Checked against the stored output (not generated yet: verify says so).
+    const id = attr(node, 'session').value;
+    const step = attr(node, 'step');
+    const result = typeof id === 'string' ? storedSessions(site, mod.id)?.sessions[id] : undefined;
+    if (stage.value === 'link' && result && step.value !== UNKNOWN) {
+      const notLinker = transcriptTabs(result, step.present ? Number(step.value) : 'last').tabs.filter(t => !isLinkerReport(t.steps));
+      if (notLinker.length) r.error(at, 'interaction-props', `<CompilerError session="${String(id)}"> has stage="link", but the stored ${notLinker.map(t => t.platform).join(' and ')} report${step.present ? ` at step ${String(step.value)}` : ''} is not a linker's (no "undefined reference", "multiple definition" or "ld returned"): pick the step that links, or the stage that failed`);
+    }
     return;
   }
   if (nested.length === 0) {
@@ -438,7 +455,7 @@ export function checkLesson(lesson: LoadedLesson, mod: ModuleCtx, site: SiteCtx,
     switch (name) {
       case 'Analogy': checkAnalogy(node, r); break;
       case 'Choice': checkChoiceProps(node, 'Choice', r); break;
-      case 'CompilerError': checkChoiceProps(node, 'CompilerError', r); checkCompilerError(node, r); break;
+      case 'CompilerError': checkChoiceProps(node, 'CompilerError', r); checkCompilerError(node, r, mod, site); break;
       case 'Stepper': checkSampleSource(node, 'Stepper', mod, site, r); break;
       case 'MemoryDiagram': {
         checkSampleSource(node, 'MemoryDiagram', mod, site, r);
