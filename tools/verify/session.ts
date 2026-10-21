@@ -120,7 +120,8 @@ const DROP_LINE = [
  * (keeping the extension), always. A tool step (`tool`, a step with `as:`) also gets PIDs → `<pid>` / `==PID==`, build
  * ids → `<id>`, hex addresses of 5+ digits → `<addrN>` (numbered by first appearance in the step, stdout then stderr,
  * so equal addresses stay equal), bash's `line N: <pid> Abort trap` PID → `<pid>`, and its banner lines that carry versions, dates or PIDs are dropped,
- * as are the macOS `leaks` memory figures and its `Binary Images` map. Shorter hex
+ * as are the macOS `leaks` memory figures and its `Binary Images` map. Apple ld's list of the files that define a
+ * duplicate symbol is sorted. Shorter hex
  * (`0x1f`, a breakpoint offset) and all-zero values are left as they are. A step without `as:` is the program's own
  * output, so `mask = 0xDEADBEEF` or `process 3 items` stays as printed.
  */
@@ -144,7 +145,9 @@ export function normaliseSession(texts: string[], workDirs: string[], o: { tool?
       .replace(/\bBuildId: [0-9a-f]+/g, 'BuildId: <id>') // ASan: the build id hashes the binary, which embeds the work dir
       .replace(/^(bash: line \d+: +)\d+(?= )/gm, '$1<pid>') // bash reporting a signal death: `bash: line 1:  8667 Abort trap: 6`
       // macOS leaks: the load map of every image, with UUIDs that change with each link; it ends at a blank line or the end.
-      .replace(/^Binary Images:\n(?:.+\n?)*/gm, '');
+      .replace(/^Binary Images:\n(?:.+\n?)*/gm, '')
+      // Apple's ld lists the files of a duplicate symbol in either order between runs: sort that list.
+      .replace(/^(duplicate symbol '[^'\n]+' in:\n)((?: {4}\S.*\n)+)/gm, (_m, head: string, files: string) => head + files.split('\n').filter(Boolean).sort().map(l => `${l}\n`).join(''));
     t = t.replace(/\b0x[0-9a-fA-F]{5,}\b/g, h => {
       if (/^0x0+$/.test(h)) return h;
       const key = h.toLowerCase().replace(/^0x0+/, '0x');

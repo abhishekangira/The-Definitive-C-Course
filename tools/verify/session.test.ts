@@ -88,7 +88,8 @@ function contentWith(sessions: Record<string, Record<string, string>>): string {
   return root;
 }
 
-// macOS captures: the stored steps of Targets run 39510251850 (macos-14, Apple clang 15, b9af3bf), as written to its
+// macOS captures: the stored steps of Targets run 39510251850 (macos-14, Apple clang 15, b9af3bf; macos-ld-duplicate.txt:
+// run 39551410511, 7eb7881), as written to its
 // sessions-fixture artifact, so the rules of that commit (<dir>, <addrN>, <pid>, ==PID==) had already run. The second
 // run's lines come from the run's own instability report in the same file.
 describe('normaliseSession on macOS output (Targets run 39510251850)', () => {
@@ -124,6 +125,16 @@ describe('normaliseSession on macOS output (Targets run 39510251850)', () => {
     expect(normaliseSession([swap(raw, [['DACD0D32-8E25-46FE-A60A-472F5E3E7DE8', '929A32F2-FCC2-4506-95FD-7B6CE896E51B']])], [])[0]).toBe(t);
     // It ends at a blank line: what follows stays.
     expect(normaliseSession(['a\nBinary Images:\n  x.dylib\n\nafter\n'], [])[0]).toBe('a\n\nafter\n');
+  });
+
+  it('Apple ld: the files of a duplicate symbol are sorted, so either order agrees (Targets run 39551410511)', () => {
+    const raw = capture('macos-ld-duplicate');
+    expect(raw).toContain("duplicate symbol '_count' in:\n    <dir>/bump.o\n    <dir>/main.o\n");
+    const swapped = raw.replace('    <dir>/bump.o\n    <dir>/main.o\n', '    <dir>/main.o\n    <dir>/bump.o\n');
+    expect(swapped).not.toBe(raw);
+    const t = normaliseSession([raw], [])[0];
+    expect(normaliseSession([swapped], [])[0]).toBe(t);
+    expect(t).toBe("duplicate symbol '_count' in:\n    <dir>/bump.o\n    <dir>/main.o\nld: 1 duplicate symbols\nclang: error: linker command failed with exit code 1 (use -v to see invocation)\n");
   });
 });
 

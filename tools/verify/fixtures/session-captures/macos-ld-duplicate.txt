@@ -1,0 +1,5 @@
+duplicate symbol '_count' in:
+    <dir>/bump.o
+    <dir>/main.o
+ld: 1 duplicate symbols
+clang: error: linker command failed with exit code 1 (use -v to see invocation)
