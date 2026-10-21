@@ -1,4 +1,6 @@
 # A type error: the compile stage fails, so there is no object file to link.
+# The report question grades against this line; verify checks every Linux report points here.
+bug: main.c:5
 steps:
   all:
     - run: $CC $CFLAGS -c main.c

@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import { parse } from 'yaml';
 import { expect, type BrowserContext, type Locator, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import type { ModuleMeta, SampleResult, SamplesFile, TraceFile } from '../src/content-model/types';
+import type { ModuleMeta, SampleResult, SamplesFile, SessionsFile, TraceFile } from '../src/content-model/types';
+import { transcriptTabs } from '../src/components/transcript-tabs';
+import { firstUserFrame } from '../src/interactions/report-questions';
 import { nativeFor, normOutput } from '../src/interactions/platform';
 import { findVar } from '../src/visualizers/trace-format';
 import { correctAnswer } from '../src/interactions/memory-answers';
@@ -19,37 +21,44 @@ export interface QuizItemYaml {
 }
 export interface ModuleInfo {
   id: string;
+  /** The folder that holds content/ and src/generated/: the repo, or a fixture app (e2e/fixtures/sessions). */
+  base: string;
   dir: string;
   /** True for a module course.yaml does not release: the app opens it only through `?preview=<id>` (src/content-runtime/release.ts). */
   preview: boolean;
   meta: ModuleMeta;
   samples: SamplesFile;
+  /** src/generated/sessions/<id>.json (tools/verify's native sessions), or null when the module has none. */
+  sessions: SessionsFile | null;
   lessons: Array<{ stem: string; id: string; title: string }>;
   quiz: (kind: 'retrieval' | 'checkpoint') => QuizItemYaml[];
 }
 
-const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
+const read = (p: string, base = ROOT) => readFileSync(join(base, p), 'utf8');
 
 interface CourseEntry { id: string; dir: string; available: boolean }
-const courseEntries = (): CourseEntry[] => (parse(read('content/course.yaml')) as { modules: CourseEntry[] }).modules;
+const courseEntries = (base = ROOT): CourseEntry[] => (parse(read('content/course.yaml', base)) as { modules: CourseEntry[] }).modules;
 
-function loadModule(m: CourseEntry): ModuleInfo {
+function loadModule(m: CourseEntry, base = ROOT): ModuleInfo {
+  const read2 = (p: string) => read(p, base);
   const dir = `content/modules/${m.dir}`;
-  const meta = parse(read(`${dir}/module.yaml`)) as ModuleMeta;
-  // A draft has no generated samples until its first sample exists.
+  const meta = parse(read2(`${dir}/module.yaml`)) as ModuleMeta;
+  // A draft (or a fixture app with no samples) has no generated samples until its first sample exists.
   const samplesFile = `src/generated/samples/${m.id}.json`;
-  const samples = m.available || existsSync(join(ROOT, samplesFile))
-    ? JSON.parse(read(samplesFile)) as SamplesFile
+  const samples = (m.available && base === ROOT) || existsSync(join(base, samplesFile))
+    ? JSON.parse(read2(samplesFile)) as SamplesFile
     : { module: m.id, generatedBy: '', samples: {} } satisfies SamplesFile;
+  const sessionsFile = `src/generated/sessions/${m.id}.json`;
+  const sessions = existsSync(join(base, sessionsFile)) ? JSON.parse(read2(sessionsFile)) as SessionsFile : null;
   const lessons = meta.lessons.map(stem => {
-    const fm = parse(read(`${dir}/lessons/${stem}.mdx`).split(/^---$/m)[1]) as { id: string; title: string };
+    const fm = parse(read2(`${dir}/lessons/${stem}.mdx`).split(/^---$/m)[1]) as { id: string; title: string };
     return { stem, id: fm.id, title: fm.title };
   });
   const quiz = (kind: 'retrieval' | 'checkpoint') => {
     const p = `${dir}/quizzes/${kind}.yaml`;
-    return existsSync(join(ROOT, p)) ? (parse(read(p)) as QuizItemYaml[]) : [];
+    return existsSync(join(base, p)) ? (parse(read2(p)) as QuizItemYaml[]) : [];
   };
-  return { id: m.id, dir, preview: !m.available, meta, samples, lessons, quiz };
+  return { id: m.id, base, dir, preview: !m.available, meta, samples, sessions, lessons, quiz };
 }
 
 /** Ids of the modules course.yaml does not release (`available: false`), whether or not they have a folder yet. */
@@ -57,7 +66,7 @@ export const unreleasedModuleIds = (): string[] => courseEntries().filter(m => !
 
 /** The released modules (course.yaml `available: true`). */
 export function availableModules(): ModuleInfo[] {
-  return courseEntries().filter(m => m.available).map(loadModule);
+  return courseEntries().filter(m => m.available).map(m => loadModule(m));
 }
 
 /**
@@ -69,6 +78,13 @@ export function clickThroughModules(only: string | undefined = process.env.E2E_M
   const entry = courseEntries().find(m => m.id === only);
   if (!entry || !existsSync(join(ROOT, 'content', 'modules', entry.dir, 'module.yaml'))) throw new Error(`E2E_MODULE=${only} matches no module with a content/modules/<dir>/module.yaml`);
   return [loadModule(entry)];
+}
+
+/** A module of a fixture app (a folder with its own content/course.yaml and src/generated/, such as e2e/fixtures/sessions). */
+export function fixtureModule(base: string, id: string): ModuleInfo {
+  const entry = courseEntries(base).find(m => m.id === id);
+  if (!entry) throw new Error(`${base}/content/course.yaml has no module ${id}`);
+  return loadModule(entry, base);
 }
 
 /** The base URL that opens a draft: the app's own address plus `?preview=<id>`, which relative `goto('#/…')` calls keep. */
@@ -176,7 +192,55 @@ export async function completeChoice(box: Locator): Promise<void> {
   await answerAuthoredChoice(box, 'Check');
 }
 
+/** The code of a fence by id: its generated sample, or (in a fixture app with no samples file) the lesson fence itself. */
+function fenceCode(mod: ModuleInfo, id: string): string {
+  const s = mod.samples.samples[id];
+  if (s) return s.code;
+  for (const l of mod.lessons) {
+    const m = new RegExp('^```c id=' + escapeRe(id) + '(?: [^\\n]*)?\\n([\\s\\S]*?)^```$', 'm').exec(read(`${mod.dir}/lessons/${l.stem}.mdx`, mod.base));
+    if (m) return m[1];
+  }
+  throw new Error(`${mod.id}: no fence with id ${id}`);
+}
+
+/**
+ * A CompilerError that reads a stored native report: the line is the report's first user frame in the generated
+ * sessions file (as the app computes it, so a report that names no line of the session's files fails here), and the fix
+ * is the nested fixed fence, checked by the real browser compiler.
+ */
+async function completeSessionCompilerError(page: Page, mod: ModuleInfo, box: Locator, id: string): Promise<void> {
+  const result = mod.sessions?.sessions[id];
+  expect(result, `${mod.id}: session ${id} is in src/generated/sessions/${mod.id}.json`).toBeTruthy();
+  const step = (await box.getAttribute('data-step'))!;
+  const tabs = transcriptTabs(result!, step === 'last' ? 'last' : Number(step)).tabs;
+  const frame = firstUserFrame(tabs[0]?.steps ?? [], result!.sources);
+  if (await box.locator('label[data-line]').count()) {
+    expect(frame, `${id}: the report names a line of the session's files`).toBeTruthy();
+    await expect(box.locator('fieldset legend code').first()).toHaveText(frame!.file);
+    await box.locator(`label[data-line="${frame!.line}"]`).click();
+    await expect(box.locator('[data-line-right="true"]')).toBeVisible();
+  }
+  // The kind and stage answers are authored: pick any option, Check, then pick the ones it marks right.
+  const form = box.locator('form');
+  for (const group of await form.locator('fieldset').all()) await group.locator('input[type=radio]').first().check();
+  await form.getByRole('button', { name: 'Check', exact: true }).click();
+  for (const group of await form.locator('fieldset').all()) await group.locator('[data-correct="true"] input[type=radio]').check();
+  await form.getByRole('button', { name: 'Check', exact: true }).click();
+  await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
+  const fixButton = box.getByRole('button', { name: 'Compile and check' });
+  if (await fixButton.count()) {
+    const fixed = await box.getAttribute('data-fixed');
+    expect(fixed, `${id}: a CompilerError with a fix nests the fixed version`).toBeTruthy();
+    await setEditor(page, box, fenceCode(mod, fixed!));
+    await fixButton.click();
+    await expect(box.getByText(/^\s*Fixed: it compiles cleanly/)).toBeVisible({ timeout: RUN_TIMEOUT });
+    await box.getByRole('button', { name: 'Continue' }).click();
+  }
+}
+
 export async function completeCompilerError(page: Page, mod: ModuleInfo, box: Locator): Promise<void> {
+  const session = await box.getAttribute('data-session');
+  if (session) return completeSessionCompilerError(page, mod, box, session);
   const id = await box.getAttribute('data-sample');
   const s = sample(mod, id);
   const first = s.results['wasm32-clang22']?.compile.diagnostics.find(d => d.severity !== 'note');

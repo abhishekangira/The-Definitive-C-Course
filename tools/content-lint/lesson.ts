@@ -268,10 +268,15 @@ function checkCompilerError(node: JsxNode, r: FileReporter): void {
   if (attr(node, 'session').present) {
     // A stored native report: the browser can check a fix only for plain compile errors, UBSan (its guardrail runtime)
     // and heap leaks (leakcheck), so the author says which, or fix={false} and the next LT carries the fix.
-    if (nested.length) r.error(at, 'interaction-props', '<CompilerError session> reads the session\'s report and source: remove the nested fence');
+    // The program is the session's own; the one nested fence is the fixed version ("Show a fixed version", its verified
+    // output, and the e2e click-through), so a fix the browser checks needs it and fix={false} takes none.
     const fix = attr(node, 'fix');
     if (!fix.present) r.error(at, 'interaction-props', '<CompilerError session> needs `fix`: "compile", "ubsan" or "leak" (how the browser checks the fix), or fix={false} when the browser can\'t check it');
     else if (fix.value !== UNKNOWN && !FIX_CHECKS.includes(fix.value as string | boolean)) r.error(at, 'interaction-props', '<CompilerError session> `fix` must be "compile", "ubsan", "leak" or {false}');
+    else if (fix.value === false && nested.length) r.error(at, 'interaction-props', '<CompilerError session fix={false}> asks for no fix: remove the nested fence');
+    else if (fix.value !== false && fix.value !== UNKNOWN && nested.length !== 1) r.error(at, 'interaction-props', '<CompilerError session> with a fix needs exactly one nested ```c fence: the fixed version of the session\'s program (predict=none)');
+    const bad = nested.find(n => [n.meta.expect, ...Object.values(n.meta.expectBy ?? {})].some(e => e === 'compile-error' || e === 'warning' || e === 'ub') || n.warns);
+    if (bad) r.error(bad.line, 'interaction-props', `the nested fence of <CompilerError session> ("${bad.meta.id}") is the fixed version: it must compile cleanly and have defined behaviour`);
     return;
   }
   if (nested.length === 0) {

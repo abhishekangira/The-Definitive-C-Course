@@ -15,8 +15,37 @@ A function that is declared but never defined:
 
 Signed overflow, reported by UBSan:
 
-<CompilerError session="ubsan" stage="run" fix="ubsan" question="What does UBSan report?" options={["Signed integer overflow", "A division by zero", "A null pointer"]} answer={0} explain="`INT_MAX + 1` cannot be represented in an `int`." />
+<CompilerError session="ubsan" stage="run" fix="ubsan" question="What does UBSan report?" options={["Signed integer overflow", "A division by zero", "A null pointer"]} answer={0} explain="`INT_MAX + 1` cannot be represented in an `int`.">
+
+```c id=m97-ubsan-fixed predict=none
+#include <limits.h>
+#include <stdio.h>
+
+int main(void) {
+    int big = INT_MAX;
+    long long next = (long long)big + 1;
+    printf("done\n");
+    return next == 0;
+}
+```
+
+</CompilerError>
 
 A block that is never freed:
 
-<CompilerError session="valgrind-leak" stage="run" fix="leak" question="What does the report find?" options={["40 bytes that are never freed", "A write past the end of the block", "A double free"]} answer={0} explain="`definitely lost: 40 bytes in 1 blocks`: the `malloc` result is never freed." />
+<CompilerError session="valgrind-leak" stage="run" fix="leak" question="What does the report find?" options={["40 bytes that are never freed", "A write past the end of the block", "A double free"]} answer={0} explain="`definitely lost: 40 bytes in 1 blocks`: the `malloc` result is never freed.">
+
+```c id=m97-leak-fixed predict=none
+#include <stdlib.h>
+
+int main(void) {
+    int *p = malloc(10 * sizeof *p);
+    if (!p) return 1;
+    p[0] = 1;
+    int r = p[0] - 1;
+    free(p);
+    return r;
+}
+```
+
+</CompilerError>

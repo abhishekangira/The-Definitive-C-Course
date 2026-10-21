@@ -305,11 +305,21 @@ export interface SessionResult {
    * one not listed never runs, by design (gdb is gcc only).
    */
   platforms: SessionPlatform[];
-  /** The `.c` and `.h` files of the session folder by name, as committed (a report question shows the lines a report names). */
+  /**
+   * The session folder's `.c` and `.h` files (top level only, sorted by name), each as committed, byte for byte. A report
+   * question (<CompilerError session>) shows the file a report names and grades the learner's line against the report's
+   * first `file:line` that names one of these files; a library frame (`../csu/libc-start.c`) never matches. Other files
+   * (a Makefile, stdin files) are not here. They are part of `hash`, so editing a source makes the stored macOS run stale.
+   */
   sources: Record<string, string>;
   runs: Partial<Record<SessionPlatform, SessionStepResult[]>>;
 }
 
+/**
+ * src/generated/sessions/<module>.json, written by `npm run verify` (tools/verify/sessions-file.ts). Per session: its
+ * `platforms` (which platforms have steps, so a missing run reads as pending or as by design), its `sources` (the C files
+ * a report question shows and grades against) and its `runs`. docs/adr/0005-native-sessions.md has the format.
+ */
 export interface SessionsFile {
   module: string;
   generatedBy: string;

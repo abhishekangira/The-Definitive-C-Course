@@ -6,7 +6,7 @@ import type { Diagnostic, TargetId } from '../content-model/types';
 import { CodeEditor } from '../components/CodeEditor';
 import { DiagnosticsList } from '../components/DiagnosticsList';
 import { Terminal } from '../components/Terminal';
-import { MiniMarkdown } from '../components/MiniMarkdown';
+import { InlineMarkdown, MiniMarkdown } from '../components/MiniMarkdown';
 import { TranscriptPane } from '../components/Transcript';
 import { transcriptTabs } from '../components/transcript-tabs';
 import { useCRun } from '../runtime/useCRun';
@@ -45,7 +45,10 @@ interface Source { file: string; code: string; files: Record<string, string>; st
  */
 export function CompilerError(props: Props) {
   const { children, question, options, answer, explain, session, stage } = props;
-  const [sampleRef, fixedRef] = nestedSamples(children);
+  // Sample mode: the broken program, then the fixed one. Session mode: the program is the session's, so the only fence
+  // is the fixed version (for "Show a fixed version", its verified output, and e2e).
+  const nested = nestedSamples(children);
+  const [sampleRef, fixedRef] = session ? [undefined, nested[0]] : nested;
   const samples = useSamples();
   const sessions = useSessions();
   const markDone = useCardDone();
@@ -63,7 +66,7 @@ export function CompilerError(props: Props) {
   const [fixAttempts, setFixAttempts] = useState(0);
   const [shownFix, setShownFix] = useState(false);
 
-  const sample = sampleRef && !session ? samples?.samples[sampleRef.id] : undefined;
+  const sample = sampleRef ? samples?.samples[sampleRef.id] : undefined;
   const diags: Diagnostic[] = useMemo(() => sample?.results[tab]?.compile.diagnostics ?? [], [sample, tab]);
   const step = props.step === undefined ? 'last' : Number(props.step);
   const fixCheck: FixCheck | null = props.fix === false ? null : props.fix === true || props.fix === undefined ? 'compile' : props.fix;
@@ -105,7 +108,7 @@ export function CompilerError(props: Props) {
   }
 
   // The fixed program's output is only comparable when it is defined: undefined-behaviour output is never stored or checked.
-  const fixedSample = fixedRef && !session ? samples?.samples[fixedRef.id] : undefined;
+  const fixedSample = fixedRef ? samples?.samples[fixedRef.id] : undefined;
   const fixedOutput = fixedSample && fixedSample.meta.expect !== 'ub' ? fixedSample.answer.stdout : undefined;
   const asksLine = stage !== 'link';
   const lines = src.code.split('\n');
@@ -126,7 +129,7 @@ export function CompilerError(props: Props) {
   const ready = picked !== null && (!asksLine || lineGuess !== null) && (stage === undefined || stagePicked !== null);
 
   return (
-    <div className={styles.box} data-interaction="compiler-error" data-sample={session ? undefined : sampleRef?.id} data-session={session}>
+    <div className={styles.box} data-interaction="compiler-error" data-sample={session ? undefined : sampleRef?.id} data-session={session} data-step={session ? String(step) : undefined} data-fixed={fixCheck && fixedRef ? fixedRef.id : undefined}>
       <div className={styles.kicker}>{session ? 'Read the report' : 'Read the compiler'}</div>
       {src.report}
 
@@ -150,7 +153,7 @@ export function CompilerError(props: Props) {
 
       <form className={styles.predict} onSubmit={e => { e.preventDefault(); if (ready) { setSubmitted(true); if (!fixCheck) markDone(); } }}>
         <fieldset className={styles.choices}>
-          <legend><MiniMarkdown text={`${++n}. ${question}`} /></legend>
+          <legend>{++n}. <InlineMarkdown text={question} /></legend>
           {options.map((o, i) => (
             <label key={i} className={`${styles.choice} ${submitted ? (i === answer ? styles.choiceRight : i === picked ? styles.choiceWrong : '') : ''}`} data-correct={submitted ? String(i === answer) : undefined}>
               <input type="radio" name={`${name}-q`} checked={picked === i} onChange={() => setPicked(i)} />

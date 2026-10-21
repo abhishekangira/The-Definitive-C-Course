@@ -1,19 +1,26 @@
 // <CompilerError session="…"> in the real app over the m97 fixture sessions that tools/verify wrote (served by
 // e2e/sessions-fixture.ts): report tabs, a wrong answer marked wrong on each grading path, keyboard use, axe, and the
 // fix checked by the real browser compiler (UBSan guardrail, leakcheck). The expected line is never typed here: it is
-// the source line that each fixture session marks with its only comment (as in src/interactions/report-questions.test.ts).
+// the `bug:` line of each fixture session.yaml, which tools/verify checks against every Linux report.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { parse as parseYaml } from 'yaml';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { SessionsFile } from '../src/content-model/types';
-import { expectAccessible, ROOT, setEditor } from './lib';
+import { completeLesson, expectAccessible, fixtureModule, progressJson, ROOT, setEditor } from './lib';
+
+import { FIXTURE, startSessionsFixture } from './sessions-fixture';
 
 const RUN_TIMEOUT = Number(process.env.E2E_RUN_TIMEOUT ?? 180_000);
-import { startSessionsFixture } from './sessions-fixture';
 
 const m97 = JSON.parse(readFileSync(path.join(ROOT, 'tools/verify/fixtures/generated/sessions/m97.json'), 'utf8')) as SessionsFile;
-const marked = (id: string, file: string) => m97.sessions[id].sources[file].split('\n').findIndex(l => l.includes('/*')) + 1;
+// The oracle: the `bug: <file>:<line>` key in the fixture session's session.yaml, never a comment in the C file.
+const bug = (id: string) => {
+  const doc = parseYaml(readFileSync(path.join(ROOT, 'tools/verify/fixtures/content/modules/m97-sessions/sessions', id, 'session.yaml'), 'utf8')) as { bug: string };
+  const [file, line] = doc.bug.split(':');
+  return { file, line: Number(line) };
+};
 const seed = (stored: boolean) => JSON.stringify({ version: 1, seed: '00e2e00e2e00e2e0', createdAt: '2026-01-01T00:00:00.000Z', settings: { storedOutputMode: stored } });
 
 let fixture: Awaited<ReturnType<typeof startSessionsFixture>>;
@@ -39,7 +46,7 @@ test.describe('<CompilerError session> over stored native reports', () => {
     await expect(asan.getByRole('tab')).toHaveText(['Linux/WSL · gcc 13 · ASan', 'Linux/WSL · clang 22 · ASan']);
     await expect(asan.getByRole('tabpanel')).toContainText('AddressSanitizer: stack-buffer-overflow');
     await expect(asan.locator('[data-pending]')).toHaveText('No stored run for macOS · Apple clang.');
-    const right = marked('asan', 'main.c');
+    const right = bug('asan').line;
     await asan.locator(`label[data-line="${right + 1}"]`).click();
     await expect(asan.locator('[data-line-right]')).toHaveAttribute('data-line-right', 'false');
     await asan.locator(`label[data-line="${right}"]`).click();
@@ -72,9 +79,11 @@ test.describe('<CompilerError session> over stored native reports', () => {
     await expect(asan.getByRole('tabpanel')).toContainText('main.c:5:39');
     await page.keyboard.press('Tab');
     await expect(asan.getByRole('tabpanel')).toBeFocused();
+    await page.keyboard.press('Tab'); // the report's "Wrap lines" toggle
+    await expect(asan.getByRole('button', { name: 'Wrap lines' })).toBeFocused();
     await page.keyboard.press('Tab'); // the first line of the source (a radio group: arrows move and select)
     await expect(asan.getByRole('radio', { name: /^Line 1:/ })).toBeFocused();
-    for (let i = 1; i < marked('asan', 'main.c'); i++) await page.keyboard.press('ArrowDown');
+    for (let i = 1; i < bug('asan').line; i++) await page.keyboard.press('ArrowDown');
     await expect(asan.getByText('Yes: its first frame in your code says so.')).toBeVisible();
     await page.keyboard.press('Tab');
     await expect(kind(asan, 0)).toBeFocused();
@@ -92,7 +101,7 @@ test.describe('<CompilerError session> over stored native reports', () => {
   test('passes axe in light and dark with the answers shown, and fits a phone screen', async ({ page }) => {
     await openReports(page);
     const asan = ce(page, 'asan');
-    await asan.locator(`label[data-line="${marked('asan', 'main.c') + 1}"]`).click();
+    await asan.locator(`label[data-line="${bug('asan').line + 1}"]`).click();
     await kind(asan, 1).check();
     await stage(asan, 'Link').check();
     await asan.getByRole('button', { name: 'Check' }).click();
@@ -111,7 +120,7 @@ test.describe('<CompilerError session> over stored native reports', () => {
     // The lesson shows one card at a time: answer the first two (no fix step) to reach the ones with a fix.
     for (const [id, st] of [['asan', 'Run'], ['link-undefined', 'Link']] as const) {
       const box = ce(page, id);
-      if (id === 'asan') await box.locator(`label[data-line="${marked(id, 'main.c')}"]`).click();
+      if (id === 'asan') await box.locator(`label[data-line="${bug(id).line}"]`).click();
       await kind(box, 0).check();
       await stage(box, st).check();
       await box.getByRole('button', { name: 'Check' }).click();
@@ -122,7 +131,7 @@ test.describe('<CompilerError session> over stored native reports', () => {
       ['valgrind-leak', 'l.c', 'It still leaks', (s: string) => s.replace('return p[0] - 1;', 'int r = p[0] - 1;\n    free(p);\n    return r;'), 'and leaks nothing'],
     ] as const) {
       const box = ce(page, id);
-      await box.locator(`label[data-line="${marked(id, file)}"]`).click();
+      await box.locator(`label[data-line="${bug(id).line}"]`).click();
       await kind(box, 0).check();
       await stage(box, 'Run').check();
       await box.getByRole('button', { name: 'Check' }).click();
@@ -134,5 +143,19 @@ test.describe('<CompilerError session> over stored native reports', () => {
       await expect(box.getByText(`Fixed: it compiles cleanly ${done}.`)).toBeVisible({ timeout: RUN_TIMEOUT });
       await box.getByRole('button', { name: 'Continue' }).click();
     }
+  });
+
+  test('click-through: every fixture lesson completes with answers read from the generated sessions file', async ({ browser }) => {
+    // The same completeLesson as the course click-through (course.spec.ts), so a session CompilerError in real content is
+    // answered the same way: the line from the stored report, the fix from the nested fixed fence.
+    const mod = fixtureModule(FIXTURE, 'm97');
+    const context = await browser.newContext({ baseURL: fixture.url });
+    await context.addInitScript(json => { try { if (!localStorage.getItem('tdcc:v1:progress')) localStorage.setItem('tdcc:v1:progress', json); } catch { /* no storage */ } }, seed(false));
+    const page = await context.newPage();
+    for (const lesson of mod.lessons) {
+      await completeLesson(page, mod, lesson.stem);
+      expect((await progressJson(page)).lessons?.[lesson.id], `${lesson.stem} marked complete`).toBeTruthy();
+    }
+    await context.close();
   });
 });

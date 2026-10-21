@@ -459,7 +459,11 @@ describe('component props', () => {
   it('checks a CompilerError that reads a session report: fix says how the browser checks it, stage is a build stage', () => {
     const ce = (props: string) => ({ [lesson]: sub(/<Choice\n {2}question="What does `return 0;`[\s\S]*?\/>/, `<CompilerError session="asan" question="Q" options={["a", "b"]} answer={0} explain="x" ${props} />`) });
     expect(lintGoodWith(ce('stage="run" fix={false}')).result.messages).toEqual([]);
-    expect(lintGoodWith(ce('fix="leak"')).result.messages).toEqual([]);
+    const withFence = (props: string, meta: string) => ({ [lesson]: sub(/<Choice\n {2}question="What does `return 0;`[\s\S]*?\/>/, `<CompilerError session="asan" question="Q" options={["a", "b"]} answer={0} explain="x" ${props}>\n\n\`\`\`c id=fx-session-fixed ${meta}\n#include <stdio.h>\n\nint main(void) {\n    puts("ok");\n    return 0;\n}\n\`\`\`\n\n</CompilerError>`) });
+    expect(lintGoodWith(withFence('fix="leak"', 'predict=none')).result.messages).toEqual([]);
+    expect(errorsOf(lintGoodWith(ce('fix="leak"')).result, 'interaction-props')[0].message).toContain('needs exactly one nested ```c fence');
+    expect(errorsOf(lintGoodWith(withFence('fix={false}', 'predict=none')).result, 'interaction-props')[0].message).toContain('remove the nested fence');
+    expect(errorsOf(lintGoodWith(withFence('fix="compile"', 'expect=compile-error')).result, 'interaction-props')[0].message).toContain('is the fixed version');
     expect(errorsOf(lintGoodWith(ce('stage="run"')).result, 'interaction-props')[0].message).toContain('needs `fix`');
     expect(errorsOf(lintGoodWith(ce('fix={true}')).result, 'interaction-props')[0].message).toContain('`fix` must be "compile", "ubsan", "leak" or {false}');
     expect(errorsOf(lintGoodWith(ce('stage="linking" fix={false}')).result, 'interaction-props')[0].message).toContain('`stage` must be one of preprocess, compile, assemble, link, run');

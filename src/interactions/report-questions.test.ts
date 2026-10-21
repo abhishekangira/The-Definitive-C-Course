@@ -1,28 +1,34 @@
 // The report questions graded against tools/verify's output for the m97 fixture sessions
-// (tools/verify/fixtures/generated/sessions/m97.json): the expected line is never typed here. Each fixture source marks
-// its bug with the only `/* … */` comment in the file, so the stored report's first user frame must land on that line;
-// a different report (another session's, or a library frame) lands elsewhere and fails.
+// (tools/verify/fixtures/generated/sessions/m97.json): the expected line is never typed here. Each fixture session.yaml
+// names its bug line (`bug: main.c:5`), so the stored report's first user frame must land on that line; a different
+// report (another session's, or a library frame) lands elsewhere and fails.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 import type { SessionsFile } from '../content-model/types';
 import type { RunSummary } from '../runtime/useCRun';
 import { transcriptTabs } from '../components/transcript-tabs';
 import { firstUserFrame, fixProblem, fixRunFlags } from './report-questions';
 
 const m97 = JSON.parse(readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/generated/sessions/m97.json'), 'utf8')) as SessionsFile;
-const marked = (src: string) => src.split('\n').findIndex(l => l.includes('/*')) + 1;
+// The oracle: the `bug: <file>:<line>` key in the fixture session's session.yaml, never a comment in the C file.
+const bug = (id: string) => {
+  const doc = parseYaml(readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/content/modules/m97-sessions/sessions', id, 'session.yaml'), 'utf8')) as { bug: string };
+  const [file, line] = doc.bug.split(':');
+  return { file, line: Number(line) };
+};
 
 describe('firstUserFrame', () => {
   for (const id of ['compile-error', 'asan', 'ubsan', 'valgrind-leak']) {
-    it(`${id}: the stored report's first user frame is the marked line, on every stored platform`, () => {
+    it(`${id}: the stored report's first user frame is session.yaml's bug line, on every stored platform`, () => {
       const s = m97.sessions[id];
       const { tabs } = transcriptTabs(s, 'last');
       expect(tabs.length).toBeGreaterThan(0);
       for (const t of tabs) {
         const frame = firstUserFrame(t.steps, s.sources);
         expect(frame, `${id} on ${t.platform}`).toBeDefined();
-        expect(frame!.line, `${id} on ${t.platform}: ${frame!.file}:${frame!.line}`).toBe(marked(s.sources[frame!.file]));
+        expect(frame, `${id} on ${t.platform}: ${frame!.file}:${frame!.line}`).toEqual(bug(id));
       }
     });
   }
@@ -36,7 +42,7 @@ describe('firstUserFrame', () => {
     const asan = m97.sessions.asan;
     const ubsanSteps = transcriptTabs(m97.sessions.ubsan, 'last').tabs[0].steps;
     const frame = firstUserFrame(ubsanSteps, asan.sources)!;
-    expect(frame.line).not.toBe(marked(asan.sources['main.c']));
+    expect(frame.line).not.toBe(bug('asan').line);
   });
 });
 

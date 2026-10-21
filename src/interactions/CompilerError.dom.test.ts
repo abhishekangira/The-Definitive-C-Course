@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 // <CompilerError session="…"> mounted for real (react-dom + jsdom) on tools/verify's output for the m97 fixture sessions:
 // the report tabs, and a wrong answer marked wrong on each grading path (line, kind, stage, fix). The expected line is
-// never typed here: it is the source line that the fixture marks with its only comment (see report-questions.test.ts).
+// never typed here: it is the `bug:` line of the fixture session.yaml (see report-questions.test.ts).
 // Replaced: the lesson context (to hand it that file), the browser compiler and the code editor.
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { parse as parseYaml } from 'yaml';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionsFile } from '../content-model/types';
 import type { RunRequest, RunSummary } from '../runtime/useCRun';
@@ -29,7 +30,12 @@ type Props = Parameters<typeof CompilerError>[0];
 const base = { question: 'What is wrong?', options: ['A write past the end of an array', 'A leak'], answer: 0 };
 const render = (props: Partial<Props> & { session: string }) => act(() => root.render(createElement(CompilerError, { ...base, ...props } as Props)));
 const click = (el: Element | null) => act(() => { (el as HTMLElement).click(); });
-const marked = (id: string, file: string) => m97.sessions[id].sources[file].split('\n').findIndex(l => l.includes('/*')) + 1;
+// The oracle: the `bug: <file>:<line>` key in the fixture session's session.yaml, never a comment in the C file.
+const bug = (id: string) => {
+  const doc = parseYaml(readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/content/modules/m97-sessions/sessions', id, 'session.yaml'), 'utf8')) as { bug: string };
+  const [file, line] = doc.bug.split(':');
+  return { file, line: Number(line) };
+};
 const lineFeedback = () => host.querySelector('[data-line-right]');
 const check = () => click(host.querySelector('button[type="submit"]'));
 const status = () => host.querySelector('form + [role="status"]')?.textContent;
@@ -45,7 +51,7 @@ describe('<CompilerError session>', () => {
 
   it('line: the first user frame of the stored report is right, any other line is wrong', () => {
     render({ session: 'asan', fix: false });
-    const right = marked('asan', 'main.c');
+    const right = bug('asan').line;
     click(host.querySelector(`label[data-line="${right - 1}"] input`));
     expect(lineFeedback()!.getAttribute('data-line-right')).toBe('false');
     expect(lineFeedback()!.textContent).toContain('Look for the first line of the report that names your file, main.c');
@@ -58,7 +64,7 @@ describe('<CompilerError session>', () => {
 
   it('kind: a wrong option is marked wrong and the card is still done (no fix step)', () => {
     render({ session: 'asan', fix: false });
-    click(host.querySelector(`label[data-line="${marked('asan', 'main.c')}"] input`));
+    click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));
     click(host.querySelectorAll('form input[type="radio"]')[1]);
     check();
     expect(status()).toContain('Not quite.');
@@ -71,7 +77,7 @@ describe('<CompilerError session>', () => {
   it('stage: the right kind with the wrong stage is not correct; a link error asks no line', () => {
     render({ session: 'link-undefined', step: 2, stage: 'link', fix: false, options: ['`area` is never defined', 'A typo'] });
     expect(host.querySelector('[data-line]')).toBeNull();
-    expect([...host.querySelectorAll('legend')].map(l => l.textContent)).toEqual(['What is wrong?', '2. Which stage failed?']); // MiniMarkdown makes "1. …" a list item
+    expect([...host.querySelectorAll('legend')].map(l => l.textContent)).toEqual(['1. What is wrong?', '2. Which stage failed?']);
     expect(host.querySelector('[role="tab"]')!.textContent).toBe('Linux/WSL · gcc 13 · ld');
     click(host.querySelectorAll('form input[type="radio"]')[0]);
     const stage = (s: string) => [...host.querySelectorAll('[data-question="stage"] label')].find(l => l.textContent === s)!.querySelector('input');
@@ -85,7 +91,7 @@ describe('<CompilerError session>', () => {
 
   it('fix: runs the session source under the UBSan guardrail; a run that still reports is not fixed, a clean one is', async () => {
     render({ session: 'ubsan', stage: 'run', fix: 'ubsan', options: ['Signed overflow', 'A leak'] });
-    click(host.querySelector(`label[data-line="${marked('ubsan', 'main.c')}"] input`));
+    click(host.querySelector(`label[data-line="${bug('ubsan').line}"] input`));
     click(host.querySelectorAll('form input[type="radio"]')[0]);
     click([...host.querySelectorAll('[data-question="stage"] input')][4]);
     check();
@@ -100,6 +106,26 @@ describe('<CompilerError session>', () => {
     nextRun = { compile, result: { kind: 'exit', exitCode: 0, ms: 1, wallMs: 1 }, stdout: 'done\n', stderr: '' };
     await act(async () => { fixButton.click(); });
     expect(host.textContent).toContain('Fixed: it compiles cleanly and runs with no undefined behaviour.');
+  });
+
+  it('numbers the questions it shows 1, 2, 3 in plain legend text, never as a list (which read 1, 1, 3)', () => {
+    render({ session: 'asan', stage: 'run', fix: false, question: 'What does `ASan` report?' });
+    const legends = [...host.querySelectorAll('legend')];
+    expect(legends.map(l => l.textContent)).toEqual(['1. Which line of main.c is the report pointing at? Click it.', '2. What does ASan report?', '3. Which stage failed?']);
+    // A list inside a legend restarts at 1 and indents its question unlike the others.
+    expect(host.querySelector('legend ol, legend ul, legend p')).toBeNull();
+    expect(legends[1].querySelector('code')!.textContent).toBe('ASan');
+  });
+
+  it('shows the session source as stored, and the bug line explains nothing (no comment gives the answer away)', () => {
+    for (const id of ['asan', 'ubsan', 'compile-error', 'valgrind-leak']) {
+      const { file, line } = bug(id);
+      render({ session: id, stage: 'run', fix: false });
+      const shown = [...host.querySelectorAll('label[data-line] code')].map(c => c.textContent);
+      const disk = readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/content/modules/m97-sessions/sessions', id, file), 'utf8');
+      expect(shown, `${id}: the displayed ${file} is the file on disk`).toEqual(disk.split('\n').map(l => l || ' '));
+      expect(shown[line - 1], `${id}: ${file}:${line}`).not.toMatch(/\/\*|\/\//);
+    }
   });
 
   it('says on screen when a fix cannot be checked in the browser (more than one .c file)', () => {

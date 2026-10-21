@@ -9,7 +9,7 @@ import path from 'node:path';
 import { createServer } from 'vite';
 import { ROOT } from './lib';
 
-const FIXTURE = path.join(ROOT, 'e2e', 'fixtures', 'sessions');
+export const FIXTURE = path.join(ROOT, 'e2e', 'fixtures', 'sessions');
 
 export async function startSessionsFixture(): Promise<{ url: string; close: () => Promise<void> }> {
   const cacheDir = mkdtempSync(path.join(os.tmpdir(), 'tdcc-e2e-vite-'));
