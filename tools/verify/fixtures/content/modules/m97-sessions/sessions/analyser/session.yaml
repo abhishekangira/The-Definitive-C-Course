@@ -1,0 +1,12 @@
+# The static analysers find the same uninitialised value without running the program.
+steps:
+  linux:
+    - run: $CC $CFLAGS -fanalyzer -c u.c
+      as: gcc -fanalyzer
+      only: gcc
+    - run: $CC --analyze u.c
+      as: clang --analyze
+      only: clang
+  macos:
+    - run: $CC --analyze u.c
+      as: clang --analyze

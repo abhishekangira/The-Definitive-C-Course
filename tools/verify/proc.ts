@@ -10,13 +10,23 @@ export interface ProcResult {
   timedOut: boolean;
 }
 
-export function run(cmd: string, args: string[], o: { cwd?: string; input?: string; env?: NodeJS.ProcessEnv; timeoutMs?: number } = {}): Promise<ProcResult> {
+/**
+ * `group` (POSIX only): run the child as the leader of its own process group, and kill the whole group on timeout and
+ * once the leader exits. Without it a timeout kills only `cmd`, and a grandchild that keeps the pipes open (a shell's
+ * `leaks` or `lldb`) holds off `close`, so the timeout never ends the run (issue #73, Targets run 39498908355).
+ */
+export function run(cmd: string, args: string[], o: { cwd?: string; input?: string; env?: NodeJS.ProcessEnv; timeoutMs?: number; group?: boolean } = {}): Promise<ProcResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { cwd: o.cwd, env: o.env ?? process.env, stdio: ['pipe', 'pipe', 'pipe'] });
+    const group = !!o.group && process.platform !== 'win32';
+    const child = spawn(cmd, args, { cwd: o.cwd, env: o.env ?? process.env, stdio: ['pipe', 'pipe', 'pipe'], detached: group });
     const out: Buffer[] = [];
     const err: Buffer[] = [];
     let timedOut = false;
-    const timer = o.timeoutMs ? setTimeout(() => { timedOut = true; child.kill('SIGKILL'); }, o.timeoutMs) : null;
+    const killGroup = () => { try { process.kill(-child.pid!, 'SIGKILL'); } catch { /* the group is already gone */ } };
+    const timer = o.timeoutMs ? setTimeout(() => { timedOut = true; if (group) killGroup(); else child.kill('SIGKILL'); }, o.timeoutMs) : null;
+    // The leader has exited: anything it left behind in its group (a stray background job) would hold the pipes open.
+    // A process outside the group (one that called setsid) could still hold them, so stop reading after 2 s.
+    if (group) child.on('exit', () => { killGroup(); setTimeout(() => { child.stdout.destroy(); child.stderr.destroy(); }, 2000).unref(); });
     child.stdout.on('data', (b: Buffer) => out.push(b));
     child.stderr.on('data', (b: Buffer) => err.push(b));
     child.on('error', e => { if (timer) clearTimeout(timer); reject(e); });

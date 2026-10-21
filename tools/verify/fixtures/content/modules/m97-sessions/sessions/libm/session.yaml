@@ -1,0 +1,12 @@
+# sqrt lives in libm on Linux. Where -lm goes matters with gcc (observed in issue #73); macOS needs no -lm.
+steps:
+  linux:
+    - run: $CC $CFLAGS main.c -o prog
+      as: ld
+      exit: fail
+    - run: $CC $CFLAGS -lm main.c -o prog
+      as: ld
+      exit: any
+    - run: $CC $CFLAGS main.c -o prog -lm && ./prog 2
+  macos:
+    - run: $CC $CFLAGS main.c -o prog && ./prog 2

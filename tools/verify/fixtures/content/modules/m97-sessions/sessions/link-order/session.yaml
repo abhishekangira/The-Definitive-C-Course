@@ -1,0 +1,15 @@
+# liba needs libb. GNU ld reads libraries left to right, so -lb before -la leaves b undefined.
+steps:
+  all:
+    - run: $CC $CFLAGS -c main.c a.c b.c && ar rcs liba.a a.o && ar rcs libb.a b.o
+  linux:
+    - run: $CC main.o -L. -lb -la -o prog
+      as: ld
+      exit: fail
+    - run: $CC main.o -L. -la -lb -o prog && ./prog
+  macos:
+    # [verify] issue #73: Apple's ld is expected to link both orders.
+    - run: $CC main.o -L. -lb -la -o prog && ./prog
+      as: ld
+      exit: any
+    - run: $CC main.o -L. -la -lb -o prog && ./prog

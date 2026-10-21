@@ -1,5 +1,5 @@
 # Checks every change, and deploys main to GitHub Pages when everything is green.
-# Native toolchain per PLAN.md §2–§3: gcc 13 (Ubuntu 24.04), clang 22 from apt.llvm.org, gdb, valgrind, FFmpeg.
+# Native toolchain per PLAN.md §2–§3: gcc 13 (Ubuntu 24.04), clang 22 and lldb 22 from apt.llvm.org, gdb, valgrind, FFmpeg.
 name: CI
 
 on:
@@ -73,14 +73,16 @@ jobs:
           echo "deb [signed-by=/etc/apt/keyrings/apt.llvm.org.asc] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
             | sudo tee /etc/apt/sources.list.d/llvm-22.list
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-13 clang-22 lld-22 libclang-rt-22-dev gdb valgrind ffmpeg python3
+          # lldb-22: lldb transcripts in native sessions; llvm-22: llvm-symbolizer, so clang's ASan reports name file:line
+          # (tools/verify/session.ts, docs/adr/0005-native-sessions.md).
+          sudo apt-get install -y --no-install-recommends gcc-13 clang-22 lld-22 libclang-rt-22-dev lldb-22 llvm-22 gdb valgrind ffmpeg python3
 
       - name: Log the reference environment
         if: needs.changes.outputs.code == 'true'
         run: |
           echo "ImageOS=$ImageOS ImageVersion=$ImageVersion"
           grep PRETTY_NAME /etc/os-release
-          for c in "gcc-13 --version" "clang-22 --version" "gdb --version" "valgrind --version" "node --version" "ffmpeg -version"; do
+          for c in "gcc-13 --version" "clang-22 --version" "lldb-22 --version" "gdb --version" "valgrind --version" "node --version" "ffmpeg -version"; do
             echo "$c: $($c 2>&1 | head -1)"
           done
 

@@ -1,0 +1,13 @@
+# Build, nothing to do, a header change rebuilds both objects, and a recipe indented with spaces.
+steps:
+  all:
+    - run: make && ./credit
+      as: make
+    - run: make
+      as: make
+    # sleep 1: make 3.81 (macOS) compares whole-second mtimes, so a touch in the build's second would not rebuild.
+    - run: sleep 1 && touch luhn.h && make
+      as: make
+    - run: make -f spaces.mk
+      as: make
+      exit: fail

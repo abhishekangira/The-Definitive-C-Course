@@ -13,6 +13,7 @@ One file per decision that the code alone does not explain: what was decided, th
 | [0002](0002-e2e-workers.md) | Playwright e2e runs on 2 workers in CI and 3 locally |
 | [0003](0003-google-drive-sync.md) | Optional progress sync to the learner's Google Drive app-data folder, with no backend |
 | [0004](0004-unreleased-modules.md) | A module `course.yaml` does not release stays out of the app; `?preview=` opens it, with progress kept apart |
+| [0005](0005-native-sessions.md) | Native sessions (`modules/<mNN>/sessions/<id>/`): real linker, sanitizer, Valgrind, `make`, gdb and lldb output, run twice on Linux gcc and clang, with macOS from Targets |
 
 Template:
 

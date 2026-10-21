@@ -1,0 +1,8 @@
+# An initialised definition in a header, included by two files: a duplicate definition for every linker. (A tentative
+# `int count;` fails on Linux, where -fno-common is the default, but Apple's linker (Xcode 15.4, macos-14) linked it: Targets run 39510251850.)
+steps:
+  all:
+    - run: $CC $CFLAGS -c main.c bump.c
+    - run: $CC main.o bump.o -o prog
+      as: ld
+      exit: fail

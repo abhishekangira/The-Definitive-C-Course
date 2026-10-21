@@ -17,6 +17,7 @@ import { mapLimit } from './proc';
 import { NATIVE_TARGETS, STORED_TARGETS, type SampleRuns, type TargetsFile, type VerifiedSample } from './types';
 import { WasmTarget } from './wasm';
 import { runTraces } from '../trace/run-traces';
+import { targetRunSessions, verifySessions } from './sessions-file';
 
 export interface VerifyOptions {
   contentRoot: string;
@@ -29,6 +30,8 @@ export interface VerifyOptions {
   check?: boolean;
   /** Generate stepper traces for `trace` samples (default true). */
   trace?: boolean;
+  /** Run native sessions (session.ts; default true). */
+  sessions?: boolean;
   log?: (line: string) => void;
 }
 
@@ -240,6 +243,17 @@ export async function verify(o: VerifyOptions): Promise<VerifyReport> {
     report.files.written.push(target);
   }
 
+  // Native sessions (docs/adr/0005-native-sessions.md).
+  if (o.sessions !== false && !o.only) {
+    const sr = await verifySessions({ contentRoot: o.contentRoot, generatedRoot: o.generatedRoot, cacheDir: path.join(o.cacheDir, 'sessions'), workRoot: path.join(scratch, 'sessions'), module: o.module, check: o.check, force: o.force, toolchains, log });
+    report.problems.push(...sr.problems);
+    report.notes.push(...sr.notes);
+    report.files.written.push(...sr.written);
+    report.files.unchanged.push(...sr.unchanged);
+    report.files.stale.push(...sr.stale);
+    for (const [m, text] of Object.entries(sr.outputs)) report.outputs[`sessions:${m}`] = text;
+  }
+
   // Traces.
   if (o.trace !== false && !o.only) {
     const tr = runTraces(samples, { generatedRoot: o.generatedRoot, cacheDir: path.join(o.cacheDir, 'traces'), workDir: path.join(scratch, 'traces'), check: o.check, force: o.force, log });
@@ -277,10 +291,16 @@ export function targetRunsSample(target: TargetId, s: DiscoveredSample): boolean
   return true;
 }
 
-export async function targetRun(o: TargetRunOptions): Promise<{ problems: string[]; written: string[] }> {
+/** Whether `--target-run` fails: on sample problems, and on session problems too with `--strict-sessions`. */
+export const targetRunFails = (r: { problems: string[]; warnings: string[] }, strictSessions: boolean): boolean =>
+  r.problems.length > 0 || (strictSessions && r.warnings.length > 0);
+
+/** `problems` fail the run (sample errors); `warnings` are session problems, kept in `<module>.sessions.json`. */
+export async function targetRun(o: TargetRunOptions): Promise<{ problems: string[]; warnings: string[]; written: string[] }> {
   const log = o.log ?? (() => {});
   const found = discover({ contentRoot: o.contentRoot, module: o.module });
   const problems = [...found.errors];
+  const warnings: string[] = [];
   const scratch = scratchDir();
   const tc = resolveToolchain(o.target, scratch);
   if (tc.warning) log(`WARNING: ${tc.warning}`);
@@ -305,8 +325,8 @@ export async function targetRun(o: TargetRunOptions): Promise<{ problems: string
       problems.push(...runs.errors.map(e => `${s.id}: ${e}`));
       const result = runs.results[o.target];
       if (!result) continue;
-      const warnings = result.compile.diagnostics.filter(d => d.severity === 'warning');
-      if (warnings.length) log(`  note: ${s.id}: ${o.target} warns: ${warnings.map(d => `${d.line}: ${d.message}`).join('; ')}`);
+      const warns = result.compile.diagnostics.filter(d => d.severity === 'warning');
+      if (warns.length) log(`  note: ${s.id}: ${o.target} warns: ${warns.map(d => `${d.line}: ${d.message}`).join('; ')}`);
       file.samples[s.id] = { hash: sampleHash({ code: s.code, stdin: s.meta.stdin, args: s.meta.args, guardrail: s.meta.guardrail }), result };
     }
     const target = path.join(o.outDir, `${m}.json`);
@@ -314,5 +334,13 @@ export async function targetRun(o: TargetRunOptions): Promise<{ problems: string
     written.push(target);
     log(`wrote ${target} (${Object.keys(file.samples).length} samples)`);
   }
-  return { problems, written };
+  // Of the stored targets only macOS runs sessions (its `all` and `macos` steps); Linux x86-64 runs them on every
+  // verify (docs/adr/0005-native-sessions.md). Session problems are warnings here: they are kept in the written file.
+  if (o.target === 'macos-arm64-appleclang') {
+    const sr = await targetRunSessions({ contentRoot: o.contentRoot, outDir: o.outDir, cacheDir: path.join(o.cacheDir, 'sessions'), workRoot: path.join(scratch, 'sessions'), module: o.module, force: o.force, tc, log });
+    for (const w of sr.warnings) log(`${process.env.GITHUB_ACTIONS ? '::warning title=native session::' : 'warning: '}${w.replace(/\n/g, process.env.GITHUB_ACTIONS ? '%0A' : '\n  ')}`);
+    warnings.push(...sr.warnings);
+    written.push(...sr.written);
+  }
+  return { problems, warnings, written };
 }

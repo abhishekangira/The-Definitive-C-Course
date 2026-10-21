@@ -1,0 +1,9 @@
+# UBSan reports and continues by default; -fno-sanitize-recover=all stops at the first report.
+steps:
+  all:
+    - run: $CC $CFLAGS -fsanitize=undefined main.c -o prog && ./prog
+      as: ubsan
+      exit: any
+    - run: $CC $CFLAGS -fsanitize=undefined -fno-sanitize-recover=all main.c -o prog && ./prog
+      as: ubsan
+      exit: fail

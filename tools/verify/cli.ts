@@ -1,10 +1,12 @@
-// npm run verify [-- --module m01] [--force] [--check] [--only <id>] [--no-trace] [--verbose]
-// npm run verify -- --target-run <TargetId|host> --out <dir> [--module m01]
+// npm run verify [-- --module m01] [--force] [--check] [--only <id>] [--no-trace] [--no-sessions] [--verbose]
+// npm run verify -- --target-run <TargetId|host> --out <dir> [--module m01] [--strict-sessions]
 //
 // Build-time sample verification (PLAN §3.1–§3.4). For every C sample in content/ (lesson fences
 // and quiz items) it compiles and runs gcc 13, clang 22 (+ ASan/UBSan) and the browser toolchain
 // in Node, checks `expect`, flags browser-vs-64-bit differences, and writes
 // src/generated/samples/<module>.json; samples with `trace` also get src/generated/traces/<id>.json.
+// Native sessions (modules/<mNN-…>/sessions/<id>/session.yaml) run their shell steps with gcc 13 and clang 22 and
+// write src/generated/sessions/<module>.json (tools/verify/session.ts; --no-sessions skips them).
 //
 //   --module   only that module (its generated file is still complete)
 //   --force    ignore .cache/verify (results are cached per sample by content + toolchain hash)
@@ -15,6 +17,10 @@
 //   --target-run  CI runners (macOS arm64, Linux aarch64, Windows MSVC): native compile+run only,
 //              writes <out>/<module>.json (TargetsFile: per sample {hash, result}). Commit those
 //              under src/generated/targets/<target>/; verify then flags differences against them.
+//              On macOS it also writes <module>.sessions.json. A session problem there is only a warning (the
+//              file records it), so it cannot stop the macOS sample results being committed.
+//   --strict-sessions  with --target-run: a session problem fails the run (exit 1). The Targets fixture-session
+//              step uses it, because that step exists to prove the sessions are stable.
 //
 // Output conventions (see types.ts / normalise.ts for details):
 //   - Only %p output is normalised (<addrN>, <NULL>), located exactly via a marked build.
@@ -29,7 +35,7 @@ import type { TargetId } from '../../src/content-model/types';
 import { ROOT } from '../shared/wasm-node';
 import { hostTarget } from './native';
 import { TARGET_LABEL } from './types';
-import { targetRun, verify, type VerifyReport } from './verify';
+import { targetRun, targetRunFails, verify, type VerifyReport } from './verify';
 
 interface Args {
   module?: string;
@@ -37,7 +43,9 @@ interface Args {
   force: boolean;
   check: boolean;
   trace: boolean;
+  sessions: boolean;
   verbose: boolean;
+  strictSessions: boolean;
   targetRun?: TargetId;
   out?: string;
   contentRoot: string;
@@ -47,14 +55,14 @@ interface Args {
 
 function usage(msg?: string): never {
   if (msg) console.error(`verify: ${msg}`);
-  console.error('usage: tsx tools/verify/cli.ts [--module mNN] [--force] [--check] [--only <id>] [--no-trace] [--verbose]\n' +
-    '       tsx tools/verify/cli.ts --target-run <TargetId|host> --out <dir> [--module mNN] [--force]');
+  console.error('usage: tsx tools/verify/cli.ts [--module mNN] [--force] [--check] [--only <id>] [--no-trace] [--no-sessions] [--verbose]\n' +
+    '       tsx tools/verify/cli.ts --target-run <TargetId|host> --out <dir> [--module mNN] [--force] [--strict-sessions]');
   process.exit(2);
 }
 
 function parseArgs(argv: string[]): Args {
   const a: Args = {
-    force: false, check: false, trace: true, verbose: false,
+    force: false, check: false, trace: true, sessions: true, verbose: false, strictSessions: false,
     contentRoot: path.join(ROOT, 'content'),
     generatedRoot: path.join(ROOT, 'src/generated'),
     cacheDir: path.join(ROOT, '.cache/verify'),
@@ -68,7 +76,9 @@ function parseArgs(argv: string[]): Args {
       case '--force': a.force = true; break;
       case '--check': a.check = true; break;
       case '--no-trace': a.trace = false; break;
+      case '--no-sessions': a.sessions = false; break;
       case '--verbose': case '-v': a.verbose = true; break;
+      case '--strict-sessions': a.strictSessions = true; break;
       case '--target-run': { const t = val(); a.targetRun = (t === 'host' ? hostTarget() : t) as TargetId; break; }
       case '--out': a.out = path.resolve(val()); break;
       case '--content-root': a.contentRoot = path.resolve(val()); break;
@@ -123,11 +133,12 @@ async function main(): Promise<void> {
   if (a.targetRun) {
     const r = await targetRun({ target: a.targetRun, outDir: a.out!, contentRoot: a.contentRoot, cacheDir: path.join(a.cacheDir, 'targets'), module: a.module, force: a.force, log: console.log });
     for (const p of r.problems) console.log(`[FAIL] ${p}`);
-    process.exit(r.problems.length ? 1 : 0);
+    if (r.warnings.length) console.log(`${r.warnings.length} native session problem(s), written into <module>.sessions.json for diagnosis (never merged)${a.strictSessions ? '; --strict-sessions: failing' : '; exit status unaffected'}`);
+    process.exit(targetRunFails(r, a.strictSessions) ? 1 : 0);
   }
   const report = await verify({
     contentRoot: a.contentRoot, generatedRoot: a.generatedRoot, cacheDir: a.cacheDir,
-    module: a.module, only: a.only, force: a.force, check: a.check, trace: a.trace,
+    module: a.module, only: a.only, force: a.force, check: a.check, trace: a.trace, sessions: a.sessions,
     log: a.verbose ? console.log : undefined,
   });
   printReport(report, a, performance.now() - t0);

@@ -1,0 +1,36 @@
+# 0005: Native sessions store real terminal output from tools the browser can't run
+
+Status: Accepted (2026-10-21)
+
+## Context
+Module 3 teaches the linker, sanitizers, Valgrind, `make`, gdb and lldb. None of these runs in the browser toolchain, and a `c` fence holds one file run one way, so `tools/verify` has nowhere to put a multi-file, multi-command example. Issue #73 needs every terminal transcript in the module to be real output (root `AGENTS.md`: never typed by hand), on Linux and on macOS, and stable across runs.
+
+## Decision
+- **A session is a folder** `content/modules/<mNN>/sessions/<id>/` with `session.yaml` and the files its steps use (sources, headers, a Makefile, stdin files). `<id>` is kebab-case and unique across the course, like exercise folder names (`verify` keys results by id).
+- **`session.yaml`** has only `steps`, with up to three lists: `all` (every platform), `linux` and `macos`. A step has `run` (a `bash -c` command), and optionally `as` (a label for the tool, such as `ld` or `lldb`), `stdin`, `exit` (`ok`, the default, needs 0; `fail` needs non-zero; `any` records whatever happens) and `only` (`gcc` or `clang`; macOS counts as clang). Unknown keys are errors.
+- **Platforms.** `npm run verify` runs every session as `linux-gcc` (`CC=gcc`) and `linux-clang` (`CC=clang-22`). The Targets workflow's `--target-run macos-arm64-appleclang` runs it as `macos` (`CC=clang`, Apple's `lldb` and `leaks`).
+- **Environment.** Each run copies the folder into a fresh temporary work dir. It sets `LC_ALL=C`, `LANG=C`, `TERM=dumb`, `GCC_COLORS=`, `DEBUGINFOD_URLS=`, `CC`, `LLDB` and `CFLAGS="-std=c17 -Wall -Wextra -pedantic -g -O0"`. Each step has a 60 s limit and runs as its own process group. The group is killed at the limit and again when the step's shell exits, and after that its output is read for at most 2 s more, so a tool that hangs (or leaves a child behind) ends as a `timed out` problem instead of hanging `verify`. A death by signal N is stored as exit 128+N.
+- **Stability.** Every session runs twice. If a step's normalised stdout, stderr or exit differs between the two runs, or its exit doesn't match `exit`, `npm run verify` reports a problem and fails. A Linux run with problems is not cached. On macOS (`--target-run`), a problem is a warning: it goes into `<module>.sessions.json` next to the steps, so the file is committed for diagnosis, the exit status and the macOS sample results are unaffected, and `verify` never shows that run. The Targets fixture step adds `--strict-sessions`, which makes those problems fail it, because that step exists to prove macOS stability.
+- **Normalisation** (`normaliseSession`, only what changes between runs or machines). Every step: the work dir becomes `<dir>`, and other temporary paths become `<tmpN>`. Only a tool step, one with `as:`, also gets the rest, because a step without `as:` is the program's own output and `mask = 0xDEADBEEF` or `process 3 items` must stay as printed. In a tool step the program's output is mixed in (a gdb or ASan run), so print such values in a separate step without `as:`. The tool-step rules:
+  - Valgrind's `==N==`/`--N--` becomes `==PID==`/`--PID--`, and `Process N`, `LWP N` and `pid N` become `<pid>`;
+  - `BuildId:` values become `<id>`, and the PID in bash's signal-death line (`bash: line 1:  8667 Abort trap: 6`) becomes `<pid>`, only after that `bash: line N:` prefix;
+  - hex values of 5 digits or more become `<addrN>`, numbered by first use within the step (stdout and stderr share the numbering), so equal addresses stay equal; all-zero values stay as they are;
+  - Apple ld's list of the files that define a duplicate symbol (`duplicate symbol '_count' in:`) is sorted, because it comes out in either order between runs;
+  - lines that carry no lesson are dropped: the `libthread_db` lines, Valgrind's banner, the date, version and parent lines of the `leaks` header, its `Physical footprint` lines (memory use differs between runs), and its whole `Binary Images:` block (a load map whose UUIDs change with every link), up to a blank line or the end.
+- **Storage.** Linux results go in `src/generated/sessions/<module>.json` (`SessionsFile` in `src/content-model/types.ts`), with each session's folder hash. macOS results go in `src/generated/targets/macos-arm64-appleclang/<module>.sessions.json`, written by the Targets commit job like the sample outputs. `verify` merges a macOS run into the module file only while its hash matches the folder; when the hash doesn't match, it adds a note asking for a Targets rerun instead of showing old output.
+- Results are cached under `.cache/verify/sessions/<platform>`, keyed by the folder hash, the platform, the tool versions and the environment.
+
+## Options considered
+- **Sessions as code fences in the MDX** (a `session` fence with commands inline). Rejected: a session needs several files (headers, a Makefile, a stdin file), and both the lint and the remark plugin assume one file per fence.
+- **A separate tool next to `tools/verify`** (like `tools/trace`). Rejected: `verify` already owns the native toolchains, the cache, `--check`, the Targets `--target-run` path and the CI regen flow; a second tool would repeat all of them.
+- **Recording Linux transcripts only and describing macOS in prose.** Rejected: issue #73 asks for macOS output wherever the tools differ (`leaks` instead of Valgrind, Apple's `ld`, lldb).
+
+## Evidence
+Fixture module `tools/verify/fixtures/content/modules/m97-sessions` has 13 sessions, one per kind of output: a compiler error; three linker errors (undefined, multiple definition, library order); `-lm`; UBSan; ASan; Valgrind uninitialised and leak; `-fanalyzer` and `clang --analyze`; `make` (build, up to date, rebuild after `touch`, missing separator); gdb; and lldb. On Debian 13 with gcc 13.3, clang 22.1.8, lldb 22.1.8, gdb 16.3 and Valgrind 3.24, all 13 ran on both Linux platforms, twice each, with no problems, in about 4 s. `--check --force` then reported the file up to date. `tools/verify/session.test.ts` normalises raw captures (`tools/verify/fixtures/session-captures/`) from gdb, lldb, Valgrind, ASan and both linkers. The macOS half needs the Targets run; the PR records whether it has run.
+
+## Consequences
+- CI installs `lldb-22` and `llvm-22`. `llvm-22` provides `llvm-symbolizer`, without which clang's ASan reports show `invalid path to external symbolizer` and bare addresses instead of `main.c:N` frames.
+- CI's commit-generated flow (the regen step and `tools/ci/unpack-generated.mjs`) does not yet carry `src/generated/sessions`. The first pull request that adds a session under `content/modules` must add it.
+- On a machine where the debugger can't turn ASLR off (some containers), `lldb process launch` hangs. Set `LLDB22` to a wrapper that runs `lldb-22 -O "settings set target.disable-aslr false"`. GitHub runners don't need it. Don't use `settings set plugin.symbol-locator.debuginfod.server-urls ""`: it made lldb 22 hang on launch; `DEBUGINFOD_URLS=` is enough.
+- gdb shows Linux only and lldb shows clang only, so a lesson can show either debugger on its usual platform.
+- Number: proposed and accepted as 0004 (2026-10-21). #79 merged first with 0003 and #78 then renumbered its record to 0004, so this record became 0005 when PR #80 merged `main`.

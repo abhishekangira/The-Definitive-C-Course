@@ -1,0 +1,5 @@
+# A type error: the compile stage fails, so there is no object file to link.
+steps:
+  all:
+    - run: $CC $CFLAGS -c main.c
+      exit: fail

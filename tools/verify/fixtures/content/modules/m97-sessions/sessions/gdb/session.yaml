@@ -1,0 +1,8 @@
+# gdb in batch mode on the gcc build: a breakpoint inside the loop, stdin from a file, step, print, backtrace.
+steps:
+  linux:
+    - run: $CC $CFLAGS -o prog w.c
+      only: gcc
+    - run: gdb -q -nx -batch -iex 'set debuginfod enabled off' -ex 'break w.c:6' -ex 'run < in.txt' -ex 'print n' -ex next -ex 'print total' -ex bt -ex delete -ex continue ./prog
+      as: gdb
+      only: gcc
