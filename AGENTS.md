@@ -13,7 +13,7 @@ You were told to read this file and given a ticket. Do this, in order:
 7. Write the PR description with the template in **Pull request rules** below. Say plainly what you could not verify; never claim a pass you didn't see.
 8. If the ticket is wrong, ambiguous or blocked, stop and say so (in the PR, or to the person who gave it to you) instead of working around it.
 9. No repository access, or can't run commands (for example a plain chat window)? Say so, return your change as a unified diff plus the exact commands a human should run to check it, and label everything unverified.
-10. **Keeping these notes up to date is the PR author's duty.** Before you open the PR, make sure this file and the `AGENTS.md` (or README) of every folder you touched are still true after your change. Correct any path, command, rule or number your change made wrong, delete a bullet whose bug you fixed, and write down a gotcha or practice that would have saved you time, in the place **Where new knowledge goes** names. Only write down what you observed or verified. **Check the root `README.md` on every PR, whatever folders you touched:** it is the first page a person reads (what the app is, how to run it, where to read next, the licence), so a change to any of those updates it in the same PR.
+10. **Keeping these notes up to date is the PR author's duty.** Before you open the PR, make sure this file and the `AGENTS.md` (or README) of every folder you touched are still true after your change. Correct any path, command, rule or number your change made wrong, delete a bullet whose bug you fixed, and write down a gotcha or practice that would have saved you time, in the place **Where new knowledge goes** names. Only write down what you observed or verified, and check each sentence you add against the code that makes it true. **Check the root `README.md` on every PR, whatever folders you touched:** it is the first page a person reads (what the app is, how to run it, where to read next, the licence), so a change to any of those updates it in the same PR.
 
 ## Ask first
 Stop and ask the owner (in the PR, or the person who gave you the ticket) before you:
@@ -25,10 +25,10 @@ Stop and ask the owner (in the PR, or the person who gave you the ticket) before
 Before you write, split or label a GitHub issue, read `.agents/skills/write-issue/SKILL.md`.
 
 ## Pull request rules (what makes review cheap)
-1. **Small and single-purpose.** One ticket, no unrelated edits (formatting, renames, drive-by fixes). If the diff is over about 400 changed lines (not counting fixtures and generated files), say why or split it.
+1. **Small and single-purpose.** One ticket, no unrelated edits (formatting, renames, drive-by fixes). If the diff is over about 400 changed lines (not counting fixtures and generated files), say why or split it. When a ticket will need splitting, choose the split and post it on the issue before you write code, not after.
 2. **The simplest thing that meets the acceptance criteria.** No speculative features or extra abstractions. If you add a mechanism of more than about 50 lines, say why a simpler one would not do.
 3. **Rebase first.** Rebase on the latest `main` before opening or updating the PR. If another open PR edits the same files, name it in the description and rebase after it merges.
-4. **Tests that can fail.** Every behaviour change has a test that fails without it (say how you checked, for example by reverting the fix). Tests call the real code: never recompute the expected value inside the test, never assert a constant against itself, and type your mocks (`satisfies` or the real type).
+4. **Tests that can fail.** Every behaviour change has a test that fails without it (say how you checked, for example by reverting the fix). Tests call the real code: never recompute the expected value inside the test, never assert a constant against itself, and type your mocks (`satisfies` or the real type). Code that decides pass or fail (grading, gating, an exit code, a CI step) needs a case where it fails: a test with a wrong input, and for CI a linked run that went red. A fix that makes failures impossible to see is a regression.
 5. **Evidence, not narration.** Paste the tail of each command's real output. Use the CI toolchain (Ubuntu 24.04, gcc 13, clang 22, lldb 22, gdb 15, valgrind 3.22, Node 22). If yours differs, say exactly how, and don't call a failure "pre-existing" unless you also ran it on a clean `main`. Once CI is green on `main`, CI is the evidence: link the green run.
 6. **Generated files.** Don't commit regenerated `src/generated/{samples,traces}` files: CI owns them and a bot commit updates your branch when behaviour changes (see **Decisions**). Never commit files that differ only because your toolchain's version strings or UB garbage differ from CI's.
 7. **Post the report on the right PR**, once, in the description or in a single comment that names the PR number and head SHA. Never post a report on another PR.
@@ -37,7 +37,7 @@ Before you write, split or label a GitHub issue, read `.agents/skills/write-issu
 10. **Subscribe to the PR you open.** Right after creating it, watch it for CI results and review comments, and drive it to green and mergeable without waiting to be asked.
 11. **UI changes need screenshots** at desktop (about 1400px) and phone (390px) widths, in the PR description, hosted by GitHub (drag them in) and never committed as files. Add light and dark only when the PR is about colours or themes. If you cannot upload images, say so and give the Playwright command that takes them.
 
-PR description template (under about 300 words):
+PR description template (under about 300 words; run history and long evidence go in one comment on the PR, not here):
 ```
 Closes #N
 Summary: (at most 5 lines)
@@ -58,7 +58,8 @@ Risk: (does it touch learner-facing app code, the generated-data format, or CI/d
 ## Non-negotiables (client spec)
 - **The learner is never passive.** At most ~250 words or one animation/video before an interaction.
 - **Every `id` code fence is predict-before-run.** Run without a prediction is allowed only inside CT/FB editors and inside `<Stepper>`, `<CompilerError>`, `<PipelineExplorer>`, `<MemoryDiagram>`. Every C fence in prose has `id=` or `fragment`.
-- **Every expected output and prediction answer is generated by running code** (`tools/verify`, `tools/exercises`), never typed by hand. This includes `tests.json` expectations: produce them by running the reference solution.
+- **Every expected output and prediction answer is generated by running code** (`tools/verify`, `tools/exercises`), never typed by hand. This includes `tests.json` expectations (produce them by running the reference solution) and test fixtures of tool output: generate them with the tool, and add a test that regenerates the fixture and fails when it differs.
+- **Never invent or relabel tool output.** Show normalised placeholders (`<addrN>`, `<pid>`, `<dir>`) as placeholders, never as realistic values. When a platform's result is missing or stale, say so on screen; never hide it silently or label one platform's output as another's.
 - **UB appears in a prediction only when UB is the lesson.** The question is then categorical (crash? same value every run? what does UBSan/ASan/the compiler report?). The answer is the set of outcomes observed across targets and 3 runs. Garbage values are never asked or shown.
 - **Samples compile cleanly with `-std=c17 -Wall -Wextra -pedantic`** in gcc 13, clang 22 *and* the browser compiler, and run ASan+UBSan-clean natively, unless the lesson deliberately shows an error.
 - **Output differences between the browser (wasm32) and any native target are flagged automatically.** A flagged sample needs `platform` plus `predict64=…` or `predict64=none reason=…`. It shows the browser result and the learner's platform result.
