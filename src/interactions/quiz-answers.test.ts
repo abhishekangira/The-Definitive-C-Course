@@ -5,7 +5,7 @@ import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import type { SessionsFile, TraceFile } from '../content-model/types';
-import { callStack, sameOrder, sessionOrder, spSteps } from './quiz-answers';
+import { callStack, sameOrder, sessionOrder, spStackOptions, spSteps } from './quiz-answers';
 
 const read = (rel: string) => readFileSync(path.join(process.cwd(), rel), 'utf8');
 const m97 = JSON.parse(read('tools/verify/fixtures/generated/sessions/m97.json')) as SessionsFile;
@@ -33,6 +33,31 @@ describe('sp: the line one gdb step later, from the trace', () => {
   it('has no answer after the last step, or for a line that never runs', () => {
     expect(spSteps(trace, trace.steps.at(-1)!.line)).toBeNull();
     expect(spSteps(trace, 1)).toBeNull();
+  });
+});
+
+describe('sp, part 2: the call stack after the step, and two wrong stacks, all from the trace', () => {
+  const line = (text: string) => trace.source.split('\n').findIndex(l => l.includes(text)) + 1;
+  const funcs = (frames: Array<{ func: string; line: number }>) => frames.map(f => `${f.func}:${f.line}`);
+
+  it('at a call: after step (inside the callee), before the step, and after next (the call run to its end)', () => {
+    const options = spStackOptions(trace, line('int result = add(x, y);'))!;
+    expect(Object.fromEntries(options.map(o => [o.key, funcs(o.frames)]))).toEqual({
+      step: [`add:${line('int sum = a + b;')}`, `main:${line('int result = add(x, y);')}`],
+      before: [`main:${line('int result = add(x, y);')}`],
+      next: [`main:${line('printf')}`],
+    });
+  });
+
+  it('`next` inside a function stays in it; after the last line of main nothing is left to ask', () => {
+    expect(spSteps(trace, line('int sum = a + b;'))!.over!.line).toBe(line('return sum;'));
+    expect(spSteps(trace, trace.steps.at(-1)!.line)).toBeNull();
+  });
+
+  it('has no question where the stacks would not all differ: no call to step into, or the end of a function', () => {
+    expect(spStackOptions(trace, line('int x = 3;'))).toBeNull();          // step and next both stop at the next line
+    expect(spStackOptions(trace, line('return sum;') + 1)).toBeNull();     // `}` of add: both return to main
+    expect(spStackOptions(trace, trace.steps.at(-1)!.line)).toBeNull();     // nothing runs after the last step
   });
 });
 

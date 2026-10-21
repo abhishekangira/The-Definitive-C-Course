@@ -49,25 +49,64 @@ function arrange(want: string[]) {
   }
 }
 
+// The three stacks, read from the trace here without quiz-answers.ts: paused at the call, one step later (inside add),
+// and where `next` stops (the printf line, back in main).
+const stackAt = (i: number) => [...trace.steps[i].stack].reverse();
+const iNow = trace.steps.findIndex(s => s.line === srcLine('int result = add(x, y);'));
+const STACK = { step: stackAt(iNow + 1), before: stackAt(iNow), next: stackAt(trace.steps.findIndex(s => s.line === srcLine('printf'))) };
+const bt = (frames: Array<{ func: string; line: number }>) => frames.map((f, i) => `#${i} ${f.func}, line ${f.line}`).join('');
+const stackOption = (which: keyof typeof STACK) => [...host.querySelectorAll('[data-question="stack"] label')].find(l => l.textContent!.startsWith(bt(STACK[which])));
+const answerSp = (line: number, stack: keyof typeof STACK) => { click(lineButton(line)); click(stackOption(stack)!.querySelector('input')); submit(); };
+
 describe('QuizRunner sp items', () => {
-  it('shows the paused line and its call stack, and grades the line one step later from the trace', async () => {
+  it('shows the paused line and its call stack, and asks two numbered parts: the next line and the stack', async () => {
     await render(sp);
     expect(host.querySelector('[aria-current="step"]')!.textContent).toContain('int result = add(x, y);');
-    expect(host.textContent).toContain('#0 main, line 11');
-    expect(host.textContent).not.toContain('add, line'); // the answer's stack is not shown before answering
-    click(lineButton(srcLine('int sum = a + b;')));
-    submit();
+    expect(host.textContent).toContain(`Paused before line ${srcLine('int result = add(x, y);')}`);
+    expect(host.querySelector('[data-question="line"]')!.textContent).toMatch(/^1\. After one step, which line/);
+    expect(host.querySelector('[data-question="stack"] legend')!.textContent).toBe('2. After that step, what does bt show?');
+    expect(host.querySelector('[data-question="stack"] ol, [data-question="stack"] ul')).toBeNull(); // no Markdown list numbers
+    // Three options, all from the trace, and none marked before submitting.
+    expect([...host.querySelectorAll('[data-question="stack"] label')].map(l => l.textContent).sort()).toEqual([bt(STACK.step), bt(STACK.before), bt(STACK.next)].sort());
+    expect(host.querySelector('[data-stack]')).toBeNull();
+    expect(host.querySelector('button[type="submit"]')!.hasAttribute('disabled')).toBe(true);
+    click(lineButton(STACK.step[0].line));
+    expect(host.querySelector('button[type="submit"]')!.hasAttribute('disabled')).toBe(true); // both parts needed
+  });
+
+  it('is right only with the right line and the stack after step', async () => {
+    await render(sp);
+    answerSp(STACK.step[0].line, 'step');
     expect(verdict()).toContain('Correct.');
-    expect(host.textContent).toContain('#0 add, line 4');
+    expect(host.querySelector('[data-line-right]')!.getAttribute('data-line-right')).toBe('true');
+    expect(host.querySelector('[data-stack-right]')!.getAttribute('data-stack-right')).toBe('true');
   });
 
   it('marks a wrong line wrong: `step` does not go over the call', async () => {
     await render(sp);
-    click(lineButton(srcLine('printf')));
-    submit();
+    answerSp(srcLine('printf'), 'step');
     expect(verdict()).toContain('Not quite.');
     expect(lineButton(srcLine('printf'))).toBeNull(); // locked: lines are no longer buttons
     expect(host.querySelector('ol[aria-label^="Program"] li[class*="wrong"]')!.textContent).toContain('printf');
+    expect(host.querySelector('[data-line-right]')!.getAttribute('data-line-right')).toBe('false');
+  });
+
+  for (const wrong of ['next', 'before'] as const) {
+    it(`marks a wrong stack wrong (the stack ${wrong === 'next' ? 'after next' : 'before the step'}), with the right line`, async () => {
+      await render(sp);
+      answerSp(STACK.step[0].line, wrong);
+      expect(verdict()).toContain('Not quite.');
+      expect(host.querySelector('[data-line-right]')!.getAttribute('data-line-right')).toBe('true');
+      expect(host.querySelector('[data-stack-right]')!.getAttribute('data-stack-right')).toBe('false');
+      expect(stackOption(wrong)!.getAttribute('data-stack')).toBe('wrong');
+      expect(stackOption('step')!.getAttribute('data-stack')).toBe('right');
+    });
+  }
+
+  it('cannot ask about a line that calls nothing: the three stacks would not all differ', async () => {
+    await render({ ...sp, line: srcLine('int x = 3;') });
+    expect(host.querySelector('[role="alert"]')!.textContent).toContain('calls no function');
+    expect(host.querySelector('[data-question="stack"]')).toBeNull();
   });
 });
 

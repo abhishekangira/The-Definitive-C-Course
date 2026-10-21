@@ -222,7 +222,9 @@ describe('fences', () => {
     // fixtures/good has a ```text fence with a program's own output, which passes.
     const withOutput = (lang: string, text: string) => lintGoodWith({ [lesson]: sub('```text\nHello\n```', `\`\`\`${lang}\n${text}\n\`\`\``) }).result;
     const markers = ["main.c:6:5: runtime error: signed integer overflow", '==1234== Invalid read of size 4', '==PID== HEAP SUMMARY:',
-      "main.c:(.text+0x13): undefined reference to `area'", 'ERROR: AddressSanitizer: stack-buffer-overflow', '(gdb) bt', '(lldb) bt', 'make: *** [Makefile:2: credit] Error 1'];
+      "main.c:(.text+0x13): undefined reference to `area'", 'ERROR: AddressSanitizer: stack-buffer-overflow', '(gdb) bt', '(lldb) bt', 'make: *** [Makefile:2: credit] Error 1',
+      "main.c:5:12: error: expected ';' after expression", 'luhn.h:3:1: warning: no newline at end of file', "/usr/bin/ld: bump.o: multiple definition of `count'; main.o: first defined here",
+      'collect2: error: ld returned 1 exit status', 'Segmentation fault (core dumped)', 'definitely lost: 40 bytes in 1 blocks'];
     for (const text of markers) {
       const e = errorsOf(withOutput('text', text), 'hand-typed-output');
       expect(e, text).toHaveLength(1);
@@ -233,6 +235,8 @@ describe('fences', () => {
     expect(errorsOf(withOutput('yaml', '(gdb) bt'), 'hand-typed-output')).toEqual([]);
     expect(errorsOf(withOutput('console', '$ ./hello\nHello'), 'hand-typed-output')).toEqual([]);
     expect(errorsOf(withOutput('text', '== 3 =='), 'hand-typed-output')).toEqual([]);
+    // A file:line:col reference without a diagnostic kind is prose about code, not tool output.
+    expect(errorsOf(withOutput('text', 'see main.c:5:12 for the loop'), 'hand-typed-output')).toEqual([]);
   });
 
   it('keeps cards the same as the renderer: a fragment fence is not an interaction', () => {
@@ -911,6 +915,17 @@ describe('quiz item schema', () => {
     expect(schema(quiz(order('["a", "a"]')))).toEqual([expect.stringContaining('duplicates')]);
   });
 
+  it('checks that an sp item\'s three call stacks differ, on the stored gdb trace', () => {
+    // add-frames: its program as a quiz sample, and tools/trace's committed trace of it (src/generated/traces).
+    const traced = JSON.parse(readFileSync(path.join(process.cwd(), 'src/generated/traces/add-frames.json'), 'utf8')) as { source: string };
+    const withTrace = (line: number) => quizWithTrace(old => old + `- id: add-frames\n  type: sp\n  prompt: "Step"\n  sample: add-frames\n  line: ${line}\n  meta: trace predict=none\n  code: |\n${traced.source.replace(/\n$/, '').split('\n').map(l => (l ? `    ${l}` : '')).join('\n')}\n  explain: "x"\n`);
+    const quizWithTrace = (edit: Edit) => lintGoodWith({ 'src/generated/traces/add-frames.json': readFileSync(path.join(process.cwd(), 'src/generated/traces/add-frames.json'), 'utf8'), [file]: edit }).result;
+    const at = (text: string) => traced.source.split('\n').findIndex(l => l.includes(text)) + 1;
+    expect(schema(withTrace(at('int result = add(x, y);')))).toEqual([]);
+    expect(schema(withTrace(at('int x = 3;')))).toEqual([expect.stringContaining('are not all different, so the stack question has no wrong answers')]);
+    expect(schema(withTrace(at('return 0;') + 1))).toEqual([expect.stringContaining('nothing runs after it')]);
+  });
+
   it('checks sp items: a traced sample and the line the debugger is paused before', () => {
     const sp = (extra: string) => (old: string) => old + `- id: fx-sp\n  type: sp\n  prompt: "Step"\n  sample: fx-cp-frames\n${extra}  explain: "x"\n`;
     expect(schema(quiz(sp('  line: 5\n')))).toEqual([]);
@@ -933,6 +948,7 @@ describe('quiz item schema', () => {
     const ce = (extra: string) => `  type: ce\n  prompt: "Q"\n  session: asan\n  choices: ["a", "b"]\n  answer: 0\n${extra}`;
 
     it('order: the session runs exactly the items, in order, on every platform', () => {
+      expect(item(`  type: order\n  prompt: "Order"\n  session: link-undefined\n  items: ["$CC $CFLAGS -c main.c", "$CC main.o -o prog", "nm main.o"]\n`).messages).toEqual([]);
       expect(item(`  type: order\n  prompt: "Order"\n  session: make\n  items: ${MAKE}\n`).messages).toEqual([]);
       // Two steps swapped: a wrong answer key.
       expect(both(item('  type: order\n  prompt: "Order"\n  session: make\n  items: ["make", "make && ./credit", "sleep 1 && touch luhn.h && make", "make -f spaces.mk"]\n'))).toEqual([expect.stringContaining('does not run `items` in this order on linux-gcc and linux-clang and macos')]);
@@ -940,6 +956,13 @@ describe('quiz item schema', () => {
       const linux = '["$CC $CFLAGS -c main.c a.c b.c && ar rcs liba.a a.o && ar rcs libb.a b.o", "$CC main.o -L. -lb -la -o prog", "$CC main.o -L. -la -lb -o prog && ./prog"]';
       expect(both(item(`  type: order\n  prompt: "Order"\n  session: link-order\n  items: ${linux}\n`))).toEqual([expect.stringContaining('on macos')]);
       expect(both(item(`  type: order\n  prompt: "Order"\n  session: nope\n  items: ${MAKE}\n`))).toEqual([expect.stringContaining('no session "nope" in this module')]);
+    });
+
+    it('order: the session must not repeat a command (two equal lines have two right orders)', () => {
+      // An authored session.yaml (input, not tool output): make's build, then `make` again.
+      const twice = { [`${M1}/sessions/make-twice/session.yaml`]: 'steps:\n  all:\n    - run: make\n      as: make\n    - run: make\n      as: make\n', [`${M1}/sessions/make-twice/Makefile`]: 'all:\n\ttrue\n' };
+      const r = lintGoodWith({ ...twice, [file]: (old: string) => old + '- id: fx-session-item\n  type: order\n  prompt: "Order"\n  session: make-twice\n  items: ["make", "make"]\n  explain: "x"\n' }).result;
+      expect(errorsOf(r, 'quiz-order').map(m => m.message)).toEqual([expect.stringContaining('session "make-twice" runs `make` twice (on linux-gcc)')]);
     });
 
     it('order: a stored run that ran other commands is no answer key', () => {

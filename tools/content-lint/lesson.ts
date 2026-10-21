@@ -39,7 +39,8 @@ export const KNOWN_ELEMENTS = new Set<string>([...INTERACTIONS, ...MEDIA, ...NEU
 
 /** Fences that hold terminal text, and the markers of tool output in them (`hand-typed-output`; issue #73, infrastructure E). */
 const OUTPUT_FENCE_LANGS = new Set(['', 'text', 'txt', 'console', 'sh', 'bash', 'shell']);
-const TOOL_OUTPUT_MARKERS = /runtime error:|==\d+==|==PID==|undefined reference|AddressSanitizer|\(gdb\)|\(lldb\)|make: \*\*\*/;
+// Compiler diagnostics (`main.c:5:3: error:`), linker errors, a shell's crash report and Valgrind's leak summary too.
+const TOOL_OUTPUT_MARKERS = /runtime error:|==\d+==|==PID==|undefined reference|multiple definition|ld returned|AddressSanitizer|\(gdb\)|\(lldb\)|make: \*\*\*|\w+\.[ch]:\d+:\d+: (error|warning):|Segmentation fault|definitely lost/;
 
 const FRONTMATTER_KEYS = new Set(['id', 'title', 'minutes', 'summary']);
 const BASES = new Set(['dec', 'bin', 'hex']);

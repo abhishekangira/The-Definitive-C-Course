@@ -1,12 +1,12 @@
 # The 3c quiz items over generated data: sp on a gdb trace (add-frames, via src/generated/traces), and ce and order
 # items that use the m97 fixture sessions (tools/verify's stored output). No answer here is typed from tool output:
-# sp's comes from the trace, order's from the stored run, ce's `answer` is the authored explanation.
+# sp's line and stack come from the trace, order's from the stored run, ce's `answer` is the authored explanation.
 - id: q-sp-step-into
   type: sp
   sample: add-frames
   line: 11
-  prompt: "The program is paused before the call to `add`. You type `step`."
-  explain: "`step` goes into the function being called, so the next line is the first line of `add`; `next` would run the whole call and stop at the `printf`."
+  prompt: "The program is paused before the call to `add`. You type `step`, then `bt`."
+  explain: "`step` goes into the function being called, so the next line is the first line of `add`, and `bt` lists `add` above the `main` that called it. `next` would run the whole call and stop at the `printf`, still in `main`."
 - id: q-ce-link
   type: ce
   session: link-undefined
@@ -24,9 +24,9 @@
   choices: ["It writes past the end of an array", "It leaks memory", "It divides by zero"]
   answer: 0
   explain: "A stack-buffer-overflow WRITE is a write past the end of an array on the stack: the loop runs to `i <= 4`."
-- id: q-order-make
+- id: q-order-link
   type: order
-  session: make
-  prompt: "Put the commands in the order that shows a build, then nothing to do, then a header change, then a broken Makefile."
-  items: ["make && ./credit", "make", "sleep 1 && touch luhn.h && make", "make -f spaces.mk"]
-  explain: "The first `make` builds everything; the second finds nothing newer than its targets; touching `luhn.h` makes both objects that include it out of date; `spaces.mk` indents a recipe with spaces, which make rejects."
+  session: link-undefined
+  prompt: "`main.c` calls `area` but never defines it. Put the commands in the order that compiles it, shows the link error, then lists the object's symbols."
+  items: ["$CC $CFLAGS -c main.c", "$CC main.o -o prog", "nm main.o"]
+  explain: "Compiling only needs the declaration, so it works and writes `main.o`. Linking needs a definition of `area` and fails. `nm main.o` then shows `area` as `U`: used here, defined nowhere."

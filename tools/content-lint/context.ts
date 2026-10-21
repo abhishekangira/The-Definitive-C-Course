@@ -43,6 +43,8 @@ export interface SiteCtx {
   videosFile: string;
   /** src/generated/sessions: tools/verify's stored native reports, which `<CompilerError session stage="link">` is checked against. */
   sessionsRoot: string;
+  /** src/generated/traces: tools/trace's gdb traces, which an `sp` quiz item's three call stacks are checked against. */
+  tracesRoot: string;
   /** null when videos.json is missing or unreadable. */
   videos: Map<string, VideoEntry> | null;
   course: CourseManifest | null;

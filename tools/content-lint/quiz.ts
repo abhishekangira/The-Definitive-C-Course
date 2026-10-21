@@ -19,13 +19,14 @@
 //             failed). order: the session runs exactly `items` as its steps, on every platform, and is the answer key
 //   transfer? true on the checkpoint item set in an unfamiliar context
 //   from?     retrieval only: the module the item comes from (m01…), or "js" for Module 1's diagnostic
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { SampleMeta } from '../../src/content-model/types';
+import type { SampleMeta, TraceFile } from '../../src/content-model/types';
 import { parseFenceMeta } from '../verify/meta';
 import type { ModuleCtx, SiteCtx } from './context';
 import { moduleNumber } from './context';
 import { discoverSessions, stepsFor } from '../verify/session';
-import { sessionOrder } from '../../src/interactions/quiz-answers';
+import { sessionOrder, spStackOptions, spSteps } from '../../src/interactions/quiz-answers';
 import { checkExerciseRef, checkSampleRef, notLinkerReports, STAGES, storedSessions } from './lesson';
 import type { Collector, FileReporter } from './messages';
 import { checkSampleMeta, type SampleInfo } from './samples';
@@ -232,6 +233,14 @@ function checkItem(c: ItemCtx): { exerciseKind?: string } {
         }
       }
       if (!Number.isInteger(item.line) || (item.line as number) < 1) err('line', 'quiz-schema', `${type} items need \`line\`: the source line the ${type === 'md' ? 'diagram pauses' : 'debugger is paused'} before`);
+      // sp asks the line and the call stack after one `step`: the trace must have a step after `line`, and the stack
+      // after it, the stack before it and the stack after `next` must all differ (a line that calls a function).
+      const traceFile = text(sample) ? path.join(site.tracesRoot, `${sample}.json`) : '';
+      if (type === 'sp' && Number.isInteger(item.line) && traceFile && existsSync(traceFile)) {
+        const trace = JSON.parse(readFileSync(traceFile, 'utf8')) as TraceFile;
+        if (!spSteps(trace, item.line as number)) err('line', 'quiz-schema', `line ${String(item.line)} of "${String(sample)}" never runs, or nothing runs after it: the trace has no step to ask about`);
+        else if (!spStackOptions(trace, item.line as number)) err('line', 'quiz-schema', `at line ${String(item.line)} of "${String(sample)}", the call stack after \`step\`, the one before it and the one after \`next\` are not all different, so the stack question has no wrong answers: pause at a line that calls a function`);
+      }
       if (type === 'md') {
         const cells = item.items;
         if (!Array.isArray(cells) || cells.length === 0 || !cells.every(text)) err('items', 'quiz-schema', 'md items need `items`: the cells to fill in, e.g. ["add.a", "main.x"]');
@@ -274,6 +283,12 @@ function checkItem(c: ItemCtx): { exerciseKind?: string } {
       forbid('choices', 'the learner orders `items`');
       // With a session, the stored run is the answer key: it must run exactly these commands in this order everywhere.
       if (spec && Array.isArray(v)) {
+        // Two equal commands have no one order, so a session behind an order item never repeats one.
+        for (const p of PLATFORMS) {
+          const runs = stepsFor(spec, p).map(x => x.run.trim());
+          const twice = runs.find((x, i) => runs.indexOf(x) !== i);
+          if (twice) { err('session', 'quiz-order', `session "${String(session)}" runs \`${twice}\` twice (on ${p}): an order item's session must not repeat a command, or two orders are right`); break; }
+        }
         const want = v.map(String).join('\n');
         const off = PLATFORMS.filter(p => stepsFor(spec!, p).length && stepsFor(spec!, p).map(x => x.run.trim()).join('\n') !== want);
         if (off.length) err('items', 'quiz-order', `session "${String(session)}" does not run \`items\` in this order on ${off.join(' and ')}: its steps must be exactly the items, in order, on every platform (the stored run is the answer key)`);

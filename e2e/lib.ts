@@ -8,7 +8,7 @@ import AxeBuilder from '@axe-core/playwright';
 import type { ModuleMeta, SampleResult, SamplesFile, SessionsFile, TraceFile } from '../src/content-model/types';
 import { transcriptTabs } from '../src/components/transcript-tabs';
 import { firstUserFrame, STAGE_LABEL, type Stage } from '../src/interactions/report-questions';
-import { sessionOrder, spSteps } from '../src/interactions/quiz-answers';
+import { callStack, sessionOrder, spSteps } from '../src/interactions/quiz-answers';
 import { nativeFor, normOutput } from '../src/interactions/platform';
 import { findVar } from '../src/visualizers/trace-format';
 import { correctAnswer } from '../src/interactions/memory-answers';
@@ -409,6 +409,8 @@ export async function answerQuiz(page: Page, mod: ModuleInfo, kind: 'retrieval' 
       const at = spSteps(trace(item.sample!), item.line!);
       expect(at, `${item.id}: the trace has a step after line ${item.line}`).not.toBeNull();
       await box.getByRole('button', { name: new RegExp(`^Line ${at!.next.line}: `) }).click();
+      // Part 2: the call stack after that step (the trace's next step), out of three.
+      await spStackRadio(box, callStack(at!.next)).check();
     } else if (item.type === 'order') {
       // With a session the stored run's commands are the answer key; without one, the YAML lists the right order.
       const key = item.session ? sessionOrder(mod.sessions!.sessions[item.session]) : { order: item.items! };
@@ -418,6 +420,12 @@ export async function answerQuiz(page: Page, mod: ModuleInfo, kind: 'retrieval' 
     await box.getByRole('button', { name: 'Submit answer' }).click();
     await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
   }
+}
+
+/** An sp item's stack option showing exactly `frames` ("#0 add, line 4#1 main, line 11" as text). */
+export function spStackRadio(box: Locator, frames: Array<{ func: string; line: number }>): Locator {
+  const text = frames.map((f, i) => `#${i} ${f.func}, line ${f.line}`).join('');
+  return box.locator('[data-question="stack"] label').filter({ hasText: new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).getByRole('radio');
 }
 
 /** Puts an order item's list into `want` with the keyboard: focus a "Move up" button and press Enter. */
