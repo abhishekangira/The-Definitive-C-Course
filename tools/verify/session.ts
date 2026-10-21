@@ -31,6 +31,8 @@ export interface SessionSpec {
   rel: string;
   hash: string;
   groups: Record<'all' | 'linux' | 'macos', SessionStep[]>;
+  /** `bug: main.c:5`: the line the report must point at, checked on every Linux run (sessions-file.ts). */
+  bug?: { file: string; line: number };
 }
 
 const GROUPS = ['all', 'linux', 'macos'] as const;
@@ -56,7 +58,8 @@ export function discoverSessions(contentRoot: string, module?: string): { sessio
       let doc: unknown;
       try { doc = parseYaml(readFileSync(path.join(dir, 'session.yaml'), 'utf8')); } catch (e) { err((e as Error).message); continue; }
       const groups = parseGroups(doc, err);
-      if (groups) sessions.push({ id: name, module: id, dir, rel, hash: folderHash(dir), groups });
+      const bug = parseBug(doc, dir, err);
+      if (groups && bug !== null) sessions.push({ id: name, module: id, dir, rel, hash: folderHash(dir), groups, ...(bug ? { bug } : {}) });
     }
   }
   return { sessions, errors };
@@ -84,6 +87,20 @@ function parseGroups(doc: unknown, err: (m: string) => void): SessionSpec['group
   }
   if (ok && !GROUPS.some(g => out[g].length)) { err('has no steps'); return null; }
   return ok ? out : null;
+}
+
+/** `bug: <file>:<line>` names a line of one of the folder's .c/.h files; undefined when absent, null when invalid. */
+function parseBug(doc: unknown, dir: string, err: (m: string) => void): SessionSpec['bug'] | null {
+  const raw = (doc as { bug?: unknown } | null)?.bug;
+  if (raw === undefined) return undefined;
+  const m = typeof raw === 'string' ? /^([\w.-]+\.[ch]):(\d+)$/.exec(raw) : null;
+  if (!m) { err('bug must be `<file>.c:<line>` (or .h), the line the report points at'); return null; }
+  const file = path.join(dir, m[1]);
+  const lines = existsSync(file) ? readFileSync(file, 'utf8').split('\n').length : 0;
+  if (!lines) { err(`bug: ${m[1]} is not a file in this folder`); return null; }
+  const line = Number(m[2]);
+  if (line < 1 || line > lines) { err(`bug: ${m[1]} has no line ${line}`); return null; }
+  return { file: m[1], line };
 }
 
 function folderHash(dir: string): string {

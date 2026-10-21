@@ -1,4 +1,6 @@
 # A stack buffer overflow, found by AddressSanitizer at the write.
+# The report question grades against this line; verify checks every Linux report points here.
+bug: main.c:5
 steps:
   all:
     - run: $CC $CFLAGS -fsanitize=address -fno-omit-frame-pointer main.c -o prog && ./prog

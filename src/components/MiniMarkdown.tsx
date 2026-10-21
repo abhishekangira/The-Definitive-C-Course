@@ -42,6 +42,12 @@ function inline(text: string, keyBase: string): ReactNode[] {
   return out;
 }
 
+/** One line of inline Markdown (code, bold, italic, links) with no blocks, for a legend or a label: a `1. ` at its start
+ *  stays text, where MiniMarkdown would start a numbered list. */
+export function InlineMarkdown({ text }: { text: string }) {
+  return <>{inline(text.replace(/\r/g, '').replace(/\s*\n\s*/g, ' '), 'i')}</>;
+}
+
 export function MiniMarkdown({ text, className }: { text: string; className?: string }) {
   const lines = text.replace(/\r/g, '').split('\n');
   const blocks: ReactNode[] = [];

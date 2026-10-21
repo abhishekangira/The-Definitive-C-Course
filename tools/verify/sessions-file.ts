@@ -2,7 +2,7 @@
 // Linux x86-64 gcc 13 and clang 22 run here; macOS results come from `--target-run macos-arm64-appleclang` on the Targets
 // workflow (src/generated/targets/macos-arm64-appleclang/<module>.sessions.json) and are merged in when the hash matches.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { cpus } from 'node:os';
 import path from 'node:path';
 import type { SessionPlatform, SessionResult, SessionsFile } from '../../src/content-model/types';
@@ -10,6 +10,7 @@ import { stableStringify } from '../shared/stable-json';
 import { ResultCache, environmentFingerprint } from './cache';
 import type { NativeToolchain } from './native';
 import { mapLimit } from './proc';
+import { firstUserFrame } from '../../src/interactions/report-questions';
 import { discoverSessions, runSession, stepsFor, type SessionRun, type SessionSpec } from './session';
 
 /** <out>/<module>.sessions.json, written by `verify --target-run macos-arm64-appleclang`. */
@@ -55,6 +56,31 @@ export async function runSessions(specs: SessionSpec[], platform: SessionPlatfor
   return new Map(runs);
 }
 
+/** The session's C sources and headers, so a report question can show the lines the report points at. */
+function sourcesOf(dir: string): Record<string, string> {
+  const files = readdirSync(dir).filter(f => /\.[ch]$/.test(f)).sort();
+  return Object.fromEntries(files.map(f => [f, readFileSync(path.join(dir, f), 'utf8')]));
+}
+
+/**
+ * A session with `bug: <file>:<line>` grades a report question against its first user frame, so every run must point
+ * there, and the line itself must not explain the bug: a comment on it is shown to the learner as the answer.
+ */
+export function bugProblems(spec: Pick<SessionSpec, 'bug'>, sources: Record<string, string>, runs: SessionResult['runs']): string[] {
+  if (!spec.bug) return [];
+  const { file, line } = spec.bug;
+  const out: string[] = [];
+  const text = sources[file]?.split('\n')[line - 1] ?? '';
+  if (/\/\*|\/\//.test(text)) out.push(`bug: ${file}:${line} has a comment, which the report question would show as the answer; move it to the lesson text`);
+  for (const p of ['linux-gcc', 'linux-clang'] as const) {
+    const steps = runs[p];
+    if (!steps) continue;
+    const f = firstUserFrame(steps, sources);
+    if (!f || f.file !== file || f.line !== line) out.push(`bug: ${file}:${line}, but the ${p} report's first frame in your code is ${f ? `${f.file}:${f.line}` : 'missing'}`);
+  }
+  return out;
+}
+
 const projection = (f: SessionsFile) => stableStringify({ ...f, generatedBy: '<version>' });
 
 export interface SessionsReport { problems: string[]; notes: string[]; written: string[]; unchanged: string[]; stale: string[]; outputs: Record<string, string> }
@@ -79,13 +105,14 @@ export async function verifySessions(o: {
     const stored = readJson<TargetSessionsFile>(path.join(o.generatedRoot, 'targets', 'macos-arm64-appleclang', `${m}.sessions.json`));
     for (const spec of found.sessions.filter(s => s.module === m)) {
       const platforms = (['linux-gcc', 'linux-clang', 'macos'] as const).filter(p => stepsFor(spec, p).length);
-      const res: SessionResult = { id: spec.id, dir: spec.rel.split('/').slice(2).join('/'), hash: spec.hash, platforms, runs: {} };
+      const res: SessionResult = { id: spec.id, dir: spec.rel.split('/').slice(2).join('/'), hash: spec.hash, platforms, sources: sourcesOf(spec.dir), runs: {} };
       for (const [platform, runs] of byPlatform) {
         const r = runs.get(spec.id);
         if (!r) continue;
         rep.problems.push(...r.problems.map(p => `${spec.rel} (${platform}): ${p}`));
         res.runs[platform] = r.steps;
       }
+      rep.problems.push(...bugProblems(spec, res.sources, res.runs).map(p => `${spec.rel}/session.yaml: ${p}`));
       const mac = stored?.sessions[spec.id];
       if (mac && mac.hash === spec.hash && !mac.problems?.length) res.runs.macos = mac.steps;
       else if (mac && mac.hash === spec.hash) rep.notes.push(`${spec.rel}: the stored macOS run has problems, so it is not shown: ${mac.problems!.join('; ')}`);

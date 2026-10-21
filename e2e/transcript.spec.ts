@@ -1,38 +1,17 @@
 // <Transcript> in the real app: a lesson (MDX pipeline, lesson page, session loading through sessionsFor) over the m97
-// fixture sessions that tools/verify wrote (tools/verify/fixtures/generated/sessions). No shipped module has a session
-// yet, so this runs a throwaway Vite server rooted in e2e/fixtures/sessions, like unreleased-modules.spec.ts.
-import { mkdtempSync, rmSync } from 'node:fs';
-import type { AddressInfo } from 'node:net';
-import os from 'node:os';
-import path from 'node:path';
+// fixture sessions that tools/verify wrote, served by e2e/sessions-fixture.ts.
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { createServer, type ViteDevServer } from 'vite';
-import { expectAccessible, ROOT } from './lib';
+import { expectAccessible } from './lib';
+import { startSessionsFixture } from './sessions-fixture';
 
-const FIXTURE = path.join(ROOT, 'e2e', 'fixtures', 'sessions');
-// Stored output mode keeps the lesson page from downloading the compiler, which this fixture does not serve.
+// Stored output mode keeps the lesson page from downloading the compiler, which these tests don't need.
 const SEED = JSON.stringify({ version: 1, seed: '00e2e00e2e00e2e0', createdAt: '2026-01-01T00:00:00.000Z', settings: { storedOutputMode: true } });
 
-let server: ViteDevServer;
+let fixture: Awaited<ReturnType<typeof startSessionsFixture>>;
 let url: string;
-let viteCache: string;
-
-test.beforeAll(async () => {
-  viteCache = mkdtempSync(path.join(os.tmpdir(), 'tdcc-e2e-vite-'));
-  server = await createServer({
-    configFile: path.join(ROOT, 'vite.config.ts'),
-    root: FIXTURE,
-    publicDir: false,
-    cacheDir: viteCache,
-    logLevel: 'error',
-    resolve: { alias: [{ find: /^(\.\.\/)+content\/course\.yaml$/, replacement: path.join(FIXTURE, 'content', 'course.yaml') }] },
-    server: { port: 0, host: '127.0.0.1', hmr: false, fs: { strict: false } },
-  });
-  await server.listen();
-  url = `http://127.0.0.1:${(server.httpServer!.address() as AddressInfo).port}/`;
-});
-test.afterAll(async () => { await server?.close(); if (viteCache) rmSync(viteCache, { recursive: true, force: true }); });
+test.beforeAll(async () => { fixture = await startSessionsFixture(); url = fixture.url; });
+test.afterAll(async () => { await fixture?.close(); });
 
 async function openLesson(page: Page): Promise<void> {
   await page.context().addInitScript(json => { try { if (!localStorage.getItem('tdcc:v1:progress')) localStorage.setItem('tdcc:v1:progress', json); } catch { /* no storage */ } }, SEED);
@@ -102,11 +81,71 @@ test.describe('<Transcript> over stored native sessions', () => {
     await screen.focus();
     await expect(screen).toBeFocused();
     expect(await screen.evaluate(el => el.scrollLeft)).toBe(0);
+    // A faded edge marks the side that hides text.
+    const frame = screen.locator('xpath=..');
+    await expect(frame).toHaveAttribute('data-hidden-right', 'true');
+    await expect(frame).not.toHaveAttribute('data-hidden-left');
     await page.keyboard.press('ArrowRight');
     await expect.poll(() => screen.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+    await expect(frame).toHaveAttribute('data-hidden-left', 'true');
     // Every output box can be reached with Tab and has a name, so axe's scrollable-region-focusable rule passes on them.
     const results = await new AxeBuilder({ page: page as unknown as ConstructorParameters<typeof AxeBuilder>[0]['page'] }).include('figure[data-transcript]').withRules(['scrollable-region-focusable']).analyze();
     expect(results.violations.map(v => v.id)).toEqual([]);
     expect(results.passes.flatMap(v => v.nodes).length).toBeGreaterThan(0);
+  });
+
+  test('"Wrap lines" (off by default, by keyboard) wraps long lines with a hanging indent, so the box no longer scrolls sideways', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openLesson(page);
+    const figure = page.locator('figure[data-transcript="link-undefined"]');
+    const screen = figure.getByRole('tabpanel', { name: 'Linux/WSL · gcc 13 · ld' });
+    const toggle = figure.getByRole('button', { name: 'Wrap lines' });
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(await screen.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+    await screen.focus();
+    await page.keyboard.press('Tab');
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.evaluate(el => [getComputedStyle(el).whiteSpace, el.scrollWidth <= el.clientWidth])).toEqual(['pre-wrap', true]);
+    await expect(screen.locator('xpath=..')).not.toHaveAttribute('data-hidden-right');
+    // The long linker line now takes several rows, and its continuation hangs under its start.
+    const line = screen.locator('span', { hasText: "undefined reference to `area'" }).first();
+    const [rows, indent, pad] = await line.evaluate(el => {
+      const cs = getComputedStyle(el);
+      return [Math.round(el.getBoundingClientRect().height / parseFloat(cs.lineHeight)), parseFloat(cs.textIndent), parseFloat(cs.paddingLeft)];
+    });
+    expect(rows).toBeGreaterThan(1);
+    expect(pad).toBeGreaterThan(0);
+    expect(indent).toBe(-pad);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    const results = await new AxeBuilder({ page: page as unknown as ConstructorParameters<typeof AxeBuilder>[0]['page'] }).include('figure[data-transcript]').withRules(['scrollable-region-focusable']).analyze();
+    expect(results.violations.map(v => v.id)).toEqual([]);
+    await page.keyboard.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(await screen.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  });
+
+  test('on a desktop the output box runs wider than the text column, up to the lesson column', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 1000 });
+    await openLesson(page);
+    const [box, text, column] = await page.evaluate(() => {
+      const figure = document.querySelector('figure[data-transcript="valgrind-leak"]')!;
+      const prose = [...figure.closest('section')!.querySelectorAll('p')].find(p => !p.closest('figure'))!; // the text column (--measure)
+      return [figure.getBoundingClientRect().width, prose.getBoundingClientRect().width, document.querySelector('article')!.getBoundingClientRect().width];
+    });
+    expect(box).toBeGreaterThan(text);
+    expect(box).toBeLessThanOrEqual(column);
+  });
+
+  test('the scrollbar of a sideways-scrolling box is drawn, not an overlay that hides until hovered', async ({ playwright, launchOptions }) => {
+    // Headless Chromium hides every scrollbar (--hide-scrollbars); without that flag it draws them as a headed browser does.
+    const browser = await playwright.chromium.launch({ ...launchOptions, ignoreDefaultArgs: ['--hide-scrollbars'] });
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await openLesson(page);
+    const screen = page.locator('figure[data-transcript="link-undefined"]').getByRole('tabpanel', { name: 'Linux/WSL · gcc 13 · ld' });
+    // The horizontal scrollbar takes its own 12px under the text (offsetHeight less clientHeight less the 1px borders).
+    expect(await screen.evaluate(el => (el as HTMLElement).offsetHeight - el.clientHeight - 2)).toBe(12);
+    await browser.close();
   });
 });

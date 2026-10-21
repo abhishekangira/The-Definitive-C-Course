@@ -3,13 +3,31 @@
 .pair > .transcript { margin: 0; }
 @media (min-width: 1000px) { .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 
-/* The terminal stays dark in both themes (tokens.css), like <Terminal>. Lines keep their columns, so it scrolls sideways. */
+/* The terminal stays dark in both themes (tokens.css), like <Terminal>. Lines keep their columns, so it scrolls sideways;
+   the scrollbar is always drawn (no overlay scrollbar that hides until hovered) and a faded edge marks the side with
+   hidden text (data-hidden-left/right, set as it scrolls). */
+.frame { position: relative; min-width: 0; }
+.frame::before, .frame::after {
+  content: ""; position: absolute; top: 1px; bottom: 13px; width: 40px; pointer-events: none; display: none;
+}
+.frame::before { left: 1px; border-radius: var(--radius-sm) 0 0 0; background: linear-gradient(to right, var(--terminal-bg), transparent); }
+.frame::after { right: 1px; border-radius: 0 var(--radius-sm) 0 0; background: linear-gradient(to left, var(--terminal-bg), transparent); }
+.frame[data-hidden-left]::before, .frame[data-hidden-right]::after { display: block; }
 .screen {
   background: var(--terminal-bg); color: var(--terminal-text); border: 1px solid var(--border); border-radius: var(--radius-sm);
   font-family: var(--font-mono); font-size: 13px; line-height: 1.5;
   padding: var(--space-3) var(--space-4); max-height: 420px; overflow: auto; white-space: pre;
 }
+.screen::-webkit-scrollbar { width: 12px; height: 12px; }
+.screen::-webkit-scrollbar-track { background: var(--terminal-bg); border-radius: var(--radius-sm); }
+.screen::-webkit-scrollbar-thumb { background: var(--terminal-muted); border: 3px solid var(--terminal-bg); border-radius: 6px; }
+.screen::-webkit-scrollbar-corner { background: var(--terminal-bg); }
 .screen:focus-visible { outline: 2px solid var(--data); outline-offset: 2px; }
+.ln { display: block; }
+/* Wrapped: a long line breaks anywhere and its continuation hangs 4ch in, under the line's start. */
+.screen[data-wrap] { white-space: pre-wrap; overflow-wrap: anywhere; }
+.screen[data-wrap] .ln, .screen[data-wrap] .cmd { padding-left: 4ch; text-indent: -4ch; }
+.tools { display: flex; justify-content: flex-end; margin-top: calc(-1 * var(--space-1)); }
 .step + .step { margin-top: var(--space-3); }
 .cmd { color: var(--terminal-in); }
 .prompt { color: var(--terminal-muted); }
@@ -23,3 +41,4 @@
 .key div { display: flex; gap: var(--space-2); }
 .key dt { flex: none; }
 .key dd { margin: 0; }
+.tools button[aria-pressed="true"] { background: var(--bg-sunken); border-color: var(--border-strong); }

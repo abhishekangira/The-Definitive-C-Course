@@ -1,4 +1,6 @@
 # UBSan reports and continues by default; -fno-sanitize-recover=all stops at the first report.
+# The report question grades against this line; verify checks every Linux report points here.
+bug: main.c:6
 steps:
   all:
     - run: $CC $CFLAGS -fsanitize=undefined main.c -o prog && ./prog
