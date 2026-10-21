@@ -135,7 +135,14 @@ a.lessonLink:hover { background: var(--bg-sunken); }
 .quizItem { margin: var(--space-4) 0; padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); display: flex; flex-direction: column; gap: var(--space-3); }
 .quizFooter { margin: var(--space-5) 0; }
 .orderList { margin: 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: 4px; }
+.stackList { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.stackList > span, .stackList > li { display: block; }
+.quizItem [data-stack="right"] { border-color: var(--ok); background: var(--ok-soft); }
+.quizItem [data-stack="wrong"] { border-color: var(--err); background: var(--err-soft); }
+.orderList code { white-space: pre-wrap; overflow-wrap: anywhere; }
 .orderList li { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px var(--space-2); background: var(--bg); }
+.orderList li > span:first-child { min-width: 0; }
+.orderList li > span:last-child { flex: none; display: flex; gap: 2px; margin-left: var(--space-2); }
 
 /* Settings */
 .row2 { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }

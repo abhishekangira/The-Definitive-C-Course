@@ -44,6 +44,7 @@
 - id: fx2-cp-sp
   type: sp
   sample: fx2-cp-sp
+  line: 4
   prompt: "Step through the program."
   code: |
     #include <stdio.h>

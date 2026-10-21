@@ -42,16 +42,20 @@ export function LessonPage() {
   useEffect(() => { if (!tutorOn) setChatOpen(false); }, [tutorOn]);
 
   useEffect(() => {
+    // Start from nothing, and drop whatever arrives after the learner has moved on: a slow load for the previous
+    // lesson or module must not replace this one's lesson, samples or sessions.
+    let live = true;
     setLesson(null);
+    setSamples(undefined);
+    setSessions(undefined);
     preloadCodeEditor();
     const load = lessonLoader(moduleId, lessonStem);
-    if (load) void load().then(mod => setLesson(() => mod.default));
-    void samplesFor(moduleId).then(setSamples);
-    void sessionsFor(moduleId).then(setSessions);
+    if (load) void load().then(mod => { if (live) setLesson(() => mod.default); });
+    void samplesFor(moduleId).then(s => { if (live) setSamples(s); });
+    void sessionsFor(moduleId).then(s => { if (live) setSessions(s); });
     // Warm the compiler in the background once the learner is reading a lesson (not in low-memory mode).
-    if (storedMode) return;
-    const t = setTimeout(() => getRuntime().prefetch(), 1500);
-    return () => clearTimeout(t);
+    const t = storedMode ? undefined : setTimeout(() => getRuntime().prefetch(), 1500);
+    return () => { live = false; clearTimeout(t); };
   }, [moduleId, lessonStem, storedMode]);
 
   if (!m) return <Navigate to="/" replace />;

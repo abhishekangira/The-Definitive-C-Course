@@ -7,7 +7,8 @@ import { expect, type BrowserContext, type Locator, type Page } from '@playwrigh
 import AxeBuilder from '@axe-core/playwright';
 import type { ModuleMeta, SampleResult, SamplesFile, SessionsFile, TraceFile } from '../src/content-model/types';
 import { transcriptTabs } from '../src/components/transcript-tabs';
-import { firstUserFrame } from '../src/interactions/report-questions';
+import { firstUserFrame, STAGE_LABEL, type Stage } from '../src/interactions/report-questions';
+import { callStack, sessionOrder, spSteps } from '../src/interactions/quiz-answers';
 import { nativeFor, normOutput } from '../src/interactions/platform';
 import { findVar } from '../src/visualizers/trace-format';
 import { correctAnswer } from '../src/interactions/memory-answers';
@@ -18,6 +19,7 @@ const RUN_TIMEOUT = Number(process.env.E2E_RUN_TIMEOUT ?? 180_000);
 
 export interface QuizItemYaml {
   id: string; type: string; code?: string; choices?: string[]; answer?: number; exercise?: string; items?: string[];
+  sample?: string; line?: number; session?: string; step?: number; stage?: Stage;
 }
 export interface ModuleInfo {
   id: string;
@@ -401,10 +403,41 @@ export async function answerQuiz(page: Page, mod: ModuleInfo, kind: 'retrieval' 
       const idx = item.answer ?? (item.choices ?? []).findIndex(c => c.trim() === normOutput(s!.answer.stdout).trim());
       expect(idx, `${item.id}: answer resolves`).toBeGreaterThanOrEqual(0);
       await box.locator('input[type=radio]').nth(idx).check();
+      if (item.stage) await box.locator('[data-question="stage"]').getByRole('radio', { name: STAGE_LABEL[item.stage], exact: true }).check();
+    } else if (item.type === 'sp') {
+      // The line one gdb `step` later, from the trace (src/interactions/quiz-answers.ts).
+      const at = spSteps(trace(item.sample!), item.line!);
+      expect(at, `${item.id}: the trace has a step after line ${item.line}`).not.toBeNull();
+      await box.getByRole('button', { name: new RegExp(`^Line ${at!.next.line}: `) }).click();
+      // Part 2: the call stack after that step (the trace's next step), out of three.
+      await spStackRadio(box, callStack(at!.next)).check();
+    } else if (item.type === 'order') {
+      // With a session the stored run's commands are the answer key; without one, the YAML lists the right order.
+      const key = item.session ? sessionOrder(mod.sessions!.sessions[item.session]) : { order: item.items! };
+      if ('problem' in key) throw new Error(`${item.id}: ${key.problem}`);
+      await arrangeOrder(box, key.order);
     } else throw new Error(`no e2e handler for quiz item type ${item.type}`);
     await box.getByRole('button', { name: 'Submit answer' }).click();
     await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
   }
+}
+
+/** An sp item's stack option showing exactly `frames` ("#0 add, line 4#1 main, line 11" as text). */
+export function spStackRadio(box: Locator, frames: Array<{ func: string; line: number }>): Locator {
+  const text = frames.map((f, i) => `#${i} ${f.func}, line ${f.line}`).join('');
+  return box.locator('[data-question="stack"] label').filter({ hasText: new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) }).getByRole('radio');
+}
+
+/** Puts an order item's list into `want` with the keyboard: focus a "Move up" button and press Enter. */
+export async function arrangeOrder(box: Locator, want: readonly string[]): Promise<void> {
+  const shown = () => box.locator('ol > li > span:first-child').allTextContents();
+  for (let i = 0; i < want.length; i++) {
+    for (let at = (await shown()).indexOf(want[i]); at > i; at--) {
+      await box.getByRole('button', { name: `Move up: ${want[i]}`, exact: true }).focus();
+      await box.page().keyboard.press('Enter');
+    }
+  }
+  expect(await shown()).toEqual([...want]);
 }
 
 export async function expectAccessible(page: Page, what: string): Promise<void> {
@@ -468,3 +501,8 @@ export function exerciseWithVariants(mod: ModuleInfo): string {
 }
 
 export { escapeRe };
+
+/** Where each line's code text starts (its left edge in CSS px), in a <CodeListing>, line 1 first. */
+export async function codeStartXs(listing: Locator): Promise<number[]> {
+  return listing.locator(':scope > li code').evaluateAll(els => els.map(e => e.getBoundingClientRect().left));
+}

@@ -1,5 +1,6 @@
 // Loads course content (content/**) and generated data (src/generated/**) through Vite globs.
 // Text and metadata are eager (small); lesson components, sample results and traces are lazy.
+import type { Stage } from '../interactions/report-questions';
 import type { ComponentType } from 'react';
 import type {
   CourseManifest, ExerciseMeta, LessonFrontmatter, ModuleMeta, SamplesFile, SessionsFile, TestsSpec, TraceFile, VideoEntry,
@@ -46,8 +47,14 @@ export interface QuizItem {
   /** Extra data for typed items (e.g. ce: sample id; order: items). */
   sample?: string;
   items?: string[];
-  /** md items: the line the diagram pauses before. */
+  /** md and sp items: the line the trace pauses before (its first occurrence). */
   line?: number;
+  /** ce: a native session whose stored report is shown; order: a session whose commands, in order, are the answer. */
+  session?: string;
+  /** ce with `session`: the step that holds the report (1-based); default: the last. */
+  step?: number;
+  /** ce with `session`: also asks which build stage failed. */
+  stage?: Stage;
 }
 
 /** Folder files that are learner-provided support code (headers, harness helpers), not tests or solutions. */

@@ -73,7 +73,7 @@ is measured on the cards learners see: a fence that has an `id` ends a card, a `
 | `fence-id` | error | Every ` ```c ` / ` ```h ` fence has `id=` or `fragment`. |
 | `fence-meta` | error | Fence meta parses: unknown keys (`toSampleMeta` throws), bad `expect=`, bad quoted JSON strings. |
 | `fence-lang` | error / warning | ` ```C ` / ` ```H ` would silently bypass every check (error); an untagged fence that looks like C warns. |
-| `hand-typed-output` | error | A `text`, `txt`, `console`, `sh`, `bash`, `shell` or untagged fence contains tool output (`runtime error:`, `==N==` or `==PID==`, `undefined reference`, `AddressSanitizer`, `(gdb)`, `(lldb)`, `make: ***`): tool output is never typed by hand, so show it with `<Transcript>` from a native session (`content/AGENTS.md`). |
+| `hand-typed-output` | error | A `text`, `txt`, `console`, `sh`, `bash`, `shell` or untagged fence contains tool output (`runtime error:`, `==N==` or `==PID==`, `undefined reference`, `multiple definition`, `ld returned`, a compiler diagnostic `file.c:L:C: error:` or `warning:`, `AddressSanitizer`, `Segmentation fault`, `definitely lost`, `(gdb)`, `(lldb)`, `make: ***`): tool output is never typed by hand, so show it with `<Transcript>` from a native session (`content/AGENTS.md`). |
 | `fence-nesting` | warning | A sample fence inside a list or blockquote is not a card interaction. |
 | `sample-id` | error | Sample ids are lower-case kebab-case (they name generated files). |
 | `duplicate-sample` | error | Sample ids are unique across the whole course (lessons and quiz code together). |
@@ -124,13 +124,15 @@ A quiz file is a YAML list of items (or an object with `items`, `pool` or `quest
 | `choices?` | 2 to 6 distinct options, for `choice` and `ce`. Strings or `{ text }`. |
 | `answer?` | Index into `choices`. **Only** for items whose answer cannot come from running code: a `choice` **without** `code`, and every `ce` (which explanation of the message is right). Forbidden on `predict`, `outcome`, `md`, `sp`, `np`, `order`, `exercise`, and on `choice` with `code` (there the right choice is the one equal to the program's output). |
 | `exercise?` | Exercise id (in this module), for `type: exercise`. |
-| `sample?`, `line?`, `items?` | `md`/`sp`: the traced sample (it needs `trace`), the source line the diagram pauses before (`md`), the cells to fill in (`md`, e.g. `["add.a", "main.x"]`). `np`: `[value, from, to, width]` (`from`/`to` in `dec\|bin\|hex`, width 8/16/32/64). `order`: at least two distinct lines in their correct order. |
+| `sample?`, `line?`, `items?` | `md`/`sp`: the traced sample (it needs `trace`), the source line the diagram (`md`) or the debugger (`sp`: the learner picks the line one gdb `step` later and the call stack after it, read from the trace; when `src/generated/traces/<sample>.json` exists, lint checks a step follows `line` and the stacks after `step`, before it and after `next` all differ) pauses before, the cells to fill in (`md`, e.g. `["add.a", "main.x"]`). `np`: `[value, from, to, width]` (`from`/`to` in `dec\|bin\|hex`, width 8/16/32/64). `order`: at least two distinct lines in their correct order. |
+| `session?`, `step?`, `stage?` | A native session of this module (`docs/adr/0005-native-sessions.md`). `ce`: its stored report is the message shown, instead of `code`/`meta` (`step`: which step, from 1, default the last; `stage`: also asks which stage failed, one of `preprocess`, `compile`, `assemble`, `link`, `run`; `link` is checked against the stored report, which must be a linker's). `order`: the session's steps must be exactly `items`, in order, on every platform, and its stored run is the answer key the app grades against. `step`/`stage` only with a `ce` `session`. |
 | `transfer?` | `true` on the checkpoint item set in an unfamiliar context. |
 | `from?` | Retrieval only: the module the item comes from (`m01`…), or `js` for Module 1's diagnostic. |
 
 | Rule id | Severity | What it enforces |
 |---|---|---|
 | `quiz-schema` | error / warning | The per-type fields above, including the `answer` rules; unknown fields warn. |
+| `quiz-order` | error | An `order` item with `session`: the session runs exactly `items`, in that order, on every platform it runs on (its `session.yaml`), never runs one command twice, and the stored run (when `verify` has written it) ran the same commands everywhere. |
 | `quiz-id` | error | Item ids are unique within the module. |
 | `quiz-meta` | error | The item's `meta` parses (same parser as `tools/verify`) and does not set `id=`. |
 | `checkpoint-composition` | error | 8 to 12 items, including: a **write-code** item (`exercise` whose exercise has kind `ct`, or `lt`), a **fix-a-bug** item (kind `fb`, or `lt`; the two must be different items, so one `lt` cannot be both), a **memory/stepper** item (`md` or `sp`), a **compiler/tool-message** item (`ce`), and at least one **transfer** item (`transfer: true`). Every missing part is reported. |
