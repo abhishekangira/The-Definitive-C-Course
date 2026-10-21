@@ -291,6 +291,10 @@ export function targetRunsSample(target: TargetId, s: DiscoveredSample): boolean
   return true;
 }
 
+/** Whether `--target-run` fails: on sample problems, and on session problems too with `--strict-sessions`. */
+export const targetRunFails = (r: { problems: string[]; warnings: string[] }, strictSessions: boolean): boolean =>
+  r.problems.length > 0 || (strictSessions && r.warnings.length > 0);
+
 /** `problems` fail the run (sample errors); `warnings` are session problems, kept in `<module>.sessions.json`. */
 export async function targetRun(o: TargetRunOptions): Promise<{ problems: string[]; warnings: string[]; written: string[] }> {
   const log = o.log ?? (() => {});

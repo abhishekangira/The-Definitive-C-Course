@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { discoverSessions, normaliseSession, runSession, stepsFor, type SessionSpec } from './session';
 import { targetRunSessions, type TargetSessionsFile } from './sessions-file';
+import { targetRunFails } from './verify';
 import type { NativeToolchain } from './native';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -86,6 +87,45 @@ function contentWith(sessions: Record<string, Record<string, string>>): string {
   }
   return root;
 }
+
+// macOS captures: the stored steps of Targets run 39510251850 (macos-14, Apple clang 15, b9af3bf), as written to its
+// sessions-fixture artifact, so the rules of that commit (<dir>, <addrN>, <pid>, ==PID==) had already run. The second
+// run's lines come from the run's own instability report in the same file.
+describe('normaliseSession on macOS output (Targets run 39510251850)', () => {
+  const swap = (text: string, pairs: Array<[string, string]>) => pairs.reduce((t, [a, b]) => { expect(t).toContain(a); return t.replace(a, b); }, text);
+  it('bash\'s signal-death line: the PID after `bash: line N:` becomes <pid>, and two runs agree', () => {
+    for (const [name, pid, other] of [['macos-asan', '8667', '9261'], ['macos-ubsan', '9666', '9786']]) {
+      const raw = capture(name);
+      const t = normaliseSession([raw], [])[0];
+      expect(t).toContain('bash: line 1:  <pid> Abort trap: 6           ./prog\n');
+      expect(t).not.toContain(pid);
+      expect(normaliseSession([swap(raw, [[`  ${pid} Abort`, `  ${other} Abort`]])], [])[0]).toBe(t);
+    }
+    // Only after that prefix: other numbers on such a line, or elsewhere, stay.
+    expect(normaliseSession(['line 1:  8667 Abort trap: 6\nbash: line 12: 8667 Killed: 9  sleep 30\n'], [])[0]).toBe('line 1:  8667 Abort trap: 6\nbash: line 12: <pid> Killed: 9  sleep 30\n');
+  });
+
+  it('leaks: the Physical footprint lines are dropped, and two runs agree', () => {
+    const raw = capture('macos-leaks');
+    const t = normaliseSession([raw], [])[0];
+    expect(raw).toMatch(/^Physical footprint: +3345K\nPhysical footprint \(peak\): +3345K$/m);
+    expect(t).not.toContain('Physical footprint');
+    expect(t).toMatch(/^Platform: +macOS\n\nReport Version: +7\n/m);
+    expect(t).toMatch(/Process <pid>: 1 leak for 48 total leaked bytes\.\n/);
+    expect(normaliseSession([swap(raw, [['footprint:         3345K', 'footprint:         3329K'], ['(peak):  3345K', '(peak):  3329K']])], [])[0].replace(/Binary Images[^]*/, '')).toBe(t.replace(/Binary Images[^]*/, ''));
+  });
+
+  it('leaks: the whole Binary Images block is dropped (its UUIDs change with each link), and two runs agree', () => {
+    const raw = capture('macos-leaks');
+    expect(raw).toMatch(/^Binary Images:\n.*\+prog \(0\) <DACD0D32-8E25-46FE-A60A-472F5E3E7DE8>/m);
+    const t = normaliseSession([raw], [])[0];
+    expect(t).not.toMatch(/Binary Images|libobjc|DACD0D32/);
+    expect(t).toMatch(/ROOT LEAK: <malloc in main <addr\d+>> \[48\]\n*$/);
+    expect(normaliseSession([swap(raw, [['DACD0D32-8E25-46FE-A60A-472F5E3E7DE8', '929A32F2-FCC2-4506-95FD-7B6CE896E51B']])], [])[0]).toBe(t);
+    // It ends at a blank line: what follows stays.
+    expect(normaliseSession(['a\nBinary Images:\n  x.dylib\n\nafter\n'], [])[0]).toBe('a\n\nafter\n');
+  });
+});
 
 describe('normaliseSession on a program\'s own output', () => {
   const out = 'mask = 0xDEADBEEF\nprocess 3 items\n0x10000 vs 0x00010000\nPID: 7\n';
@@ -206,5 +246,14 @@ describe('targetRunSessions (macOS on the Targets workflow)', () => {
     expect(file.sessions.good).toMatchObject({ steps: [{ stdout: 'ok\n', exit: 0 }] });
     expect(file.sessions.good.problems).toBeUndefined();
     expect(file.sessions.broken).toMatchObject({ steps: [{ exit: 3 }], problems: ['step 1 `exit 3`: expected exit ok, got 3'] });
+  });
+});
+
+describe('targetRunFails (the exit status of --target-run)', () => {
+  it('session problems fail only with --strict-sessions (the Targets fixture step); sample problems always fail', () => {
+    expect(targetRunFails({ problems: [], warnings: ['asan (macos): unstable'] }, false)).toBe(false);
+    expect(targetRunFails({ problems: [], warnings: ['asan (macos): unstable'] }, true)).toBe(true);
+    expect(targetRunFails({ problems: ['fx: exit 1'], warnings: [] }, false)).toBe(true);
+    expect(targetRunFails({ problems: [], warnings: [] }, true)).toBe(false);
   });
 });

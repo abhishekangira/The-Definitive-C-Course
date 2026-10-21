@@ -63,10 +63,12 @@ jobs:
         run: npx tsx tools/verify/cli.ts --target-run ${{ matrix.target }} --out targets-out/${{ matrix.target }}
       # The fixture sessions (tools/verify/fixtures, one per kind of tool output) show that the macOS capture works on this
       # runner. Manual runs only: the artifact is for review and is never committed (it is not a target-* artifact).
+      # --strict-sessions: an unstable or failing session fails this step (the artifact is still uploaded), whereas
+      # "Run samples natively" only warns, so the macOS sample results are still committed.
       - name: Run the fixture sessions
         id: fixture-sessions
         if: github.event_name == 'workflow_dispatch' && matrix.target == 'macos-arm64-appleclang'
-        run: npx tsx tools/verify/cli.ts --target-run ${{ matrix.target }} --content-root tools/verify/fixtures/content --module m97 --out sessions-fixture
+        run: npx tsx tools/verify/cli.ts --target-run ${{ matrix.target }} --content-root tools/verify/fixtures/content --module m97 --out sessions-fixture --strict-sessions
       - uses: actions/upload-artifact@v4
         if: always() && steps.fixture-sessions.outcome != 'skipped'
         with:

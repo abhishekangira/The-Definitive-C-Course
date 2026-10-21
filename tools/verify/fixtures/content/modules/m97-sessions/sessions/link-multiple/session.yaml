@@ -1,4 +1,5 @@
-# A tentative definition in a header, included by two files (-fno-common is the default since gcc 10 and clang 11).
+# An initialised definition in a header, included by two files: a duplicate definition for every linker. (A tentative
+# `int count;` fails on Linux, where -fno-common is the default, but Apple's linker (Xcode 15.4, macos-14) linked it: Targets run 39510251850.)
 steps:
   all:
     - run: $CC $CFLAGS -c main.c bump.c

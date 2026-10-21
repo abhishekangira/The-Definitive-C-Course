@@ -1,0 +1,47 @@
+=================================================================
+==PID==ERROR: AddressSanitizer: stack-buffer-overflow on address <addr1> at pc <addr2> bp <addr3> sp <addr4>
+WRITE of size 4 at <addr1> thread T0
+    #0 <addr5> in main main.c:5
+    #1 <addr6>  (<unknown module>)
+
+Address <addr1> is located in stack of thread T0 at offset 48 in frame
+    #0 <addr7> in main main.c:3
+
+  This frame has 1 object(s):
+    [32, 48) 'a' (line 4) <== Memory access at offset 48 overflows this variable
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow main.c:5 in main
+Shadow bytes around the buggy address:
+  <addr8>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  <addr9>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  <addr10>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  <addr11>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  <addr12>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=><addr13>: 00 00 00 00 00 00 00 00 f1 f1 f1 f1 00 00[f3]f3
+  <addr14>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  <addr15>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  <addr16>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  <addr17>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  <addr18>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING
+bash: line 1:  8667 Abort trap: 6           ./prog

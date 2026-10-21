@@ -112,13 +112,15 @@ const DROP_LINE = [
   /libthread_db/, // gdb: "[Thread debugging using libthread_db enabled]", "Using host libthread_db library …"
   /^==PID== (Copyright \(C\)|Using Valgrind-|Parent PID:)/, // valgrind banner and the parent's PID
   /^(Date\/Time|Launch Time|OS Version|Analysis Tool Version|Parent Process):/, // macOS leaks header
+  /^Physical footprint( \(peak\))?:/, // macOS leaks: the process's memory use, which differs between runs
 ];
 
 /**
  * Makes one step's output the same on every run and machine: the work dir → `<dir>` and other temp files → `<tmpN>`
  * (keeping the extension), always. A tool step (`tool`, a step with `as:`) also gets PIDs → `<pid>` / `==PID==`, build
  * ids → `<id>`, hex addresses of 5+ digits → `<addrN>` (numbered by first appearance in the step, stdout then stderr,
- * so equal addresses stay equal), and its banner lines that carry versions, dates or PIDs are dropped. Shorter hex
+ * so equal addresses stay equal), bash's `line N: <pid> Abort trap` PID → `<pid>`, and its banner lines that carry versions, dates or PIDs are dropped,
+ * as are the macOS `leaks` memory figures and its `Binary Images` map. Shorter hex
  * (`0x1f`, a breakpoint offset) and all-zero values are left as they are. A step without `as:` is the program's own
  * output, so `mask = 0xDEADBEEF` or `process 3 items` stays as printed.
  */
@@ -139,7 +141,10 @@ export function normaliseSession(texts: string[], workDirs: string[], o: { tool?
     t = t.replace(/==\d+==/g, '==PID==').replace(/--\d+--/g, '--PID--')
       .replace(/\b(Process|process|LWP|pid|PID:?) \d+\b/g, '$1 <pid>')
       .replace(/^(Process: +\S+) \[\d+\]/gm, '$1 [<pid>]')
-      .replace(/\bBuildId: [0-9a-f]+/g, 'BuildId: <id>'); // ASan: the build id hashes the binary, which embeds the work dir
+      .replace(/\bBuildId: [0-9a-f]+/g, 'BuildId: <id>') // ASan: the build id hashes the binary, which embeds the work dir
+      .replace(/^(bash: line \d+: +)\d+(?= )/gm, '$1<pid>') // bash reporting a signal death: `bash: line 1:  8667 Abort trap: 6`
+      // macOS leaks: the load map of every image, with UUIDs that change with each link; it ends at a blank line or the end.
+      .replace(/^Binary Images:\n(?:.+\n?)*/gm, '');
     t = t.replace(/\b0x[0-9a-fA-F]{5,}\b/g, h => {
       if (/^0x0+$/.test(h)) return h;
       const key = h.toLowerCase().replace(/^0x0+/, '0x');
