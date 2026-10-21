@@ -8,7 +8,7 @@ import { parse as parseYaml } from 'yaml';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { SessionsFile } from '../src/content-model/types';
-import { completeLesson, expectAccessible, fixtureModule, progressJson, ROOT, setEditor } from './lib';
+import { answerQuiz, completeLesson, expectAccessible, fixtureModule, progressJson, ROOT, setEditor } from './lib';
 
 import { FIXTURE, startSessionsFixture } from './sessions-fixture';
 
@@ -145,7 +145,7 @@ test.describe('<CompilerError session> over stored native reports', () => {
     }
   });
 
-  test('click-through: every fixture lesson completes with answers read from the generated sessions file', async ({ browser }) => {
+  test('click-through: every fixture lesson and the checkpoint complete with answers read from generated data', async ({ browser }) => {
     // The same completeLesson as the course click-through (course.spec.ts), so a session CompilerError in real content is
     // answered the same way: the line from the stored report, the fix from the nested fixed fence.
     const mod = fixtureModule(FIXTURE, 'm97');
@@ -156,6 +156,17 @@ test.describe('<CompilerError session> over stored native reports', () => {
       await completeLesson(page, mod, lesson.stem);
       expect((await progressJson(page)).lessons?.[lesson.id], `${lesson.stem} marked complete`).toBeTruthy();
     }
+    // The checkpoint's sp, session ce and session order items, answered by the same answerQuiz as course.spec.ts:
+    // sp from the trace, order from the stored run, ce from the authored answer and stage.
+    // A fresh document: the dev server can optimise dependencies late (after the lessons' editor loads), and a hash-only
+    // navigation would keep the old module graph (two Reacts: "Cannot read properties of null (reading 'useContext')").
+    await page.goto('#/m/m97');
+    await page.reload();
+    await page.getByRole('link', { name: 'Take the checkpoint' }).click();
+    await answerQuiz(page, mod, 'checkpoint');
+    await page.getByRole('button', { name: 'Submit checkpoint' }).click();
+    await expect(page.getByText(/Checkpoint passed/)).toBeVisible();
+    expect((await progressJson(page)).quizzes?.['m97:checkpoint']).toMatchObject({ score: mod.quiz('checkpoint').length, passed: true });
     await context.close();
   });
 });
