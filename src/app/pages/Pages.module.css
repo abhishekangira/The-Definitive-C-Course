@@ -138,6 +138,8 @@ a.lessonLink:hover { background: var(--bg-sunken); }
 .stackList { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .orderList code { white-space: pre-wrap; overflow-wrap: anywhere; }
 .orderList li { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px var(--space-2); background: var(--bg); }
+.orderList li > span:first-child { min-width: 0; }
+.orderList li > span:last-child { flex: none; display: flex; gap: 2px; margin-left: var(--space-2); }
 
 /* Settings */
 .row2 { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
