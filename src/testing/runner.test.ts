@@ -257,6 +257,51 @@ describe('runTests', () => {
   });
 });
 
+describe('file tests', () => {
+  const NOTES = { name: 'notes.txt says done', file: { path: 'notes.txt', expect: { contains: ['done'] } } };
+  const spec: TestsSpec = { ...SPEC, tests: [NOTES] };
+  const enc = (s: string) => new TextEncoder().encode(s);
+  const run = async (files: Record<string, Uint8Array>, t: TestsSpec = spec) =>
+    runTests(t, LEARNER, {}, fake({ run: goodRun }).backend, { readFile: p => files[p] });
+
+  it('are planned as file tests, never as make tests', () => {
+    expect(plannedTests(spec).map(p => p.kind)).toEqual(['compile', 'file']);
+  });
+
+  it('pass when the file exists and matches', async () => {
+    expect(await run({ 'notes.txt': enc('all done\n') })).toMatchObject({ allPassed: true, bits: '11', results: [{}, { kind: 'file', status: 'pass' }] });
+  });
+
+  it('fail when the file is missing', async () => {
+    const r = await run({});
+    expect(r.bits).toBe('10');
+    expect(r.results[1]).toMatchObject({ kind: 'file', status: 'fail', message: 'there is no file notes.txt' });
+  });
+
+  it('fail when the content is wrong', async () => {
+    const r = await run({ 'notes.txt': enc('todo\n') });
+    expect(r.results[1]).toMatchObject({ status: 'fail', how: 'containing', expected: 'done', message: 'notes.txt should contain "done", but it doesn\'t' });
+    const exact = await run({ 'notes.txt': enc('done!\n') }, { ...SPEC, tests: [{ ...NOTES, file: { path: 'notes.txt', expect: 'done\n' } }] });
+    expect(exact.results[1].message).toMatch(/^notes\.txt is not what it should be: /);
+  });
+
+  it('binary files are read one byte per character', async () => {
+    const elf = { ...SPEC, tests: [{ name: 'hello is a program', file: { path: 'hello', expect: { matches: '^\\x7fELF' }, binary: true as const } }] };
+    const bytes = new Uint8Array([0x7f, 0x45, 0x4c, 0x46, 0xff, 0x00]);
+    expect((await run({ hello: bytes }, elf)).results[1].status).toBe('pass');
+    // Bytes above 0x7f too: a Mach-O 64-bit header is not valid UTF-8.
+    const macho = { ...SPEC, tests: [{ name: 'hello is a program', file: { path: 'hello', expect: { matches: '^\\xcf\\xfa\\xed\\xfe' }, binary: true as const } }] };
+    expect((await run({ hello: new Uint8Array([0xcf, 0xfa, 0xed, 0xfe, 0x0c]) }, macho)).results[1].status).toBe('pass');
+    expect((await run({ hello: enc('#!/bin/sh\n') }, elf)).results[1]).toMatchObject({ status: 'fail', message: "hello doesn't match the pattern /^\\x7fELF/" });
+  });
+
+  it('a backend that cannot read the learner\'s files (the browser) skips them with the reason, never passes', async () => {
+    const r = await runTests(spec, LEARNER, {}, fake({ run: goodRun }).backend);
+    expect(r.results[1]).toMatchObject({ kind: 'file', status: 'skip', message: 'this check reads notes.txt on your own machine, so only check.mjs runs it' });
+    expect(r).toMatchObject({ allPassed: false, passed: 1, bits: '10' });
+  });
+});
+
 describe('scan tests', () => {
   const SCAN_SPEC: TestsSpec = {
     version: 1,

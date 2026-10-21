@@ -214,6 +214,33 @@ describe('make checks', () => {
   }, 60_000);
 });
 
+describe('file checks', () => {
+  it('passes when the file exists and matches, fails when it is missing or wrong, and reads binary files', () => {
+    const dir = path.join(tmp, 'file-proj');
+    mkdirSync(dir, { recursive: true });
+    const spec = { version: 1, sources: ['greet.c'], tests: [
+      { name: 'make builds greet', make: { target: 'greet' } },
+      { name: 'greet is a program', file: { path: 'greet', expect: { matches: '^(\\x7fELF|\\xcf\\xfa\\xed\\xfe)' }, binary: true } },
+      { name: 'notes.txt says done', file: { path: 'notes.txt', expect: { contains: ['done'] } } },
+    ] };
+    writeFiles(dir, {
+      'check.json': JSON.stringify(spec), 'check.mjs': readFileSync(checkMjs, 'utf8'),
+      'greet.c': '#include <stdio.h>\nint main(void) { puts("hi"); return 0; }\n', Makefile: 'greet: greet.c\n\t$(CC) -o greet greet.c\n',
+    });
+    const missing = checkJson(dir);
+    expect(byName(missing, 'notes.txt says done')).toMatchObject({ kind: 'file', status: 'fail', message: 'there is no file notes.txt' });
+    expect(missing.bits).toBe('1110');
+    writeFileSync(path.join(dir, 'notes.txt'), 'todo\n');
+    expect(byName(checkJson(dir), 'notes.txt says done')).toMatchObject({ status: 'fail', message: 'notes.txt should contain "done", but it doesn\'t' });
+    writeFileSync(path.join(dir, 'notes.txt'), 'all done\n');
+    const pass = checkJson(dir);
+    expect(byName(pass, 'notes.txt says done')).toMatchObject({ kind: 'file', status: 'pass' });
+    expect(pass).toMatchObject({ allPassed: true, bits: '1111' });
+    const text = check(dir);
+    expect(text.stdout).toContain('✓ notes.txt says done');
+  }, 60_000);
+});
+
 describe('the zip the app builds in the browser (buildZipFromFolder), used the way a learner would', () => {
   /** The files the app loads for a project folder (src/content-runtime/course.ts folderFiles): no solution/, no yaml/mdx. */
   function appFolder(): Record<string, string> {

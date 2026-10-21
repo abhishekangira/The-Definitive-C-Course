@@ -20,7 +20,7 @@ describe('validateTestsSpec', () => {
       '"version" must be 1',
       '"sources" must be a non-empty list of file names',
       'tests[0] needs a non-empty "name"',
-      'test "a": needs exactly one of "run", "unit", "make" or "scan" (found 2)',
+      'test "a": needs exactly one of "run", "unit", "make", "scan" or "file" (found 2)',
     ]));
   });
   it('checks expectations, regexes, exit codes and duplicate or reserved names', () => {
@@ -73,8 +73,32 @@ describe('validateTestsSpec: scan tests', () => {
   });
   it('is exclusive with run, unit and make, and warns about unknown keys', () => {
     const both = scan({ function: 'f', allow: [], maxOps: 1 }, { unit: { harness: 'a.c' } });
-    expect(validateTestsSpec(both).errors).toEqual(['test "s": needs exactly one of "run", "unit", "make" or "scan" (found 2)']);
+    expect(validateTestsSpec(both).errors).toEqual(['test "s": needs exactly one of "run", "unit", "make", "scan" or "file" (found 2)']);
     expect(validateTestsSpec(scan({ function: 'f', allow: [], maxOps: 1, extra: 1 })).warnings).toEqual(['test "s".scan: unknown key "extra"']);
+  });
+});
+
+describe('validateTestsSpec: file tests', () => {
+  const spec = (file: unknown, extra: Record<string, unknown> = {}) => ({ version: 1, sources: ['main.c'], tests: [{ name: 'f', file, ...extra }] });
+  it('accepts a well-formed file test, text or binary', () => {
+    expect(validateTestsSpec(spec({ path: 'hello.i', expect: { contains: ['int main'] } }))).toEqual({ errors: [], warnings: [] });
+    expect(validateTestsSpec(spec({ path: 'out/hello.o', expect: { matches: '^\\x7fELF' }, binary: true }))).toEqual({ errors: [], warnings: [] });
+    expect(validateTestsSpec(spec({ path: 'diagnosis.md', expect: 'done\n' }), { runsIn: 'native' }).errors).toEqual([]);
+  });
+  it('rejects a malformed one', () => {
+    const errs = (file: unknown, opts = {}) => validateTestsSpec(spec(file), opts).errors;
+    expect(errs('hello.i')).toEqual(['test "f": "file" must be an object']);
+    expect(errs({ expect: 'x' })).toEqual(['test "f": file.path must name a file']);
+    expect(errs({ path: '../secret', expect: 'x' })).toEqual(['test "f": file.path must be a relative path inside the project']);
+    expect(errs({ path: '/etc/passwd', expect: 'x' })).toEqual(['test "f": file.path must be a relative path inside the project']);
+    expect(errs({ path: 'C:\\x.txt', expect: 'x' })).toEqual(['test "f": file.path must be a relative path inside the project']);
+    expect(errs({ path: 'a.txt' })).toEqual(['test "f": file.expect is required']);
+    expect(errs({ path: 'a.txt', expect: { matches: '(' } })[0]).toMatch(/^test "f": file\.expect\.matches is not a valid regular expression/);
+    expect(errs({ path: 'a.txt', expect: {} })).toEqual(['test "f": file.expect needs equals, contains, notContains or matches']);
+    expect(errs({ path: 'a.txt', expect: 'x', binary: false })).toEqual(['test "f": file.binary can only be true']);
+    expect(errs({ path: 'a.txt', expect: 'x' }, { runsIn: 'browser' })).toEqual(['test "f": file tests only run natively (check.mjs), not in the browser']);
+    expect(validateTestsSpec(spec({ path: 'a.txt', expect: 'x' }, { run: { stdin: '' } })).errors).toEqual(['test "f": needs exactly one of "run", "unit", "make", "scan" or "file" (found 2)']);
+    expect(validateTestsSpec(spec({ path: 'a.txt', expect: 'x', encoding: 'utf8' })).warnings).toEqual(['test "f".file: unknown key "encoding"']);
   });
 });
 

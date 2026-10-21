@@ -134,6 +134,18 @@ export interface ScanTest {
   hints?: string[];
 }
 
+export interface FileTest {
+  name: string;
+  /**
+   * Native only (check.mjs): a file the learner made, relative to the project folder, must exist and its
+   * text match `expect`. With `binary`, every byte is one character (latin1), so `matches` can look for bytes.
+   */
+  file: { path: string; expect: TextExpect; binary?: true };
+  hint?: string;
+  /** Tiered hints for this test, when one message is not enough (the checkpoint shows none). */
+  hints?: string[];
+}
+
 export interface TestsSpec {
   version: 1;
   title?: string;
@@ -149,7 +161,7 @@ export interface TestsSpec {
   leakcheck?: boolean;
   /** Native only: memory check (ASan+UBSan, LSan/leaks/valgrind). */
   memory?: boolean;
-  tests: Array<IoTest | UnitTest | MakeTest | ScanTest>;
+  tests: Array<IoTest | UnitTest | MakeTest | ScanTest | FileTest>;
 }
 
 // ---------- generated sample data (src/generated/samples/<module>.json; written by tools/verify) ----------

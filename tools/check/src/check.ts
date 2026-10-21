@@ -8,7 +8,7 @@
 // own compiler, prints ✓/✗ per check with plain-English explanations, and finishes with a progress
 // code (or, when everything passes, a completion token) for the course. Exit status: 0 all checks
 // passed, 1 some failed, 2 the project folder or check.json is unusable.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { arch } from 'node:os';
 import path from 'node:path';
 import type { TestsSpec } from '../../../src/content-model/types';
@@ -226,7 +226,8 @@ async function main(): Promise<void> {
     }
   };
 
-  const report: TestReport = await runTests(spec, learnerFiles, exerciseFiles, backend, { only: args.only, onResult: printResult });
+  const readFile = (f: string) => { const p = path.join(dir, f); return existsSync(p) && statSync(p).isFile() ? readFileSync(p) : undefined; };
+  const report: TestReport = await runTests(spec, learnerFiles, exerciseFiles, backend, { only: args.only, onResult: printResult, readFile });
   if (args.verbose && !args.json && report.compile.raw.trim()) out(c.dim(report.compile.raw.trim().replace(/^/gm, '    | ')));
 
   let progressCode: string | undefined;
