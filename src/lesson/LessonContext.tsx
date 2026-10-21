@@ -3,23 +3,25 @@
 // useCardDone() to report completion.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { getProgress, markCard, update, useProgress } from '../progress/store';
-import type { SamplesFile } from '../content-model/types';
+import type { SamplesFile, SessionsFile } from '../content-model/types';
 import styles from './Lesson.module.css';
 
 interface LessonState {
   lessonId: string;
   moduleId: string;
   samples: SamplesFile | null;
+  /** The module's native sessions (<Transcript>); null when it has none. */
+  sessions: SessionsFile | null;
   completed: number[];
 }
 
 const LessonCtx = createContext<LessonState | null>(null);
 const CardCtx = createContext<{ index: number; gated: boolean } | null>(null);
 
-export function LessonProvider({ lessonId, moduleId, samples, children }: { lessonId: string; moduleId: string; samples: SamplesFile | null; children: ReactNode }) {
+export function LessonProvider({ lessonId, moduleId, samples, sessions = null, children }: { lessonId: string; moduleId: string; samples: SamplesFile | null; sessions?: SessionsFile | null; children: ReactNode }) {
   const progress = useProgress();
   const completed = progress.cards[lessonId] ?? [];
-  const value = useMemo(() => ({ lessonId, moduleId, samples, completed }), [lessonId, moduleId, samples, completed]);
+  const value = useMemo(() => ({ lessonId, moduleId, samples, sessions, completed }), [lessonId, moduleId, samples, sessions, completed]);
   return <LessonCtx.Provider value={value}>{children}</LessonCtx.Provider>;
 }
 
@@ -27,6 +29,9 @@ export function useLesson(): LessonState | null { return useContext(LessonCtx); 
 
 /** Samples for the current lesson's module (null outside a lesson or before generation). */
 export function useSamples(): SamplesFile | null { return useContext(LessonCtx)?.samples ?? null; }
+
+/** Native sessions for the current lesson's module (null outside a lesson, or when the module has none). */
+export function useSessions(): SessionsFile | null { return useContext(LessonCtx)?.sessions ?? null; }
 
 /** Returns a function that marks the enclosing card complete (no-op outside lessons, e.g. quizzes). */
 export function useCardDone(): () => void {

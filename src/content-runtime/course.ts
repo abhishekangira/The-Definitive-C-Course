@@ -2,7 +2,7 @@
 // Text and metadata are eager (small); lesson components, sample results and traces are lazy.
 import type { ComponentType } from 'react';
 import type {
-  CourseManifest, ExerciseMeta, LessonFrontmatter, ModuleMeta, SamplesFile, TestsSpec, TraceFile, VideoEntry,
+  CourseManifest, ExerciseMeta, LessonFrontmatter, ModuleMeta, SamplesFile, SessionsFile, TestsSpec, TraceFile, VideoEntry,
 } from '../content-model/types';
 import courseYaml from '../../content/course.yaml';
 import videosJson from '../../videos.json';
@@ -26,6 +26,8 @@ const makefiles = import.meta.glob<string>(['/content/modules/*/project/**/Makef
 const quizFiles = import.meta.glob<QuizItem[]>('/content/modules/*/quizzes/*.yaml', { eager: true, import: 'default' });
 const sampleFiles = import.meta.glob<SamplesFile>('/src/generated/samples/*.json', { import: 'default' });
 const traceFiles = import.meta.glob<TraceFile>('/src/generated/traces/*.json', { import: 'default' });
+// Native sessions (docs/adr/0005-native-sessions.md): stored terminal output that <Transcript> shows.
+const sessionFiles = import.meta.glob<SessionsFile>('/src/generated/sessions/*.json', { import: 'default' });
 
 export interface QuizItem {
   id: string;
@@ -107,6 +109,16 @@ export function samplesFor(moduleId: string): Promise<SamplesFile | null> {
     sampleCache.set(moduleId, load ? load() : Promise.resolve(null));
   }
   return sampleCache.get(moduleId)!;
+}
+
+const sessionCache = new Map<string, Promise<SessionsFile | null>>();
+/** The module's stored native sessions, or null when it has none (no session folder, or not generated yet). */
+export function sessionsFor(moduleId: string): Promise<SessionsFile | null> {
+  if (!sessionCache.has(moduleId)) {
+    const load = sessionFiles[`/src/generated/sessions/${moduleId}.json`];
+    sessionCache.set(moduleId, load ? load() : Promise.resolve(null));
+  }
+  return sessionCache.get(moduleId)!;
 }
 
 export async function traceFor(sampleId: string): Promise<TraceFile | null> {

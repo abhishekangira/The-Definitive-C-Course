@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { SamplesFile, SessionsFile, TraceFile } from '../../src/content-model/types';
+import { stableStringify } from '../shared/stable-json';
 import { ROOT } from '../shared/wasm-node';
 import { isCacheable } from './cache';
 import { checkFragment, checkProjection, cleanupScratch, verify } from './verify';
@@ -113,6 +114,19 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     const file = JSON.parse(readFileSync(path.join(generatedRoot, 'sessions/m97.json'), 'utf8')) as SessionsFile;
     expect(Object.keys(file.sessions).sort()).toEqual(['analyser', 'asan', 'compile-error', 'gdb', 'libm', 'link-multiple', 'link-order', 'link-undefined', 'lldb', 'make', 'ubsan', 'valgrind-leak', 'valgrind-uninit']);
     expect(file.generatedBy).toMatch(/gcc: .*13\.\d.*clang22: .*22\.\d.*gdb: GNU gdb.*valgrind: valgrind-3.*lldb: lldb version 22.*make: GNU Make/);
+
+    // The committed copy is the app's test data (<Transcript>: src/components/transcript-tabs.test.ts and Transcript.dom.test.ts, e2e/transcript.spec.ts), so
+    // it is this output on the CI toolchain, never typed or edited: everything but the version line must match. On a
+    // mismatch the fresh file goes to test-results/, which CI uploads (artifact playwright-report) when the job fails.
+    const committed = path.join(HERE, 'fixtures/generated/sessions/m97.json');
+    const fresh = readFileSync(path.join(generatedRoot, 'sessions/m97.json'), 'utf8');
+    const behaviour = (text: string) => stableStringify({ ...(JSON.parse(text) as SessionsFile), generatedBy: '<version>' });
+    if (!existsSync(committed) || behaviour(readFileSync(committed, 'utf8')) !== behaviour(fresh)) {
+      const out = path.join(ROOT, 'test-results/session-fixtures/m97.json');
+      mkdirSync(path.dirname(out), { recursive: true });
+      writeFileSync(out, fresh);
+      expect.fail(`${path.relative(ROOT, committed)} is not what tools/verify writes now. The fresh file is ${path.relative(ROOT, out)}: commit it in its place, from a CI run (root AGENTS.md, Reference environment)`);
+    }
     const step = (id: string, platform: 'linux-gcc' | 'linux-clang', i: number) => file.sessions[id].runs[platform]![i];
     for (const p of ['linux-gcc', 'linux-clang'] as const) {
       expect(step('compile-error', p, 0)).toMatchObject({ exit: 1, cmd: '$CC $CFLAGS -c main.c' });
@@ -144,6 +158,11 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     expect(step('gdb', 'linux-gcc', 1).stdout).toContain('[Inferior 1 (process <pid>) exited normally]');
     expect(step('lldb', 'linux-clang', 1).stdout).toMatch(/\(lldb\) frame variable n\n\(int\) n = 3\n/);
     expect(file.sessions.gdb.runs['linux-clang']).toBeUndefined(); // only: gcc
+    // Which platforms have steps, so the app can tell a run still to come (macOS before Targets) from one that never runs.
+    expect(file.sessions.gdb.platforms).toEqual(['linux-gcc']);
+    expect(file.sessions.lldb.platforms).toEqual(['linux-clang', 'macos']);
+    expect(file.sessions['valgrind-uninit'].platforms).toEqual(['linux-gcc', 'linux-clang']);
+    expect(file.sessions['link-undefined'].platforms).toEqual(['linux-gcc', 'linux-clang', 'macos']);
     expect(file.sessions.lldb.runs['linux-gcc']).toBeUndefined(); // only: clang
 
     // Two more runs without the cache: --check finds the stored file up to date.

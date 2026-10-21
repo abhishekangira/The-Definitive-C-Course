@@ -1,0 +1,552 @@
+{
+  "generatedBy": "tools/verify sessions; gcc: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0; clang22: Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80); gdb: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; valgrind: valgrind-3.22.0; lldb: lldb version 22.1.8; make: GNU Make 4.3",
+  "module": "m97",
+  "sessions": {
+    "analyser": {
+      "dir": "sessions/analyser",
+      "hash": "39b57a553c2b4a38",
+      "id": "analyser",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "as": "clang --analyze",
+            "cmd": "$CC --analyze u.c",
+            "exit": 0,
+            "stderr": "u.c:3:47: warning: The left expression of the compound assignment uses uninitialized memory [core.uninitialized.Assign]\n    3 | static void add_digit(int *sum, int d) { *sum += d; }\n      |                                          ~~~~ ^\n1 warning generated.\n",
+            "stdout": ""
+          }
+        ],
+        "linux-gcc": [
+          {
+            "as": "gcc -fanalyzer",
+            "cmd": "$CC $CFLAGS -fanalyzer -c u.c",
+            "exit": 0,
+            "stderr": "u.c: In function 'add_digit':\nu.c:3:42: warning: use of uninitialized value '*sum' [CWE-457] [-Wanalyzer-use-of-uninitialized-value]\n    3 | static void add_digit(int *sum, int d) { *sum += d; }\n      |                                          ^~~~\n  'main': events 1-6\n    |\n    |    5 | int main(void) {\n    |      |     ^~~~\n    |      |     |\n    |      |     (1) entry to 'main'\n    |    6 |     int sum;\n    |      |         ~~~\n    |      |         |\n    |      |         (2) region created on stack here\n    |      |         (3) capacity: 4 bytes\n    |    7 |     for (int d = 1; d <= 3; d++) add_digit(&sum, d);\n    |      |                     ~~~~~~       ~~~~~~~~~~~~~~~~~~\n    |      |                       |          |\n    |      |                       |          (5) ...to here\n    |      |                       |          (6) calling 'add_digit' from 'main'\n    |      |                       (4) following 'true' branch (when 'd <= 3')...\n    |\n    +--> 'add_digit': events 7-8\n           |\n           |    3 | static void add_digit(int *sum, int d) { *sum += d; }\n           |      |             ^~~~~~~~~                    ~~~~\n           |      |             |                            |\n           |      |             (7) entry to 'add_digit'     (8) use of uninitialized value '*sum' here\n           |\n",
+            "stdout": ""
+          }
+        ]
+      }
+    },
+    "asan": {
+      "dir": "sessions/asan",
+      "hash": "62c48312136a0554",
+      "id": "asan",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "as": "asan",
+            "cmd": "$CC $CFLAGS -fsanitize=address -fno-omit-frame-pointer main.c -o prog && ./prog",
+            "exit": 1,
+            "stderr": "=================================================================\n==PID==ERROR: AddressSanitizer: stack-buffer-overflow on address <addr1> at pc <addr2> bp <addr3> sp <addr4>\nWRITE of size 4 at <addr1> thread T0\n    #0 <addr5> in main <dir>/main.c:5:39\n    #1 <addr6> in __libc_start_call_main csu/../sysdeps/nptl/libc_start_call_main.h:58:16\n    #2 <addr7> in __libc_start_main csu/../csu/libc-start.c:360:3\n    #3 <addr8> in _start (<dir>/prog+<addr9>) (BuildId: <id>)\n\nAddress <addr1> is located in stack of thread T0 at offset 48 in frame\n    #0 <addr10> in main <dir>/main.c:3\n\n  This frame has 1 object(s):\n    [32, 48) 'a' (line 4) <== Memory access at offset 48 overflows this variable\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-buffer-overflow <dir>/main.c:5:39 in main\nShadow bytes around the buggy address:\n  <addr11>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr12>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr13>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr14>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr15>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=><addr16>: f1 f1 f1 f1 00 00[f3]f3 00 00 00 00 00 00 00 00\n  <addr17>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr18>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr19>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr20>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr21>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==PID==ABORTING\n",
+            "stdout": ""
+          }
+        ],
+        "linux-gcc": [
+          {
+            "as": "asan",
+            "cmd": "$CC $CFLAGS -fsanitize=address -fno-omit-frame-pointer main.c -o prog && ./prog",
+            "exit": 1,
+            "stderr": "=================================================================\n==PID==ERROR: AddressSanitizer: stack-buffer-overflow on address <addr1> at pc <addr2> bp <addr3> sp <addr4>\nWRITE of size 4 at <addr1> thread T0\n    #0 <addr5> in main <dir>/main.c:5\n    #1 <addr6> in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58\n    #2 <addr7> in __libc_start_main_impl ../csu/libc-start.c:360\n    #3 <addr8> in _start (<dir>/prog+0x1184) (BuildId: <id>)\n\nAddress <addr1> is located in stack of thread T0 at offset 48 in frame\n    #0 <addr9> in main <dir>/main.c:3\n\n  This frame has 1 object(s):\n    [32, 48) 'a' (line 4) <== Memory access at offset 48 overflows this variable\nHINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork\n      (longjmp and C++ exceptions *are* supported)\nSUMMARY: AddressSanitizer: stack-buffer-overflow <dir>/main.c:5 in main\nShadow bytes around the buggy address:\n  <addr10>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr11>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr12>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr13>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr14>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=><addr15>: f1 f1 f1 f1 00 00[f3]f3 00 00 00 00 00 00 00 00\n  <addr16>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr17>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr18>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr19>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  <addr20>: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==PID==ABORTING\n",
+            "stdout": ""
+          }
+        ]
+      }
+    },
+    "compile-error": {
+      "dir": "sessions/compile-error",
+      "hash": "8781e62f96191309",
+      "id": "compile-error",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "cmd": "$CC $CFLAGS -c main.c",
+            "exit": 1,
+            "stderr": "main.c:5:6: error: member reference base type 'int' is not a structure or union\n    5 |     n.digits = 1; /* n is an int, not a struct */\n      |     ~^~~~~~~\n1 error generated.\n",
+            "stdout": ""
+          }
+        ],
+        "linux-gcc": [
+          {
+            "cmd": "$CC $CFLAGS -c main.c",
+            "exit": 1,
+            "stderr": "main.c: In function 'main':\nmain.c:5:6: error: request for member 'digits' in something not a structure or union\n    5 |     n.digits = 1; /* n is an int, not a struct */\n      |      ^\n",
+            "stdout": ""
+          }
+        ]
+      }
+    },
+    "gdb": {
+      "dir": "sessions/gdb",
+      "hash": "faa2c9e93c8b0871",
+      "id": "gdb",
+      "platforms": [
+        "linux-gcc"
+      ],
+      "runs": {
+        "linux-gcc": [
+          {
+            "cmd": "$CC $CFLAGS -o prog w.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "gdb",
+            "cmd": "gdb -q -nx -batch -iex 'set debuginfod enabled off' -ex 'break w.c:6' -ex 'run < in.txt' -ex 'print n' -ex next -ex 'print total' -ex bt -ex delete -ex continue ./prog",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "Breakpoint 1 at 0x11b4: file w.c, line 6.\n\nBreakpoint 1, main () at w.c:6\n6\t        total += n;\n$1 = 3\n5\t    while (scanf(\"%d\", &n) == 1) {\n$2 = 3\n#0  main () at w.c:5\ntotal = 7\n[Inferior 1 (process <pid>) exited normally]\n"
+          }
+        ]
+      }
+    },
+    "libm": {
+      "dir": "sessions/libm",
+      "hash": "e428d008f9fdbff1",
+      "id": "libm",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "as": "ld",
+            "cmd": "$CC $CFLAGS main.c -o prog",
+            "exit": 1,
+            "stderr": "/usr/bin/ld: <tmp1>.o: in function `main':\n<dir>/main.c:7:(.text+0x53): undefined reference to `sqrt'\nclang-22: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+            "stdout": ""
+          },
+          {
+            "as": "ld",
+            "cmd": "$CC $CFLAGS -lm main.c -o prog",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "cmd": "$CC $CFLAGS main.c -o prog -lm && ./prog 2",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "1.414\n"
+          }
+        ],
+        "linux-gcc": [
+          {
+            "as": "ld",
+            "cmd": "$CC $CFLAGS main.c -o prog",
+            "exit": 1,
+            "stderr": "/usr/bin/ld: <tmp1>.o: in function `main':\n<dir>/main.c:7:(.text+0x4d): undefined reference to `sqrt'\ncollect2: error: ld returned 1 exit status\n",
+            "stdout": ""
+          },
+          {
+            "as": "ld",
+            "cmd": "$CC $CFLAGS -lm main.c -o prog",
+            "exit": 1,
+            "stderr": "/usr/bin/ld: <tmp1>.o: in function `main':\n<dir>/main.c:7:(.text+0x4d): undefined reference to `sqrt'\ncollect2: error: ld returned 1 exit status\n",
+            "stdout": ""
+          },
+          {
+            "cmd": "$CC $CFLAGS main.c -o prog -lm && ./prog 2",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "1.414\n"
+          }
+        ]
+      }
+    },
+    "link-multiple": {
+      "dir": "sessions/link-multiple",
+      "hash": "b5a99b4ccfc682ad",
+      "id": "link-multiple",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "cmd": "$CC $CFLAGS -c main.c bump.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "ld",
+            "cmd": "$CC main.o bump.o -o prog",
+            "exit": 1,
+            "stderr": "/usr/bin/ld: bump.o:(.bss+0x0): multiple definition of `count'; main.o:(.bss+0x0): first defined here\nclang-22: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+            "stdout": ""
+          }
+        ],
+        "linux-gcc": [
+          {
+            "cmd": "$CC $CFLAGS -c main.c bump.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "ld",
+            "cmd": "$CC main.o bump.o -o prog",
+            "exit": 1,
+            "stderr": "/usr/bin/ld: bump.o:<dir>/count.h:3: multiple definition of `count'; main.o:<dir>/count.h:3: first defined here\ncollect2: error: ld returned 1 exit status\n",
+            "stdout": ""
+          }
+        ]
+      }
+    },
+    "link-order": {
+      "dir": "sessions/link-order",
+      "hash": "ab30d5b1d5e35535",
+      "id": "link-order",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "cmd": "$CC $CFLAGS -c main.c a.c b.c && ar rcs liba.a a.o && ar rcs libb.a b.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "ld",
+            "cmd": "$CC main.o -L. -lb -la -o prog",
+            "exit": 1,
+            "stderr": "/usr/bin/ld: ./liba.a(a.o): in function `a':\n<dir>/a.c:3:(.text+0x5): undefined reference to `b'\nclang-22: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+            "stdout": ""
+          },
+          {
+            "cmd": "$CC main.o -L. -la -lb -o prog && ./prog",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "42\n"
+          }
+        ],
+        "linux-gcc": [
+          {
+            "cmd": "$CC $CFLAGS -c main.c a.c b.c && ar rcs liba.a a.o && ar rcs libb.a b.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "ld",
+            "cmd": "$CC main.o -L. -lb -la -o prog",
+            "exit": 1,
+            "stderr": "/usr/bin/ld: ./liba.a(a.o): in function `a':\n<dir>/a.c:3:(.text+0x9): undefined reference to `b'\ncollect2: error: ld returned 1 exit status\n",
+            "stdout": ""
+          },
+          {
+            "cmd": "$CC main.o -L. -la -lb -o prog && ./prog",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "42\n"
+          }
+        ]
+      }
+    },
+    "link-undefined": {
+      "dir": "sessions/link-undefined",
+      "hash": "6df8a373eeb09b6c",
+      "id": "link-undefined",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "cmd": "$CC $CFLAGS -c main.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "ld",
+            "cmd": "$CC main.o -o prog",
+            "exit": 1,
+            "stderr": "/usr/bin/ld: main.o: in function `main':\n<dir>/main.c:6:(.text+0x1a): undefined reference to `area'\nclang-22: error: linker command failed with exit code 1 (use -v to see invocation)\n",
+            "stdout": ""
+          },
+          {
+            "as": "nm",
+            "cmd": "nm main.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "0000000000000000 r .L.str\n                 U area\n0000000000000000 T main\n                 U printf\n"
+          }
+        ],
+        "linux-gcc": [
+          {
+            "cmd": "$CC $CFLAGS -c main.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "ld",
+            "cmd": "$CC main.o -o prog",
+            "exit": 1,
+            "stderr": "/usr/bin/ld: main.o: in function `main':\n<dir>/main.c:6:(.text+0x13): undefined reference to `area'\ncollect2: error: ld returned 1 exit status\n",
+            "stdout": ""
+          },
+          {
+            "as": "nm",
+            "cmd": "nm main.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "                 U area\n0000000000000000 T main\n                 U printf\n"
+          }
+        ]
+      }
+    },
+    "lldb": {
+      "dir": "sessions/lldb",
+      "hash": "cf626481985ef02e",
+      "id": "lldb",
+      "platforms": [
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "cmd": "$CC $CFLAGS -o prog w.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "lldb",
+            "cmd": "$LLDB -b -x -o 'breakpoint set -f w.c -l 6' -o 'process launch -i in.txt' -o 'frame variable n' -o next -o 'frame variable total' -o bt -o 'breakpoint delete -f' -o continue ./prog",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "(lldb) target create \"./prog\"\nCurrent executable set to '<dir>/prog' (x86_64).\n(lldb) breakpoint set -f w.c -l 6\nBreakpoint 1: where = prog`main + 52 at w.c:6:18, address = <addr1>\n(lldb) process launch -i in.txt\nProcess <pid> launched: '<dir>/prog' (x86_64)\nProcess <pid> stopped\n* thread #1, name = 'prog', stop reason = breakpoint 1.1\n    frame #0: <addr2> prog`main at w.c:6:18\n   3   \tint main(void) {\n   4   \t    int n = 0, total = 0;\n   5   \t    while (scanf(\"%d\", &n) == 1) {\n-> 6   \t        total += n;\n    \t                 ^\n   7   \t    }\n   8   \t    printf(\"total = %d\\n\", total);\n   9   \t    return 0;\n(lldb) frame variable n\n(int) n = 3\n(lldb) next\nProcess <pid> stopped\n* thread #1, name = 'prog', stop reason = step over\n    frame #0: <addr3> prog`main at w.c:5:5\n   2   \t\n   3   \tint main(void) {\n   4   \t    int n = 0, total = 0;\n-> 5   \t    while (scanf(\"%d\", &n) == 1) {\n    \t    ^\n   6   \t        total += n;\n   7   \t    }\n   8   \t    printf(\"total = %d\\n\", total);\n(lldb) frame variable total\n(int) total = 3\n(lldb) bt\n* thread #1, name = 'prog', stop reason = step over\n  * frame #0: <addr3> prog`main at w.c:5:5\n    frame #1: <addr4> libc.so.6`__libc_start_call_main(main=(prog`main at w.c:3), argc=1, argv=<addr5>) at libc_start_call_main.h:58:16\n    frame #2: <addr6> libc.so.6`__libc_start_main_impl(main=(prog`main at w.c:3), argc=1, argv=<addr5>, init=<unavailable>, fini=<unavailable>, rtld_fini=<unavailable>, stack_end=<addr7>) at libc-start.c:360:3\n    frame #3: <addr8> prog`_start + 37\n(lldb) breakpoint delete -f\nAll breakpoints removed. (1 breakpoint)\n(lldb) continue\ntotal = 7\r\nProcess <pid> resuming\nProcess <pid> exited with status = 0 (0x00000000)\n"
+          }
+        ]
+      }
+    },
+    "make": {
+      "dir": "sessions/make",
+      "hash": "306f470eafb37bbc",
+      "id": "make",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "as": "make",
+            "cmd": "make && ./credit",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "clang-22 -std=c17 -Wall -Wextra -pedantic -g -O0 -c main.c\nclang-22 -std=c17 -Wall -Wextra -pedantic -g -O0 -c luhn.c\nclang-22 -o credit main.o luhn.o\n20\n"
+          },
+          {
+            "as": "make",
+            "cmd": "make",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "make: 'credit' is up to date.\n"
+          },
+          {
+            "as": "make",
+            "cmd": "sleep 1 && touch luhn.h && make",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "clang-22 -std=c17 -Wall -Wextra -pedantic -g -O0 -c main.c\nclang-22 -std=c17 -Wall -Wextra -pedantic -g -O0 -c luhn.c\nclang-22 -o credit main.o luhn.o\n"
+          },
+          {
+            "as": "make",
+            "cmd": "make -f spaces.mk",
+            "exit": 2,
+            "stderr": "spaces.mk:2: *** missing separator.  Stop.\n",
+            "stdout": ""
+          }
+        ],
+        "linux-gcc": [
+          {
+            "as": "make",
+            "cmd": "make && ./credit",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -c main.c\ngcc -std=c17 -Wall -Wextra -pedantic -g -O0 -c luhn.c\ngcc -o credit main.o luhn.o\n20\n"
+          },
+          {
+            "as": "make",
+            "cmd": "make",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "make: 'credit' is up to date.\n"
+          },
+          {
+            "as": "make",
+            "cmd": "sleep 1 && touch luhn.h && make",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "gcc -std=c17 -Wall -Wextra -pedantic -g -O0 -c main.c\ngcc -std=c17 -Wall -Wextra -pedantic -g -O0 -c luhn.c\ngcc -o credit main.o luhn.o\n"
+          },
+          {
+            "as": "make",
+            "cmd": "make -f spaces.mk",
+            "exit": 2,
+            "stderr": "spaces.mk:2: *** missing separator.  Stop.\n",
+            "stdout": ""
+          }
+        ]
+      }
+    },
+    "ubsan": {
+      "dir": "sessions/ubsan",
+      "hash": "769bad52468f720f",
+      "id": "ubsan",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "as": "ubsan",
+            "cmd": "$CC $CFLAGS -fsanitize=undefined main.c -o prog && ./prog",
+            "exit": 0,
+            "stderr": "main.c:6:20: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'\nSUMMARY: UndefinedBehaviorSanitizer: undefined-behavior main.c:6:20 \n",
+            "stdout": "done\n"
+          },
+          {
+            "as": "ubsan",
+            "cmd": "$CC $CFLAGS -fsanitize=undefined -fno-sanitize-recover=all main.c -o prog && ./prog",
+            "exit": 1,
+            "stderr": "main.c:6:20: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'\nSUMMARY: UndefinedBehaviorSanitizer: undefined-behavior main.c:6:20 \n",
+            "stdout": ""
+          }
+        ],
+        "linux-gcc": [
+          {
+            "as": "ubsan",
+            "cmd": "$CC $CFLAGS -fsanitize=undefined main.c -o prog && ./prog",
+            "exit": 0,
+            "stderr": "main.c:6:9: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'\n",
+            "stdout": "done\n"
+          },
+          {
+            "as": "ubsan",
+            "cmd": "$CC $CFLAGS -fsanitize=undefined -fno-sanitize-recover=all main.c -o prog && ./prog",
+            "exit": 1,
+            "stderr": "main.c:6:9: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'\n",
+            "stdout": ""
+          }
+        ]
+      }
+    },
+    "valgrind-leak": {
+      "dir": "sessions/valgrind-leak",
+      "hash": "9722393f05141d7c",
+      "id": "valgrind-leak",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "cmd": "$CC $CFLAGS -o prog l.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "valgrind",
+            "cmd": "valgrind --leak-check=full --error-exitcode=1 ./prog",
+            "exit": 1,
+            "stderr": "==PID== Memcheck, a memory error detector\n==PID== Command: ./prog\n==PID== \n==PID== \n==PID== HEAP SUMMARY:\n==PID==     in use at exit: 40 bytes in 1 blocks\n==PID==   total heap usage: 1 allocs, 0 frees, 40 bytes allocated\n==PID== \n==PID== 40 bytes in 1 blocks are definitely lost in loss record 1 of 1\n==PID==    at <addr1>: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==PID==    by <addr2>: main (l.c:4)\n==PID== \n==PID== LEAK SUMMARY:\n==PID==    definitely lost: 40 bytes in 1 blocks\n==PID==    indirectly lost: 0 bytes in 0 blocks\n==PID==      possibly lost: 0 bytes in 0 blocks\n==PID==    still reachable: 0 bytes in 0 blocks\n==PID==         suppressed: 0 bytes in 0 blocks\n==PID== \n==PID== For lists of detected and suppressed errors, rerun with: -s\n==PID== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)\n",
+            "stdout": ""
+          }
+        ],
+        "linux-gcc": [
+          {
+            "cmd": "$CC $CFLAGS -o prog l.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "valgrind",
+            "cmd": "valgrind --leak-check=full --error-exitcode=1 ./prog",
+            "exit": 1,
+            "stderr": "==PID== Memcheck, a memory error detector\n==PID== Command: ./prog\n==PID== \n==PID== \n==PID== HEAP SUMMARY:\n==PID==     in use at exit: 40 bytes in 1 blocks\n==PID==   total heap usage: 1 allocs, 0 frees, 40 bytes allocated\n==PID== \n==PID== 40 bytes in 1 blocks are definitely lost in loss record 1 of 1\n==PID==    at <addr1>: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)\n==PID==    by <addr2>: main (l.c:4)\n==PID== \n==PID== LEAK SUMMARY:\n==PID==    definitely lost: 40 bytes in 1 blocks\n==PID==    indirectly lost: 0 bytes in 0 blocks\n==PID==      possibly lost: 0 bytes in 0 blocks\n==PID==    still reachable: 0 bytes in 0 blocks\n==PID==         suppressed: 0 bytes in 0 blocks\n==PID== \n==PID== For lists of detected and suppressed errors, rerun with: -s\n==PID== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)\n",
+            "stdout": ""
+          }
+        ]
+      }
+    },
+    "valgrind-uninit": {
+      "dir": "sessions/valgrind-uninit",
+      "hash": "808d33d74123ed10",
+      "id": "valgrind-uninit",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "cmd": "$CC $CFLAGS -o prog u.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "valgrind",
+            "cmd": "valgrind --track-origins=yes --error-exitcode=1 ./prog",
+            "exit": 1,
+            "stderr": "==PID== Memcheck, a memory error detector\n==PID== Command: ./prog\n==PID== \n==PID== Conditional jump or move depends on uninitialised value(s)\n==PID==    at <addr1>: main (u.c:8)\n==PID==  Uninitialised value was created by a stack allocation\n==PID==    at <addr2>: main (u.c:5)\n==PID== \n==PID== \n==PID== HEAP SUMMARY:\n==PID==     in use at exit: 0 bytes in 0 blocks\n==PID==   total heap usage: 0 allocs, 0 frees, 0 bytes allocated\n==PID== \n==PID== All heap blocks were freed -- no leaks are possible\n==PID== \n==PID== For lists of detected and suppressed errors, rerun with: -s\n==PID== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)\n",
+            "stdout": ""
+          }
+        ],
+        "linux-gcc": [
+          {
+            "cmd": "$CC $CFLAGS -o prog u.c",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "valgrind",
+            "cmd": "valgrind --track-origins=yes --error-exitcode=1 ./prog",
+            "exit": 1,
+            "stderr": "==PID== Memcheck, a memory error detector\n==PID== Command: ./prog\n==PID== \n==PID== Conditional jump or move depends on uninitialised value(s)\n==PID==    at <addr1>: main (u.c:8)\n==PID==  Uninitialised value was created by a stack allocation\n==PID==    at <addr2>: main (u.c:5)\n==PID== \n==PID== \n==PID== HEAP SUMMARY:\n==PID==     in use at exit: 0 bytes in 0 blocks\n==PID==   total heap usage: 0 allocs, 0 frees, 0 bytes allocated\n==PID== \n==PID== All heap blocks were freed -- no leaks are possible\n==PID== \n==PID== For lists of detected and suppressed errors, rerun with: -s\n==PID== ERROR SUMMARY: 1 errors from 1 contexts (suppressed: 0 from 0)\n",
+            "stdout": ""
+          }
+        ]
+      }
+    }
+  }
+}

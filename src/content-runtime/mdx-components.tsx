@@ -9,6 +9,7 @@ import { Analogy, Callout, CodeBlock } from '../components/Content';
 import { Explainer } from '../components/Explainer';
 import { YouTube } from '../components/YouTube';
 import { TestExample } from '../components/TestExample';
+import { Transcript } from '../components/Transcript';
 
 /**
  * The heavy interactions (the code-exercise runner with its Parsons and download code, the stepper, the pipeline
@@ -55,6 +56,7 @@ export const mdxComponents = {
   Animation: Explainer,
   YouTube,
   TestExample,
+  Transcript,
   table: Table,
   Kbd: ({ children }: { children: ReactNode }) => <kbd>{children}</kbd>,
 };

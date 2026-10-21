@@ -218,6 +218,23 @@ describe('fences', () => {
     expect(errorsOf(lintGoodWith({ [lesson]: sub('```c id=fx-hello', '```C id=fx-hello') }).result, 'fence-lang')).toHaveLength(1);
   });
 
+  it('rejects tool output typed into a terminal fence, and only there (show it with <Transcript>)', () => {
+    // fixtures/good has a ```text fence with a program's own output, which passes.
+    const withOutput = (lang: string, text: string) => lintGoodWith({ [lesson]: sub('```text\nHello\n```', `\`\`\`${lang}\n${text}\n\`\`\``) }).result;
+    const markers = ["main.c:6:5: runtime error: signed integer overflow", '==1234== Invalid read of size 4', '==PID== HEAP SUMMARY:',
+      "main.c:(.text+0x13): undefined reference to `area'", 'ERROR: AddressSanitizer: stack-buffer-overflow', '(gdb) bt', '(lldb) bt', 'make: *** [Makefile:2: credit] Error 1'];
+    for (const text of markers) {
+      const e = errorsOf(withOutput('text', text), 'hand-typed-output');
+      expect(e, text).toHaveLength(1);
+      expect(e[0].message).toContain('<Transcript');
+    }
+    for (const lang of ['', 'txt', 'console', 'sh', 'bash', 'shell']) expect(errorsOf(withOutput(lang, '(gdb) bt'), 'hand-typed-output'), lang || 'untagged').toHaveLength(1);
+    // Other languages are not terminal text, and a fence without a marker is fine.
+    expect(errorsOf(withOutput('yaml', '(gdb) bt'), 'hand-typed-output')).toEqual([]);
+    expect(errorsOf(withOutput('console', '$ ./hello\nHello'), 'hand-typed-output')).toEqual([]);
+    expect(errorsOf(withOutput('text', '== 3 =='), 'hand-typed-output')).toEqual([]);
+  });
+
   it('keeps cards the same as the renderer: a fragment fence is not an interaction', () => {
     const r = lintGoodWith({ [`${M1}/lessons/01-hello.mdx`]: sub('```c id=fx-hello', '```c fragment') }).result;
     // card 1 now runs into the analogy and the next Choice: still two interactions fewer than before
@@ -938,6 +955,7 @@ describe('fixtures/bad', () => {
     at('posix-scope', '03-fences.mdx', 'id=posix-in-m01');
     at('posix-flag', '03-fences.mdx', 'id=posix-no-flag');
     at('fence-lang', '03-fences.mdx', '```C');
+    at('hand-typed-output', '03-fences.mdx', '```console');
     at('fence-nesting', '03-fences.mdx', 'id=in-list', 'warning');
     at('interaction-props', '03-fences.mdx', 'id=quiet-compiler-error');
     at('analogy', '04-analogy.mdx', 'c="int n;" breaksDown=""');

@@ -35,6 +35,10 @@ export const MAX_VIDEOS_PER_MODULE = 2;
 /** Components registered for MDX (src/content-runtime/mdx-components.tsx) plus the planned ones in cards.ts. */
 export const KNOWN_ELEMENTS = new Set<string>([...INTERACTIONS, ...MEDIA, ...NEUTRAL, 'Card', 'TestExample', 'Kbd']);
 
+/** Fences that hold terminal text, and the markers of tool output in them (`hand-typed-output`; issue #73, infrastructure E). */
+const OUTPUT_FENCE_LANGS = new Set(['', 'text', 'txt', 'console', 'sh', 'bash', 'shell']);
+const TOOL_OUTPUT_MARKERS = /runtime error:|==\d+==|==PID==|undefined reference|AddressSanitizer|\(gdb\)|\(lldb\)|make: \*\*\*/;
+
 const FRONTMATTER_KEYS = new Set(['id', 'title', 'minutes', 'summary']);
 const BASES = new Set(['dec', 'bin', 'hex']);
 const WIDTHS = new Set([8, 16, 32, 64]);
@@ -106,6 +110,10 @@ function lowerFences(tree: Root, file: string, mod: ModuleCtx, r: FileReporter):
       return;
     }
     if (lang !== 'c' && lang !== 'h') {
+      const marker = OUTPUT_FENCE_LANGS.has(lang) ? TOOL_OUTPUT_MARKERS.exec(node.value) : null;
+      if (marker) {
+        r.error(at, 'hand-typed-output', `this \`\`\`${lang || '(untagged)'} fence contains tool output ("${marker[0]}"): tool output is never typed by hand, show it with <Transcript session="…"> from a native session`);
+      }
       if (!lang && /#\s*include\b|\bint\s+main\s*\(/.test(node.value)) {
         r.warn(at, 'fence-lang', 'this fence has no language but looks like C: tag it ```c with id=… or fragment so it is verified');
       }

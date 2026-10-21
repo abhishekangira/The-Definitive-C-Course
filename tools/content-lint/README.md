@@ -73,6 +73,7 @@ is measured on the cards learners see: a fence that has an `id` ends a card, a `
 | `fence-id` | error | Every ` ```c ` / ` ```h ` fence has `id=` or `fragment`. |
 | `fence-meta` | error | Fence meta parses: unknown keys (`toSampleMeta` throws), bad `expect=`, bad quoted JSON strings. |
 | `fence-lang` | error / warning | ` ```C ` / ` ```H ` would silently bypass every check (error); an untagged fence that looks like C warns. |
+| `hand-typed-output` | error | A `text`, `txt`, `console`, `sh`, `bash`, `shell` or untagged fence contains tool output (`runtime error:`, `==N==` or `==PID==`, `undefined reference`, `AddressSanitizer`, `(gdb)`, `(lldb)`, `make: ***`): tool output is never typed by hand, so show it with `<Transcript>` from a native session (`content/AGENTS.md`). |
 | `fence-nesting` | warning | A sample fence inside a list or blockquote is not a card interaction. |
 | `sample-id` | error | Sample ids are lower-case kebab-case (they name generated files). |
 | `duplicate-sample` | error | Sample ids are unique across the whole course (lessons and quiz code together). |

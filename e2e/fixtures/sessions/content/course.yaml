@@ -1,0 +1,4 @@
+title: Native sessions fixture
+hoursPerWeek: 5
+modules:
+  - { id: m97, dir: m97-sessions, number: 1, title: "Sessions module", hours: 1, available: true }
