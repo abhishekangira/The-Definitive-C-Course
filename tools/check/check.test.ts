@@ -11,6 +11,7 @@ import { buildZipFromFolder, projectZipEntries } from '../../src/testing/project
 import type { TestResult } from '../../src/testing/runner';
 import { parseLearnerFile, verifyCode } from '../../src/testing/token';
 import { buildCheck, LEARNC_H, ROOT } from './build.mjs';
+import { assess, SIZEOF_TYPES, type DoctorFacts } from './src/doctor';
 import { listFiles, readProjectSource, writeFiles } from './src/project-files';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -271,4 +272,112 @@ describe('build.mjs --zip', () => {
     // Starter code ships, the solution never does.
     expect(new TextDecoder().decode(files['caesar/caesar.c'])).toContain('TODO: wrap around');
   }, 60_000);
+});
+
+describe('check.mjs --doctor', () => {
+  const doctor = (env: NodeJS.ProcessEnv = {}) => {
+    const r = spawnSync(process.execPath, [checkMjs, '--doctor'], { cwd: tmp, encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', NO_COLOR: '1', ...env } });
+    return { status: r.status, out: r.stdout + r.stderr };
+  };
+  const row = (out: string, key: string) => new RegExp(`^  ${key.padEnd(18).replace(/[*]/g, '\\*')}(.*)$`, 'm').exec(out)?.[1];
+  /** A folder on PATH with stand-ins for macOS commands (an Apple-chip Mac, Node under Rosetta). */
+  const fakeMac = () => {
+    const bin = path.join(tmp, 'fakemac');
+    mkdirSync(bin, { recursive: true });
+    const script = (name: string, body: string) => { writeFileSync(path.join(bin, name), `#!/bin/sh\n${body}\n`); chmodSync(path.join(bin, name), 0o755); };
+    script('sysctl', 'case "$2" in hw.optional.arm64) echo 1;; sysctl.proc_translated) echo 1;; hw.cachelinesize) echo 128;; hw.pagesize) echo 16384;; *) exit 1;; esac');
+    script('sw_vers', 'echo 14.7.1');
+    script('lldb', 'exit 0');
+    script('leaks', 'exit 0');
+    return bin;
+  };
+
+  it('reports this machine', () => {
+    const r = doctor();
+    console.log(`node check.mjs --doctor on this machine:\n${r.out}`); // the CI log is the evidence for the PR
+    expect(r.status).toBe(0);
+    expect(row(r.out, 'C compiler')).toMatch(/^\S+: .*\d+\.\d+/);
+    expect(row(r.out, 'Node')).toBe(process.version);
+    expect(row(r.out, '    int')).toBe('4');
+    expect(row(r.out, '    void *')).toMatch(/^(4|8)$/);
+    expect(row(r.out, 'Page size')).toMatch(/^\d+ B/);
+    expect(row(r.out, 'Memory checks')).toContain('ASan + UBSan');
+    if (process.platform === 'linux') expect(r.out).toMatch(/^"My machine" in the course: (wsl|linux-x86|linux-arm)$/m);
+    expect(r.out).not.toMatch(/ 0( B)?$/m);
+  }, 60_000);
+
+  it('CHECK_NO_SANITIZERS=1: no sanitizer memory checks, Valgrind if installed', () => {
+    const r = doctor({ CHECK_NO_SANITIZERS: '1' });
+    expect(r.status).toBe(0);
+    expect(row(r.out, 'Memory checks')).toBe(has('valgrind') ? 'Valgrind (no sanitizer runtime)' : 'none');
+  }, 60_000);
+
+  it.runIf(process.arch === 'x64')('CHECK_PLATFORM=darwin: an Apple-chip Mac with Node under Rosetta says so and how to change it', () => {
+    const r = doctor({ CHECK_PLATFORM: 'darwin', PATH: `${fakeMac()}${path.delimiter}${process.env.PATH}` });
+    expect(r.status).toBe(0);
+    expect(row(r.out, 'Architecture')).toMatch(/\(Node: x64, under Rosetta\)$/);
+    expect(row(r.out, 'Operating system')).toBe('macOS 14.7.1');
+    expect(row(r.out, 'Cache line')).toBe('128 B');
+    expect(row(r.out, 'Page size')).toBe('16384 B (16 KiB)');
+    expect(r.out).toMatch(/^"My machine" in the course: mac-arm$/m);
+    expect(r.out).toContain('! This Mac has an Apple chip, but Node runs as x64 under Rosetta');
+    expect(r.out).toContain('Then node -p process.arch prints arm64.');
+    expect(r.out).not.toContain('gdb (the debugger'); // gdb is not needed on a Mac
+  }, 60_000);
+
+  it('CHECK_PLATFORM=darwin without the macOS commands: unreadable values are "unknown", never 0', () => {
+    const r = doctor({ CHECK_PLATFORM: 'darwin' });
+    expect(r.status).toBe(0);
+    for (const k of ['Operating system', 'Cache line', 'Page size']) expect(row(r.out, k)).toBe('unknown');
+    if (process.arch === 'x64') expect(r.out).toMatch(/^"My machine" in the course: unknown$/m);
+    expect(r.out).toContain('Note: lldb (the macOS debugger) was not found.');
+  }, 60_000);
+
+  it('no compiler: exits 1 with the install command for the platform', () => {
+    const empty = path.join(tmp, 'emptybin');
+    mkdirSync(empty, { recursive: true });
+    const linux = doctor({ PATH: empty, CC: '' });
+    expect(linux.status).toBe(1);
+    expect(linux.out).toContain('✗ No C compiler found (tried $CC, cc, clang and gcc).\n    Install one:  sudo apt install build-essential');
+    expect(linux.out).toContain('✗ Not ready yet');
+    for (const t of SIZEOF_TYPES) expect(row(linux.out, `    ${t}`)).toBe('unknown');
+    expect(linux.out).not.toMatch(/ 0( B)?$/m);
+    const mac = doctor({ PATH: empty, CC: '', CHECK_PLATFORM: 'darwin' });
+    expect(mac.status).toBe(1);
+    expect(mac.out).toContain('Install the Xcode Command Line Tools:  xcode-select --install');
+  }, 60_000);
+
+  const facts = (over: Partial<DoctorFacts> = {}): DoctorFacts => ({
+    platform: 'linux', nodeArch: 'x64', nodeVersion: '22.11.0', machine: 'x86_64', wsl: false,
+    compiler: { cc: 'gcc', version: 'gcc 13.3.0', kind: 'gcc', apple: false },
+    tools: { gdb: true, lldb: false, valgrind: true, leaks: false }, memory: { sanitizers: true, lsan: true, valgrind: true, leaks: false },
+    sizes: {}, ...over,
+  });
+
+  it('too old a Node is an error with a way to update; Node 18 is a note', () => {
+    const old = assess(facts({ nodeVersion: '16.20.2' }));
+    expect(old.ok).toBe(false);
+    expect(old.findings[0]).toMatchObject({ level: 'error', text: 'Node 16.20.2 is too old: the course\'s tools need Node 18 or newer.' });
+    expect(old.findings[0].remedy).toContain('sudo apt install nodejs');
+    const eol = assess(facts({ nodeVersion: '18.19.1' }));
+    expect(eol.ok).toBe(true);
+    expect(eol.findings.map(f => f.text)).toEqual(['Node 18 works but is past end of life; any newer LTS works too.']);
+    expect(assess(facts()).findings).toEqual([]);
+  });
+
+  it('missing gdb, Valgrind or leaks is a note, not an error', () => {
+    const linux = assess(facts({ tools: { gdb: false, lldb: false, valgrind: false, leaks: false } }));
+    expect(linux.ok).toBe(true);
+    expect(linux.findings.map(f => [f.level, f.remedy])).toEqual([['note', 'sudo apt install gdb'], ['note', 'sudo apt install valgrind']]);
+    const mac = assess(facts({ platform: 'darwin', nodeArch: 'arm64', appleSilicon: true, tools: { gdb: false, lldb: true, valgrind: false, leaks: false } }));
+    expect(mac).toMatchObject({ ok: true, machine: 'mac-arm', findings: [{ level: 'note', text: 'leaks (the macOS leak checker) was not found.' }] });
+  });
+
+  it('suggests the "my machine" value', () => {
+    expect(assess(facts()).machine).toBe('linux-x86');
+    expect(assess(facts({ machine: 'aarch64', nodeArch: 'arm64' })).machine).toBe('linux-arm');
+    expect(assess(facts({ wsl: true })).machine).toBe('wsl');
+    const intel = assess(facts({ platform: 'darwin', appleSilicon: false, tools: { gdb: false, lldb: true, valgrind: false, leaks: true } }));
+    expect(intel).toMatchObject({ machine: 'mac-intel', findings: [] });
+  });
 });

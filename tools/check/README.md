@@ -31,6 +31,7 @@ node check.mjs [folder] [--hint] [--only "check name"] [--cc gcc] [--json] [--ve
 | `--cc COMPILER` | Compiler to use; default `--cc`, then `$CC`, `cc`, `clang`, `gcc`. |
 | `--json` | Machine-readable report (used by `tools/exercises`). |
 | `--verbose` | Also print the full compiler output. `--keep` keeps the temporary build folder. |
+| `--doctor` | Print the environment report instead of running checks (below). Takes `--cc`. |
 
 Exit status: `0` every check passed, `1` some failed, `2` the folder or `check.json` is unusable.
 Output is plain text with colour on a TTY (`NO_COLOR` is respected, `FORCE_COLOR` forces it) and an
@@ -38,6 +39,20 @@ ASCII fallback for `✓ ✗` on Windows consoles that are not Windows Terminal.
 
 Other environment variables (for tests): `CHECK_PLATFORM=darwin` pretends to be macOS (so the `leaks`
 path can be tested on Linux), `CHECK_NO_SANITIZERS=1` pretends no sanitizer runtime exists (valgrind path).
+
+### `--doctor`
+
+`node check.mjs --doctor` (`src/doctor.ts`, lesson 3.1) needs no project folder. It prints the architecture
+(`uname -m` and Node's `process.arch`), the OS, the compiler `findCompiler` picks and its version, Node,
+whether gdb, lldb, Valgrind and `leaks` are on `PATH`, which memory checks work (`NativeBackend.capabilities`),
+the cache-line and page size (`getconf` on Linux, `sysctl` on macOS), the `sizeof` table of a small program
+built with that compiler, and the "my machine" value to pick in the course (`mac-arm`, `mac-intel`, `wsl`,
+`linux-x86` or `linux-arm`). On an Apple-chip Mac whose Node runs under Rosetta (`process.arch` is `x64`) it
+says so and how to change it. A value it cannot read prints as `unknown`, never as 0.
+
+Exit status: `1` when there is no C compiler or Node is older than 18, each with the command to install it;
+otherwise `0`. A missing gdb, lldb, Valgrind or `leaks` is a note. `CHECK_PLATFORM` and `CHECK_NO_SANITIZERS`
+apply to it too.
 
 ### Order of checks (this order is also the bits of the progress code)
 

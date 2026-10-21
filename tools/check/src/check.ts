@@ -2,6 +2,7 @@
 // single zero-dependency file that ships in every project zip.
 //
 //   node check.mjs [dir] [--hint] [--json] [--only "check name"] [--cc gcc] [--verbose] [--keep]
+//   node check.mjs --doctor [--cc gcc]     the environment report (doctor.ts)
 //
 // It uses the same test semantics as the in-browser runner (src/testing/runner.ts) with the learner's
 // own compiler, prints ✓/✗ per check with plain-English explanations, and finishes with a progress
@@ -18,6 +19,7 @@ import { isUnitTest, validateTestsSpec } from '../../../src/testing/spec';
 import {
   encodeCompletionToken, encodeProgressCode, LEARNER_FILE, parseLearnerFile, RUNNER_VERSION, sourceHash, TOKEN_FORMAT, type LearnerFile,
 } from '../../../src/testing/token';
+import { assess, formatDoctor, gatherFacts } from './doctor';
 import { findCompiler, NativeBackend } from './native-backend';
 
 const STATE_FILE = '.check-state';
@@ -34,6 +36,7 @@ Options:
   --verbose      also print the full compiler output
   --keep         keep the temporary build folder
   --version      print the runner version
+  --doctor       check this machine for the course (compiler, Node, debuggers…) and exit
 `;
 
 interface Args {
@@ -46,10 +49,11 @@ interface Args {
   cc?: string;
   help: boolean;
   version: boolean;
+  doctor: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { dir: '.', hint: false, json: false, verbose: false, keep: false, help: false, version: false };
+  const a: Args = { dir: '.', hint: false, json: false, verbose: false, keep: false, help: false, version: false, doctor: false };
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const s = argv[i];
@@ -65,6 +69,7 @@ function parseArgs(argv: string[]): Args {
     else if (s === '--keep') a.keep = true;
     else if (s === '--help' || s === '-h') a.help = true;
     else if (s === '--version') a.version = true;
+    else if (s === '--doctor') a.doctor = true;
     else if (s === '--only' || s.startsWith('--only=')) a.only = value();
     else if (s === '--cc' || s.startsWith('--cc=')) a.cc = value();
     else if (s.startsWith('-')) throw new Error(`unknown option ${s}`);
@@ -122,6 +127,14 @@ async function main(): Promise<void> {
   }
   if (args.help) { console.log(USAGE); return; }
   if (args.version) { console.log(`check.mjs R${RUNNER_VERSION} (codes ${TOKEN_FORMAT})`); return; }
+  if (args.doctor) {
+    const facts = gatherFacts({ cc: args.cc, platform: process.env.CHECK_PLATFORM ?? process.platform, noSanitizers: !!process.env.CHECK_NO_SANITIZERS });
+    const verdict = assess(facts);
+    const unicode = !IS_WINDOWS || !!process.env.WT_SESSION;
+    console.log(`check.mjs R${RUNNER_VERSION} doctor\n\n${formatDoctor(facts, verdict, { pass: unicode ? '✓' : '+', fail: unicode ? '✗' : 'x' }).join('\n')}\n`);
+    process.exitCode = verdict.ok ? 0 : 1;
+    return;
+  }
 
   const dir = path.resolve(args.dir);
   const specPath = path.join(dir, 'check.json');
