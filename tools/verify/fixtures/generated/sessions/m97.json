@@ -37,7 +37,7 @@
     },
     "asan": {
       "dir": "sessions/asan",
-      "hash": "62c48312136a0554",
+      "hash": "3f2a8ee076d79a25",
       "id": "asan",
       "platforms": [
         "linux-gcc",
@@ -65,12 +65,12 @@
         ]
       },
       "sources": {
-        "main.c": "#include <stdio.h>\n\nint main(void) {\n    int a[4] = {0, 0, 0, 0};\n    for (int i = 0; i <= 4; i++) a[i] = i; /* i == 4 writes past the end */\n    printf(\"%d\\n\", a[0]);\n    return 0;\n}\n"
+        "main.c": "#include <stdio.h>\n\nint main(void) {\n    int a[4] = {0, 0, 0, 0};\n    for (int i = 0; i <= 4; i++) a[i] = i;\n    printf(\"%d\\n\", a[0]);\n    return 0;\n}\n"
       }
     },
     "compile-error": {
       "dir": "sessions/compile-error",
-      "hash": "8781e62f96191309",
+      "hash": "44d964805078cfa1",
       "id": "compile-error",
       "platforms": [
         "linux-gcc",
@@ -82,7 +82,7 @@
           {
             "cmd": "$CC $CFLAGS -c main.c",
             "exit": 1,
-            "stderr": "main.c:5:6: error: member reference base type 'int' is not a structure or union\n    5 |     n.digits = 1; /* n is an int, not a struct */\n      |     ~^~~~~~~\n1 error generated.\n",
+            "stderr": "main.c:5:6: error: member reference base type 'int' is not a structure or union\n    5 |     n.digits = 1;\n      |     ~^~~~~~~\n1 error generated.\n",
             "stdout": ""
           }
         ],
@@ -90,13 +90,13 @@
           {
             "cmd": "$CC $CFLAGS -c main.c",
             "exit": 1,
-            "stderr": "main.c: In function 'main':\nmain.c:5:6: error: request for member 'digits' in something not a structure or union\n    5 |     n.digits = 1; /* n is an int, not a struct */\n      |      ^\n",
+            "stderr": "main.c: In function 'main':\nmain.c:5:6: error: request for member 'digits' in something not a structure or union\n    5 |     n.digits = 1;\n      |      ^\n",
             "stdout": ""
           }
         ]
       },
       "sources": {
-        "main.c": "#include <stdio.h>\n\nint main(void) {\n    int n = 5;\n    n.digits = 1; /* n is an int, not a struct */\n    printf(\"%d\\n\", n);\n    return 0;\n}\n"
+        "main.c": "#include <stdio.h>\n\nint main(void) {\n    int n = 5;\n    n.digits = 1;\n    printf(\"%d\\n\", n);\n    return 0;\n}\n"
       }
     },
     "gdb": {
@@ -459,7 +459,7 @@
     },
     "ubsan": {
       "dir": "sessions/ubsan",
-      "hash": "769bad52468f720f",
+      "hash": "39c877cff945d0fa",
       "id": "ubsan",
       "platforms": [
         "linux-gcc",
@@ -501,12 +501,12 @@
         ]
       },
       "sources": {
-        "main.c": "#include <limits.h>\n#include <stdio.h>\n\nint main(void) {\n    int big = INT_MAX;\n    int next = big + 1; /* signed overflow: undefined behaviour */\n    printf(\"done\\n\");\n    return next == 0;\n}\n"
+        "main.c": "#include <limits.h>\n#include <stdio.h>\n\nint main(void) {\n    int big = INT_MAX;\n    int next = big + 1;\n    printf(\"done\\n\");\n    return next == 0;\n}\n"
       }
     },
     "valgrind-leak": {
       "dir": "sessions/valgrind-leak",
-      "hash": "9722393f05141d7c",
+      "hash": "65777328b4255c1d",
       "id": "valgrind-leak",
       "platforms": [
         "linux-gcc",
@@ -546,7 +546,7 @@
         ]
       },
       "sources": {
-        "l.c": "#include <stdlib.h>\n\nint main(void) {\n    int *p = malloc(10 * sizeof *p); /* never freed */\n    p[0] = 1;\n    return p[0] - 1;\n}\n"
+        "l.c": "#include <stdlib.h>\n\nint main(void) {\n    int *p = malloc(10 * sizeof *p);\n    p[0] = 1;\n    return p[0] - 1;\n}\n"
       }
     },
     "valgrind-uninit": {
