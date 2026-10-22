@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "sources": [
+    "greet.c"
+  ],
+  "warnings": "error",
+  "memory": true,
+  "tests": [
+    {
+      "name": "greets Ada",
+      "run": {
+        "stdin": "Ada\n"
+      },
+      "expect": {
+        "stdout": "hello, Ada\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "greets Grace",
+      "run": {
+        "stdin": "Grace\n"
+      },
+      "expect": {
+        "stdout": "hello, Grace\n",
+        "exit": 0
+      }
+    },
+    {
+      "name": "no name exits with an error",
+      "run": {
+        "stdin": ""
+      },
+      "expect": {
+        "stdout": "",
+        "exit": 1
+      },
+      "hint": "When scanf reads nothing, return 1 before printing."
+    }
+  ]
+}

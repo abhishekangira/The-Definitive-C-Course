@@ -47,7 +47,7 @@ path can be tested on Linux), `CHECK_NO_SANITIZERS=1` pretends no sanitizer runt
 whether gdb, lldb, Valgrind and `leaks` are on `PATH`, which memory checks work (`NativeBackend.capabilities`),
 the cache-line and page size (`getconf` on Linux, `sysctl` on macOS), the `sizeof` table of a small program
 built with that compiler, and the "my machine" value to pick in the course (`mac-arm`, `mac-intel`, `wsl`,
-`linux-x86` or `linux-arm`). On an Apple-chip Mac whose Node runs under Rosetta (`process.arch` is `x64`) it
+`linux-x86` or `linux-arm`; `machineFor()`, which `doctor-lesson.test.ts` checks lesson 3.1's question against). On an Apple-chip Mac whose Node runs under Rosetta (`process.arch` is `x64`) it
 says so and how to change it. A value it cannot read prints as `unknown`, never as 0.
 
 Exit status: `1` when there is no C compiler or Node is older than 18, each with the command to install it;
@@ -152,6 +152,7 @@ both from `src/testing/project-zip.ts`:
   check.json                 the tests (a project's check.json, or an exercise's tests.json)
   check.mjs                  this runner (executable bit set)
   learnc.h                   the course helper header (src/runtime/c/learnc.h)
+  compile_flags.txt          Module 3 exercises ("m03-…") only: -std=c17 -Wall -Wextra -pedantic, one per line, for clangd
   .learner                   {"version":1,"seed":"<16 hex>","exercise":"<id>"}   (only with a seed)
   tests/...                  unit-test harnesses and data
   *.c, *.h                   the starter files: starter/* of a project, starter.c of an exercise
@@ -177,7 +178,8 @@ and the generated Makefile are covered too.
 
 ## Platforms verified by CI
 
-The `project-runner` job in `.github/workflows/targets.yml` builds the Mario and Credit project zips, runs `make test` on the starter
+The `project-runner` job in `.github/workflows/targets.yml` builds the Mario and Credit project zips and the zip of the LT exercise
+`m03-doctor` (lesson 3.1; its codes name `m03-doctor`, so the matrix entry sets `exercise:`), runs `make test` on the starter
 (must exit non-zero and print a progress code) and on the `--solution` zip (must exit 0 and print a completion token), and
 checks each code with `verifyCode()`. Before that, once per runner (in the Mario job), it runs `node check.mjs --doctor`; the
 grading steps don't use its output, but a non-zero exit fails the job, because these runners have a compiler and Node 22. It runs on pushes to `main` touching these files and on pull requests that do.
