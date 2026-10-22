@@ -8,6 +8,7 @@
 //     check.json     the tests (TestsSpec)
 //     check.mjs      the zero-dependency runner
 //     learnc.h       the course helper header
+//     compile_flags.txt  the course's flags for clangd, one per line (Module 3 exercises, "m03-…", only)
 //     .learner       learner seed + exercise id (only when a seed is supplied)
 //     tests/…        unit-test harnesses and data
 //     *.c, *.h       starter files (from starter/ for projects, starter.c for LT exercises)
@@ -100,6 +101,10 @@ function safePath(p: string): string {
   return norm;
 }
 
+/** clangd reads this so the editor warns with the build's flags (lesson 3.1). Module 3 zips only: M1 and M2 zips stay as they were. */
+export const COMPILE_FLAGS = ['-std=c17', '-Wall', '-Wextra', '-pedantic'];
+export const hasCompileFlags = (id: string) => id.startsWith('m03-');
+
 /** Every file of the project folder (paths relative to the folder), in the layout above. */
 export function projectZipEntries(input: ProjectZipInput): Record<string, string | Uint8Array> {
   const out: Record<string, string | Uint8Array> = {};
@@ -109,6 +114,7 @@ export function projectZipEntries(input: ProjectZipInput): Record<string, string
   out['README.md'] ??= defaultReadme(input.id, input.title, input.prompt);
   out['Makefile'] ??= defaultMakefile(input.spec, input.title);
   out['learnc.h'] ??= input.learncH;
+  if (hasCompileFlags(input.id)) out['compile_flags.txt'] ??= COMPILE_FLAGS.join('\n') + '\n';
   if (input.learner) out[LEARNER_FILE] = serializeLearnerFile(input.learner);
   return out;
 }

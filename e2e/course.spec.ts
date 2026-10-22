@@ -1,6 +1,8 @@
 // Click-through of every available module (PLAN.md §3.5): warm-up, every card of every lesson, the
 // problem set, the project and the checkpoint, answered with generated data; then the module must be
 // complete. Separate tests cover the hint/solution/variant gates, export/import and accessibility.
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
 import {
   answerQuiz, availableModules, clickThroughModules, completeExercise, completeLesson, completeProgress, courseTitle, exerciseWithVariants, expectAccessible, previewBase, progressJson,
@@ -10,6 +12,37 @@ import {
 // E2E_MODULE=m01 limits the run to one module (used by `npm run dod`); default is every available module. A module that
 // course.yaml does not release yet (a draft) can be named too: it is then opened through ?preview=<id>.
 const modules = clickThroughModules();
+
+// A draft is built PR by PR, so its project and checkpoint may not be on disk yet. Only then, and only for a draft, are their
+// tests skipped, naming the missing path and the PR that adds it; a released module always runs them (the test below checks
+// that with a fake `exists`). The skip is decided from the files, so it stops applying by itself once they land.
+const LANDS_IN: Record<string, { project: string; checkpoint: string }> = { m03: { project: 'PR 10 of #73', checkpoint: 'PR 11 of #73' } };
+type Mod = (typeof modules)[number];
+const onDisk = (mod: Mod) => (p: string) => existsSync(join(mod.base, p));
+function draftSkipReason(mod: Mod, part: 'project' | 'checkpoint', exists: (path: string) => boolean = onDisk(mod)): string | undefined {
+  const need = [`${mod.dir}/project/${mod.meta.project}/`, ...(part === 'checkpoint' ? [`${mod.dir}/quizzes/checkpoint.yaml`] : [])];
+  const missing = need.filter(p => !exists(p));
+  if (!(mod.preview && missing.length > 0)) return undefined;
+  const lands = LANDS_IN[mod.id];
+  if (!lands) throw new Error(`draft ${mod.id} is missing ${missing.join(', ')}: add it to LANDS_IN with the PR that adds it`);
+  return `draft ${mod.id}: ${missing.map(p => `${p} is not on disk yet (${p.includes('/project/') ? lands.project : lands.checkpoint} adds it)`).join('; ')}`;
+}
+
+test('draftSkipReason: a released module never skips; a draft names the missing path and the PR that adds it', () => {
+  const missingAll = () => false;
+  for (const mod of modules) {
+    for (const part of ['project', 'checkpoint'] as const) {
+      expect(draftSkipReason({ ...mod, preview: false }, part, missingAll), `released ${mod.id} ${part}`).toBeUndefined();
+      const draft = { ...mod, preview: true };
+      const lands = LANDS_IN[mod.id];
+      if (!lands) { expect(() => draftSkipReason(draft, part, missingAll)).toThrow(/LANDS_IN/); continue; }
+      const why = draftSkipReason(draft, part, missingAll);
+      expect(why).toContain(`${mod.dir}/project/${mod.meta.project}/ is not on disk yet (${lands.project} adds it)`);
+      if (part === 'checkpoint') expect(why).toContain(`${mod.dir}/quizzes/checkpoint.yaml is not on disk yet (${lands.checkpoint} adds it)`);
+      else expect(why).not.toContain('checkpoint.yaml');
+    }
+  }
+});
 
 for (const mod of modules) {
   test.describe.serial(`${mod.id}: ${mod.meta.title}`, () => {
@@ -61,6 +94,8 @@ for (const mod of modules) {
     });
 
     test('project', async () => {
+      const missing = draftSkipReason(mod, 'project');
+      test.skip(missing !== undefined, missing);
       await page.goto(`#/m/${mod.id}/project`);
       const box = page.locator(`[data-exercise="project/${mod.meta.project}"]`);
       await completeExercise(page, mod, box);
@@ -69,6 +104,8 @@ for (const mod of modules) {
     });
 
     test('checkpoint unlocks, passes, and completes the module', async () => {
+      const missing = draftSkipReason(mod, 'checkpoint');
+      test.skip(missing !== undefined, missing);
       await page.goto(`#/m/${mod.id}`);
       await page.getByRole('link', { name: 'Take the checkpoint' }).click();
       await answerQuiz(page, mod, 'checkpoint');

@@ -13,6 +13,9 @@ import { nativeFor, normOutput } from '../src/interactions/platform';
 import { findVar } from '../src/visualizers/trace-format';
 import { correctAnswer } from '../src/interactions/memory-answers';
 import { binary, floatDrillBits, floatText, hex, parseNumber, toBits, type Width } from '../src/visualizers/numbers';
+import { plannedTests } from '../src/testing/runner';
+import { assertTestsSpec } from '../src/testing/spec';
+import { encodeCompletionToken, encodeProgressCode, verifyCode } from '../src/testing/token';
 
 export const ROOT = process.cwd();
 const RUN_TIMEOUT = Number(process.env.E2E_RUN_TIMEOUT ?? 180_000);
@@ -334,6 +337,54 @@ export async function completeParsons(mod: ModuleInfo, box: Locator): Promise<vo
   await expect(box.getByText(/^(\d+) of \1 checks passed\.$/)).toBeVisible({ timeout: RUN_TIMEOUT });
 }
 
+/** The checks check.mjs plans for an LT exercise (one character per check in a progress code), from its tests.json. */
+function ltCheckCount(mod: ModuleInfo, id: string): number {
+  const [parent, , variant] = id.split('/');
+  const rel = variant ? `${mod.dir}/exercises/${parent}/variants/${variant}/tests.json` : `${mod.dir}/exercises/${parent}/tests.json`;
+  return plannedTests(assertTestsSpec(JSON.parse(read(rel, mod.base)))).length;
+}
+
+/**
+ * An LT card, done the way the learner's `make test` would report it, with codes made by the app's own token module and the
+ * learner seed the page stored (the preview's own document while a draft is previewed). First a completion token made with
+ * another seed, which must be rejected: that is what fails when LocalTask stops verifying. Then two progress codes for two
+ * different sources (the solution gate counts distinct `src` hashes), then the completion token.
+ */
+export async function completeLocalTask(page: Page, mod: ModuleInfo, box: Locator): Promise<void> {
+  const id = (await box.getAttribute('data-exercise'))!;
+  const seed = (await progressJson(page, mod.preview)).seed as string;
+  expect(seed, 'the page stored a learner seed').toMatch(/^[0-9a-f]{16}$/);
+  const input = box.getByRole('textbox', { name: /^(Variant code|Code) printed by check\.mjs for / });
+  const submit = box.getByRole('button', { name: /^Submit (variant )?code for / });
+  const status = box.locator(':scope > [role=status]');
+  const paste = async (code: string) => { await input.fill(code); await submit.click(); };
+
+  const other = seed.replace(/^./, c => (c === '0' ? '1' : '0'));
+  const forged = await encodeCompletionToken({ exercise: id }, other);
+  const rejected = await verifyCode(forged, seed, { exercise: id });
+  expect(rejected.ok, 'a token made with another seed fails verifyCode').toBe(false);
+  await paste(forged);
+  await expect(status).toHaveText(rejected.ok ? '' : rejected.message);
+  await expect(box.getByText('Done', { exact: true })).toHaveCount(0);
+
+  // The solution gate also wants all three hints (a variant has two and never a solution).
+  const variant = id.includes('/variants/');
+  await box.getByRole('button', { name: 'Stuck? Show a hint' }).click();
+  await box.getByRole('button', { name: 'Show hint 2 (concept)' }).click();
+  if (!variant) await box.getByRole('button', { name: 'Show hint 3 (partial code)' }).click();
+  const total = ltCheckCount(mod, id);
+  const bits = '1'.padEnd(total, '0');
+  for (const [run, src] of [[1, 'aaaaaaaa'], [2, 'bbbbbbbb']] as const) {
+    await paste(await encodeProgressCode({ exercise: id, bits, run, src }, seed));
+    // One source is not enough; the second, different one unlocks the solution.
+    const next = run === 2 && !variant ? 'The reference solution is now available.' : 'Keep going and paste the final token.';
+    await expect(status).toHaveText(`Progress code accepted (1 of ${total} checks passing). ${next}`);
+  }
+  await paste(await encodeCompletionToken({ exercise: id }, seed));
+  await expect(status).toHaveText('Completion token accepted: all checks passed on your machine.');
+  await expect(box.getByText('Done', { exact: true })).toBeVisible();
+}
+
 export async function completeInteraction(page: Page, mod: ModuleInfo, box: Locator): Promise<void> {
   const kind = await box.getAttribute('data-interaction');
   await box.scrollIntoViewIfNeeded();
@@ -346,6 +397,7 @@ export async function completeInteraction(page: Page, mod: ModuleInfo, box: Loca
     case 'number-drill': return completeNumberDrill(box);
     case 'ct': case 'fb': return completeExercise(page, mod, box);
     case 'parsons': return completeParsons(mod, box);
+    case 'lt': return completeLocalTask(page, mod, box);
     default: throw new Error(`no e2e handler for interaction "${kind}"`);
   }
 }

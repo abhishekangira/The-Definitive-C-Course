@@ -443,6 +443,15 @@ describe('references', () => {
   it('warns about unknown components', () => {
     expect(warningsOf(lintGoodWith({ [`${M1}/lessons/01-hello.mdx`]: sub('**What you know now:**', '<Choise />\n\n**What you know now:**') }).result, 'unknown-component')[0].message).toContain('<Choise>');
   });
+
+  it('knows <PlatformPicker /> (lesson 3.1): no warning, and it neither ends a card nor counts as prose', () => {
+    const lesson = `${M1}/lessons/01-hello.mdx`;
+    const plain = lintGoodWith({}).result;
+    const picked = lintGoodWith({ [lesson]: sub('**What you know now:**', '<PlatformPicker />\n\n**What you know now:**') }).result;
+    expect(warningsOf(picked, 'unknown-component')).toEqual([]);
+    const stats = (r: typeof plain) => r.lessons.filter(l => l.file.endsWith('01-hello.mdx')).map(l => [l.cards, l.words]);
+    expect(stats(picked)).toEqual(stats(plain));
+  });
 });
 
 describe('component props', () => {

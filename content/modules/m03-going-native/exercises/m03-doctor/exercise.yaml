@@ -1,0 +1,20 @@
+id: m03-doctor
+kind: lt
+title: Your first native build
+prompt: |
+  `hello.c` is the browser's first program with one change: `main` takes `argc` and `argv` and never uses them.
+  Download the project, unzip it in your home folder, and in that folder run `node check.mjs --doctor`, then
+  `make test`. The compiler runs with `-Wall -Wextra -pedantic`, and the course treats every warning as an
+  error, so the first run fails. Read the warning, fix `hello.c` so it compiles cleanly, and run `make test`
+  again. Paste each code it prints.
+runsIn: native
+file: hello.c
+hints:
+  - "Read the first warning: it names the line and the parameter the compiler is unhappy about."
+  - "`-Wextra` warns about a parameter the function never uses. A `main` that reads no command-line arguments takes `void`."
+  - |
+    int main(void) {
+        printf("hello, world\n");
+        return 0;
+    }
+variants: ['1']

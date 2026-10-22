@@ -22,6 +22,7 @@ on:
       - 'src/testing/**'
       - 'content/modules/m01-c-in-your-browser/project/mario-more/**'
       - 'content/modules/m02-bits-bytes-numbers/project/credit/**'
+      - 'content/modules/m03-going-native/**'
       - '.github/workflows/targets.yml'
 
 permissions:
@@ -81,15 +82,15 @@ jobs:
           path: targets-out/${{ matrix.target }}
           retention-days: 7
 
-  # check.mjs end to end on the learner platforms we cannot run locally (issue #10): build the Mario
-  # project zip, `make test` the starter (must fail, progress code) and the solution (must pass,
-  # completion token), and check each code with the app's verifyCode(). Windows is not run (WSL only).
+  # check.mjs end to end on the learner platforms we cannot run locally (issue #10): build the project zip
+  # (or an LT exercise's: m03-doctor, lesson 3.1), `make test` the starter (must fail, progress code) and the
+  # solution (must pass, completion token), and check each code with the app's verifyCode(). Windows is not run (WSL only).
   project-runner:
     strategy:
       fail-fast: false
       matrix:
         os: [macos-14, ubuntu-24.04-arm]
-        project: [mario-more, credit, caesar]
+        project: [mario-more, credit, caesar, m03-doctor]
         include:
           - project: mario-more
             path: content/modules/m01-c-in-your-browser/project/mario-more
@@ -98,10 +99,14 @@ jobs:
           # The runner's own fixture, with a memory check: on macos-14 it runs the real `leaks` (issue #101).
           - project: caesar
             path: tools/check/fixtures/caesar
+          # An LT exercise: its codes name the exercise id, not project/<id>. Its memory check is the ASan smoke test.
+          - project: m03-doctor
+            path: content/modules/m03-going-native/exercises/m03-doctor
+            exercise: m03-doctor
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
-      EXERCISE: project/${{ matrix.project }}
+      EXERCISE: ${{ matrix.exercise || format('project/{0}', matrix.project) }}
       PROJECT: ${{ matrix.path }}
       NAME: ${{ matrix.project }}
       SEED: 0123456789abcdef
