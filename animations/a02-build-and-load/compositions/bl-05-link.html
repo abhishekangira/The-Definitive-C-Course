@@ -6,12 +6,12 @@
     #bl05-obj { left: 192px; top: 450px; width: 360px; height: 200px; }
     #bl05-libc { left: 192px; top: 680px; width: 360px; height: 160px; --c: var(--text); --c-soft: var(--bg-elev); border-color: var(--border-strong); }
     #bl05-libc b { color: var(--text); }
-    #bl05-a1 { left: 572px; top: 530px; width: 160px; height: 24px; }
-    #bl05-a2 { left: 572px; top: 720px; width: 160px; height: 80px; }
+    #bl05-a1 { left: 552px; top: 530px; width: 200px; height: 24px; }
+    #bl05-a2 { left: 552px; top: 720px; width: 200px; height: 80px; }
     #bl05-exe { left: 752px; top: 470px; width: 420px; height: 280px; }
     #bl05-exe b { font-size: 42px; }
     #bl05-size { font: 700 32px/1.2 var(--font-mono); color: var(--program); }
-    #bl05-a3 { left: 1192px; top: 590px; width: 120px; height: 24px; }
+    #bl05-a3 { left: 1172px; top: 590px; width: 160px; height: 24px; }
     #bl05-nm { left: 1332px; top: 450px; width: 396px; height: 390px; padding: 24px 22px; border-color: var(--native); }
     #bl05-ntag { font: 700 26px/1 var(--font-mono); color: var(--native); }
     #bl05-nline {
@@ -35,13 +35,13 @@
       <div class="bl-box bl-comp" id="bl05-obj"><b>hello.o</b><i>calls printf</i></div>
       <div class="bl-box" id="bl05-libc"><b>libc</b><i>printf lives here</i></div>
 
-      <svg class="bl-arrow bl-comp" id="bl05-a1" viewBox="0 0 160 24" aria-hidden="true">
-        <path class="bl-draw bl05-d" d="M 4 12 H 144" pathLength="1" />
-        <path class="bl05-h" d="M 128 -2 L 148 12 L 128 26" />
+      <svg class="bl-arrow bl-comp" id="bl05-a1" viewBox="0 0 200 24" aria-hidden="true">
+        <path class="bl-draw bl05-d" d="M 4 12 H 184" pathLength="1" />
+        <path class="bl05-h" d="M 168 -2 L 188 12 L 168 26" />
       </svg>
-      <svg class="bl-arrow bl-comp" id="bl05-a2" viewBox="0 0 160 80" aria-hidden="true">
-        <path class="bl-draw bl05-d" d="M 4 68 H 80 V 12 H 144" pathLength="1" />
-        <path class="bl05-h" d="M 128 -2 L 148 12 L 128 26" />
+      <svg class="bl-arrow bl-comp" id="bl05-a2" viewBox="0 0 200 80" aria-hidden="true">
+        <path class="bl-draw bl05-d" d="M 4 68 H 100 V 12 H 184" pathLength="1" />
+        <path class="bl05-h" d="M 168 -2 L 188 12 L 168 26" />
       </svg>
 
       <div class="bl-box bl-prog" id="bl05-exe">
@@ -50,9 +50,9 @@
         <div id="bl05-size"><span data-var-text="exeBytes">15960</span> bytes</div>
       </div>
 
-      <svg class="bl-arrow bl-nat" id="bl05-a3" viewBox="0 0 120 24" aria-hidden="true">
-        <path class="bl-draw bl05-d" d="M 4 12 H 104" pathLength="1" />
-        <path class="bl05-h" d="M 88 -2 L 108 12 L 88 26" />
+      <svg class="bl-arrow bl-nat" id="bl05-a3" viewBox="0 0 160 24" aria-hidden="true">
+        <path class="bl-draw bl05-d" d="M 4 12 H 144" pathLength="1" />
+        <path class="bl05-h" d="M 128 -2 L 148 12 L 128 26" />
       </svg>
 
       <div class="bl-card" id="bl05-nm">
@@ -75,18 +75,6 @@
         throw new Error(id + ": no element with " + attr);
       })("bl-05-link", "data-steps");
       var S = JSON.parse(root.getAttribute("data-steps"));
-      try {
-        var g = window.__hyperframes && window.__hyperframes.getVariables;
-        var v = g ? g() : {};
-        var stage = document.getElementById("bl05-stage");
-        if (stage && v) {
-          var nodes = stage.querySelectorAll("[data-var-text]");
-          for (var i = 0; i < nodes.length; i++) {
-            var id = nodes[i].getAttribute("data-var-text");
-            if (v[id] != null) nodes[i].textContent = v[id];
-          }
-        }
-      } catch (e) {}
       var D = 12;
       var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
       function draw(sel, at, dur) {

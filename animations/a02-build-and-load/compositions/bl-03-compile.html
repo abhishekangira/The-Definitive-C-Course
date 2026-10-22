@@ -27,7 +27,7 @@
       <div class="bl-card" id="bl03-card">
         <div id="bl03-bar"><span>hello.s</span><span id="bl03-count"><span data-var-text="sLines">50</span> lines</span></div>
         <div id="bl03-body">
-          <p id="bl03-lead">A few lines around the call. Tabs expanded, no addresses on screen:</p>
+          <p id="bl03-lead">The lines that set up the call to printf, and the call:</p>
           <div id="bl03-excerpt" data-var-text="sExcerpt">        leaq    .LC1(%rip), %rax
         movq    %rax, %rdi
         movl    $0, %eax
@@ -49,18 +49,6 @@
         throw new Error(id + ": no element with " + attr);
       })("bl-03-compile", "data-steps");
       var S = JSON.parse(root.getAttribute("data-steps"));
-      try {
-        var g = window.__hyperframes && window.__hyperframes.getVariables;
-        var v = g ? g() : {};
-        var stage = document.getElementById("bl03-stage");
-        if (stage && v) {
-          var nodes = stage.querySelectorAll("[data-var-text]");
-          for (var i = 0; i < nodes.length; i++) {
-            var id = nodes[i].getAttribute("data-var-text");
-            if (v[id] != null) nodes[i].textContent = v[id];
-          }
-        }
-      } catch (e) {}
       var D = 13;
       var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
       tl.addLabel("compile", S.compile.start);

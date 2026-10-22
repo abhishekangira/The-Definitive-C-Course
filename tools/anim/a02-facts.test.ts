@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
-  ID, VARIABLE_IDS, boundText, collectFromProject, commandsFrom, declaredDefaults, factsSkipReason,
+  ID, VARIABLE_IDS, boundTexts, collectFromProject, commandsFrom, declaredDefaults, factsSkipReason,
   listing, projectFiles,
 } from './a02-facts.mjs';
 import { ANIM_DIR } from './lib.mjs';
@@ -74,9 +74,18 @@ describe.skipIf(skip)('A2: what the animation shows is what gcc 13 does', () => 
 
   it('every bound value on screen equals variables.json', () => {
     for (const id of VARIABLE_IDS) {
-      const shown = boundText(html, id);
-      expect(shown, id).toBe(varsFile[id]);
+      const shown = boundTexts(html, id);
+      expect(shown.length, id).toBeGreaterThan(0);
+      for (const t of shown) expect(t, id).toBe(varsFile[id]);
     }
+  });
+
+  it('the preprocess scene shows the same hello.c and its line count', () => {
+    const pre = facts.files.scenes.preprocess;
+    expect(listing(pre)).toBe(facts.source);
+    const lines = facts.source.split('\n').length - 1;
+    expect(idText(pre, 'bl02-clines')).toBe(`${lines} lines`);
+    expect(Number(facts.variables.iLines)).toBeGreaterThan(10 * lines);
   });
 });
 

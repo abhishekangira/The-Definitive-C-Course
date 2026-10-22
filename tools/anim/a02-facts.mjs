@@ -32,9 +32,10 @@ export function commandsFrom(html) {
   return [...html.matchAll(/class="bl-cmd"[^>]*>([\s\S]*?)<\//g)].map(m => plain(m[1]).replace(/\s+/g, ' ').trim());
 }
 
-export function boundText(html, id) {
-  const m = html.match(new RegExp(`data-var-text="${id}"[^>]*>([\\s\\S]*?)</`));
-  return m ? plain(m[1]).replace(/\s+$/, '') : null;
+/** The authored text of every element bound to variable `id` (what check and snapshot show). */
+export function boundTexts(html, id) {
+  return [...html.matchAll(new RegExp(`data-var-text="${id}"[^>]*>([\\s\\S]*?)</`, 'g'))]
+    .map(m => plain(m[1]).replace(/\s+$/, ''));
 }
 
 export function declaredDefaults(indexHtml) {

@@ -6,8 +6,8 @@
     #bl04-obj { left: 192px; top: 450px; width: 520px; height: 380px; }
     #bl04-obj b { font-size: 42px; }
     #bl04-size { font: 700 32px/1.2 var(--font-mono); color: var(--compiler); }
-    #bl04-a1 { left: 732px; top: 620px; width: 140px; height: 24px; }
-    #bl04-nm { left: 892px; top: 450px; width: 836px; height: 380px; padding: 28px 32px; border-color: var(--native); }
+    #bl04-a1 { left: 712px; top: 618px; width: 180px; height: 24px; }
+    #bl04-nm { left: 892px; top: 450px; width: 836px; height: 360px; padding: 28px 32px; border-color: var(--native); }
     #bl04-ntag { font: 700 28px/1 var(--font-mono); color: var(--native); }
     #bl04-nbody { margin-top: 28px; display: flex; flex-direction: column; gap: 18px; }
     .bl04-sym {
@@ -37,9 +37,9 @@
         <div id="bl04-size"><span data-var-text="objBytes">1544</span> bytes</div>
       </div>
 
-      <svg class="bl-arrow bl-nat" id="bl04-a1" viewBox="0 0 140 24" aria-hidden="true">
-        <path class="bl-draw bl04-d" d="M 4 12 H 124" pathLength="1" />
-        <path class="bl04-h" d="M 108 -2 L 128 12 L 108 26" />
+      <svg class="bl-arrow bl-nat" id="bl04-a1" viewBox="0 0 180 24" aria-hidden="true">
+        <path class="bl-draw bl04-d" d="M 4 12 H 168" pathLength="1" />
+        <path class="bl04-h" d="M 152 -2 L 172 12 L 152 26" />
       </svg>
 
       <div class="bl-card" id="bl04-nm">
@@ -64,18 +64,6 @@
         throw new Error(id + ": no element with " + attr);
       })("bl-04-assemble", "data-steps");
       var S = JSON.parse(root.getAttribute("data-steps"));
-      try {
-        var g = window.__hyperframes && window.__hyperframes.getVariables;
-        var v = g ? g() : {};
-        var stage = document.getElementById("bl04-stage");
-        if (stage && v) {
-          var nodes = stage.querySelectorAll("[data-var-text]");
-          for (var i = 0; i < nodes.length; i++) {
-            var id = nodes[i].getAttribute("data-var-text");
-            if (v[id] != null) nodes[i].textContent = v[id];
-          }
-        }
-      } catch (e) {}
       var D = 12;
       var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
       tl.addLabel("assemble", S.assemble.start);

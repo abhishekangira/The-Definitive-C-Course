@@ -27,7 +27,7 @@
     "step": "compile",
     "start": 28.2,
     "end": 34.4,
-    "text": "main calls printf by name. There is no address on screen."
+    "text": "main calls printf by name. Its address is not known yet."
   },
   {
     "step": "assemble",

@@ -203,7 +203,7 @@ content, so the deploy transcode uses the fast preset.
 * A render started from a shell that exits is cancelled (`render_cancelled_parent_exited`). Keep the render's parent alive.
 * Fonts that are not declared with `@font-face` are fetched from Google Fonts at render time. Declare every face.
 
-Found later (A3, A4):
+Found later (A3, A4, A2):
 
 * **`render.mjs` re-renders other animations when your browser differs.** The manifest records the browser that rendered
   each MP4; with another local Chrome, `render.mjs <id>` also redid a01 (observed three times). Restore the untouched
@@ -214,6 +214,17 @@ Found later (A3, A4):
   prefix renders unstyled.
 * A hand-computed value on screen was wrong once (the fraction of `0.1f` is 5033165; 4992205 was a mental slip), which
   is why the facts test must parse the scene text and compare with a real C run.
+* **Bind variables with `data-var-text`, not `getVariables()`, inside a scene (A2).** A 1 s test render with
+  `--variables-file` showed the file's value in a scene's `data-var-text` element, but `getVariables()` in that scene's
+  script returned no value for a variable declared on the root `<html>`. `check` and `snapshot` get no
+  `--variables-file`, so `a02-facts.test.ts` checks that each default and each bound element's text equal `variables.json`.
+* **gcc 13 on another distro gives other numbers.** Debian 13's gcc 13.3 (glibc 2.41) printed 816 `.i` lines, 33 `.s`
+  lines, a 1408-byte `hello.o` and a 15952-byte `hello`; an Ubuntu 24.04 userland gave 819, 50, 1544 and 15960. Run
+  `node tools/anim/a02-facts.mjs --write` on Ubuntu 24.04 (CI, or the official `ubuntu-base` 24.04 tarball in a chroot
+  with `gcc-13`), never on a look-alike.
+* `hyperframes check` warns `connector_orphan` when an arrow's end is more than 32 px from every visible element
+  (cards larger than 15% of the frame do not count) and a hidden element from another scene is that close. Start and
+  end each arrow within a few pixels of the boxes it joins.
 
 ## Adding an animation
 
