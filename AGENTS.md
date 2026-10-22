@@ -6,7 +6,7 @@ An interactive, static (no backend) React + TypeScript web app that teaches C17 
 You were told to read this file and given a ticket. Do this, in order:
 1. Read this whole file, then the notes that **Where to find what** lists for every folder you will edit, then the PLAN.md sections your ticket cites. The non-negotiables, **Ask first** and the pitfalls apply to every change. (Claude Code attaches a folder's `AGENTS.md` only when its Read tool opens a file there, never after `cat` in Bash, a search or a new file, and never a `README.md`; other tools differ. Open the listed notes yourself.)
 2. Branch from the latest `main` (`ticket/<short-name>`). **One ticket = one pull request.** Never push to `main` and never force-push.
-3. **Install the CI toolchain before you run anything.** Run the commands of the `Install the native toolchain` step in `.github/workflows/ci.yml` (with `sudo` unless you are root), then check `gcc-13`, `clang-22`, `lldb-22`, `gdb`, `valgrind` and `node` with `--version` against **Pull request rules** 5. `tools/verify` falls back to plain `clang` with a warning, and those outputs are not comparable. A version mismatch is your setup to fix, not a finding to report. Only if the install fails (no network or no `sudo`), name your versions under **Could not verify**.
+3. **Reuse or prepare the CI toolchain.** Run `npm run doctor`; on a fresh workspace or a failed check, run `npm run setup`. It detects native tools, usable Docker and installation privileges; missing `sudo` alone is not a blocker. Use `npm run env -- <command>` for native tests and verification. CI and the container share `tools/environment/install-native.sh`; instructions and failure recovery: `tools/environment/README.md`. Do not reinstall a passing environment or substitute plain `clang` for clang 22. Report concrete unresolved prerequisites under **Could not verify**.
 4. Stay in scope, and stop at anything under **Ask first**. A new dependency needs a reason in the PR description and an exact pinned version.
 5. Don't hand-edit `src/generated/` (regenerate it with `npm run verify`) and don't hand-type expected outputs.
 6. Before opening the PR, run the commands that cover your change (see **Commands**). If you touched the app, run `npm ci && npm run build && npm run e2e`. Outside the cloud container, install a browser first with `npx playwright install chromium`. Browser setup: `e2e/AGENTS.md`.
@@ -73,6 +73,8 @@ Risk: (does it touch learner-facing app code, the generated-data format, or CI/d
 ## Commands (keep in sync with `package.json`)
 | Command | What it does |
 |---|---|
+| `npm run setup` / `npm run doctor` | prepare or functionally check the CI toolchain; reuse it across tasks |
+| `npm run env -- <command>` | run a command with the prepared native toolchain, ASCII diagnostics and standard file permissions |
 | `npm run dev` | prepare the toolchain, build `check.mjs` into `public/downloads/` (`tools/check/README.md`), start Vite |
 | `npm run build` | prepare the toolchain, typecheck, `vite build`, build `check.mjs` into `dist/downloads/` |
 | `npm run verify [-- --module m01 --check --force]` | compile/run every sample on gcc, clang, the browser compiler (+ stored macOS/arm/Windows results); writes `src/generated/samples/`, traces and native sessions (`src/generated/sessions/`, `docs/adr/0005-native-sessions.md`) |
@@ -103,6 +105,7 @@ CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub P
 | `tools/exercises/` | `verify:exercises`, `exercises:expect` | `tools/exercises/README.md` |
 | `tools/videos/`, `videos.json` | YouTube segments and transcript excerpts | `tools/videos/README.md` |
 | `tools/dod/` | The definition-of-done table | `tools/dod/README.md` |
+| `tools/environment/` | shared CI installer, portable cloud setup, Docker fallback and doctor | `tools/environment/README.md` |
 | `tools/` (the rest) | `verify`, `trace`, `toolchain`, `mdx` (remark plugin), `shared`, `ci`, `docs` | — |
 | `.github/` | `workflows/ci.yml`, `workflows/targets.yml` | `.github/AGENTS.md` |
 | `docs/adr/` | Decision records: what was decided, the options and the evidence | `docs/adr/README.md` |
@@ -122,7 +125,7 @@ CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub P
 
 ## Decisions (details in PLAN.md §1–§4, the client's in §12, and `docs/adr/`)
 - **Browsers: Chromium-based only** (Chrome, Edge, Brave and similar; JSPI needs Chrome 137 or newer). Firefox and Safari, including iOS, are not supported and not tested; the owner decided this on 2026-10-17. Don't raise cross-browser tickets or add Firefox/WebKit Playwright projects. (A pre-filled stdin box still exists for a Chromium without JSPI, as a graceful fallback; nothing tests it.)
-- **Reference environment:** CI on the GitHub Actions `ubuntu-24.04` runner is the authority for every check. Local and sandbox runs are advisory: say how your toolchain differs and let CI decide. There is no Docker (the agent sandboxes have no Docker daemon). Toolchain versions and what CI logs: `.github/AGENTS.md`.
+- **Reference environment:** CI on the GitHub Actions `ubuntu-24.04` runner is the authority for every check. Local and sandbox runs are advisory: say how your toolchain differs and let CI decide. Detect Docker availability at runtime; cloud agents differ. Toolchain versions and what CI logs: `.github/AGENTS.md`.
 - **Generated files:** `src/generated/{samples,traces,sessions}` are **owned by CI**. Don't commit regenerated copies and never edit them by hand. For a same-repo PR, CI regenerates them on the `ubuntu-24.04` runner and a bot commit lands on your branch (so `git pull --rebase` before you push again). If you resolve a conflict in these files, take either side; CI regenerates them. `src/generated/targets/` is written by the `Targets` workflow on `main`. Run `npm run verify` locally to look at output, not to commit it: it keeps a committed file whose only difference is a compiler version string, but your machine's toolchain can still differ from CI's in behaviour. How the bot commit works: `.github/AGENTS.md`.
 - **Line endings are LF everywhere** (`.gitattributes`). Windows CRLF changes sample hashes and marks stored results stale.
 - **Licensing.** MIT for the code and the course content (the client's decision): `LICENSE`, copyright (c) 2026 Abhishek Angira. `package.json`, the About page and `learnc.h` agree. Don't change it.
@@ -134,7 +137,7 @@ CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub P
 - **GitHub closes issues on negated keywords.** "Do not close #1" in a PR description closed #1 when the PR merged. For partial work write "Partial progress on #N" and never use close, closes, fix, fixes, resolve or resolves next to an issue number; the maintainer also re-checks the issue state after every merge.
 
 ## Environment (the cloud container)
-- **Chromium** is at `/opt/pw-browsers`. Don't run `playwright install` there.
+- **Chromium:** detect what the agent provides. `playwright.config.ts` recognises the existing `/opt/pw-browsers` layout; set `CHROMIUM_PATH` for another installed executable. Install only if no usable browser exists (`e2e/AGENTS.md`).
 - **GitHub.** Web and API access is limited to repos attached to the session. `gh repo create` and GraphQL are blocked; use repo-scoped REST. API quirks, local PR review and branch clean-up: the `review-and-merge-pr` skill.
 
 ## Git
