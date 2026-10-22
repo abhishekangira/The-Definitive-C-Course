@@ -57,6 +57,8 @@ export interface ExecOutcome {
   leaksChecked?: boolean;
   /** Set when a memory check was asked for but no tool could watch the run (the check is skipped). */
   memoryUnavailable?: string;
+  /** A memory tool watched this run but gave no result; the memory check fails with this message (first line; the rest are details). */
+  memoryError?: string;
 }
 
 export interface MakeOptions {

@@ -1,6 +1,7 @@
 // The ordered steps of the per-module definition of done (PLAN.md §3.6) and how to build them for one module.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { macosSessionsSkip } from '../verify/macos-sessions';
 
 export interface Step {
   id: string;
@@ -16,7 +17,8 @@ export interface Step {
   highlight?: RegExp;
 }
 
-export interface BuildOptions { module: string; fast?: boolean; contentRoot: string }
+/** `generatedRoot` defaults to `src/generated` next to `contentRoot` (the repo's own when `contentRoot` is `content/`). */
+export interface BuildOptions { module: string; fast?: boolean; contentRoot: string; generatedRoot?: string }
 
 export function findModuleDir(contentRoot: string, module: string): string | undefined {
   const modules = path.join(contentRoot, 'modules');
@@ -42,10 +44,11 @@ export const EXERCISE_PROBLEM = /✗|^\s+- /;
 const npm = (...args: string[]) => ['npm', 'run', '--silent', ...args];
 
 /** Steps in the order they run (sequentially: the checks are timing-sensitive on small machines). */
-export function buildSteps({ module, fast = false, contentRoot }: BuildOptions): Step[] {
+export function buildSteps({ module, fast = false, contentRoot, generatedRoot = path.resolve(contentRoot, '..', 'src', 'generated') }: BuildOptions): Step[] {
   const dir = findModuleDir(contentRoot, module);
   if (!dir) throw new Error(`unknown module "${module}": no ${contentRoot}/modules/${module}-* directory`);
   const anims = animationIds(dir);
+  const noSessions = macosSessionsSkip(generatedRoot, module);
   const steps: Step[] = [
     // typecheck imports the gitignored src/generated/toolchain-version.json, which only this step writes (build runs it too).
     { id: 'prepare', point: 6, name: 'toolchain:prepare', command: npm('toolchain:prepare') },
@@ -65,6 +68,10 @@ export function buildSteps({ module, fast = false, contentRoot }: BuildOptions):
     fast
       ? { id: 'e2e', point: 6, name: 'e2e', command: [], skip: '--fast' }
       : { id: 'e2e', point: 6, name: `e2e (${module})`, command: npm('e2e'), env: { E2E_MODULE: module } },
+    // Reads only the generated sessions file. It fails on a stack branch, where macOS runs don't exist until Targets runs on main.
+    noSessions
+      ? { id: 'macos-sessions', point: 7, name: 'macOS session runs', command: [], skip: noSessions }
+      : { id: 'macos-sessions', point: 7, name: 'macOS session runs', command: ['npx', 'tsx', 'tools/verify/macos-sessions.ts', '--module', module, '--generated-root', generatedRoot] },
     { id: 'targets', point: 7, name: 'platform targets', command: [], skip: 'CI Targets workflow only' },
   ];
   return steps;

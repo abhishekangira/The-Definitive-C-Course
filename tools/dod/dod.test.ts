@@ -19,7 +19,7 @@ const exec = spawnExec(here);
 describe('buildSteps on the fixture modules', () => {
   it('runs the steps in the order the ticket lists, with the module passed to the module-aware commands', () => {
     const steps = buildSteps({ module: 'm90', contentRoot });
-    expect(steps.map(s => s.id)).toEqual(['prepare', 'typecheck', 'lint', 'verify', 'trace', 'exercises', 'videos', 'anim', 'unit', 'build', 'e2e', 'targets']);
+    expect(steps.map(s => s.id)).toEqual(['prepare', 'typecheck', 'lint', 'verify', 'trace', 'exercises', 'videos', 'anim', 'unit', 'build', 'e2e', 'macos-sessions', 'targets']);
     expect(steps.find(s => s.id === 'verify')?.command.join(' ')).toContain('--check --module m90');
     expect(steps.find(s => s.id === 'e2e')?.env).toEqual({ E2E_MODULE: 'm90' });
   });

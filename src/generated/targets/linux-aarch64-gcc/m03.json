@@ -1,0 +1,6 @@
+{
+  "generatedBy": "tools/verify --target-run; gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "module": "m03",
+  "samples": {},
+  "target": "linux-aarch64-gcc"
+}

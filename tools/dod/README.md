@@ -22,12 +22,13 @@ The steps run one after another on purpose: the checks (browser compiler, e2e) a
 | 9 | all unit tests (`npm test`: `tools/` and `src/`, so §3.6 point 6 is covered in full; about 30 s on a 4-CPU box, because the verifier fixture tests compile C) | 6 |
 | 10 | `npm run build` (skipped by `--fast`) | 6 |
 | 11 | `npm run e2e` with `E2E_MODULE=mNN` (skipped by `--fast`) | 6 |
-| 12 | platform targets: always `SKIPPED`, the Targets workflow checks them in CI | 7 |
+| 12 | `macos-sessions` (`tools/verify/macos-sessions.ts --module mNN`): reads only `src/generated/sessions/mNN.json` and fails, naming each session, when a session lists `macos` in `platforms` but has no `runs.macos` (its macOS run is missing, stale or has problems: rerun the Targets workflow on `main`, or read its warning). `SKIPPED (no sessions: …)` when the module has no sessions file. Red on a stack branch for a draft module with macOS steps, because macOS runs exist only after Targets runs on `main` | 7 |
+| 13 | platform targets: always `SKIPPED`, the Targets workflow checks them in CI | 7 |
 
-- For a module that `course.yaml` does not release yet (`available: false`), the lint step reports its gaps as notes and the e2e step opens it through `?preview=mNN` (`clickThroughModules` in `e2e/lib.ts`; `e2e/AGENTS.md`). The other steps read the module's folder, not `course.yaml`. Observed so far on a scratch copy only (lint and `E2E_MODULE=m03`); the whole table has not been run on a draft.
+- For a module that `course.yaml` does not release yet (`available: false`), the lint step reports its gaps as notes and the e2e step opens it through `?preview=mNN` (`clickThroughModules` in `e2e/lib.ts`; `e2e/AGENTS.md`). The other steps read the module's folder, not `course.yaml`. Observed first on a scratch copy (lint and `E2E_MODULE=m03`); the full table (`npm run dod -- --module m03`) then passed on the real draft `m03` (review of #88, at `c4a96b6`).
 - `--fast` skips build and e2e.
 - `--json` prints `{module, fast, ok, steps[{id, point, name, status, reason?, durationMs, tail?, failing?}]}` and nothing else from `dod` on stdout. Use `npm run -s` (silent): plain `npm run dod` makes npm print its banner to stdout before the program starts, which `dod` cannot suppress.
 - `anim:check` runs with `--static` (no browser: validation, `hyperframes lint`, manifest freshness). The full browser gate stays in CI.
 - Paste the table into the PR description.
 
-Tests: `tools/dod/dod.test.ts` uses the fixture modules in `tools/dod/fixtures/content/` (one plain, one with animations).
+Tests: `tools/dod/dod.test.ts` uses the fixture modules in `tools/dod/fixtures/content/` (one plain, one with animations); `tools/verify/macos-sessions.test.ts` covers the `macos-sessions` row.

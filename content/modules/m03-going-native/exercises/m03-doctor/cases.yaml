@@ -1,0 +1,6 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+# memory: the ASan/UBSan/LeakSanitizer smoke test (Valgrind where no sanitizer runtime exists) on the learner's machine.
+memory: true
+cases:
+  - name: prints the greeting
+    hint: "Keep the printf as it is: only the way main is declared needs to change."
