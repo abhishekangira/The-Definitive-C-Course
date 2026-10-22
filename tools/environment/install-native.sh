@@ -14,7 +14,10 @@ key=$(mktemp)
 trap 'rm -f "$key"' EXIT
 curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key -o "$key"
 fingerprint=$(gpg --batch --show-keys --with-colons "$key" | awk -F: '$1 == "fpr" {print $10; exit}')
-test "$fingerprint" = 6084F3CF814B57C1CF12EFD515CF4D18AF4F7421
+if [[ "$fingerprint" != 6084F3CF814B57C1CF12EFD515CF4D18AF4F7421 ]]; then
+  echo "apt.llvm.org's signing key changed; check it and update the fingerprint in install-native.sh (got ${fingerprint:-none})" >&2
+  exit 1
+fi
 install -m 0644 "$key" /etc/apt/keyrings/apt.llvm.org.asc
 echo 'deb [signed-by=/etc/apt/keyrings/apt.llvm.org.asc] https://apt.llvm.org/noble/ llvm-toolchain-noble-22 main' > /etc/apt/sources.list.d/llvm-22.list
 apt-get update
