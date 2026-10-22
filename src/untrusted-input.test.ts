@@ -223,15 +223,20 @@ describe('MiniMarkdown (prompts, hints, explanations)', () => {
     const urls = ['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,<script>alert(1)</script>', 'vbscript:x', '//evil.example/x', '&#106;avascript:alert(1)', '%6Aavascript:alert(1)', 'file:///etc/passwd', 'blob:https://x'];
     for (const u of urls) expect(hrefs(html(`[click](${u})`)), u).toEqual(['#']);
     expect(hrefs(html('[a](https://example.com/x) [b](#top) [c](./rel)'))).toEqual(['https://example.com/x', '#top', './rel']);
+    // Bold, italic and table cells render their inside with the same link rules.
+    expect(hrefs(html('**[click](javascript:alert(1))** *[x](data:text/html,x)*\n\n| a |\n|---|\n| [y](vbscript:x) |'))).toEqual(['#', '#', '#']);
   });
 
   it('escapes raw HTML in every block type, and in link text and code', () => {
     const payload = '<img src=x onerror=alert(1)><script>alert(2)</script>';
-    const out = html([payload, '', `- ${payload}`, `1. ${payload}`, `**${payload}**`, `[${payload}](https://x.example)`, '`' + payload + '`', '```', payload, '```', '[x](https://a.example"onmouseover="alert(1))'].join('\n'));
+    const table = [`| ${payload} | "onfocus="alert(3) |`, '|---|---|', `| \`${payload}\` | **${payload}** |`].join('\n');
+    const out = html([payload, '', `- ${payload}`, `1. ${payload}`, `**${payload}**`, `[${payload}](https://x.example)`, '`' + payload + '`', '```', payload, '```', '[x](https://a.example"onmouseover="alert(1))', '', table].join('\n'));
+    expect(out).toContain('<table>');
     // After removing the tags MiniMarkdown itself makes, no "<" is left: everything else was escaped to text.
-    const bare = out.replace(/<\/?(div|p|ul|ol|li|strong|em|code|pre)>/g, '').replace(/<a href="[^"<>]*"( target="_blank")? rel="noreferrer">|<\/a>/g, '');
+    const bare = out.replace(/<\/?(div|p|ul|ol|li|strong|em|code|pre|table|thead|tbody|tr|th|td)>/g, '').replace(/<a href="[^"<>]*"( target="_blank")? rel="noreferrer">|<\/a>/g, '')
+      .replace(/<div class="md-table" role="region" tabindex="0" aria-label="[^"<>]*">/g, '');
     expect(bare).not.toContain('<');
-    expect(out).not.toMatch(/ onmouseover=/);
+    expect(out).not.toMatch(/ onmouseover=| onfocus=/);
     expect(out).toContain('&lt;script&gt;');
   });
 
@@ -243,7 +248,7 @@ describe('MiniMarkdown (prompts, hints, explanations)', () => {
     // Load-robust: the cost at 4N is compared with the cost at N (linear ~4x, quadratic ~16x), best of 3 so a busy
     // CPU slows both sides alike. The old quadratic code gave about 16x on "[". The cap on the larger run is generous.
     const best = (text: string) => Math.min(...[0, 1, 2].map(() => { const t0 = performance.now(); html(text); return performance.now() - t0; }));
-    const runs = ['*', '[', '[a](', '[a](x', '[a](x[a](x', '`a', '[x', '[x]', '[x](', ']('];
+    const runs = ['*', '[', '[a](', '[a](x', '[a](x[a](x', '`a', '[x', '[x]', '[x](', '](', '|', '|-', '\\|', '| a |\n', '| a |\n|---|\n', '**`'];
     for (const r of runs) {
       const small = best(r.repeat(Math.ceil(25_000 / r.length)));
       const big = best(r.repeat(Math.ceil(100_000 / r.length)));

@@ -293,6 +293,41 @@ test('phone width (390x844): the chat fits, Enter is a new line and Send sends',
   await context.close();
 });
 
+test('phone width: a Markdown table in a reply is a table that scrolls sideways in its own box, not the chat or the page', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  page.on('pageerror', e => { throw e; });
+  await seed(context, { cards: { 'm01-l1': [0] } });
+  // The second chunk finishes a row the first one cut in half. Five columns of words that can't wrap don't fit 390 px.
+  await stubProvider(page, [
+    'The limits:\n| Macro | Decimal | Hex | Minimum | Header |\n|---|---|---|---|---|\n| `INT_MAX` | 2147483647 | `0x7ff',
+    'fffff` | -2147483648 | `<limits.h>` |\n\n`sizeof` gives a **`size_t`**.',
+  ]);
+  await page.goto('#/m/m01/01-hello-compiled-world');
+  await page.getByRole('button', { name: 'Ask the tutor' }).tap();
+  await panel(page).getByRole('textbox', { name: 'Your question' }).fill('What are the int limits?');
+  await panel(page).getByRole('button', { name: 'Send' }).tap();
+
+  const table = log(page).locator('table');
+  await expect(table).toHaveCount(1);
+  await expect(table.locator('th')).toHaveCount(5);
+  await expect(table.locator('td code').nth(1)).toHaveText('0x7fffffff');
+  await expect(log(page).locator('strong code')).toHaveText('size_t');
+  await expect(log(page)).not.toContainText('`');
+  const box = log(page).getByRole('region', { name: 'Table: Macro, Decimal, Hex, Minimum, Header' });
+  const [boxScroll, boxWidth] = await box.evaluate(el => [el.scrollWidth, el.clientWidth]);
+  expect(boxScroll, 'the table is wider than its box').toBeGreaterThan(boxWidth);
+  const [logScroll, logWidth] = await log(page).evaluate(el => [el.scrollWidth, el.clientWidth]);
+  expect(logScroll, 'the chat log does not scroll sideways').toBeLessThanOrEqual(logWidth);
+  const [scroll, width] = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]);
+  expect(scroll, 'the page does not scroll sideways').toBeLessThanOrEqual(width);
+  await box.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => box.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+  await expectAccessible(page, 'lesson chat with a table at phone width');
+  await context.close();
+});
+
 test('at 1024px the open chat does not cover the reading column, and the button does not cover the page end', async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 1024, height: 800 } });
   const page = await context.newPage();
