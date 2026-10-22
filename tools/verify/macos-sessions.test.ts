@@ -60,6 +60,21 @@ describe('macos-sessions', () => {
     expect(macosSessionsSkip(generated(), 'm90')).toBeUndefined();
   });
 
+  it('fails with a clear message, not a stack trace, on a malformed sessions file', () => {
+    const bad = (text: string) => {
+      const root = path.join(tmp, `bad${n++}`);
+      mkdirSync(path.join(root, 'sessions'), { recursive: true });
+      writeFileSync(path.join(root, 'sessions', 'm90.json'), text);
+      return checkMacosSessions(root, 'm90');
+    };
+    const broken = bad('{"module": "m90", "sessions": {');
+    expect(broken.status).toBe('fail');
+    expect(broken.message).toMatch(/^src\/generated\/sessions\/m90\.json is not valid JSON \(.+\); regenerate it with npm run verify$/);
+    for (const text of ['null', '{"module":"m90"}', '{"sessions":{"x":{"id":"x"}}}']) {
+      expect(bad(text)).toEqual({ status: 'fail', message: 'src/generated/sessions/m90.json is not a sessions file (each session needs `platforms` and `runs`); regenerate it with npm run verify' });
+    }
+  });
+
   it('as the real dod row: FAIL naming the session, PASS once the run is there', async () => {
     const exec = spawnExec(ROOT);
     const row = (root: string) => buildSteps({ module: 'm90', contentRoot: dodContent, generatedRoot: root }).filter(s => s.id === 'macos-sessions');

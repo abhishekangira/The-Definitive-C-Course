@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, sym
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { parseGeneratedTar, pathProblem, unpackGenerated } from './unpack-generated.mjs';
+import { MAX_FILES, parseGeneratedTar, pathProblem, unpackGenerated } from './unpack-generated.mjs';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'unpack-generated-'));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
@@ -55,6 +55,38 @@ describe('unpack-generated', () => {
     expect(pathProblem('src/generated/sessions')).not.toBeNull();
     const link = makeTar(dir => { symlinkSync('/etc/passwd', path.join(dir, 'src/generated/sessions/m03.json')); return ['src/generated/sessions/m03.json']; });
     rejects(link, /not a regular file/);
+  });
+
+  it('pins the character set and case of member paths', () => {
+    // Each would pass a looser PATH_RE (a wider class like [^/], or the /i flag).
+    for (const bad of ['src/generated/sessions/a\\b.json', 'src/generated/sessions/m 1.json', 'src/generated/sessions/a:b.json',
+      'src/generated/samples/x\u00e9.json', 'src/generated/Sessions/m03.json', 'src/generated/SAMPLES/m01.json', 'SRC/generated/traces/x.json']) {
+      expect(pathProblem(bad), bad).not.toBeNull();
+    }
+    rejects(makeTar(dir => { writeFileSync(path.join(dir, 'src/generated/sessions/m 1.json'), '{}'); return ['src/generated/sessions/m 1.json']; }), /forbidden characters/);
+    expect(pathProblem('src/generated/sessions/m03.json')).toBeNull();
+  });
+
+  it('rejects a member that appears twice', () => {
+    const tar = makeTar(dir => { writeFileSync(path.join(dir, 'src/generated/sessions/m03.json'), '{}'); return ['src/generated/sessions/m03.json', 'src/generated/sessions/m03.json']; }, ['--hard-dereference']);
+    rejects(tar, /appears twice/);
+  });
+
+  it('rejects a regular-file member that carries a link target', () => {
+    const buf = Buffer.from(readFileSync(makeTar(good)));
+    buf.write('/etc/passwd', 157, 'latin1'); // linkname field of the first header; typeflag stays '0'
+    let sum = 0;
+    for (let i = 0; i < 512; i++) sum += i >= 148 && i < 156 ? 32 : buf[i];
+    buf.write(`${sum.toString(8).padStart(6, '0')}\0 `, 148, 'latin1');
+    expect(() => parseGeneratedTar(buf)).toThrow(/has a link target/);
+  });
+
+  it(`refuses more than MAX_FILES (${MAX_FILES}) members and accepts exactly that many`, () => {
+    const many = (count: number) => makeTar(dir => Array.from({ length: count }, (_, i) => {
+      const f = `src/generated/samples/s${i}.json`; writeFileSync(path.join(dir, f), '{}'); return f;
+    }));
+    expect(parseGeneratedTar(readFileSync(many(MAX_FILES)))).toHaveLength(MAX_FILES);
+    rejects(many(MAX_FILES + 1), /archive too large/);
   });
 
   it('rejects a ".." segment', () => {

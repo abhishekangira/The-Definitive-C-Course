@@ -31,7 +31,17 @@ export type MacosSessionsResult = { status: 'pass' | 'fail' | 'skip'; message: s
 export function checkMacosSessions(generatedRoot: string, module: string): MacosSessionsResult {
   const skip = macosSessionsSkip(generatedRoot, module);
   if (skip) return { status: 'skip', message: skip };
-  const file = JSON.parse(readFileSync(sessionsFilePath(generatedRoot, module), 'utf8')) as SessionsFile;
+  const rel = `src/generated/sessions/${module}.json`;
+  let file: SessionsFile;
+  try {
+    file = JSON.parse(readFileSync(sessionsFilePath(generatedRoot, module), 'utf8')) as SessionsFile;
+  } catch (e) {
+    return { status: 'fail', message: `${rel} is not valid JSON (${(e as Error).message}); regenerate it with npm run verify` };
+  }
+  const sessions = file?.sessions;
+  if (!sessions || typeof sessions !== 'object' || Object.values(sessions).some(s => !Array.isArray(s?.platforms) || !s.runs || typeof s.runs !== 'object')) {
+    return { status: 'fail', message: `${rel} is not a sessions file (each session needs \`platforms\` and \`runs\`); regenerate it with npm run verify` };
+  }
   const missing = missingMacosRuns(file);
   const withMac = Object.values(file.sessions).filter(s => s.platforms.includes('macos')).length;
   if (!missing.length) return { status: 'pass', message: `${module}: all ${withMac} session(s) with macOS steps have a stored macOS run` };

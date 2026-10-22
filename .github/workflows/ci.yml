@@ -231,7 +231,9 @@ jobs:
           cp -r "$RUNNER_TEMP/unpacked/src/generated/." src/generated/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/generated/samples src/generated/traces src/generated/sessions
+          git add src/generated/samples src/generated/traces
+          # src/generated/sessions/ is untracked until a module has a session; `git add` of a missing path exits 128.
+          if [ -d src/generated/sessions ]; then git add src/generated/sessions; fi
           git commit -m "Regenerate samples, traces and sessions (CI)"
           git push origin "HEAD:refs/heads/$HEAD_REF"
           gh workflow run ci.yml --ref "$HEAD_REF"
