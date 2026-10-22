@@ -1166,6 +1166,7 @@
       "lesson": "05-floating-point",
       "meta": {
         "id": "float-16777217",
+        "match": "close",
         "predict": "output"
       },
       "module": "m02",
@@ -1239,6 +1240,7 @@
       "lesson": "05-floating-point",
       "meta": {
         "id": "float-bits",
+        "match": "close",
         "predict": "output"
       },
       "module": "m02",
@@ -1312,6 +1314,7 @@
       "lesson": "01-binary-and-hex",
       "meta": {
         "id": "hex-print",
+        "match": "exact",
         "predict": "output"
       },
       "module": "m02",
@@ -1802,6 +1805,7 @@
       "lesson": "04-bitwise-operators-and-masks",
       "meta": {
         "id": "pack-orange",
+        "match": "close",
         "predict": "output"
       },
       "module": "m02",
@@ -1875,6 +1879,7 @@
       "lesson": "05-floating-point",
       "meta": {
         "id": "point-one-plus",
+        "match": "close",
         "predict": "output"
       },
       "module": "m02",
@@ -2382,6 +2387,7 @@
       "lesson": "01-binary-and-hex",
       "meta": {
         "id": "rgb-hex",
+        "match": "exact",
         "predict": "output"
       },
       "module": "m02",
@@ -2455,6 +2461,7 @@
       "lesson": "05-floating-point",
       "meta": {
         "id": "round-halves",
+        "match": "close",
         "predict": "output"
       },
       "module": "m02",
@@ -3111,6 +3118,7 @@
       "lesson": "06-overflow-in-the-real-world",
       "meta": {
         "id": "tick-days",
+        "match": "close",
         "predict": "output"
       },
       "module": "m02",
