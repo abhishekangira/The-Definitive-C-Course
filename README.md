@@ -102,7 +102,8 @@ For **cloud agents and contributors running native verification** (Linux/WSL),
 start with `npm run setup`. It reuses an existing toolchain or prepares the CI
 tools using Docker or Ubuntu installation privileges, installs npm dependencies,
 and checks real compilation and debugging. Later tasks use `npm run doctor`,
-then `npm run env -- npm test` or `npm run env -- npm run verify`.
+then `npm run env -- npm test` or `npm run env -- npm run verify`. A cloud agent
+environment runs `bash tools/environment/cloud-setup.sh` as its setup script.
 CI and cloud setup use the same native installer. See
 [`tools/environment/README.md`](tools/environment/README.md) for prerequisites,
 browser setup and troubleshooting.

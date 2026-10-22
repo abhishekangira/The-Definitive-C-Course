@@ -1,75 +1,90 @@
 # Development environment for cloud agents
 
-This is the shared setup path for Codex, Claude Code and other agents running in
-Linux workspaces or WSL. It needs Node >=22.22.2 to start, and either a compatible
-native toolchain, a usable Docker daemon, or root/passwordless sudo on Ubuntu
-24.04. No npm dependencies are needed to run the setup entry point.
+One way to get CI's native toolchain (Ubuntu 24.04, gcc 13, clang/lldb 22, gdb 15,
+valgrind 3.22, Node 22) on any Linux machine or WSL: use the host when it already
+matches, otherwise a Docker image built from the same installer CI runs. The entry
+point, `cli.mjs`, needs only some Node 22 and no npm dependencies; the toolchain's Node
+(package.json `engines`, >=22.22.2) is the backend's: the image ships 22.22.2, so an
+older host Node does not rule the container out.
 
 ```sh
-npm run setup                 # once per fresh workspace, or after a dependency update
-npm run doctor                # reuse the prepared environment in later tasks
-npm run env -- npm test -- --maxWorkers=2
-npm run env -- npm run verify -- --generated-root .cache/generated
+npm run setup                 # once per machine, or after a change here or to the Playwright version
+npm run doctor                # every task: proves the toolchain works, installs nothing
+npm run env -- npm test       # any native command
+npm run env -- npm run verify -- --check
+npm run build && CI=1 npm run env -- npm run e2e   # the image has its own Chromium
 ```
 
-`setup` first detects the installed tools. It reuses a compatible host; otherwise
-it checks Docker, and builds/reuses a source-hashed Ubuntu 24.04 image. Without
-Docker it can install natively on Ubuntu 24.04 with root/passwordless sudo. It
-then runs functional tool checks, `npm ci` against the unchanged lockfile, and
-prepares the browser compiler assets. It uses `.cache/npm` so a read-only home
-directory does not break installation. A second setup reuses the image but
-deliberately refreshes npm dependencies; use `doctor` for ordinary task startup.
+**Agents check, they don't set up** (root `AGENTS.md`, step 3).
 
-`doctor` compiles and runs real C with GCC and Clang plus ASan/UBSan, and reaches
-source breakpoints in GDB and LLDB. It exits nonzero on missing or incompatible
-tools. It does not install packages or build images. `env` runs the supplied
-command with the selected native toolchain, `LC_ALL=C` and `umask 022`. Container
-commands use the calling UID/GID and mount only the current checkout at its real
-path; no `/workspace` layout or agent-specific files are required.
+## Cloud environments (Codex, Claude Code, other bots)
 
-Use `--container` or `--host` to choose explicitly, for example
-`npm run setup -- --container` and `npm run doctor -- --container`.
-`npm run env -- --container gcc-13 --version` chooses the container for a command.
-The scripts currently target Linux/WSL; macOS learners can still use the native
-local-project workflow described in PLAN.md, but that is a different toolchain.
+- **Setup script:** `bash tools/environment/cloud-setup.sh`. The only script that builds or
+  installs. It logs what the machine can do (OS, uid, Node, Docker, `vm.mmap_rnd_bits`, free
+  disk), runs `npm run setup`, and if the native toolchain can't be had still runs `npm ci`
+  and `toolchain:prepare`. It exits non-zero when the npm dependencies failed.
+- **Maintenance script:** `bash tools/environment/cloud-maintain.sh`. Check-only, never builds:
+  the saved backend and image must still exist (it restores `.cache/environment/image.tar` if
+  `image.tar.sha256` verifies it; make one with `docker save` and `sha256sum`), it reruns
+  `npm ci` only when `package-lock.json` changed, and it runs the doctor. If it fails, rerun the
+  setup script, which for Codex means republishing the environment.
+
+Codex now publishes environment snapshots: the filesystem the setup script prepared is
+captured, and refreshing a task restores it without rerunning installs (not the older
+12-hour container cache). Whether a Docker daemon and its images survive into a task
+depends on the provider; `cloud-maintain.sh` and `npm run doctor` show it.
+
+## What setup does
+
+It picks a backend: the host if `doctor.sh --versions` passes; else Docker, building or
+reusing `tdcc-dev:<hash>` (the hash covers `Dockerfile`, `install-native.sh`, the base and
+the lockfile's `@playwright/test` version); else, with root or passwordless sudo on Ubuntu
+24.04, `install-native.sh` on the host. `--container` or `--host` forces one. No `docker` on
+PATH and a daemon it can't reach are reported apart, with `docker info`'s own error (a
+permission error is not a stopped daemon). Then it runs the doctor, `npm ci` (cache in
+`.cache/npm`), `toolchain:prepare` and a Chromium check, and writes
+`.cache/environment/status.txt`: backend, image, tool versions, and one line per capability
+(`native`, `npm` with the lockfile hash, `chromium`), then `state: ready` (all three),
+`limited` (npm dependencies, but no native toolchain or no Chromium) or `blocked` (with the
+reason). `doctor` and `env` use the saved backend without probing again, and stop if the
+saved image is missing or no longer matches the Dockerfile.
+
+`doctor` checks the commands the tools call (`GCC`, default `gcc`, and plain `gcc` too;
+`CLANG22`; `LLDB22`) and Node against `engines`, then with a timeout on each probe compiles
+with gcc and clang under ASan+UBSan, needs ASan to catch a heap overflow and valgrind to
+find a leak, stops GDB (failing on `Error disabling address space randomization`) and LLDB
+at a breakpoint, and runs GDB's Python. It prints `Ready` only when all of that passed.
+
+`env` runs a command with `LC_ALL=C` and `umask 022`; in the container as your uid/gid,
+with only the checkout (and a worktree's main `.git`) mounted at its real path, `HOME=/tmp`,
+`--init`, `--shm-size=1g` and `--security-opt seccomp=unconfined` so gdb and lldb can turn
+off address randomisation, as on the CI runner, which has no seccomp filter. No
+`--privileged`, no added capabilities. `CI`, `E2E_PORT`, `GCC`, `CLANG22`, `LLDB22` and
+`CHROMIUM_PATH` are passed through when set.
 
 ## CI and container parity
 
-`.github/workflows/ci.yml` and the Dockerfile both call `install-native.sh`.
-Change the package list there, not in two independent recipes. It selects GCC
-13, LLVM/Clang/LLDB 22, GDB 15 and Valgrind 3.22 on Ubuntu 24.04, plus compiler-rt,
-LLVM symbolizer, Make, Python and FFmpeg. Apt patch releases can drift, just as on
-CI. The image pins its Ubuntu base digest and Node 22.22.2; the host Node may be
-newer. CI remains the authority for generated output.
+`.github/workflows/ci.yml` and the Dockerfile both call `install-native.sh`; change the
+package list there only. It fails with `apt.llvm.org's signing key changed` if the key's
+fingerprint differs. The base is `docker.io/library/ubuntu:24.04` at a recorded digest,
+pulled by default through `mirror.gcr.io` (no Docker Hub anonymous pull limits);
+`TDCC_BASE_IMAGE` names another approved mirror, which must carry the same digest. There is
+no automatic fallback to another registry. Node is 22.22.2. Apt patch releases drift, as on
+CI; CI stays the authority for generated output. macOS (Apple clang, `leaks`) runs only in
+`targets.yml`; no image covers it.
 
-`docker-seccomp.json` is the upstream Moby default profile, vendored from
-https://github.com/moby/profiles/blob/main/seccomp/default.json (Apache-2.0;
-see `MOBY-LICENSE`). The launcher adds one argument-specific permission for
-`personality(ADDR_NO_RANDOMIZE)` so debuggers can launch their child processes.
-It does not use privileged containers or disable the seccomp filter. Docker
-still needs to be usable from the agent account; a binary alone is insufficient.
+## Network, proxies and certificates
 
-## Networking, browsers and persistence
+A fresh build needs the base registry, the Ubuntu mirrors, apt.llvm.org, nodejs.org,
+registry.npmjs.org and Playwright's CDN; a reused image needs only npm. Docker itself gives
+containers and builds the proxies in `~/.docker/config.json` (`proxies`); setup forwards
+`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY` (either case) only when that config doesn't, and
+never changes the container network. Setup reports which hop failed: the daemon's pull of
+the base (the daemon's own proxy settings apply there), HTTPS from a build step, or HTTPS
+from a running container, each with the real error, and stops. TLS verification is never
+turned off. When the host has extra CA certificates (`/usr/local/share/ca-certificates`,
+`SSL_CERT_FILE`, `NODE_EXTRA_CA_CERTS`), setup writes them to
+`.cache/environment/ca-bundle.pem` and gives the build a temporary BuildKit secret mount and
+the container a read-only mount; no certificate is stored in the image.
 
-Fresh installs need the Ubuntu apt mirrors, apt.llvm.org, nodejs.org,
-registry.npmjs.org and the Docker registry/CDN. Reused images require no compiler
-downloads. The build context contains only the recipe and public CA bundles
-copied from system certificate locations, SSL_CERT_FILE or NODE_EXTRA_CA_CERTS.
-Custom proxy trust is retained; TLS, apt signatures, the LLVM signing-key
-fingerprint and Node archive checksums are verified. Certificates and generated
-security settings stay in ignored `.cache/environment`, never in Git. Docker
-builds and CA handling require no secrets or raw token extraction.
-
-This prepares the native verifier and npm dependencies, not a browser. Run the
-app/build on the host with the README commands. For Playwright, reuse an installed
-Chromium via CHROMIUM_PATH or the path detected by playwright.config.ts; otherwise
-use `npx playwright install --with-deps chromium` where system installation is
-allowed. Do not install a browser merely because one particular path is absent.
-
-Persist the Docker image/cache through the cloud provider when supported. A new
-machine with no image will rebuild it; the repository does not contain a large
-image archive. If neither native installation nor Docker is available, setup
-reports those precise prerequisites. Do not invent compiler aliases, edit
-expected output, disable checks, or conclude that an unset token or missing sudo
-alone proves there is no supported setup route. Each task is already isolated;
-use its existing checkout rather than creating a worktree for environment setup.
+The image is about 2.8 GB.
