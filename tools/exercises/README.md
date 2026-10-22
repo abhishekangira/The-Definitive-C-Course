@@ -83,6 +83,7 @@ Next to each `tests.json` (and each variant's, and each project's `check.json`) 
 ```yaml
 sources: [cash.c]          # optional; default: `file` in exercise.yaml
 warnings: error            # optional; default: error
+memory: true               # optional: tests.json gets the memory check (check.mjs runs ASan+UBSan+LSan, or Valgrind)
 cases:
   - name: "41 cents"
     stdin: "41\n"          # optional, default ""; use double quotes for escapes
