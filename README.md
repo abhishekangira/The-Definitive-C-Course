@@ -98,6 +98,8 @@ npm ci
 npm run dev        # prepares the in-browser toolchain, then starts Vite
 ```
 
+That is enough for the app. The verifier, tracer and project checks also need the native toolchain CI uses (gcc 13, clang 22, lldb, gdb, valgrind). On Debian 13, `npm run localsetup:debian` installs it (with root or passwordless `sudo`), adds a `gcc` wrapper with Ubuntu's default hardening, runs `npm ci` and installs Chromium; add `-- --bashrc` to put the wrapper and `LC_ALL=C` in every new shell. Elsewhere, follow the `Install the native toolchain` step in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
 | Command | What it does |
 |---|---|
 | `npm run build` | Typecheck and produce the static site in `dist/` |

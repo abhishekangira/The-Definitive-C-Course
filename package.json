@@ -13,6 +13,7 @@
     "build": "npm run toolchain:prepare && tsc --noEmit && vite build && node tools/check/build.mjs --into dist",
     "preview": "vite preview",
     "toolchain:prepare": "node tools/toolchain/prepare.mjs",
+    "localsetup:debian": "bash tools/setup/debian.sh",
     "verify": "tsx tools/verify/cli.ts",
     "verify:exercises": "tsx tools/exercises/cli.ts",
     "exercises:expect": "tsx tools/exercises/expect-cli.ts",
