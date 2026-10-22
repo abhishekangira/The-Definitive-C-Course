@@ -1,0 +1,4 @@
+# Throwaway probe for #89 criterion 2 (never merged): proves the CI bot commits src/generated/sessions.
+steps:
+  all:
+    - run: $CC $CFLAGS main.c -o prog && ./prog
