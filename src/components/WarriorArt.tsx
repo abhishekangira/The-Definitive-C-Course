@@ -334,7 +334,7 @@ function skySprite(stars: boolean): PixelSprite {
 const SKY = skySprite(false);
 const STARS = skySprite(true);
 
-const SWEAT_AT: Record<FormId, [number, number]> = { kid: [57, 40], warrior: [57, 12], golden: [58, 13], mane: [58, 12], crimson: [60, 13], ape: [61, 9] };
+const SWEAT_AT: Record<FormId, [number, number]> = { kid: [31, 50], warrior: [28, 30], golden: [28, 30], mane: [28, 30], crimson: [28, 30], ape: [25, 26] };
 const SWEAT_PALETTE = { '6': '#8fd4ff', '7': '#2f7fb8' } as const;
 const sweatAt = (form: FormId): PixelSprite => ({ x: SWEAT_AT[form][0], y: SWEAT_AT[form][1], rows: SWEAT_ROWS });
 const SWEAT_ROWS = ['.6.', '666', '667', '.7.'];
@@ -366,7 +366,7 @@ function Bolts() {
 // ---------- the whole figure ----------
 /** The viewBox that frames just the head, for the header chip. */
 export const HEAD_VIEWBOX: Record<FormId, string> = {
-  kid: '32 29 32 32', warrior: '31 3 34 34', golden: '30 2 36 36', mane: '30 2 36 36', crimson: '29 3 38 38', ape: '32 4 32 32',
+  kid: '32 34 31 31', warrior: '29 16 36 36', golden: '29 16 36 36', mane: '30 14 39 39', crimson: '30 14 39 39', ape: '24 7 46 46',
 };
 
 /** The stage a form uses when the caller leaves `aura` out: flicker for the three powered-up forms, none otherwise. */

@@ -3,9 +3,9 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { FormId, WarriorMood } from '../progress/warrior';
-import { WarriorArt, type AuraStage } from './WarriorArt';
+import { HEAD_VIEWBOX, WarriorArt, type AuraStage } from './WarriorArt';
 import { WarriorPortrait } from './StreakWarrior';
-import { composeFrame, ERASE, FORM_FRAMES } from './warrior-sprites';
+import { composeFrame, ERASE, FORM_FRAMES, type PixelSprite } from './warrior-sprites';
 
 const markup = (form: FormId, mood: WarriorMood, aura?: AuraStage, bare?: boolean) =>
   renderToStaticMarkup(createElement(WarriorArt, { form, mood, ...(aura === undefined ? {} : { aura }), ...(bare ? { bare } : {}) }));
@@ -86,6 +86,66 @@ describe('WarriorArt aura', () => {
     expect(html.match(/data-frame="/g)?.length).toBe(FORM_FRAMES.kid.idle.length);
     expect(markup('kid', 'worried')).not.toEqual(html);
     expect(markup('kid', 'defeated')).toContain('data-frame="0"');
+  });
+});
+
+const FORMS: FormId[] = ['kid', 'warrior', 'golden', 'mane', 'crimson', 'ape'];
+
+const bounds = (s: PixelSprite) => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  s.rows.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) {
+      if (row[i] === '.') continue;
+      minX = Math.min(minX, s.x + i);
+      maxX = Math.max(maxX, s.x + i);
+      minY = Math.min(minY, s.y + j);
+      maxY = Math.max(maxY, s.y + j);
+    }
+  });
+  return { minX, minY, maxX, maxY };
+};
+
+describe('idle loops', () => {
+  it('every form has a 3 or 4 frame idle loop, and worried and defeated have their own', () => {
+    for (const form of FORMS) {
+      const idle = FORM_FRAMES[form].idle.map(composeFrame);
+      expect(idle.length).toBeGreaterThanOrEqual(3);
+      expect(idle.length).toBeLessThanOrEqual(4);
+      for (let i = 0; i < idle.length; i++) {
+        expect(idle[i].rows.join('\n')).not.toBe(idle[(i + 1) % idle.length].rows.join('\n'));
+      }
+      const worried = FORM_FRAMES[form].worried!.map(composeFrame);
+      expect(worried.length).toBeGreaterThanOrEqual(3);
+      expect(worried[0].rows.join('\n')).not.toBe(idle[0].rows.join('\n'));
+      for (let i = 0; i < worried.length; i++) {
+        expect(worried[i].rows.join('\n')).not.toBe(worried[(i + 1) % worried.length].rows.join('\n'));
+      }
+    }
+    const down = FORM_FRAMES.kid.defeated!.map(composeFrame);
+    expect(down.length).toBeGreaterThanOrEqual(3);
+    for (let i = 0; i < down.length; i++) {
+      expect(down[i].rows.join('\n')).not.toBe(down[(i + 1) % down.length].rows.join('\n'));
+    }
+    expect(FORM_FRAMES.ape.blink).toBeUndefined();
+    expect(FORM_FRAMES.warrior.blink?.rows.length).toBeGreaterThan(0);
+    expect(markup('warrior', 'ready')).toContain('data-pose="4"');
+    expect(markup('warrior', 'ready')).toContain('data-blink');
+    expect(markup('ape', 'ready')).not.toContain('data-blink');
+  });
+
+  it('HEAD_VIEWBOX frames the first idle frame of every form, and not the feet', () => {
+    for (const form of FORMS) {
+      const b = bounds(composeFrame(FORM_FRAMES[form].idle[0]));
+      const [x, y, w, h] = HEAD_VIEWBOX[form].split(' ').map(Number);
+      expect(b.minY).toBeGreaterThanOrEqual(y);
+      expect(b.minY).toBeLessThan(y + h);
+      expect(b.maxY).toBeGreaterThan(y + h);
+      expect(b.minX).toBeLessThan(x + w);
+      expect(b.maxX).toBeGreaterThan(x);
+    }
   });
 });
 
