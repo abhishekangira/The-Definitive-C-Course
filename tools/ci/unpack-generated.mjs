@@ -1,6 +1,6 @@
 // Safe unpacker for the `regenerated` artifact that the CI `check` job (which runs PR-authored code) hands to the
 // write-token `commit-generated` job. Treat the tarball as hostile: parse the ustar headers ourselves, accept only
-// regular files whose path is strictly under src/generated/{samples,traces}/, and write them with fixed modes into a
+// regular files whose path is strictly under src/generated/{samples,traces,sessions}/, and write them with fixed modes into a
 // clean directory. Nothing is extracted until every member has passed. No dependency except node: builtins, because
 // the job runs it before any `npm ci`.
 //
@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 export const MAX_FILES = 200;
 export const MAX_BYTES = 64 * 1024 * 1024;
 // Each segment: plain characters, never "." or ".." (checked separately). No backslash, no NUL, no leading "./", no absolute path.
-const PATH_RE = /^src\/generated\/(?:samples|traces)\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
+const PATH_RE = /^src\/generated\/(?:samples|traces|sessions)\/[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
 
 function str(buf, off, len) {
   const slice = buf.subarray(off, off + len);
@@ -30,7 +30,7 @@ function octal(buf, off, len, what) {
 
 /** Reject anything that is not an acceptable member path; returns the reason or null. */
 export function pathProblem(name) {
-  if (!PATH_RE.test(name)) return 'path is not strictly under src/generated/{samples,traces}/ or has forbidden characters';
+  if (!PATH_RE.test(name)) return 'path is not strictly under src/generated/{samples,traces,sessions}/ or has forbidden characters';
   if (name.split('/').some(seg => seg === '.' || seg === '..')) return 'path has a "." or ".." segment';
   return null;
 }
