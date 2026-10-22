@@ -67,9 +67,10 @@ forbids ptrace falls back to valgrind). macOS uses ASan + UBSan with `detect_lea
 `leaks --atExit` on a plain build. A compiler without sanitizer runtimes (for example clang without
 compiler-rt) falls back to valgrind when it is installed; otherwise the check is skipped with a message.
 `leaks` and valgrind run as their own process group, which is killed at the time limit and as soon as the tool
-exits, so nothing they start outlives `check.mjs`. A memory tool that gives no result fails the check with a message
+exits. Ctrl+C, closing the terminal or a SIGTERM while one runs kills that group too before `check.mjs` ends, so nothing
+they start outlives `check.mjs`. A memory tool that gives no result fails the check with a message
 that says what was not checked, for example `leaks did not finish within 40 s, so leaks were not checked`. That covers
-a tool that times out or is missing, a `leaks` that exits without its `N leaks for M total leaked bytes` line, and a
+a tool that times out, is missing or can't be started (for example `valgrind could not be started (EACCES)`), a `leaks` that exits without its `N leaks for M total leaked bytes` line, and a
 program that doesn't finish under ASan. It is never a pass, a note or a skip.
 
 ## `check.json`
@@ -177,7 +178,7 @@ starter, a reference solution, a unit-test harness and a memory check) using gcc
 the solution passes everything and earns the token; the starter fails with explanations and a progress
 code that `verifyCode()` accepts; a leak-only variant fails only the memory check; a syntax error
 skips everything after the compile check; the valgrind fallback (clang-18, no sanitizers), the macOS
-`leaks` path (simulated, including stand-ins that print nothing, never exit, or leave a process holding the pipes), a
+`leaks` path (simulated, including stand-ins that print nothing, never exit, leave a process holding the pipes, keep running after Ctrl+C, or can't be started), a
 valgrind that never exits, a program that times out under ASan, make tests, file tests (present, missing, wrong, binary), `--doctor` (this machine,
 `CHECK_PLATFORM=darwin` with and without stand-in macOS commands, `CHECK_NO_SANITIZERS=1`, no compiler), the zips
 and the generated Makefile are covered too.
@@ -189,7 +190,7 @@ The `project-runner` job in `.github/workflows/targets.yml` builds the Mario and
 checks each code with `verifyCode()`. Before that, once per runner (in the Mario job), it runs `node check.mjs --doctor`; the
 grading steps don't use its output, but a non-zero exit fails the job, because these runners have a compiler and Node 22. For caesar,
 which has a memory check, one more step copies `fixtures/caesar-variants/leaky.c` into the solution and requires `make test`
-to fail with `✗ no memory errors or leaks` and a `memory leak:` line. It runs on pushes to `main` touching these files and on pull requests that do.
+to fail with `✗ no memory errors or leaks` and a `memory leak:` line. It runs on pull requests that touch these files. On pushes to `main` the workflow runs only for changes under `content/**`, `src/runtime/c/**` or `tools/verify/**`, so a push that touches only `tools/check` or `src/testing` doesn't run it.
 
 | Platform | Status |
 |---|---|

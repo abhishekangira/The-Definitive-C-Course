@@ -336,8 +336,8 @@ export function parseValgrindReport(stderr: string, sources: readonly string[] =
 // ---------------------------------------------------------------- macOS leaks(1)
 
 /**
- * Parses `leaks --atExit -- ./prog` output (macOS). [NOT VERIFIED on real macOS: written from the
- * leaks(1) documentation and published samples; the summary line is "Process 123: 2 leaks for 32 total leaked bytes."]
+ * Parses `leaks --atExit -- ./prog` output (macOS). The summary line is "Process 123: 2 leaks for 32 total leaked bytes.".
+ * Verified on real macOS: the `project-runner (macos-14, caesar)` job in targets.yml parses real `leaks` output on every run.
  * Returns undefined when that summary line is missing: `leaks` did not report, which is not the same as "0 leaks".
  */
 export function parseLeaksReport(stdout: string, sources: readonly string[] = []): MemoryIssue[] | undefined {

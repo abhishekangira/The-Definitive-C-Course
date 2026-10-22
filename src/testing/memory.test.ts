@@ -131,7 +131,7 @@ describe('parseValgrindReport (valgrind 3.22)', () => {
 });
 
 describe('parseLeaksReport (macOS leaks --atExit)', () => {
-  // Shape from the leaks(1) man page and published samples; not yet run on a real Mac.
+  // Shape from the leaks(1) man page and published samples. Real `leaks` output on macos-14 is parsed by targets.yml's project-runner caesar job.
   const sample = [
     'Process:         caesar [41023]',
     'leaks Report Version: 4.0, multi-line stacks',
