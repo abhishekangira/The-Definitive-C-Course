@@ -5,7 +5,7 @@
 // switched off by `still` and under prefers-reduced-motion.
 import type { ReactNode } from 'react';
 import type { FormId, WarriorMood } from '../progress/warrior';
-import { PALETTE, PATCHES, SPRITES, type PixelSprite } from './warrior-sprites';
+import { composeFrame, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
 import styles from './StreakWarrior.module.css';
 
 /** The sprites' grid. */
@@ -97,72 +97,198 @@ function grow(m: Mask, r: number): Mask {
   return out;
 }
 
-/** Flame tongues: every column of the mask rises by a saw-tooth that is tallest in the middle. */
-function flames(m: Mask, height: number, phase: number): Mask {
-  const out = m.slice();
-  for (let x = 0; x < W; x++) {
-    let top = -1;
-    for (let y = 0; y < H; y++) if (m[y * W + x]) { top = y; break; }
-    if (top < 0) continue;
-    const t = ((x + phase) % 7) / 7;
-    const tooth = (1 - Math.abs(2 * t - 1)) ** 1.6;
-    const centre = 1 - Math.min(1, Math.abs(x + OX - 48) / 44) * 0.6;
-    const rise = Math.round(height * tooth * centre);
-    for (let y = Math.max(0, top - rise); y < top; y++) out[y * W + x] = 1;
-  }
-  return out;
-}
-
 const minus = (a: Mask, b: Mask): Mask => a.map((v, i) => (v && !b[i] ? 1 : 0));
 
-/** Cells of `m` next to a cell outside it. */
-function edge(m: Mask): Mask {
-  const out = new Uint8Array(W * H);
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      if (!m[y * W + x]) continue;
-      const open = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
-        const X = x + dx;
-        const Y = y + dy;
-        return X < 0 || X >= W || Y < 0 || Y >= H || !m[Y * W + X];
-      });
-      if (open) out[y * W + x] = 1;
-    }
-  }
-  return out;
-}
+/** `none` draws nothing. `flicker` is a short flame. `blaze` is the full rising fire. #106 passes this through. */
+export type AuraStage = 'none' | 'flicker' | 'blaze';
 
-type AuraKind = 'gold' | 'crimson';
-const AURA_COLOURS: Record<AuraKind, { ring: string; outer: string; inner: string }> = {
-  gold: { ring: '#f2b400', outer: '#ffe766', inner: '#fffad6' },
-  crimson: { ring: '#d8262e', outer: '#ff8a4a', inner: '#ffd98a' },
+type AuraKind = 'gold' | 'crimson' | 'amber' | 'blue' | 'violet';
+const AURA_COLOURS: Record<AuraKind, { tip: string; tongue: string; glow: string; particle: string }> = {
+  // Tips stay near-white so a gold flame still reads on yellow hair, and on a dark page.
+  gold: { tip: '#fffde8', tongue: '#ff9a00', glow: '#ffe56a', particle: '#fff3a8' },
+  crimson: { tip: '#fff0c8', tongue: '#ff3b2f', glow: '#ff7a3c', particle: '#ffd0a0' },
+  amber: { tip: '#fff6d0', tongue: '#ff7a18', glow: '#ffc04a', particle: '#ffe090' },
+  blue: { tip: '#f4fbff', tongue: '#1a7ad4', glow: '#8ec8ff', particle: '#d6f0ff' },
+  violet: { tip: '#f8f2ff', tongue: '#7a3fd0', glow: '#c9a6ff', particle: '#e4d2ff' },
 };
 
-const auraCache = new Map<FormId, Array<{ ring: string; outer: string; inner: string }>>();
-/** Two flickering frames of a flame aura around a sprite. */
-function auraFrames(form: FormId, s: PixelSprite) {
-  const hit = auraCache.get(form);
-  if (hit) return hit;
-  const m = maskOf(s);
-  const frames = [0, 3].map(phase => {
-    const outer = flames(grow(m, 6), 13, phase);
-    const inner = flames(grow(m, 3), 6, phase + 2);
-    const ring = edge(outer);
-    return { ring: maskPath(ring), outer: maskPath(minus(outer, ring)), inner: maskPath(inner) };
+/** The colour of a form's aura. Golden and mane stay gold, crimson stays crimson, as today. */
+function auraKind(form: FormId): AuraKind {
+  if (form === 'crimson') return 'crimson';
+  if (form === 'warrior') return 'blue';
+  if (form === 'ape') return 'violet';
+  if (form === 'kid') return 'amber';
+  return 'gold';
+}
+
+const AURA_FRAMES = 4;
+
+interface AuraFrame { glow: string; tongue: string; tip: string; particles: Array<{ x: number; y: number; s: number }> }
+
+/** Cells on the body's top edge, and only in its upper half, so flames leave the feet alone. */
+function upperEdge(body: Mask): Array<[number, number]> {
+  let minY = H;
+  let maxY = 0;
+  for (let i = 0; i < body.length; i++) if (body[i]) {
+    const y = (i / W) | 0;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const limit = minY + Math.round((maxY - minY) * 0.62);
+  const pts: Array<[number, number]> = [];
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      if (!body[y * W + x]) continue;
+      if (y > 0 && body[(y - 1) * W + x]) continue;
+      if (y <= limit) pts.push([x, y]);
+    }
+  }
+  return pts;
+}
+
+const setCell = (m: Mask, x: number, y: number) => {
+  if (x >= 0 && x < W && y >= 0 && y < H) m[y * W + x] = 1;
+};
+
+/** One tongue of `len` pixels. `shift` moves it up in whole pixels; past `len` it leaves a gap and then regrows. */
+function stampTongue(tongue: Mask, tip: Mask, body: Mask, x: number, top: number, len: number, shift: number, wide: boolean) {
+  const gap = 3;
+  for (let k = 0; k < len; k++) {
+    const y = top - 1 - k - shift;
+    if (y < top - (len + gap)) continue;
+    if (y < 0 || y >= H) continue;
+    const hot = k >= len - 2;
+    const dest = hot ? tip : tongue;
+    if (!body[y * W + x]) setCell(dest, x, y);
+    if (wide && x + 1 < W && !body[y * W + x + 1]) setCell(dest, x + 1, y);
+  }
+}
+
+/** Left and right edges of the upper body, so flames are not only a crown on the hair. */
+function sideEdges(body: Mask): Array<[number, number, number]> {
+  let minY = H;
+  let maxY = 0;
+  for (let i = 0; i < body.length; i++) if (body[i]) {
+    const y = (i / W) | 0;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const limit = minY + Math.round((maxY - minY) * 0.7);
+  const pts: Array<[number, number, number]> = [];
+  for (let y = minY + 2; y <= limit; y += 4) {
+    let left = -1;
+    let right = -1;
+    for (let x = 0; x < W; x++) if (body[y * W + x]) {
+      if (left < 0) left = x;
+      right = x;
+    }
+    if (left > 0) pts.push([left, y, -1]);
+    if (right >= 0 && right < W - 1) pts.push([right, y, 1]);
+  }
+  return pts;
+}
+
+/**
+ * Four frames of flame tongues. Upward tongues scroll up from the scalp. Side tongues scroll outward and up.
+ * Both move in whole pixels, leave a gap, and start again, so the fire rises instead of blinking in place.
+ */
+function tongueFrames(body: Mask, stage: 'flicker' | 'blaze'): Array<{ tongue: Mask; tip: Mask }> {
+  // Blaze tongues are two pixels wide, so a step of 3 leaves a one-pixel gap and they stay tongues.
+  const step = 3;
+  const maxLen = stage === 'blaze' ? 16 : 9;
+  const minLen = stage === 'blaze' ? 8 : 4;
+  const rise = stage === 'blaze' ? 2 : 1;
+  const edgePts = upperEdge(body);
+  const sides = sideEdges(body);
+  return Array.from({ length: AURA_FRAMES }, (_, frame) => {
+    const tongue = new Uint8Array(W * H);
+    const tip = new Uint8Array(W * H);
+    for (let i = 0; i < edgePts.length; i += step) {
+      const [x, top] = edgePts[i];
+      const seed = (x * 3 + top) % 5;
+      const len = minLen + ((seed + frame) % (maxLen - minLen + 1));
+      const shift = (frame * rise + seed) % (len + 3);
+      stampTongue(tongue, tip, body, x, top, len, shift, stage === 'blaze');
+    }
+    for (const [x, y, dir] of sides) {
+      const seed = (x + y) % 4;
+      const len = (stage === 'blaze' ? 5 : 3) + ((seed + frame) % 3);
+      const shift = (frame * rise + seed) % (len + 2);
+      for (let k = 0; k < len; k++) {
+        const along = k + shift;
+        const xx = x + dir * (1 + along);
+        const yy = y - Math.floor(along / 2);
+        if (xx < 0 || xx >= W || yy < 0 || yy >= H || body[yy * W + xx]) continue;
+        setCell(k >= len - 2 ? tip : tongue, xx, yy);
+      }
+    }
+    return { tongue, tip };
   });
-  auraCache.set(form, frames);
+}
+
+/** Sparks beside the upper body. Frame 0 sits lowest; each later frame is a few whole pixels higher, then they wrap. */
+function particleFrames(body: Mask, stage: 'flicker' | 'blaze'): Array<Array<{ x: number; y: number; s: number }>> {
+  let minX = W;
+  let maxX = 0;
+  let minY = H;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (body[y * W + x]) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+  }
+  const n = stage === 'blaze' ? 8 : 4;
+  const travel = stage === 'blaze' ? 16 : 10;
+  const stepY = stage === 'blaze' ? 4 : 2;
+  const size = stage === 'blaze' ? 2 : 1;
+  return Array.from({ length: AURA_FRAMES }, (_, frame) => {
+    const out: Array<{ x: number; y: number; s: number }> = [];
+    for (let i = 0; i < n; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const x = (side < 0 ? minX - 3 - (i % 3) : maxX + 2 + (i % 3));
+      const y = minY + 4 + ((i * 5) % 14) - ((frame * stepY + i * 3) % travel);
+      if (x < 1 || x >= W - size || y < 1 || y >= H - size) continue;
+      if (body[y * W + x]) continue;
+      out.push({ x: x + OX, y: y + OY, s: size });
+    }
+    return out;
+  });
+}
+
+const auraCache = new WeakMap<PixelSprite, Partial<Record<'flicker' | 'blaze', AuraFrame[]>>>();
+/** Four layered frames: an inner glow, rising outer tongues, and rising particles. */
+function auraFrames(stage: 'flicker' | 'blaze', s: PixelSprite): AuraFrame[] {
+  const bag = auraCache.get(s);
+  const cached = bag?.[stage];
+  if (cached) return cached;
+  const body = maskOf(s);
+  const glowR = stage === 'blaze' ? 4 : 2;
+  const tongues = tongueFrames(body, stage);
+  const particles = particleFrames(body, stage);
+  const frames = tongues.map((t, frame) => {
+    const r = stage === 'blaze' && frame % 2 === 1 ? glowR + 1 : glowR;
+    return {
+      glow: maskPath(minus(grow(body, r), body)),
+      tongue: maskPath(t.tongue),
+      tip: maskPath(t.tip),
+      particles: particles[frame],
+    };
+  });
+  const next = bag ?? {};
+  next[stage] = frames;
+  if (!bag) auraCache.set(s, next);
   return frames;
 }
 
-function Aura({ form, sprite, kind }: { form: FormId; sprite: PixelSprite; kind: AuraKind }) {
+function Aura({ stage, sprite, kind }: { stage: 'flicker' | 'blaze'; sprite: PixelSprite; kind: AuraKind }) {
   const c = AURA_COLOURS[kind];
   return (
-    <g className={styles.aura} aria-hidden="true">
-      {auraFrames(form, sprite).map((f, i) => (
-        <g key={i} className={i === 0 ? styles.auraA : styles.auraB}>
-          <path fill={c.ring} d={f.ring} />
-          <path fill={c.outer} d={f.outer} />
-          <path fill={c.inner} d={f.inner} />
+    <g className={styles.aura} data-aura={stage} aria-hidden="true">
+      {auraFrames(stage, sprite).map((f, i) => (
+        <g key={i} className={styles[`aura${i}`]} data-aura-frame={i}>
+          <path data-aura-layer="glow" fill={c.glow} d={f.glow} />
+          <path data-aura-layer="tongue" fill={c.tongue} d={f.tongue} />
+          <path data-aura-layer="tip" fill={c.tip} d={f.tip} />
+          {f.particles.map((p, j) => <path key={j} data-particle="" fill={c.particle} d={`M${p.x} ${p.y}h${p.s}v${p.s}h-${p.s}z`} />)}
         </g>
       ))}
     </g>
@@ -214,16 +340,6 @@ const sweatAt = (form: FormId): PixelSprite => ({ x: SWEAT_AT[form][0], y: SWEAT
 const SWEAT_ROWS = ['.6.', '666', '667', '.7.'];
 const SWEAT: Record<FormId, PixelSprite> = { kid: sweatAt('kid'), warrior: sweatAt('warrior'), golden: sweatAt('golden'), mane: sweatAt('mane'), crimson: sweatAt('crimson'), ape: sweatAt('ape') };
 
-const SPARKS: Array<[number, number, string]> = [[22, 84, '0s'], [72, 78, '0.5s'], [26, 56, '0.9s'], [70, 50, '0.3s'], [18, 70, '1.3s'], [76, 64, '0.7s']];
-
-function Sparks({ colour }: { colour: string }) {
-  return (
-    <g aria-hidden="true">
-      {SPARKS.map(([x, y, delay]) => <path key={`${x}-${y}`} className={styles.spark} style={{ animationDelay: delay }} fill={colour} d={`M${x} ${y}h2v2h-2z`} />)}
-    </g>
-  );
-}
-
 const BOLT = ['...#', '..##', '.##.', '###.', '.##.', '##..', '#...'];
 const BOLT_SPOTS: Array<[number, number]> = [[16, 40], [76, 30], [20, 66], [74, 58]];
 /** A lightning bolt (`w`) inside a one-pixel blue glow (`b`). */
@@ -253,16 +369,30 @@ export const HEAD_VIEWBOX: Record<FormId, string> = {
   kid: '32 29 32 32', warrior: '31 3 34 34', golden: '30 2 36 36', mane: '30 2 36 36', crimson: '29 3 38 38', ape: '32 4 32 32',
 };
 
-function baseSprite(form: FormId, mood: WarriorMood): PixelSprite {
-  if (form === 'kid') return mood === 'defeated' ? SPRITES.kidDown : SPRITES.kid;
-  return SPRITES[form];
+/** The stage a form uses when the caller leaves `aura` out: flicker for the three powered-up forms, none otherwise. */
+export function defaultAura(form: FormId): AuraStage {
+  return form === 'golden' || form === 'mane' || form === 'crimson' ? 'flicker' : 'none';
 }
 
-export function WarriorArt({ form, mood, bare = false }: { form: FormId; mood: WarriorMood; bare?: boolean }): ReactNode {
-  const base = baseSprite(form, mood);
-  const worried = mood === 'worried' ? PATCHES[`${form}-worried`] : null;
-  const blink = mood === 'ready' && form !== 'ape' ? PATCHES[`${form}-blink`] : null;
-  const aura: AuraKind | null = bare ? null : form === 'golden' || form === 'mane' ? 'gold' : form === 'crimson' ? 'crimson' : null;
+function poseFrames(form: FormId, mood: WarriorMood): readonly SpriteFrame[] {
+  const art = FORM_FRAMES[form];
+  if (mood === 'defeated' && art.defeated?.length) return art.defeated;
+  if (mood === 'worried' && art.worried?.length) return art.worried;
+  return art.idle;
+}
+
+export function WarriorArt({ form, mood, bare = false, aura }: {
+  form: FormId;
+  mood: WarriorMood;
+  /** No aura and no night sky (silhouettes, the header head). An explicit `aura` does not override this. */
+  bare?: boolean;
+  /** Power-up stage. Omit it for the form's default (`defaultAura`). */
+  aura?: AuraStage;
+}): ReactNode {
+  const frames = poseFrames(form, mood);
+  const drawn = frames.map(composeFrame);
+  const stage: AuraStage = bare ? 'none' : aura ?? defaultAura(form);
+  const blink = mood === 'ready' ? FORM_FRAMES[form].blink : undefined;
   const sky = form === 'ape' && !bare;
   return (
     <>
@@ -272,17 +402,19 @@ export function WarriorArt({ form, mood, bare = false }: { form: FormId; mood: W
           <g className={styles.stars}><Pixels sprite={STARS} palette={SKY_PALETTE} /></g>
         </g>
       )}
-      {aura && <Aura form={form} sprite={base} kind={aura} />}
+      {stage !== 'none' && <Aura stage={stage} sprite={drawn[0]} kind={auraKind(form)} />}
       {!sky && <path className={styles.shadow} d={shadowPath(form)} />}
-      <g className={styles.figure}>
-        <path className={styles.rim} d={rimPath(base)} />
-        <Pixels sprite={base} />
-        {worried && <Pixels sprite={worried} />}
-        {blink && <g className={styles.blink}><Pixels sprite={blink} /></g>}
+      <g className={drawn.length > 1 ? `${styles.figure} ${styles.multi}` : styles.figure} data-pose={drawn.length > 1 ? drawn.length : undefined}>
+        <path className={styles.rim} d={rimPath(drawn[0])} />
+        {drawn.map((sprite, i) => (
+          <g key={i} data-frame={i} className={drawn.length > 1 ? styles[`pose${i}`] : undefined}>
+            <Pixels sprite={sprite} />
+          </g>
+        ))}
+        {blink && <g className={styles.blink} data-blink=""><Pixels sprite={blink} /></g>}
         {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
       </g>
-      {aura && <Sparks colour={aura === 'gold' ? '#fff3a0' : '#ffd08a'} />}
-      {aura && form === 'mane' && <Bolts />}
+      {stage !== 'none' && form === 'mane' && <Bolts />}
     </>
   );
 }

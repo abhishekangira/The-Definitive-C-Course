@@ -26,8 +26,9 @@
 .rim { fill: var(--warrior-rim); }
 .shadow { fill: var(--border-strong); }
 
-/* Frames that are off unless their animation shows them: the second aura frame and the blink. */
-.auraB, .blink { visibility: hidden; }
+/* Frames that stay hidden until their own step. The first aura frame and the first pose frame have no hidden
+   rule, so with the animation off (.still, reduced motion) that frame is the one on screen. */
+.aura1, .aura2, .aura3, .pose1, .pose2, .pose3, .blink { visibility: hidden; }
 
 .art[data-mood='ready'] .figure { animation: bob 1.6s steps(1) infinite; }
 .art[data-mood='ready'][data-form='golden'] .figure,
@@ -36,11 +37,26 @@
 .art[data-mood='worried'] .figure { animation: tremble 0.36s steps(1) infinite; }
 .art[data-mood='defeated'] .figure { animation: slump 3s steps(1) infinite; }
 .blink { animation: blink 4.6s steps(1) infinite; }
-.auraA { animation: frameA 0.32s steps(1) infinite; }
-.auraB { animation: frameB 0.32s steps(1) infinite; }
-.art[data-mood='worried'] .aura { animation: sputter 1.6s steps(1) infinite; }
-.spark { animation: rise 1.6s steps(8) infinite; }
+/* Four aura frames, 0.16s each, the same pace as the old two-frame flicker. */
+.aura0 { animation: hold4 0.64s steps(4, end) infinite; }
+.aura1 { animation: hold4 0.64s steps(4, end) 0.16s infinite; }
+.aura2 { animation: hold4 0.64s steps(4, end) 0.32s infinite; }
+.aura3 { animation: hold4 0.64s steps(4, end) 0.48s infinite; }
+.art[data-mood='worried'] .aura { animation: sputter 1.6s steps(2, end) infinite; }
 .bolt { animation: zap 1.8s steps(1) infinite; }
+/* A pose with more than one frame plays that loop instead of the 1px bob, tremble or slump. */
+.art[data-mood='ready'] .figure.multi,
+.art[data-mood='worried'] .figure.multi,
+.art[data-mood='defeated'] .figure.multi { animation: none; }
+.figure.multi[data-pose='2'] .pose0 { animation: hold2 0.64s steps(2, end) infinite; }
+.figure.multi[data-pose='2'] .pose1 { animation: hold2 0.64s steps(2, end) 0.32s infinite; }
+.figure.multi[data-pose='3'] .pose0 { animation: hold3 0.96s steps(3, end) infinite; }
+.figure.multi[data-pose='3'] .pose1 { animation: hold3 0.96s steps(3, end) 0.32s infinite; }
+.figure.multi[data-pose='3'] .pose2 { animation: hold3 0.96s steps(3, end) 0.64s infinite; }
+.figure.multi[data-pose='4'] .pose0 { animation: hold4 1.28s steps(4, end) infinite; }
+.figure.multi[data-pose='4'] .pose1 { animation: hold4 1.28s steps(4, end) 0.32s infinite; }
+.figure.multi[data-pose='4'] .pose2 { animation: hold4 1.28s steps(4, end) 0.64s infinite; }
+.figure.multi[data-pose='4'] .pose3 { animation: hold4 1.28s steps(4, end) 0.96s infinite; }
 .stars { animation: twinkle 2.4s steps(1) infinite; }
 .sweat { animation: drip 1.2s steps(4) infinite; }
 
@@ -49,10 +65,10 @@
 @keyframes tremble { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(1px); } }
 @keyframes slump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
 @keyframes blink { 0%, 95% { visibility: hidden; } 96%, 99% { visibility: visible; } }
-@keyframes frameA { 0% { visibility: visible; } 50% { visibility: hidden; } }
-@keyframes frameB { 0% { visibility: hidden; } 50% { visibility: visible; } }
-@keyframes sputter { 0%, 30%, 62%, 100% { visibility: visible; } 20%, 55% { visibility: hidden; } }
-@keyframes rise { 0% { transform: translateY(0); visibility: visible; } 100% { transform: translateY(-24px); visibility: hidden; } }
+@keyframes hold2 { 0% { visibility: visible; } 50%, 100% { visibility: hidden; } }
+@keyframes hold3 { 0% { visibility: visible; } 33.334%, 100% { visibility: hidden; } }
+@keyframes hold4 { 0% { visibility: visible; } 25%, 100% { visibility: hidden; } }
+@keyframes sputter { 0%, 45% { visibility: visible; } 50%, 100% { visibility: hidden; } }
 @keyframes zap { 0%, 18%, 100% { visibility: hidden; } 4%, 14% { visibility: visible; } }
 @keyframes twinkle { 0%, 100% { visibility: visible; } 50% { visibility: hidden; } }
 @keyframes drip { 0% { transform: translateY(0); } 100% { transform: translateY(4px); } }

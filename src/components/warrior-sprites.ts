@@ -1,8 +1,30 @@
-// Rio's pixel art: one character per pixel on a 96 x 96 grid (x, y is the top-left of `rows`), colours in PALETTE, `.` is
-// transparent. Edit the pixels here directly. A patch is drawn over its sprite (for a mood or a blink frame) and can only
-// paint pixels, not erase them. WarriorArt.tsx turns the rows into SVG paths; the aura, rim and shadow are computed there.
+// Rio's pixel art: one character per pixel. Edit the rows by hand.
+//
+// Grid. A sprite is `{ x, y, rows }`. `x, y` is the top-left of `rows` on the 96 x 96 grid. WarriorArt.tsx turns one
+// frame into SVG paths and computes the aura, the dark-page rim, the shadow and the Great Ape's night sky.
+//
+// Characters.
+//   `.`   empty. On a base sprite the pixel is transparent. On a patch it leaves the pixel underneath unchanged.
+//   ` `   erase (a space, `ERASE`). A patch paints that pixel transparent, so a later frame can remove ink.
+//   any other character is a colour in PALETTE. Colours are fixed hex values.
+//
+// Frames. A frame is a full sprite plus optional patches, painted in order (a later patch wins, and a space erases).
+// `FORM_FRAMES` lists them per form:
+//   idle      the loop while Rio is fired up. The first frame is what `.still`, the gallery and the header head show.
+//   defeated  the defeated loop, when that pose is its own drawing (the kid).
+//   worried   the worried loop.
+//   blink     one patch drawn over the idle frames. Absent when the form does not blink (the ape).
+// A loop may be full sprites or patches over the form's sprite. The aura is not in these rows: WarriorArt computes it
+// (`aura="none" | "flicker" | "blaze"`).
+import type { FormId } from '../progress/warrior';
 
 export interface PixelSprite { x: number; y: number; rows: readonly string[] }
+
+/** A patch character that paints the pixel transparent. `.` leaves the pixel underneath unchanged. */
+export const ERASE = ' ';
+
+/** One drawn frame: a sprite, then patches painted over it. A space in a patch erases. */
+export interface SpriteFrame { sprite: PixelSprite; patches?: readonly PixelSprite[] }
 
 export const PALETTE: Readonly<Record<string, string>> = {
   '6': '#8fd4ff',
@@ -816,3 +838,81 @@ export const PATCHES = {
     '..s........s.',
   ] },
 } as const satisfies Record<string, PixelSprite>;
+
+const frame = (sprite: PixelSprite, ...patches: PixelSprite[]): SpriteFrame =>
+  patches.length ? { sprite, patches } : { sprite };
+
+/**
+ * Per-form frame lists. This layer still uses today's single drawing for each pose; later layers add the idle,
+ * defeated and worried loops as extra frames (full sprites or patches, including `ERASE`).
+ */
+export const FORM_FRAMES: Record<FormId, {
+  idle: readonly SpriteFrame[];
+  defeated?: readonly SpriteFrame[];
+  worried?: readonly SpriteFrame[];
+  blink?: PixelSprite;
+}> = {
+  kid: {
+    idle: [frame(SPRITES.kid)],
+    defeated: [frame(SPRITES.kidDown)],
+    worried: [frame(SPRITES.kid, PATCHES['kid-worried'])],
+    blink: PATCHES['kid-blink'],
+  },
+  warrior: {
+    idle: [frame(SPRITES.warrior)],
+    worried: [frame(SPRITES.warrior, PATCHES['warrior-worried'])],
+    blink: PATCHES['warrior-blink'],
+  },
+  golden: {
+    idle: [frame(SPRITES.golden)],
+    worried: [frame(SPRITES.golden, PATCHES['golden-worried'])],
+    blink: PATCHES['golden-blink'],
+  },
+  mane: {
+    idle: [frame(SPRITES.mane)],
+    worried: [frame(SPRITES.mane, PATCHES['mane-worried'])],
+    blink: PATCHES['mane-blink'],
+  },
+  crimson: {
+    idle: [frame(SPRITES.crimson)],
+    worried: [frame(SPRITES.crimson, PATCHES['crimson-worried'])],
+    blink: PATCHES['crimson-blink'],
+  },
+  ape: {
+    idle: [frame(SPRITES.ape)],
+    worried: [frame(SPRITES.ape, PATCHES['ape-worried'])],
+  },
+};
+
+const composedCache = new WeakMap<SpriteFrame, PixelSprite>();
+
+/** Paint `frame`'s patches over its sprite. `.` skips, a space erases, any other character paints. */
+export function composeFrame(frame: SpriteFrame): PixelSprite {
+  const hit = composedCache.get(frame);
+  if (hit) return hit;
+  const parts = [frame.sprite, ...(frame.patches ?? [])];
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const p of parts) {
+    const w = p.rows.reduce((m, r) => Math.max(m, r.length), 0);
+    x0 = Math.min(x0, p.x);
+    y0 = Math.min(y0, p.y);
+    x1 = Math.max(x1, p.x + w);
+    y1 = Math.max(y1, p.y + p.rows.length);
+  }
+  const grid = Array.from({ length: y1 - y0 }, () => Array.from({ length: x1 - x0 }, () => '.'));
+  for (const p of parts) {
+    p.rows.forEach((row, j) => {
+      for (let i = 0; i < row.length; i++) {
+        const ch = row[i];
+        if (ch === '.') continue;
+        grid[p.y + j - y0][p.x + i - x0] = ch === ERASE ? '.' : ch;
+      }
+    });
+  }
+  const out: PixelSprite = { x: x0, y: y0, rows: grid.map(r => r.join('')) };
+  composedCache.set(frame, out);
+  return out;
+}
