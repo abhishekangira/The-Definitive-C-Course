@@ -85,6 +85,8 @@ interface Proc {
   stderr: string;
   timedOut: boolean;
   missing: boolean;
+  /** The command exists but could not be started (EACCES, ENOEXEC, ...): the error code. ENOENT is `missing`. */
+  startError?: string;
   outputLimit: boolean;
 }
 
@@ -100,8 +102,31 @@ export function sh(cmd: string, args: string[], opts: { cwd?: string; input?: st
     stderr: r.stderr ? decodeBytes(r.stderr) : '',
     timedOut: code === 'ETIMEDOUT',
     missing: code === 'ENOENT',
+    ...(code && !['ENOENT', 'ETIMEDOUT', 'ENOBUFS'].includes(code) ? { startError: code } : {}),
     outputLimit: code === 'ENOBUFS',
   };
+}
+
+/**
+ * Process groups started by shGroup() that are still running. Their leaders run in their own session (`detached`), so
+ * Ctrl+C or closing the terminal doesn't reach them: while any is live, SIGINT, SIGTERM and SIGHUP SIGKILL every group
+ * and then re-raise the signal, so check.mjs (and `make`) still end the way they would have.
+ */
+const liveGroups = new Set<number>();
+const FORWARDED = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const;
+function onSignal(sig: NodeJS.Signals) {
+  for (const pid of liveGroups) { try { process.kill(-pid, 'SIGKILL'); } catch { /* already gone */ } }
+  liveGroups.clear();
+  for (const s of FORWARDED) process.removeListener(s, onSignal);
+  process.kill(process.pid, sig);
+}
+function trackGroup(pid: number) {
+  if (liveGroups.size === 0) for (const s of FORWARDED) process.on(s, onSignal);
+  liveGroups.add(pid);
+}
+function untrackGroup(pid: number) {
+  if (!liveGroups.delete(pid) || liveGroups.size > 0) return;
+  for (const s of FORWARDED) process.removeListener(s, onSignal);
 }
 
 /**
@@ -120,11 +145,13 @@ export function shGroup(cmd: string, args: string[], opts: { cwd?: string; input
     let timedOut = false;
     let outputLimit = false;
     let done = false;
+    if (child.pid !== undefined) trackGroup(child.pid);
     const killGroup = () => { try { process.kill(-child.pid!, 'SIGKILL'); } catch { /* the group is already gone */ } };
     const finish = (p: Partial<Proc>) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
+      if (child.pid !== undefined) untrackGroup(child.pid);
       resolve({ status: null, signal: null, stdout: decodeBytes(Buffer.concat(out)), stderr: decodeBytes(Buffer.concat(err)), timedOut, missing: false, outputLimit, ...p });
     };
     const timer = setTimeout(() => { timedOut = true; killGroup(); }, opts.timeout);
@@ -135,8 +162,12 @@ export function shGroup(cmd: string, args: string[], opts: { cwd?: string; input
     };
     child.stdout.on('data', take(out));
     child.stderr.on('data', take(err));
-    child.on('exit', () => { killGroup(); setTimeout(() => { child.stdout.destroy(); child.stderr.destroy(); }, 2000).unref(); });
-    child.on('error', e => finish({ missing: (e as NodeJS.ErrnoException).code === 'ENOENT' }));
+    // The tool finished when the leader exits: the timer stops here, not after the pipes drain (up to 2 s more).
+    child.on('exit', () => { clearTimeout(timer); killGroup(); setTimeout(() => { child.stdout.destroy(); child.stderr.destroy(); }, 2000).unref(); });
+    child.on('error', e => {
+      const code = (e as NodeJS.ErrnoException).code ?? 'unknown error';
+      finish(code === 'ENOENT' ? { missing: true } : { startError: code });
+    });
     child.on('close', (status, signal) => finish({ status, signal }));
     child.stdin.on('error', () => {}); // the tool may exit without reading its input
     child.stdin.end(opts.input ?? '');
@@ -150,6 +181,7 @@ const seconds = (ms: number) => `${Math.round(ms / 100) / 10} s`;
  */
 function toolFailure(tool: string, p: Proc, limitMs: number, unchecked: string, noSummary = false): string | undefined {
   const why = p.missing ? `${tool} was not found`
+    : p.startError ? `${tool} could not be started (${p.startError})`
     : p.timedOut ? `${tool} did not finish within ${seconds(limitMs)}`
     : p.outputLimit ? `${tool} printed more than ${MAX_OUTPUT >> 20} MB and was stopped`
     : noSummary ? `${tool} ${p.signal ? `was killed by ${p.signal}` : `exited with status ${p.status}`} without its summary line`
@@ -333,7 +365,7 @@ export class NativeBackend implements ExecBackend<NativeArtifact> {
           const limit = this.opts.toolTimeoutMs ?? Math.max(o.timeoutMs * 4, 30_000);
           const l = await shGroup('leaks', ['--atExit', '--', a.plainExe, ...(o.args ?? [])],
             { cwd: this.dir, input: o.stdin, timeout: limit, env: { ...process.env, MallocStackLogging: '1' } });
-          const found = l.timedOut || l.missing || l.outputLimit ? undefined : parseLeaksReport(l.stdout, learner);
+          const found = l.timedOut || l.missing || l.startError || l.outputLimit ? undefined : parseLeaksReport(l.stdout, learner);
           if (found) memory.push(...found);
           else memoryError ??= toolFailure('leaks', l, limit, 'leaks', true);
         }
