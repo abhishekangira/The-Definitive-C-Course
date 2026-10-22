@@ -251,7 +251,9 @@ export async function runTests<A>(
   const tools = new Set<string>();
   let leaksUnchecked = false;
   let unavailable: string | undefined;
+  let toolError: { message: string; context: string } | undefined;
   const collect = (out: ExecOutcome, context: string) => {
+    if (out.memoryError && !toolError) toolError = { message: out.memoryError, context };
     for (const issue of issuesOf(out)) memory.push({ issue, context });
     out.memoryTools?.forEach(t => tools.add(t));
     if (out.leaksChecked === false) leaksUnchecked = true;
@@ -433,6 +435,11 @@ export async function runTests<A>(
       if (seen.length > MAX_DETAIL_LINES) details.push(`…and ${seen.length - MAX_DETAIL_LINES} more`);
       if (firstContext) details.push(`seen while running ${firstContext}`);
       return { ...base, status: 'fail', message: seen[0].message, details, memory: seen, ...hintFields(undefined, exec.memoryHint) };
+    }
+    // A tool that watched a run but gave no result: nothing was checked, so this is never a pass, a note or a skip.
+    if (toolError) {
+      const [message, ...rest] = toolError.message.split('\n');
+      return { ...base, status: 'fail', message, details: [...rest, `seen while running ${toolError.context}`], ...hintFields(undefined, exec.memoryHint) };
     }
     if (unavailable && tools.size === 0) return { ...base, status: 'skip', message: unavailable };
     const notes = [...tools];

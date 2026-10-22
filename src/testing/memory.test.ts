@@ -131,7 +131,7 @@ describe('parseValgrindReport (valgrind 3.22)', () => {
 });
 
 describe('parseLeaksReport (macOS leaks --atExit)', () => {
-  // Shape from the leaks(1) man page and published samples; not yet run on a real Mac.
+  // Shape from the leaks(1) man page and published samples. Real `leaks` output on macos-14 is parsed by targets.yml's project-runner caesar job.
   const sample = [
     'Process:         caesar [41023]',
     'leaks Report Version: 4.0, multi-line stacks',
@@ -152,5 +152,9 @@ describe('parseLeaksReport (macOS leaks --atExit)', () => {
   });
   it('reports nothing when there are no leaks', () => {
     expect(parseLeaksReport('Process 1: 0 leaks for 0 total leaked bytes.', ['caesar.c'])).toEqual([]);
+  });
+  it('gives undefined, not [], when the summary line is missing (leaks did not report)', () => {
+    expect(parseLeaksReport('', ['caesar.c'])).toBeUndefined();
+    expect(parseLeaksReport(sample.split('\n').filter(l => !/total leaked bytes/.test(l)).join('\n'), ['caesar.c'])).toBeUndefined();
   });
 });

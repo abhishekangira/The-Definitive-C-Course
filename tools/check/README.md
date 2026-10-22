@@ -38,7 +38,8 @@ Output is plain text with colour on a TTY (`NO_COLOR` is respected, `FORCE_COLOR
 ASCII fallback for `✓ ✗` on Windows consoles that are not Windows Terminal.
 
 Other environment variables (for tests): `CHECK_PLATFORM=darwin` pretends to be macOS (so the `leaks`
-path can be tested on Linux), `CHECK_NO_SANITIZERS=1` pretends no sanitizer runtime exists (valgrind path).
+path can be tested on Linux), `CHECK_NO_SANITIZERS=1` pretends no sanitizer runtime exists (valgrind path),
+`CHECK_TOOL_TIMEOUT_MS=1000` replaces the time limit of `leaks` and valgrind (so a tool that never finishes can be tested in seconds).
 
 ### `--doctor`
 
@@ -65,6 +66,12 @@ Memory check by platform: Linux and WSL use ASan + UBSan, with LeakSanitizer for
 forbids ptrace falls back to valgrind). macOS uses ASan + UBSan with `detect_leaks=0` and runs
 `leaks --atExit` on a plain build. A compiler without sanitizer runtimes (for example clang without
 compiler-rt) falls back to valgrind when it is installed; otherwise the check is skipped with a message.
+`leaks` and valgrind run as their own process group, which is killed at the time limit and as soon as the tool
+exits. Ctrl+C, closing the terminal or a SIGTERM while one runs kills that group too before `check.mjs` ends, so nothing
+they start outlives `check.mjs`. A memory tool that gives no result fails the check with a message
+that says what was not checked, for example `leaks did not finish within 40 s, so leaks were not checked`. That covers
+a tool that times out, is missing or can't be started (for example `valgrind could not be started (EACCES)`), a `leaks` that exits without its `N leaks for M total leaked bytes` line, and a
+program that doesn't finish under ASan. It is never a pass, a note or a skip.
 
 ## `check.json`
 
@@ -172,17 +179,20 @@ starter, a reference solution, a unit-test harness and a memory check) using gcc
 the solution passes everything and earns the token; the starter fails with explanations and a progress
 code that `verifyCode()` accepts; a leak-only variant fails only the memory check; a syntax error
 skips everything after the compile check; the valgrind fallback (clang-18, no sanitizers), the macOS
-`leaks` path (simulated), make tests, file tests (present, missing, wrong, binary), `--doctor` (this machine,
+`leaks` path (simulated, including stand-ins that print nothing, never exit, leave a process holding the pipes, keep running after Ctrl+C, or can't be started), a
+valgrind that never exits, a program that times out under ASan, make tests, file tests (present, missing, wrong, binary), `--doctor` (this machine,
 `CHECK_PLATFORM=darwin` with and without stand-in macOS commands, `CHECK_NO_SANITIZERS=1`, no compiler), the zips
 and the generated Makefile are covered too.
 
 ## Platforms verified by CI
 
-The `project-runner` job in `.github/workflows/targets.yml` builds the Mario and Credit project zips and the zip of the LT exercise
+The `project-runner` job in `.github/workflows/targets.yml` builds the Mario and Credit project zips, the `fixtures/caesar` zip and the zip of the LT exercise
 `m03-doctor` (lesson 3.1; its codes name `m03-doctor`, so the matrix entry sets `exercise:`), runs `make test` on the starter
 (must exit non-zero and print a progress code) and on the `--solution` zip (must exit 0 and print a completion token), and
 checks each code with `verifyCode()`. Before that, once per runner (in the Mario job), it runs `node check.mjs --doctor`; the
-grading steps don't use its output, but a non-zero exit fails the job, because these runners have a compiler and Node 22. It runs on pushes to `main` touching these files and on pull requests that do.
+grading steps don't use its output, but a non-zero exit fails the job, because these runners have a compiler and Node 22. For caesar,
+which has a memory check, one more step copies `fixtures/caesar-variants/leaky.c` into the solution and requires `make test`
+to fail with `✗ no memory errors or leaks` and a `memory leak:` line. It runs on pull requests that touch these files. On pushes to `main` the workflow runs only for changes under `content/**`, `src/runtime/c/**` or `tools/verify/**`, so a push that touches only `tools/check` or `src/testing` doesn't run it.
 
 | Platform | Status |
 |---|---|
@@ -191,4 +201,4 @@ grading steps don't use its output, but a non-zero exit fails the job, because t
 | Linux arm64 (`ubuntu-24.04-arm`, gcc) | `project-runner` |
 | Windows | **not run**: use WSL Ubuntu 24.04 (the Linux path); native Windows is unsupported and untested |
 
-Neither Mario nor Credit has a `memory` check, so the macOS `leaks` path is still only simulated.
+Caesar's memory check runs the real `leaks --atExit` on `macos-14` (issue #101), on the solution and on the leaky variant.

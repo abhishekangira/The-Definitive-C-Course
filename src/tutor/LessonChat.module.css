@@ -37,7 +37,7 @@
 .tutor { min-width: 0; }
 .reply > :first-child { margin-top: 0; }
 .reply > :last-child { margin-bottom: 0; }
-.reply p, .reply ul, .reply ol { margin: 0 0 var(--space-2); }
+.reply p, .reply ul, .reply ol, .reply :global(.md-table) { margin: 0 0 var(--space-2); }
 .reply ul, .reply ol { padding-left: 1.3rem; }
 .reply pre { margin: 0 0 var(--space-2); padding: var(--space-2) var(--space-3); background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow-x: auto; font-size: 0.85rem; }
 .reply pre code { background: none; border: 0; padding: 0; }

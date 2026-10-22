@@ -35,7 +35,7 @@ Fixture module `tools/verify/fixtures/content/modules/m97-sessions` has 13 sessi
 
 ## Consequences
 - CI installs `lldb-22` and `llvm-22`. `llvm-22` provides `llvm-symbolizer`, without which clang's ASan reports show `invalid path to external symbolizer` and bare addresses instead of `main.c:N` frames.
-- CI's commit-generated flow (the regen step and `tools/ci/unpack-generated.mjs`) does not yet carry `src/generated/sessions`. The first pull request that adds a session under `content/modules` must add it.
+- CI's commit-generated flow (the regen step and `tools/ci/unpack-generated.mjs`) carries `src/generated/sessions` like samples and traces (PR 6a, #89), so a same-repo PR that adds or changes a session gets a bot commit. A macOS run that is missing, stale or has problems fails the `macos-sessions` row of `npm run dod` (`tools/verify/macos-sessions.ts`, reading only the generated file), instead of staying a Targets warning.
 - On a machine where the debugger can't turn ASLR off (some containers), `lldb process launch` hangs. Set `LLDB22` to a wrapper that runs `lldb-22 -O "settings set target.disable-aslr false"`. GitHub runners don't need it. Don't use `settings set plugin.symbol-locator.debuginfod.server-urls ""`: it made lldb 22 hang on launch; `DEBUGINFOD_URLS=` is enough.
 - gdb shows Linux only and lldb shows clang only, so a lesson can show either debugger on its usual platform.
 - Number: proposed and accepted as 0004 (2026-10-21). #79 merged first with 0003 and #78 then renumbered its record to 0004, so this record became 0005 when PR #80 merged `main`.

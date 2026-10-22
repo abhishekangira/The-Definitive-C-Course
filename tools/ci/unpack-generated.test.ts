@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, sym
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { parseGeneratedTar, pathProblem, unpackGenerated } from './unpack-generated.mjs';
+import { MAX_FILES, parseGeneratedTar, pathProblem, unpackGenerated } from './unpack-generated.mjs';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'unpack-generated-'));
 afterAll(() => rmSync(tmp, { recursive: true, force: true }));
@@ -14,6 +14,7 @@ function makeTar(setup: (dir: string) => string[], extra: string[] = []): string
   const dir = path.join(tmp, `tree${n++}`);
   mkdirSync(path.join(dir, 'src/generated/samples'), { recursive: true });
   mkdirSync(path.join(dir, 'src/generated/traces'), { recursive: true });
+  mkdirSync(path.join(dir, 'src/generated/sessions'), { recursive: true });
   const files = setup(dir);
   const out = path.join(tmp, `a${n}.tar`);
   execFileSync('tar', [...extra, '-cf', out, ...files], { cwd: dir });
@@ -32,6 +33,60 @@ describe('unpack-generated', () => {
     expect(unpackGenerated(makeTar(good), dest)).toEqual(['src/generated/samples/m01.json', 'src/generated/traces/x.json']);
     expect(readFileSync(path.join(dest, 'src/generated/samples/m01.json'), 'utf8')).toBe('{"a":1}\n');
     expect(statSync(path.join(dest, 'src/generated/traces/x.json')).mode & 0o777).toBe(0o644);
+  });
+
+  it('accepts a native sessions file next to samples and traces (#89)', () => {
+    const tar = makeTar(dir => {
+      writeFileSync(path.join(dir, 'src/generated/sessions/m03.json'), '{"module":"m03"}\n');
+      return [...good(dir), 'src/generated/sessions/m03.json'];
+    });
+    const dest = path.join(tmp, 'out-sessions');
+    expect(unpackGenerated(tar, dest)).toEqual(['src/generated/samples/m01.json', 'src/generated/traces/x.json', 'src/generated/sessions/m03.json']);
+    expect(readFileSync(path.join(dest, 'src/generated/sessions/m03.json'), 'utf8')).toBe('{"module":"m03"}\n');
+    expect(statSync(path.join(dest, 'src/generated/sessions/m03.json')).mode & 0o777).toBe(0o644);
+  });
+
+  it('still rejects other folders and escapes from sessions', () => {
+    rejects(makeTar(dir => { mkdirSync(path.join(dir, 'src/generated/other'), { recursive: true }); writeFileSync(path.join(dir, 'src/generated/other/x.json'), '{}'); return ['src/generated/other/x.json']; }), /strictly under/);
+    rejects(makeTar(dir => { writeFileSync(path.join(dir, 'src/generated/x'), 'x'); return ['src/generated/sessions/../x']; }, ['-P']), /\.\.|strictly under/);
+    expect(pathProblem('src/generated/sessions/../x')).not.toBeNull();
+    expect(pathProblem('src/generated/sessions-evil/m03.json')).not.toBeNull();
+    expect(pathProblem('src/generated/sessions/')).not.toBeNull();
+    expect(pathProblem('src/generated/sessions')).not.toBeNull();
+    const link = makeTar(dir => { symlinkSync('/etc/passwd', path.join(dir, 'src/generated/sessions/m03.json')); return ['src/generated/sessions/m03.json']; });
+    rejects(link, /not a regular file/);
+  });
+
+  it('pins the character set and case of member paths', () => {
+    // Each would pass a looser PATH_RE (a wider class like [^/], or the /i flag).
+    for (const bad of ['src/generated/sessions/a\\b.json', 'src/generated/sessions/m 1.json', 'src/generated/sessions/a:b.json',
+      'src/generated/samples/x\u00e9.json', 'src/generated/Sessions/m03.json', 'src/generated/SAMPLES/m01.json', 'SRC/generated/traces/x.json']) {
+      expect(pathProblem(bad), bad).not.toBeNull();
+    }
+    rejects(makeTar(dir => { writeFileSync(path.join(dir, 'src/generated/sessions/m 1.json'), '{}'); return ['src/generated/sessions/m 1.json']; }), /forbidden characters/);
+    expect(pathProblem('src/generated/sessions/m03.json')).toBeNull();
+  });
+
+  it('rejects a member that appears twice', () => {
+    const tar = makeTar(dir => { writeFileSync(path.join(dir, 'src/generated/sessions/m03.json'), '{}'); return ['src/generated/sessions/m03.json', 'src/generated/sessions/m03.json']; }, ['--hard-dereference']);
+    rejects(tar, /appears twice/);
+  });
+
+  it('rejects a regular-file member that carries a link target', () => {
+    const buf = Buffer.from(readFileSync(makeTar(good)));
+    buf.write('/etc/passwd', 157, 'latin1'); // linkname field of the first header; typeflag stays '0'
+    let sum = 0;
+    for (let i = 0; i < 512; i++) sum += i >= 148 && i < 156 ? 32 : buf[i];
+    buf.write(`${sum.toString(8).padStart(6, '0')}\0 `, 148, 'latin1');
+    expect(() => parseGeneratedTar(buf)).toThrow(/has a link target/);
+  });
+
+  it(`refuses more than MAX_FILES (${MAX_FILES}) members and accepts exactly that many`, () => {
+    const many = (count: number) => makeTar(dir => Array.from({ length: count }, (_, i) => {
+      const f = `src/generated/samples/s${i}.json`; writeFileSync(path.join(dir, f), '{}'); return f;
+    }));
+    expect(parseGeneratedTar(readFileSync(many(MAX_FILES)))).toHaveLength(MAX_FILES);
+    rejects(many(MAX_FILES + 1), /archive too large/);
   });
 
   it('rejects a ".." segment', () => {

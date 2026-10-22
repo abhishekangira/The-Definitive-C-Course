@@ -90,12 +90,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-14, ubuntu-24.04-arm]
-        project: [mario-more, credit, m03-doctor]
+        project: [mario-more, credit, caesar, m03-doctor]
         include:
           - project: mario-more
             path: content/modules/m01-c-in-your-browser/project/mario-more
           - project: credit
             path: content/modules/m02-bits-bytes-numbers/project/credit
+          # The runner's own fixture, with a memory check: on macos-14 it runs the real `leaks` (issue #101).
+          - project: caesar
+            path: tools/check/fixtures/caesar
           # An LT exercise: its codes name the exercise id, not project/<id>. Its memory check is the ASan smoke test.
           - project: m03-doctor
             path: content/modules/m03-going-native/exercises/m03-doctor
@@ -152,6 +155,19 @@ jobs:
           set -e
           echo "make test exit status: $code"
           npx tsx tools/ci/verify-project-run.ts solution "$SEED" "$EXERCISE" "$code" work/solution.log
+      # A leaking caesar.c must fail the memory check with the leak itself (issue #101): on macOS that is `leaks`'s report.
+      - name: Leaky variant must fail the memory check
+        if: matrix.project == 'caesar'
+        run: |
+          cp tools/check/fixtures/caesar-variants/leaky.c "work/solution/$NAME/caesar.c"
+          set +e
+          (cd "work/solution/$NAME" && make test) 2>&1 | tee work/leaky.log
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "make test exit status: $code"
+          if [ "$code" -eq 0 ]; then echo "::error::make test passed a leaking caesar.c"; exit 1; fi
+          grep -F '✗ no memory errors or leaks' work/leaky.log || { echo "::error::the memory check did not fail"; exit 1; }
+          grep -F 'memory leak:' work/leaky.log || { echo "::error::no 'memory leak:' line"; exit 1; }
 
   commit:
     needs: run
