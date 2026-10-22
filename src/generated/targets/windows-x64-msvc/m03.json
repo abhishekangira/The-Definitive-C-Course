@@ -1,0 +1,6 @@
+{
+  "generatedBy": "tools/verify --target-run; Microsoft (R) C/C++ Optimizing Compiler Version 19.51.36260 for x64",
+  "module": "m03",
+  "samples": {},
+  "target": "windows-x64-msvc"
+}
