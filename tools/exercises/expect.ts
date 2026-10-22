@@ -9,6 +9,7 @@
 //   <folder>/cases.yaml:
 //     sources: [cash.c]        # optional, default: `file` of exercise.yaml
 //     warnings: error          # optional, default: error
+//     memory: true             # optional: tests.json gets the memory check (check.mjs: ASan+UBSan+LSan, or Valgrind)
 //     cases:
 //       - name: 41 cents
 //         stdin: "41\n"        # optional
@@ -31,7 +32,7 @@ const MAX_OUTPUT = 1 << 20;
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 export interface Case { name: string; stdin?: string; args?: string[]; hint?: string; timeoutMs?: number }
-export interface CasesFile { sources?: string[]; warnings?: 'error' | 'allow'; cases: Case[] }
+export interface CasesFile { sources?: string[]; warnings?: 'error' | 'allow'; memory?: true; cases: Case[] }
 
 export interface ExpectItem {
   /** "cash", "cash/variants/1", "project/mario-more" */
@@ -63,11 +64,12 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 export function validateCases(raw: unknown): { errors: string[]; cases?: CasesFile } {
   const errors: string[] = [];
   if (!isObj(raw)) return { errors: ['cases.yaml must be a mapping with a "cases" list'] };
-  for (const k of Object.keys(raw)) if (!['sources', 'warnings', 'cases'].includes(k)) errors.push(`unknown key "${k}"`);
+  for (const k of Object.keys(raw)) if (!['sources', 'warnings', 'memory', 'cases'].includes(k)) errors.push(`unknown key "${k}"`);
   if (raw.sources !== undefined && !(Array.isArray(raw.sources) && raw.sources.length > 0 && raw.sources.every(s => typeof s === 'string' && /\.c$/.test(s)))) {
     errors.push('"sources" must be a non-empty list of .c file names');
   }
   if (raw.warnings !== undefined && raw.warnings !== 'error' && raw.warnings !== 'allow') errors.push('"warnings" must be "error" or "allow"');
+  if (raw.memory !== undefined && raw.memory !== true) errors.push('"memory" must be true (or left out)');
   if (!Array.isArray(raw.cases) || raw.cases.length === 0) errors.push('"cases" must be a non-empty list');
   else {
     const seen = new Set<string>();
@@ -170,7 +172,7 @@ export function expectAll(o: ExpectOptions): ExpectItem[] {
       item.problems.push(...r.problems);
       item.cases = v.cases.cases.length;
       if (r.tests && r.problems.length === 0) {
-        const spec = { version: 1, sources, warnings: v.cases.warnings ?? 'error', tests: r.tests };
+        const spec = { version: 1, sources, warnings: v.cases.warnings ?? 'error', ...(v.cases.memory ? { memory: true } : {}), tests: r.tests };
         const next = `${JSON.stringify(spec, null, 2)}\n`;
         const prev = existsSync(target) ? readFileSync(target, 'utf8') : undefined;
         item.changed = prev !== next;

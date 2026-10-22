@@ -1,7 +1,9 @@
+import { existsSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { strFromU8, unzipSync } from 'fflate';
+import { STRICT_FLAGS } from '../../tools/check/src/native-backend';
 import type { TestsSpec } from '../content-model/types';
-import { binaryName, buildProjectZip, buildZipFromFolder, defaultMakefile, folderToProjectFiles, projectZipEntries, zipFolderName, type ProjectZipInput } from './project-zip';
+import { binaryName, buildProjectZip, COMPILE_FLAGS, buildZipFromFolder, defaultMakefile, folderToProjectFiles, projectZipEntries, zipFolderName, type ProjectZipInput } from './project-zip';
 import { parseLearnerFile } from './token';
 
 const spec: TestsSpec = { version: 1, sources: ['caesar.c'], tests: [{ name: 't', run: { stdin: '' }, expect: { stdout: '' } }] };
@@ -72,5 +74,27 @@ describe('from a content folder (what the app loads)', () => {
     expect(strFromU8(files['caesar/caesar.c'])).toContain('return 1');
     expect(() => buildZipFromFolder({ exerciseId: 'x', folder: {}, seed: '0123456789abcdef', checkMjs: '', learncH: '' })).toThrow(/no tests\.json or check\.json/);
     expect(() => buildZipFromFolder({ exerciseId: 'x', folder: { 'tests.json': '{' }, seed: '0123456789abcdef', checkMjs: '', learncH: '' })).toThrow(/not valid JSON/);
+  });
+  it('ships compile_flags.txt (one flag per line, the flags check.mjs builds with) in Module 3 zips only', () => {
+    const args = { folder: exercise, seed: '0123456789abcdef', checkMjs: '', learncH: '' };
+    for (const [id, dir] of [['m03-doctor', 'm03-doctor'], ['m03-doctor/variants/1', 'm03-doctor-v1']]) {
+      const files = unzipSync(buildZipFromFolder({ exerciseId: id, ...args }));
+      expect(strFromU8(files[`${dir}/compile_flags.txt`]), id).toBe('-std=c17\n-Wall\n-Wextra\n-pedantic\n');
+    }
+    expect(COMPILE_FLAGS).toEqual(STRICT_FLAGS.filter(f => f !== '-g' && f !== '-O0'));
+    // Every Module 1 and 2 exercise, variant and project on disk: no compile_flags.txt (their zips are unchanged).
+    const ids: string[] = [];
+    for (const m of readdirSync('content/modules').filter(d => /^m0[12]-/.test(d))) {
+      for (const kind of ['exercises', 'project']) {
+        const base = `content/modules/${m}/${kind}`;
+        if (!existsSync(base)) continue;
+        for (const e of readdirSync(base)) {
+          const id = kind === 'project' ? `project/${e}` : e;
+          ids.push(id, ...(existsSync(`${base}/${e}/variants`) ? readdirSync(`${base}/${e}/variants`).map(v => `${id}/variants/${v}`) : []));
+        }
+      }
+    }
+    expect(ids.length).toBeGreaterThan(20);
+    for (const id of ids) expect(projectZipEntries({ ...input, id: zipFolderName(id) })['compile_flags.txt'], id).toBeUndefined();
   });
 });

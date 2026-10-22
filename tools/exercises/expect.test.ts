@@ -65,6 +65,16 @@ describe('exercises:expect', () => {
     expect(read(root, `${ECHO}/tests.json`)).toBe(read(FIXTURES, `${ECHO}/tests.json`));
   });
 
+  it('copies `memory: true` from cases.yaml into tests.json, and leaves it out otherwise', () => {
+    const root = copy(r => write(r, `${ECHO}/cases.yaml`, `memory: true\n${read(r, `${ECHO}/cases.yaml`)}`));
+    const [item] = byId(root, 'echo-args');
+    expect([item.ok, item.changed]).toEqual([true, true]);
+    const spec = JSON.parse(read(root, `${ECHO}/tests.json`));
+    expect(spec.memory).toBe(true);
+    expect(spec.tests).toEqual(JSON.parse(read(FIXTURES, `${ECHO}/tests.json`)).tests);
+    expect(JSON.parse(read(FIXTURES, `${ECHO}/tests.json`))).not.toHaveProperty('memory');
+  });
+
   it('rejects a solution that does not build cleanly (-Werror)', () => {
     const root = copy(r => write(r, `${ECHO}/solution.c`, read(r, `${ECHO}/solution.c`).replace('int i = 1', 'int unused; int i = 1')));
     const [item] = byId(root, 'echo-args');
@@ -149,5 +159,7 @@ describe('validateCases', () => {
     expect(validateCases({ cases: [] }).errors).toEqual(['"cases" must be a non-empty list']);
     expect(validateCases({ cases: [{ name: 'x', args: 'no' }] }).errors).toEqual(['cases[0]: "args" must be a list of strings']);
     expect(validateCases({ warnings: 'maybe', cases: [{ name: 'x' }] }).errors).toEqual(['"warnings" must be "error" or "allow"']);
+    expect(validateCases({ memory: true, cases: [{ name: 'x' }] }).errors).toEqual([]);
+    expect(validateCases({ memory: 'yes', cases: [{ name: 'x' }] }).errors).toEqual(['"memory" must be true (or left out)']);
   });
 });

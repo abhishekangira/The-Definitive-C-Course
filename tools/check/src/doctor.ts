@@ -108,11 +108,28 @@ export function gatherFacts(opts: { cc?: string; platform: string; noSanitizers:
   };
 }
 
+const arm = (s?: string) => s === 'arm64' || s === 'aarch64';
+/** macOS: whether the hardware is an Apple chip (undefined when it could not be read). */
+const appleChip = (f: Pick<DoctorFacts, 'appleSilicon' | 'translated' | 'nodeArch'>) => f.appleSilicon ?? (f.translated ? true : arm(f.nodeArch) ? true : undefined);
+
+/**
+ * The "my machine" value (src/progress/store.ts Platform) the doctor suggests for these facts; undefined when it can't tell.
+ * Lesson 3.1's question about it is checked against this function (tools/check/lesson-answer.test.ts).
+ */
+export function machineFor(f: Pick<DoctorFacts, 'platform' | 'nodeArch' | 'machine' | 'appleSilicon' | 'translated' | 'wsl'>): Platform | undefined {
+  if (f.platform === 'darwin') {
+    const silicon = appleChip(f);
+    return silicon === true ? 'mac-arm' : silicon === false ? 'mac-intel' : undefined;
+  }
+  if (f.platform !== 'linux') return undefined;
+  const hw = f.machine ?? f.nodeArch;
+  return f.wsl ? 'wsl' : arm(hw) ? 'linux-arm' : hw === 'x86_64' || hw === 'x64' ? 'linux-x86' : undefined;
+}
+
 /** What the facts mean: the "my machine" value, and the problems (errors fail the doctor; notes don't). */
 export function assess(f: DoctorFacts): Assessment {
   const findings: Finding[] = [];
   const mac = f.platform === 'darwin';
-  const arm = (s?: string) => s === 'arm64' || s === 'aarch64';
   const major = Number.parseInt(f.nodeVersion, 10);
   if (!(major >= MIN_NODE)) {
     findings.push({ level: 'error', text: `Node ${f.nodeVersion} is too old: the course's tools need Node ${MIN_NODE} or newer.`,
@@ -126,10 +143,9 @@ export function assess(f: DoctorFacts): Assessment {
       remedy: mac ? 'Install the Xcode Command Line Tools:  xcode-select --install' : 'Install one:  sudo apt install build-essential   (Ubuntu / WSL)' });
   }
 
-  let machine: Platform | undefined;
+  const machine = machineFor(f);
   if (mac) {
-    const silicon = f.appleSilicon ?? (f.translated ? true : arm(f.nodeArch) ? true : undefined);
-    machine = silicon === true ? 'mac-arm' : silicon === false ? 'mac-intel' : undefined;
+    const silicon = appleChip(f);
     if (silicon && !arm(f.nodeArch)) {
       findings.push({ level: 'warning', text: `This Mac has an Apple chip, but Node runs as ${f.nodeArch} under Rosetta, so programs you build here may be x86_64 too.`,
         remedy: 'Install the arm64 Node (the macOS installer from https://nodejs.org), and if Terminal is set to "Open using Rosetta" (Finder, Get Info), turn that off. Then node -p process.arch prints arm64.' });
@@ -139,8 +155,6 @@ export function assess(f: DoctorFacts): Assessment {
     if (!f.tools.lldb) findings.push({ level: 'note', text: 'lldb (the macOS debugger) was not found.', remedy: 'xcode-select --install' });
     if (!f.tools.leaks) findings.push({ level: 'note', text: 'leaks (the macOS leak checker) was not found.', remedy: 'xcode-select --install' });
   } else if (f.platform === 'linux') {
-    const hw = f.machine ?? f.nodeArch;
-    machine = f.wsl ? 'wsl' : arm(hw) ? 'linux-arm' : hw === 'x86_64' || hw === 'x64' ? 'linux-x86' : undefined;
     if (!f.tools.gdb) findings.push({ level: 'note', text: 'gdb (the debugger used in Linux and WSL lessons) was not found.', remedy: 'sudo apt install gdb' });
     if (!f.tools.valgrind) findings.push({ level: 'note', text: 'Valgrind was not found.', remedy: 'sudo apt install valgrind' });
   } else {
