@@ -248,7 +248,10 @@ describe('MiniMarkdown (prompts, hints, explanations)', () => {
     // Load-robust: the cost at 4N is compared with the cost at N (linear ~4x, quadratic ~16x), best of 3 so a busy
     // CPU slows both sides alike. The old quadratic code gave about 16x on "[". The cap on the larger run is generous.
     const best = (text: string) => Math.min(...[0, 1, 2].map(() => { const t0 = performance.now(); html(text); return performance.now() - t0; }));
-    const runs = ['*', '[', '[a](', '[a](x', '[a](x[a](x', '`a', '[x', '[x]', '[x](', '](', '|', '|-', '\\|', '| a |\n', '| a |\n|---|\n', '**`'];
+    // The table runs make every line pass through the delimiter check and fail it, so they render as one paragraph. A run
+    // that renders a table of thousands of rows (or thousands of bold elements) times React in development mode instead
+    // of the parser: about 2 s each, which pushed this test past Vitest's 5 s limit on CI (#102).
+    const runs = ['*', '[', '[a](', '[a](x', '[a](x[a](x', '`a', '[x', '[x]', '[x](', '](', '|', '|-', '\\|', '| a |\n', '| a |\n|-x-|\n', '|-|-|\n|---|\n'];
     for (const r of runs) {
       const small = best(r.repeat(Math.ceil(25_000 / r.length)));
       const big = best(r.repeat(Math.ceil(100_000 / r.length)));
