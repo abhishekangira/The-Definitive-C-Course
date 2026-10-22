@@ -201,4 +201,4 @@ to fail with `✗ no memory errors or leaks` and a `memory leak:` line. It runs 
 | Linux arm64 (`ubuntu-24.04-arm`, gcc) | `project-runner` |
 | Windows | **not run**: use WSL Ubuntu 24.04 (the Linux path); native Windows is unsupported and untested |
 
-Caesar's memory check runs the real `leaks --atExit` on `macos-14` (issue #101), on the solution and on the leaky variant.
+Caesar's memory check runs the real `leaks --atExit` on `macos-14` (issue #101), on the solution and on the leaky variant. `m03-doctor`'s runs it too, on the starter and the solution, and prints `✓ no memory errors or leaks  (AddressSanitizer, UBSan, leaks)`; each grading step takes a few seconds.
