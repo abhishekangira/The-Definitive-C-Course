@@ -1,0 +1,98 @@
+<template id="bl-04-assemble-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #bl04-cmd { position: absolute; left: 192px; top: 340px; }
+    #bl04-cmd2 { position: absolute; left: 620px; top: 340px; --c: var(--native); --c-soft: var(--native-soft); }
+    #bl04-obj { left: 192px; top: 450px; width: 520px; height: 380px; }
+    #bl04-obj b { font-size: 42px; }
+    #bl04-size { font: 700 32px/1.2 var(--font-mono); color: var(--compiler); }
+    #bl04-a1 { left: 732px; top: 620px; width: 140px; height: 24px; }
+    #bl04-nm { left: 892px; top: 450px; width: 836px; height: 380px; padding: 28px 32px; border-color: var(--native); }
+    #bl04-ntag { font: 700 28px/1 var(--font-mono); color: var(--native); }
+    #bl04-nbody { margin-top: 28px; display: flex; flex-direction: column; gap: 18px; }
+    .bl04-sym {
+      display: flex; align-items: center; gap: 20px; padding: 16px 22px; border-radius: 14px;
+      border: 3px solid var(--border-strong); background: var(--bg-sunken);
+      font: 700 32px/1.2 var(--font-mono); color: var(--text);
+    }
+    .bl04-ok { border-color: var(--program); color: var(--program); }
+    .bl04-u { border-color: var(--native); color: var(--native); }
+    .bl04-hint { font: 400 26px/1.2 var(--font-sans); font-style: normal; color: var(--text-muted); }
+    #bl04-foot { position: absolute; left: 192px; top: 860px; width: 1536px; font: 400 28px/1.3 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="bl-04-assemble" data-width="1920" data-height="1080" data-duration="12"
+       data-steps='{"assemble":{"label":"Assemble","start":0,"end":11.5}}'>
+    <div class="bl-stage" id="bl04-stage">
+      <div class="bl-head" id="bl04-head">
+        <h1 class="bl-title" id="bl04-title">hello.o is machine code.</h1>
+        <p class="bl-sub" id="bl04-sub">nm shows what is defined in the file, and what is still missing.</p>
+      </div>
+
+      <div class="bl-cmd" id="bl04-cmd">cc -c hello.s</div>
+      <div class="bl-cmd" id="bl04-cmd2">nm hello.o</div>
+
+      <div class="bl-box bl-comp" id="bl04-obj">
+        <b>hello.o</b>
+        <i>object file</i>
+        <div id="bl04-size"><span data-var-text="objBytes">1544</span> bytes</div>
+      </div>
+
+      <svg class="bl-arrow bl-nat" id="bl04-a1" viewBox="0 0 140 24" aria-hidden="true">
+        <path class="bl-draw bl04-d" d="M 4 12 H 124" pathLength="1" />
+        <path class="bl04-h" d="M 108 -2 L 128 12 L 108 26" />
+      </svg>
+
+      <div class="bl-card" id="bl04-nm">
+        <div id="bl04-ntag">nm hello.o</div>
+        <div id="bl04-nbody">
+          <div class="bl04-sym bl04-ok" id="bl04-main"><span data-var-text="nmObjMain">T main</span><span class="bl04-hint">defined in this file</span></div>
+          <div class="bl04-sym bl04-u" id="bl04-printf"><span data-var-text="nmObjPrintf">U printf</span><span class="bl04-hint">undefined: still a name</span></div>
+        </div>
+      </div>
+
+      <p id="bl04-foot">T means text: main lives here. U means undefined: printf is not in hello.o.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("bl-04-assemble", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      try {
+        var g = window.__hyperframes && window.__hyperframes.getVariables;
+        var v = g ? g() : {};
+        var stage = document.getElementById("bl04-stage");
+        if (stage && v) {
+          var nodes = stage.querySelectorAll("[data-var-text]");
+          for (var i = 0; i < nodes.length; i++) {
+            var id = nodes[i].getAttribute("data-var-text");
+            if (v[id] != null) nodes[i].textContent = v[id];
+          }
+        }
+      } catch (e) {}
+      var D = 12;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      tl.addLabel("assemble", S.assemble.start);
+      tl.fromTo("#bl04-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.55 }, 0.1);
+      tl.fromTo("#bl04-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.55 }, 0.25);
+      tl.fromTo("#bl04-cmd", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45 }, 0.5);
+      tl.fromTo("#bl04-obj", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6 }, 0.9);
+      tl.fromTo("#bl04-cmd2", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45 }, 1.5);
+      tl.fromTo("#bl04-a1 .bl04-d", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.45, ease: "power2.inOut" }, 1.5);
+      tl.fromTo("#bl04-a1 .bl04-h", { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, 1.85);
+      tl.fromTo("#bl04-nm", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.6 }, 1.7);
+      tl.fromTo("#bl04-main", { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.45 }, 2.9);
+      tl.fromTo("#bl04-printf", { opacity: 0, x: 16 }, { opacity: 1, x: 0, duration: 0.45 }, 3.4);
+      tl.fromTo("#bl04-foot", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 5.0);
+      tl.fromTo("#bl04-stage", { opacity: 1 }, { opacity: 0, duration: 0.4, ease: "power1.in" }, D - 0.5);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["bl-04-assemble"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,12 @@
+{
+  "iLines": "819",
+  "sLines": "50",
+  "printfDecl": "extern int printf (const char *__restrict __format, ...);",
+  "sExcerpt": "        leaq    .LC1(%rip), %rax\n        movq    %rax, %rdi\n        movl    $0, %eax\n        call    printf@PLT",
+  "nmObjMain": "T main",
+  "nmObjPrintf": "U printf",
+  "objBytes": "1544",
+  "exeBytes": "15960",
+  "nmExePrintf": "U printf@GLIBC_2.2.5",
+  "interpreter": "/lib64/ld-linux-x86-64.so.2"
+}
