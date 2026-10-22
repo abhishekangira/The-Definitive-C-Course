@@ -29,8 +29,9 @@ needs a harness keeps its own `tests/`. Its learner file is its own `tests.json`
   **exactly three non-empty hints**, `variants` is a list of folder names (quote numeric ones: `'1'`), `file`
   equals `tests.json`'s first source, LT and native rules (`lt` runs native, `pa` runs in the browser). Unknown
   keys are warnings with a "did you mean" for the usual typos (`runs-in`, `hint`).
-- `tests.json` / `check.json` (`validateTestsSpec`): names, one of `run`/`unit`/`make`/`scan` per test, harness files exist,
-  negative tests supply stdin and assert on output, make tests only for native exercises.
+- `tests.json` / `check.json` (`validateTestsSpec`): names, one of `run`/`unit`/`make`/`scan`/`file` per test, harness files exist,
+  negative tests supply stdin and assert on output, make and file tests only for native exercises (check.mjs runs them;
+  the browser runner skips them with the reason, and a skip is never a pass).
 - Listed variants exist, and unlisted variant folders are warned about. A variant has `variants: []`, runs where its
   exercise runs, and passes the same checks.
 - **Browser exercises (CT, FB)**: `runsIn: browser` runs the browser toolchain in Node
