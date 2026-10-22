@@ -1,7 +1,8 @@
 // Rio, the streak warrior (on the course map and in Settings). The form follows the current streak and the face follows
-// today (src/progress/warrior.ts). The first time Rio is shown in a higher form than last time, a short transformation
-// plays (a plain swap under prefers-reduced-motion) and the new form is announced. The form last shown lives in its own
-// localStorage key, outside the progress document, so export, import and "Reset all progress" leave it alone.
+// today (src/progress/warrior.ts). The first time Rio is shown in a higher form than last time, a short frame sequence
+// plays (stand, crouch, aura ramp, flash, new form; a plain swap under prefers-reduced-motion) and the new form is
+// announced. The form last shown lives in its own localStorage key, outside the progress document, so export, import
+// and "Reset all progress" leave it alone.
 import { useEffect, useState, type AnimationEvent } from 'react';
 import { STORAGE_PREFIX, useProgress } from '../progress/store';
 import { dayWord, MAX_BEANS, streakStatus } from '../progress/streak';
@@ -62,6 +63,43 @@ export function WarriorPortrait({ form, mood = 'ready', still = false, bare = fa
   );
 }
 
+/** One-shot transformation. Poses reuse the form's sprites; the aura prop supplies the charge. No extra sprite rows. */
+export type TransformBeat =
+  | { kind: 'pose'; who: 'from' | 'to'; aura: AuraStage; crouch: boolean }
+  | { kind: 'flash' };
+
+export const TRANSFORM_BEATS: readonly TransformBeat[] = [
+  { kind: 'pose', who: 'from', aura: 'none', crouch: false },
+  { kind: 'pose', who: 'from', aura: 'none', crouch: true },
+  { kind: 'pose', who: 'from', aura: 'flicker', crouch: true },
+  { kind: 'pose', who: 'from', aura: 'blaze', crouch: true },
+  { kind: 'flash' },
+  { kind: 'pose', who: 'to', aura: 'blaze', crouch: false },
+];
+
+/** The beats stacked in one box. CSS shows one at a time; the last beat's own animation ends the sequence. */
+export function TransformationSequence({ from, to, mood, onDone }: {
+  from: FormId;
+  to: FormId;
+  mood: WarriorMood;
+  onDone?: (e: AnimationEvent<HTMLSpanElement>) => void;
+}) {
+  return (
+    <span className={styles.sequence} data-transform-sequence="">
+      {TRANSFORM_BEATS.map((beat, i) => {
+        const last = i === TRANSFORM_BEATS.length - 1;
+        if (beat.kind === 'flash') return <span key={i} data-transform-step={i} data-flash="" aria-hidden="true" />;
+        const form = beat.who === 'to' ? to : from;
+        return (
+          <span key={i} data-transform-step={i} data-form={form} data-aura={beat.aura} data-crouch={beat.crouch ? '' : undefined} onAnimationEnd={last ? onDone : undefined}>
+            <WarriorPortrait form={form} mood={mood} aura={beat.aura} label={last ? warriorLabel(to, mood) : undefined} />
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 /** Rio with a caption: the form, a line in the mood's voice and the days to the next form. */
 export function StreakWarrior({ size = 120, caption = true, className }: { size?: number; caption?: boolean; className?: string }) {
   const st = streakStatus(useProgress().streak, useNow());
@@ -86,16 +124,15 @@ export function StreakWarrior({ size = 120, caption = true, className }: { size?
     setTransform(prefersReducedMotion() ? null : { from, to: form.id });
   }, [form.id]);
 
+  // Child aura and idle loops also bubble animationend; only the last beat's own clip animation counts.
   const done = (e: AnimationEvent<HTMLSpanElement>) => { if (e.target === e.currentTarget) setTransform(null); };
   const span = next ? next.form.at - form.at : 1;
   return (
     <figure className={`${styles.warrior} ${className ?? ''}`.trim()} data-warrior data-form={form.id} data-mood={mood} data-transforming={transform ? '' : undefined}>
-      <div className={styles.stage} style={{ ['--warrior-size' as string]: `${size}px` }} data-to={transform?.to}>
-        {transform && <span className={styles.glow} aria-hidden="true" />}
-        {transform && <WarriorPortrait className={styles.oldLayer} form={transform.from} />}
-        {transform && <span className={styles.flash} aria-hidden="true" />}
-        {transform && <span className={styles.rays} aria-hidden="true" />}
-        <WarriorPortrait className={transform ? styles.newLayer : undefined} form={form.id} mood={mood} label={warriorLabel(form.id, mood)} onAnimationEnd={done} />
+      <div className={styles.stage} style={{ ['--warrior-size' as string]: `${size}px` }}>
+        {transform
+          ? <TransformationSequence from={transform.from} to={transform.to} mood={mood} onDone={done} />
+          : <WarriorPortrait form={form.id} mood={mood} label={warriorLabel(form.id, mood)} />}
       </div>
       <figcaption className={caption ? styles.caption : 'visually-hidden'}>
         <span className={styles.formName}>{form.name}{st.current > 0 ? ` · ${dayWord(st.current)}` : ''}</span>

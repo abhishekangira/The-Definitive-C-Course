@@ -94,6 +94,20 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
     await expect(chip(page).locator('[data-form]')).toHaveAttribute('data-form', 'warrior');
     await page.goto('#/settings');
     await expect(rio(page)).toHaveAttribute('data-form', 'warrior');
+    // The sequence is 2.4s and starts when this page mounts. Assert it while it is still on screen.
+    await expect(rio(page)).toHaveAttribute('data-transforming', '');
+    const beats = rio(page).locator('[data-transform-step]');
+    await expect(beats).toHaveCount(6);
+    await expect(beats.nth(0)).toHaveAttribute('data-form', 'kid');
+    await expect(beats.nth(0)).toHaveAttribute('data-aura', 'none');
+    await expect(beats.nth(1)).toHaveAttribute('data-crouch', '');
+    await expect(beats.nth(2)).toHaveAttribute('data-aura', 'flicker');
+    await expect(beats.nth(3)).toHaveAttribute('data-aura', 'blaze');
+    await expect(beats.nth(4)).toHaveAttribute('data-flash', '');
+    await expect(beats.nth(5)).toHaveAttribute('data-form', 'warrior');
+    await expect(beats.nth(5)).toHaveAttribute('data-aura', 'blaze');
+    await expect(rio(page)).not.toHaveAttribute('data-transforming');
+    await expect(rio(page).locator('svg')).toHaveCount(1);
     await expect(rio(page).getByText('New form unlocked: Warrior')).toBeVisible();
     await expect(page.getByRole('status').filter({ hasText: 'Transformation! Rio reached a new form: Warrior.' })).toBeAttached();
     await expect(panel(page).getByTestId('spirit-beans')).toHaveText('0 of 3 spirit beans');
