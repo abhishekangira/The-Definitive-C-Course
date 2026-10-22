@@ -1,0 +1,157 @@
+---
+id: m03-l1
+title: Install and doctor
+minutes: 50
+summary: Install a C compiler, a debugger, make, the memory tools and Node on macOS, Windows (WSL) or Linux, set up your editor, and let the doctor check the result.
+---
+
+So far the browser compiled and ran your C for you. From this module on, much of your work runs on your own machine: you build with a real compiler, step through a crash in a debugger, let the sanitizers find memory bugs and let `make` rebuild only what changed. This lesson installs those tools once. You need five things:
+
+- a **C compiler** (`cc`: gcc or clang),
+- a **debugger** (gdb on Linux and WSL, lldb on a Mac),
+- **make**,
+- the **memory tools** (the sanitizers that come with the compiler, plus Valgrind on Linux or `leaks` on a Mac),
+- **Node**, because every project zip is checked by `check.mjs`, a small JavaScript program.
+
+Node runs only the checker. Your programs are plain C, built by the compiler and run as native processes.
+
+<Choice
+  question="In a Module 3 project, what does Node do?"
+  options={["It compiles your C code", "It runs `check.mjs`, which builds and tests your code with the C compiler", "It runs your program inside a JavaScript engine", "Nothing: Node is only needed for the browser lessons"]}
+  answer={1}
+  explain="`check.mjs` is JavaScript, so it needs Node. It calls the real C compiler (`cc`) to build your program and runs the result as a native process."
+/>
+
+## macOS
+
+Open Terminal and run:
+
+```sh
+xcode-select --install
+```
+
+The Command Line Tools give you **Apple clang** (`cc` and `clang` are Apple's clang), **lldb**, **make 3.81** and **`leaks`**. Then install the current **Node LTS** with the macOS installer from nodejs.org.
+
+A Mac with an Apple chip is **arm64**. If Terminal is set to "Open using Rosetta", or you installed an x64 Node, your tools report `x86_64` instead, and programs you build may be Intel code. The doctor you run below flags that and says how to fix it.
+
+When you first use lldb, macOS may ask once to allow debugging.
+
+<Choice
+  question="Which command installs the compiler, lldb, make and `leaks` on a Mac?"
+  options={["`brew install gcc`", "`xcode-select --install`", "`sudo apt install build-essential`", "`npm install clang`"]}
+  answer={1}
+  explain="`xcode-select --install` installs Apple's Command Line Tools: Apple clang, lldb, make and `leaks`. `apt` is Ubuntu's package manager, and Homebrew's gcc would be a second compiler you don't need."
+/>
+
+## Windows: WSL
+
+The course runs on Linux inside Windows, through **WSL**. In PowerShell (as administrator) run the command below, restart, and open **Ubuntu** from the Start menu:
+
+```sh
+wsl --install -d Ubuntu-24.04
+```
+
+Then, in the Ubuntu terminal, install the compiler, debugger, make, Valgrind and two helpers:
+
+```sh
+sudo apt update
+sudo apt install build-essential gdb valgrind unzip curl nodejs
+```
+
+`nodejs` from Ubuntu 24.04 is Node 18, which `check.mjs` accepts. Node 18 is past end of life, so any newer LTS works too, for example the one from nodejs.org.
+
+## Linux
+
+On Ubuntu or Debian, run the same `apt` line in a terminal. Other distributions name the packages differently: you want gcc, make, gdb, Valgrind, unzip, curl and Node 18 or newer.
+
+<Choice
+  question="Which command installs gcc, make, gdb and Valgrind on Ubuntu, in WSL or on its own?"
+  options={["`xcode-select --install`", "`wsl --install -d Ubuntu-24.04`", "`sudo apt install build-essential gdb valgrind unzip curl nodejs`", "`npm install build-essential`"]}
+  answer={2}
+  explain="`build-essential` brings gcc and make; gdb and valgrind are their own packages. `wsl --install` only installs Ubuntu itself, and `xcode-select` is the macOS route."
+/>
+
+## Where your files live in WSL
+
+WSL has its own Linux file system. Keep your course work in your Linux home folder, `~`, not under `/mnt/c` (your Windows drive as Linux sees it): builds there are slow, and file permissions and line endings can go wrong.
+
+Your browser saves downloads on the Windows side. Copy each zip into your home folder and unzip it there:
+
+```sh
+cp /mnt/c/Users/<you>/Downloads/<name>.zip ~
+cd ~
+unzip <name>.zip
+```
+
+Replace `<you>` with your Windows user name and `<name>` with the zip's name. To see your Linux files in Windows Explorer, run `explorer.exe .` in that folder.
+
+<Choice
+  question="You downloaded `caesar.zip` in Windows. Where do you work on it?"
+  options={["In `C:\\Users\\<you>\\Downloads`, with Windows tools", "Under `/mnt/c/Users/<you>/Downloads`, from WSL", "Copied into `~` and unzipped there, from WSL", "Anywhere: WSL treats every folder the same"]}
+  answer={2}
+  explain="Your Linux home folder is fast and behaves like a real Linux machine. `/mnt/c` is the Windows drive seen from Linux: slower, and permissions and line endings can go wrong there."
+/>
+
+## Line endings
+
+Windows tools often save text with **CRLF** line endings (carriage return plus newline). Linux expects just a newline. A Makefile or shell script saved with CRLF breaks: `make` and the shell read the stray carriage return as part of the command, and the errors look baffling.
+
+So edit your course files from inside Linux. **VS Code** with the **WSL** extension does that: run `code .` in an Ubuntu terminal and VS Code edits the Linux files directly. Its status bar shows `LF` or `CRLF` for the open file, and clicking it switches.
+
+<Choice
+  question="A Makefile you edited in a Windows editor now fails with errors that make no sense. What do you check first?"
+  options={["Whether the file has CRLF line endings", "Whether gcc is installed", "Whether Node is too old", "Whether the zip was downloaded twice"]}
+  answer={0}
+  explain="A carriage return at the end of each line becomes part of each command, which breaks Makefile recipes and shell scripts. Save the file with LF endings, ideally from VS Code connected to WSL."
+/>
+
+## Your editor
+
+Any editor works. The course suggests **VS Code** with the **clangd** extension, which shows errors and warnings as you type. **CodeLLDB** is an optional extension for debugging inside the editor; Module 3 uses the debugger from the terminal.
+
+clangd needs to know how you build. Without that, it analyses your files with different flags from the build, so the editor's warnings don't match the compiler's. It reads them from a `compile_flags.txt` file, one flag per line. Every Module 3 zip ships this one, with the flags `check.mjs` builds with:
+
+```text
+-std=c17
+-Wall
+-Wextra
+-pedantic
+```
+
+<Choice
+  question="Why does every Module 3 zip include `compile_flags.txt`?"
+  options={["`make` needs it to build", "So clangd checks your code with the same flags as the build, and the editor's warnings match the compiler's", "`check.mjs` reads its tests from it", "It turns warnings into errors"]}
+  answer={1}
+  explain="The file is for your editor. clangd reads one flag per line from it; `make` and `check.mjs` set their own flags. Without it, clangd uses its defaults and misses warnings the build reports."
+/>
+
+## The doctor
+
+Now check the installation. Download the zip below and unzip it in your home folder (in WSL, copy it in first). In that folder, run:
+
+```sh
+node check.mjs --doctor
+```
+
+The doctor prints your architecture (and any Rosetta mismatch), your operating system, compiler and Node versions, which debuggers and memory tools it found, the `sizeof` table from a program it compiles, your cache-line and page size, and which "my machine" value to choose below. A missing compiler or too old a Node is an error, with the fix. A missing debugger or memory tool is a note.
+
+Then run `make test` for the exercise itself, and paste each code it prints.
+
+<Exercise id="m03-doctor" />
+
+## My machine
+
+Later lessons show compiler, debugger and sanitizer output from each kind of machine, and show yours first. Choose the value the doctor printed on its "My machine" line:
+
+<PlatformPicker />
+
+You can change it later in Settings.
+
+<Choice
+  question={'Your Mac has an Apple chip, but the doctor warns that Node runs as x64 under Rosetta. Which "my machine" value matches this Mac?'}
+  options={["Mac with Apple Silicon (arm64)", "Intel Mac (x86-64)", "Linux on x86-64", "Linux on arm64 (or WSL on an ARM laptop)"]}
+  answer={0}
+  explain="The value describes the hardware, and the chip is arm64. Rosetta only translates the x64 Node. Fix the mismatch the doctor describes (an arm64 Node, Terminal without Rosetta) so the programs you build are arm64 too."
+/>
+
+**What you know now:** how to install the compiler, debugger, make, memory tools and Node on a Mac (`xcode-select --install`), in WSL and on Linux (`apt`); to keep WSL work in `~` and copy zips in from `/mnt/c`; why CRLF line endings break Makefiles; what `compile_flags.txt` tells clangd; and how the doctor reports what your machine has.
