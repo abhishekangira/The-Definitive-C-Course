@@ -3,11 +3,29 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  ID, VARIABLE_IDS, boundTexts, collectFromProject, commandsFrom, declaredDefaults, factsSkipReason,
-  listing, projectFiles,
-} from './a02-facts.mjs';
 import { ANIM_DIR } from './lib.mjs';
+
+type Machine = { arch: string; hasGcc13: boolean; glibc: string };
+type Files = { index: string; sourceHtml: string; scenes: Record<'preprocess' | 'compile' | 'assemble' | 'link' | 'load', string> };
+type Facts = {
+  source: string; commands: string[]; stdout: string; exit: number; nmObj: string; nmExe: string;
+  variables: Record<string, string>; files: Files;
+};
+type FactsModule = {
+  ID: string;
+  VARIABLE_IDS: readonly string[];
+  boundTexts(html: string, id: string): string[];
+  collectFromProject(): Facts;
+  commandsFrom(html: string): string[];
+  declaredDefaults(indexHtml: string): Record<string, string>;
+  factsSkipReason(env: Record<string, string | undefined>, machine?: Machine): string | undefined;
+  listing(html: string): string;
+};
+// a02-facts.mjs is plain JS (it also runs as `node tools/anim/a02-facts.mjs --write`); its shape is typed here.
+const factsPath: string = './a02-facts.mjs';
+const {
+  ID, VARIABLE_IDS, boundTexts, collectFromProject, commandsFrom, declaredDefaults, factsSkipReason, listing,
+} = (await import(factsPath)) as FactsModule;
 
 const skip = factsSkipReason(process.env);
 
