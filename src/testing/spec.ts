@@ -1,15 +1,16 @@
 // tests.json / check.json (TestsSpec) helpers: type guards, hint tiers and validation.
 // Environment-neutral. Used by the runner, check.mjs (malformed check.json → a clear message) and
 // tools/exercises (authoring errors fail the build).
-import type { IoTest, MakeTest, ScanTest, TestsSpec, TextExpect, UnitTest } from '../content-model/types';
+import type { FileTest, IoTest, MakeTest, ScanTest, TestsSpec, TextExpect, UnitTest } from '../content-model/types';
 import { compilePattern } from './compare';
 
-export type AnyTest = IoTest | UnitTest | MakeTest | ScanTest;
+export type AnyTest = IoTest | UnitTest | MakeTest | ScanTest | FileTest;
 
 export const isIoTest = (t: AnyTest): t is IoTest => typeof (t as IoTest).run === 'object' && (t as IoTest).run !== null;
 export const isUnitTest = (t: AnyTest): t is UnitTest => typeof (t as UnitTest).unit === 'object' && (t as UnitTest).unit !== null;
 export const isMakeTest = (t: AnyTest): t is MakeTest => typeof (t as MakeTest).make === 'object' && (t as MakeTest).make !== null;
 export const isScanTest = (t: AnyTest): t is ScanTest => typeof (t as ScanTest).scan === 'object' && (t as ScanTest).scan !== null;
+export const isFileTest = (t: AnyTest): t is FileTest => typeof (t as FileTest).file === 'object' && (t as FileTest).file !== null;
 
 /** Names of the checks the runner adds around spec.tests. */
 export const COMPILE_TEST_NAME = 'compiles without warnings';
@@ -101,8 +102,8 @@ export function validateTestsSpec(spec: unknown, opts: ValidateOptions = {}): Sp
     }
     if (t.hint !== undefined && typeof t.hint !== 'string') p.errors.push(`${label}: "hint" must be a string`);
     if (t.hints !== undefined && (!isStrArray(t.hints) || t.hints.some(h => !h.trim()))) p.errors.push(`${label}: "hints" must be a list of non-empty strings`);
-    const kinds = ['run', 'unit', 'make', 'scan'].filter(k => t[k] !== undefined);
-    if (kinds.length !== 1) { p.errors.push(`${label}: needs exactly one of "run", "unit", "make" or "scan" (found ${kinds.length})`); return; }
+    const kinds = ['run', 'unit', 'make', 'scan', 'file'].filter(k => t[k] !== undefined);
+    if (kinds.length !== 1) { p.errors.push(`${label}: needs exactly one of "run", "unit", "make", "scan" or "file" (found ${kinds.length})`); return; }
 
     if (kinds[0] === 'run') {
       unknownKeys(t, ['name', 'run', 'expect', 'hint', 'hints'], label, p.warnings);
@@ -141,6 +142,17 @@ export function validateTestsSpec(spec: unknown, opts: ValidateOptions = {}): Sp
       if (!(Number.isInteger(sc.maxOps) && (sc.maxOps as number) > 0)) p.errors.push(`${label}: scan.maxOps must be a positive integer`);
       if (sc.exclusive !== undefined && !(isStrArray(sc.exclusive) && sc.exclusive.length > 0 && sc.exclusive.every(n => /^[A-Za-z_][A-Za-z0-9_]*$/.test(n)))) p.errors.push(`${label}: scan.exclusive must be a non-empty list of C identifiers`);
       if (sc.maxLiteral !== undefined && !(Number.isInteger(sc.maxLiteral) && (sc.maxLiteral as number) >= 0)) p.errors.push(`${label}: scan.maxLiteral must be a non-negative integer`);
+    } else if (kinds[0] === 'file') {
+      unknownKeys(t, ['name', 'file', 'hint', 'hints'], label, p.warnings);
+      const f = t.file;
+      if (!isObj(f)) { p.errors.push(`${label}: "file" must be an object`); return; }
+      unknownKeys(f, ['path', 'expect', 'binary'], `${label}.file`, p.warnings);
+      if (typeof f.path !== 'string' || !f.path.trim()) p.errors.push(`${label}: file.path must name a file`);
+      else if (/(^|[\\/])\.\.([\\/]|$)/.test(f.path) || /^([\\/]|[A-Za-z]:)/.test(f.path)) p.errors.push(`${label}: file.path must be a relative path inside the project`);
+      if (f.expect === undefined) p.errors.push(`${label}: file.expect is required`);
+      else checkTextExpect(f.expect, `${label}: file.expect`, p);
+      if (f.binary !== undefined && f.binary !== true) p.errors.push(`${label}: file.binary can only be true`);
+      if (opts.runsIn === 'browser') p.errors.push(`${label}: file tests only run natively (check.mjs), not in the browser`);
     } else {
       unknownKeys(t, ['name', 'make', 'hint', 'hints'], label, p.warnings);
       const m = t.make;
