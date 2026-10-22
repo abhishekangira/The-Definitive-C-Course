@@ -1,0 +1,37 @@
+{
+  "generatedBy": "tools/verify sessions; gcc: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0; clang22: Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80); gdb: GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1; valgrind: valgrind-3.22.0; lldb: lldb version 22.1.8; make: GNU Make 4.3",
+  "module": "m03",
+  "sessions": {
+    "probe-6a-regen": {
+      "dir": "sessions/probe-6a-regen",
+      "hash": "e21c47a49892e2a2",
+      "id": "probe-6a-regen",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "cmd": "$CC $CFLAGS main.c -o prog && ./prog",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "probe\n"
+          }
+        ],
+        "linux-gcc": [
+          {
+            "cmd": "$CC $CFLAGS main.c -o prog && ./prog",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "probe\n"
+          }
+        ]
+      },
+      "sources": {
+        "main.c": "#include <stdio.h>\n\nint main(void) {\n  printf(\"probe\\n\");\n  return 0;\n}\n"
+      }
+    }
+  }
+}
