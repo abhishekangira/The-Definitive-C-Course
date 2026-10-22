@@ -860,10 +860,10 @@
       "answer": {
         "native": {
           "outcome": "runs",
-          "stdout": "1866272040\n"
+          "stdout": ""
         },
         "outcome": "runs",
-        "stdout": "0\n"
+        "stdout": ""
       },
       "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"%d\\n\", 3.5);\n    return 0;\n}\n",
       "flagged": false,
@@ -896,33 +896,25 @@
           "observed": [
             {
               "exit": 0,
-              "signal": null,
               "stderr": "",
-              "stdout": "1375595416\n"
-            },
-            {
-              "exit": 0,
-              "signal": null,
-              "stderr": "",
-              "stdout": "1653638552\n"
-            },
-            {
-              "exit": 0,
-              "signal": null,
-              "stderr": "",
-              "stdout": "-971979816\n"
+              "stdout": ""
             }
           ],
           "run": {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "1375595416\n"
+            "stdout": ""
           },
           "sanitizer": {
             "ok": true
           },
-          "target": "linux-x86_64-clang22"
+          "target": "linux-x86_64-clang22",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
         },
         "linux-x86_64-gcc13": {
           "compile": {
@@ -943,33 +935,25 @@
           "observed": [
             {
               "exit": 0,
-              "signal": null,
               "stderr": "",
-              "stdout": "1866272040\n"
-            },
-            {
-              "exit": 0,
-              "signal": null,
-              "stderr": "",
-              "stdout": "-392156648\n"
-            },
-            {
-              "exit": 0,
-              "signal": null,
-              "stderr": "",
-              "stdout": "398652632\n"
+              "stdout": ""
             }
           ],
           "run": {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "1866272040\n"
+            "stdout": ""
           },
           "sanitizer": {
             "ok": true
           },
-          "target": "linux-x86_64-gcc13"
+          "target": "linux-x86_64-gcc13",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
         },
         "wasm32-clang22": {
           "compile": {
@@ -990,18 +974,22 @@
           "observed": [
             {
               "exit": 0,
-              "signal": null,
               "stderr": "",
-              "stdout": "0\n"
+              "stdout": ""
             }
           ],
           "run": {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "0\n"
+            "stdout": ""
           },
-          "target": "wasm32-clang22"
+          "target": "wasm32-clang22",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
         }
       }
     },
@@ -1240,9 +1228,9 @@
         "outcome": "runs",
         "stdout": "Hello, world!\n2 + 2 = 4\n"
       },
-      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"Hello, world!\\n\");\n    printf(\"%d + %d = %d\\n\", 2, 2, 2 + 2);\n    return 0;\n}\n",
+      "code": "#include <stdio.h>\n\nint main(void) {\n    printf(\"Hello, world!\\n\");\n    printf(\"%d + %d = %d\\n\", 2, 2, 2 + 2);\n    return 0;\n}\n/* probe for #97, never merged */\n",
       "flagged": false,
-      "hash": "04ddbac576f1c663",
+      "hash": "c416d43b929158dd",
       "id": "hello-two-lines",
       "lesson": "01-hello-compiled-world",
       "meta": {
@@ -2399,10 +2387,10 @@
       "answer": {
         "native": {
           "outcome": "runs",
-          "stdout": "-1538093314\n"
+          "stdout": ""
         },
         "outcome": "runs",
-        "stdout": "6\n"
+        "stdout": ""
       },
       "code": "#include <stdio.h>\n\nint main(void) {\n    int total;\n    for (int i = 1; i <= 3; i++) {\n        total += i;\n    }\n    printf(\"%d\\n\", total);\n    return 0;\n}\n",
       "flagged": false,
@@ -2442,33 +2430,25 @@
           "observed": [
             {
               "exit": 0,
-              "signal": null,
               "stderr": "",
-              "stdout": "2091701470\n"
-            },
-            {
-              "exit": 0,
-              "signal": null,
-              "stderr": "",
-              "stdout": "387534558\n"
-            },
-            {
-              "exit": 0,
-              "signal": null,
-              "stderr": "",
-              "stdout": "-1207696194\n"
+              "stdout": ""
             }
           ],
           "run": {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "2091701470\n"
+            "stdout": ""
           },
           "sanitizer": {
             "ok": true
           },
-          "target": "linux-x86_64-clang22"
+          "target": "linux-x86_64-clang22",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
         },
         "linux-x86_64-gcc13": {
           "compile": {
@@ -2480,33 +2460,25 @@
           "observed": [
             {
               "exit": 0,
-              "signal": null,
               "stderr": "",
-              "stdout": "-1538093314\n"
-            },
-            {
-              "exit": 0,
-              "signal": null,
-              "stderr": "",
-              "stdout": "60017534\n"
-            },
-            {
-              "exit": 0,
-              "signal": null,
-              "stderr": "",
-              "stdout": "360782958\n"
+              "stdout": ""
             }
           ],
           "run": {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "-1538093314\n"
+            "stdout": ""
           },
           "sanitizer": {
             "ok": true
           },
-          "target": "linux-x86_64-gcc13"
+          "target": "linux-x86_64-gcc13",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
         },
         "wasm32-clang22": {
           "compile": {
@@ -2534,18 +2506,22 @@
           "observed": [
             {
               "exit": 0,
-              "signal": null,
               "stderr": "",
-              "stdout": "6\n"
+              "stdout": ""
             }
           ],
           "run": {
             "exit": 0,
-            "signal": null,
             "stderr": "",
-            "stdout": "6\n"
+            "stdout": ""
           },
-          "target": "wasm32-clang22"
+          "target": "wasm32-clang22",
+          "ub": {
+            "outcomes": [
+              "runs"
+            ],
+            "runs": 3
+          }
         }
       }
     },
