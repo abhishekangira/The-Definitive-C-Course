@@ -1,0 +1,10 @@
+# Cases for `tests.json`. Expected stdout and exit codes are generated: npm run exercises:expect
+memory: true
+cases:
+  - name: greets Ada
+    stdin: "Ada\n"
+  - name: greets Grace
+    stdin: "Grace\n"
+  - name: no name exits with an error
+    stdin: ""
+    hint: "When scanf reads nothing, return 1 before printing."

@@ -1,0 +1,6 @@
+{
+  "generatedBy": "tools/verify --target-run; Apple clang version 15.0.0 (clang-1500.3.9.4)",
+  "module": "m03",
+  "samples": {},
+  "target": "macos-arm64-appleclang"
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "sources": [
+    "hello.c"
+  ],
+  "warnings": "error",
+  "memory": true,
+  "tests": [
+    {
+      "name": "prints the greeting",
+      "run": {
+        "stdin": ""
+      },
+      "expect": {
+        "stdout": "hello, world\n",
+        "exit": 0
+      },
+      "hint": "Keep the printf as it is: only the way main is declared needs to change."
+    }
+  ]
+}

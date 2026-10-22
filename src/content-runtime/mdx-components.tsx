@@ -5,6 +5,7 @@ import { CodeSample } from '../interactions/CodeSample';
 import { Choice } from '../interactions/Choice';
 import { CompilerError } from '../interactions/CompilerError';
 import { NumberDrill } from '../interactions/NumberDrill';
+import { PlatformPicker } from '../interactions/PlatformPicker';
 import { Analogy, Callout, CodeBlock } from '../components/Content';
 import { Explainer } from '../components/Explainer';
 import { YouTube } from '../components/YouTube';
@@ -57,6 +58,7 @@ export const mdxComponents = {
   YouTube,
   TestExample,
   Transcript,
+  PlatformPicker,
   table: Table,
   Kbd: ({ children }: { children: ReactNode }) => <kbd>{children}</kbd>,
 };

@@ -1,0 +1,30 @@
+id: m03
+number: 3
+title: "Going Native: Toolchain, Debugger, Sanitizers & Make"
+why: >-
+  The browser compiled and ran your C for you. Real C runs on your own machine: you install a compiler, run it
+  by hand, step through a crash in a debugger, let the sanitizers find the memory bugs your eyes miss, and let
+  make rebuild only what changed. Every later module works this way.
+hours: 10
+weeks: 2
+time: { lessons: 5, project: 3, variants: 0.5, quizCheckpoint: 1, other: 0.5 }
+lessonsRunIn: both
+projectRunsIn: native
+successCriteria:
+  - { sc: SC1, level: D }
+  - { sc: SC4, level: D }
+  - { sc: SC9, level: I }
+  - { sc: SC11, level: I }
+resources:
+  - title: "Effective C (2nd ed.), Robert C. Seacord"
+    detail: 'Chapter 11 "Debugging, Testing, and Analysis"'
+  - title: "GNU Make manual"
+    detail: 'Chapter 2 "An Introduction to Makefiles"'
+    url: https://www.gnu.org/software/make/manual/html_node/Introduction.html
+lessons:
+  - 01-install-and-doctor
+problemSet: []
+project: toolchain-lab
+coreExercises: []
+retrieval:
+  sources: [m01, m02]
