@@ -71,6 +71,15 @@ describe('progress import: migrate', () => {
     expect(() => mergeProgress(emptyProgress(), p)).not.toThrow();
   });
 
+  it('keeps verdict and predict64Verdict, and drops a value outside the three', () => {
+    const kept = migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":true,"verdict":"close","predict64":"q","predict64Correct":false,"predict64Verdict":"wrong","extra":true,"at":"${at}"}}}`));
+    expect(Object.keys(kept.samples.a).sort()).toEqual(['at', 'correct', 'predict64', 'predict64Correct', 'predict64Verdict', 'prediction', 'verdict']);
+    expect(kept.samples.a).toEqual({ prediction: 'p', correct: true, verdict: 'close', predict64: 'q', predict64Correct: false, predict64Verdict: 'wrong', at });
+    const dropped = migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":false,"verdict":"near","predict64Verdict":"nope","at":"${at}"}}}`));
+    expect(dropped.samples.a).toEqual({ prediction: 'p', correct: false, at });
+    expect(JSON.parse(JSON.stringify(dropped))).toEqual(dropped);
+  });
+
   it('ignores unknown top-level keys and bad settings values', () => {
     const p = migrate(hostile(`{${head},"evil":"<script>","settings":{"platform":"amiga","stdinMode":{"a":1},"storedOutputMode":"yes","x":1}}`));
     expect(Object.keys(p).sort()).toEqual(['cards', 'createdAt', 'exercises', 'lessons', 'projects', 'quizzes', 'samples', 'seed', 'settings', 'streak', 'version']);

@@ -32,9 +32,10 @@
 .muted { color: var(--text-muted); font-size: 0.9rem; }
 .stdin { font-size: 0.9rem; color: var(--text-muted); }
 
-.good, .bad, .note { padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); font-size: 0.9375rem; }
+.good, .bad, .close, .note { padding: var(--space-3) var(--space-4); border-radius: var(--radius-sm); font-size: 0.9375rem; }
 .good { background: var(--ok-soft); color: var(--text); border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); }
 .bad { background: var(--err-soft); color: var(--text); border: 1px solid color-mix(in srgb, var(--err) 40%, transparent); }
+.close { background: var(--warn-soft); color: var(--warn-ink); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
 .note { background: var(--info-soft); }
 .goodText { color: var(--ok); font-weight: 600; margin: 0; }
 .badText { color: var(--err); font-weight: 600; margin: 0; }
@@ -45,6 +46,17 @@
 .nativeHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .nativeLabel { font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
 .stored { margin: 0; background: var(--terminal-bg); color: var(--terminal-text); border-color: var(--terminal-bg); white-space: pre-wrap; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.compareCol { min-width: 0; }
+.compareLabel { font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
+.compareBox { overflow-x: auto; }
+.compareLine { white-space: pre; min-height: 1.3em; }
+/* Colour plus an underline: the mark is not colour alone. The pair is --terminal-err on --terminal-bg. */
+.diffMark { color: var(--terminal-err); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+.emptyNote { color: var(--terminal-muted); font-size: 0.85em; }
+@media (max-width: 600px) {
+  .compare { grid-template-columns: 1fr; }
+}
 .platform { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: 0.9rem; max-width: 100%; }
 .platform select { max-width: 100%; }
 

@@ -4,13 +4,15 @@
 import type { ReactNode } from 'react';
 
 export type IconName =
-  | 'check' | 'cross' | 'minus'
+  | 'check' | 'cross' | 'almost' | 'minus'
   | 'arrow-left' | 'arrow-right' | 'arrow-up' | 'arrow-down'
   | 'indent' | 'outdent' | 'restart' | 'play' | 'flame' | 'sliders' | 'dot' | 'chat';
 
 const PATHS: Record<IconName, ReactNode> = {
   check: <path d="M3 8.5l3.2 3.2L13 4.5" />,
   cross: <path d="M4 4l8 8M12 4l-8 8" />,
+  // A circle with a bar: the third verdict mark (close), not a check and not a cross.
+  almost: <><circle cx="8" cy="8" r="5.25" /><path d="M5 8h6" /></>,
   minus: <path d="M4 8h8" />,
   'arrow-left': <path d="M13 8H3M7 4L3 8l4 4" />,
   'arrow-right': <path d="M3 8h10M9 4l4 4-4 4" />,
@@ -29,7 +31,7 @@ const PATHS: Record<IconName, ReactNode> = {
 export function Icon({ name, label }: { name: IconName; label?: string }) {
   return (
     <svg
-      className="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className="icon" data-icon={name} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
       focusable="false" {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}
     >
       {PATHS[name]}
@@ -37,7 +39,7 @@ export function Icon({ name, label }: { name: IconName; label?: string }) {
   );
 }
 
-/** The right/wrong mark that sits before a verdict such as "Correct." or "Not quite." */
-export function Mark({ ok }: { ok: boolean }) {
-  return <Icon name={ok ? 'check' : 'cross'} />;
+/** The right/wrong mark that sits before a verdict such as "Correct." or "Not quite." `ok="close"` is the third state; a boolean keeps every existing caller. */
+export function Mark({ ok }: { ok: boolean | 'close' }) {
+  return <Icon name={ok === 'close' ? 'almost' : ok ? 'check' : 'cross'} />;
 }

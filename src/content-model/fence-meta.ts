@@ -20,7 +20,7 @@ export function parseRawMeta(meta: string | null | undefined): RawMeta {
 
 const KNOWN = new Set([
   'id', 'fragment', 'predict', 'choices', 'stdin', 'args', 'expect', 'platform', 'predict64', 'reason',
-  'target', 'stdout', 'posix', 'guardrail', 'sanitize', 'trace', 'timeout', 'norm', 'files', 'run',
+  'target', 'stdout', 'posix', 'guardrail', 'sanitize', 'trace', 'timeout', 'norm', 'files', 'run', 'match',
 ]);
 
 export class FenceMetaError extends Error {}
@@ -55,6 +55,9 @@ export function toSampleMeta(raw: RawMeta): SampleMeta | null {
       expectBy[m[1] as CompilerKey] = v as Expect;
       continue;
     }
+    if (k === 'match' && raw[k] !== 'exact' && raw[k] !== 'close') {
+      throw new FenceMetaError(`bad match=${String(raw[k])} (use exact or close)`);
+    }
     if (!KNOWN.has(k)) throw new FenceMetaError(`unknown fence key "${k}"`);
   }
   const str = (k: string) => (typeof raw[k] === 'string' ? (raw[k] as string) : undefined);
@@ -70,6 +73,7 @@ export function toSampleMeta(raw: RawMeta): SampleMeta | null {
   const stdoutMode = str('stdout') as SampleMeta['stdoutMode'];
   if (stdoutMode && !['tty', 'pipe', 'both'].includes(stdoutMode)) throw new FenceMetaError(`bad stdout=${stdoutMode}`);
   const p64 = str('predict64');
+  const match = str('match');
   return {
     id,
     predict,
@@ -90,5 +94,6 @@ export function toSampleMeta(raw: RawMeta): SampleMeta | null {
     timeout: str('timeout') ? Number(str('timeout')) : undefined,
     norm: str('norm') as SampleMeta['norm'],
     files: str('files')?.split(','),
+    ...(match === 'exact' || match === 'close' ? { match } : {}),
   };
 }

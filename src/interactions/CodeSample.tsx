@@ -9,7 +9,7 @@ import { useCRun } from '../runtime/useCRun';
 import { useCardDone, useSamples } from '../lesson/LessonContext';
 import { update, useProgress } from '../progress/store';
 import { PlatformPicker } from './PlatformPicker';
-import { describeOutcome, nativeFor, normOutput, storedOutputText, TARGET_LABEL } from './platform';
+import { applyMatch, describeOutcome, nativeFor, normOutput, outputDiff, predictionVerdict, storedOutputText, TARGET_LABEL, type DiffRow, type PredictionVerdict } from './platform';
 import { Mark } from '../components/Icon';
 import styles from './Interaction.module.css';
 
@@ -20,6 +20,44 @@ const OUTCOMES = [
 ] as const;
 
 function outcomeKey(o: string): string { return o.startsWith('exit:') ? (o === 'exit:0' ? 'runs' : 'runtime-error') : o; }
+
+const CLOSE_TEXT = 'Almost: the values are right, but the spacing, punctuation or line breaks differ.';
+
+function countsAsRight(v: PredictionVerdict): boolean { return v === 'exact' || v === 'close'; }
+
+function DiffLines({ row }: { row: DiffRow }) {
+  return (
+    <div className={styles.compareLine} data-line="" data-gap={row.gap ? '' : undefined} data-blank={row.blank ? '' : undefined}>
+      {row.blank && <span className={styles.emptyNote}>empty line</span>}
+      {!row.gap && row.chunks.filter(c => c.text !== '').map((c, i) => (
+        c.mark
+          ? <span key={i} className={styles.diffMark} data-diff="">{c.text}</span>
+          : <span key={i}>{c.text}</span>
+      ))}
+    </div>
+  );
+}
+
+/** The two labelled boxes. They sit outside the role=status verdict so a screen reader announces the verdict, not the output. */
+function OutputCompare({ predicted, actual }: { predicted: string; actual: string }) {
+  const diff = outputDiff(predicted, actual);
+  const column = (label: string, which: 'predicted' | 'actual', rows: DiffRow[], empty: boolean) => (
+    <div className={styles.compareCol} key={which}>
+      <div className={styles.compareLabel}>{label}</div>
+      <div className={`${styles.stored} ${styles.compareBox}`} data-compare={which}>
+        {empty
+          ? <div className={styles.compareLine} data-line="">(nothing)</div>
+          : rows.map((row, i) => <DiffLines key={i} row={row} />)}
+      </div>
+    </div>
+  );
+  return (
+    <div className={styles.compare}>
+      {column('You predicted', 'predicted', diff.predicted, diff.predictedEmpty)}
+      {column('Actual output', 'actual', diff.actual, diff.actualEmpty)}
+    </div>
+  );
+}
 
 export function CodeSample({ id, code, meta: metaJson }: { id: string; code: string; meta: string }) {
   const meta = useMemo(() => JSON.parse(metaJson) as SampleMeta, [metaJson]);
@@ -45,16 +83,17 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const storedMode = Boolean(progress.settings.storedOutputMode) && !nativeOnly;
 
   const answerText = sample ? normOutput(sample.answer.stdout) : '';
-  const isCorrect = (pred: string): boolean => {
-    if (!sample) return false;
-    if (predictKind === 'outcome') return pred === outcomeKey(sample.answer.outcome);
-    if (predictKind === 'choice') return pred.trim() === answerText.trim();
-    return normOutput(pred) === answerText;
+  const verdictFor = (pred: string, actual: string): PredictionVerdict => {
+    if (!sample) return 'wrong';
+    if (predictKind === 'outcome') return pred === outcomeKey(sample.answer.outcome) ? 'exact' : 'wrong';
+    if (predictKind === 'choice') return pred.trim() === answerText.trim() ? 'exact' : 'wrong';
+    return applyMatch(predictionVerdict(pred, actual), meta.match);
   };
 
   const commit = () => {
     setCommitted(true);
-    update(p => { p.samples[id] = { prediction, correct: isCorrect(prediction), at: new Date().toISOString() }; });
+    const verdict = verdictFor(prediction, sample?.answer.stdout ?? '');
+    update(p => { p.samples[id] = { prediction, correct: countsAsRight(verdict), verdict, at: new Date().toISOString() }; });
   };
 
   const run = async () => {
@@ -65,8 +104,8 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
 
   const submitP64 = () => {
     setP64Done(true);
-    const correct = native?.run ? normOutput(p64) === normOutput(native.run.stdout) : false;
-    update(p => { const s = p.samples[id]; if (s) { s.predict64 = p64; s.predict64Correct = correct; } });
+    const verdict = applyMatch(predictionVerdict(p64, native?.run?.stdout ?? ''), meta.match);
+    update(p => { const s = p.samples[id]; if (s) { s.predict64 = p64; s.predict64Correct = countsAsRight(verdict); s.predict64Verdict = verdict; } });
     markDone();
   };
 
@@ -79,9 +118,9 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
     );
   }
 
-  const correct = committed ? isCorrect(prediction) : null;
+  const verdict = committed ? verdictFor(prediction, sample.answer.stdout) : null;
   const needs64 = sample.flagged && sample.meta.predict64 && sample.meta.predict64 !== 'none';
-  const right64 = Boolean(native?.run) && normOutput(p64) === normOutput(native?.run?.stdout ?? '');
+  const p64Verdict = p64Done ? applyMatch(predictionVerdict(p64, native?.run?.stdout ?? ''), meta.match) : null;
 
   return (
     <div className={styles.box} data-interaction="predict" data-sample={id}>
@@ -161,16 +200,18 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
         </>
       )}
 
-      {revealed && predictKind !== 'none' && correct !== null && (
-        <div className={correct ? styles.good : styles.bad} role="status">
-          {correct ? <strong><Mark ok /> Your prediction was right.</strong> : <strong><Mark ok={false} /> Not quite.</strong>}{' '}
-          {!correct && predictKind === 'output' && (
-            <span>Expected <code className={styles.pre}>{answerText || '(nothing)'}</code>; you predicted <code className={styles.pre}>{normOutput(prediction) || '(nothing)'}</code>.</span>
-          )}
-          {!correct && predictKind === 'outcome' && <span>{describeOutcome(sample.results['wasm32-clang22']?.run, sample.results['wasm32-clang22']?.compile.ok ?? true)}</span>}
-          {!correct && predictKind === 'choice' && <span>It prints <code>{answerText}</code>.</span>}
-          <span className={styles.muted}> The explanation follows below.</span>
-        </div>
+      {revealed && predictKind !== 'none' && verdict !== null && (
+        <>
+          <div className={verdict === 'exact' ? styles.good : verdict === 'close' ? styles.close : styles.bad} role="status">
+            {verdict === 'exact' && <strong><Mark ok /> Your prediction was right.</strong>}
+            {verdict === 'close' && <strong><Mark ok="close" /> {CLOSE_TEXT}</strong>}
+            {verdict === 'wrong' && <strong><Mark ok={false} /> Not quite.</strong>}{' '}
+            {verdict !== 'exact' && predictKind === 'outcome' && <span>{describeOutcome(sample.results['wasm32-clang22']?.run, sample.results['wasm32-clang22']?.compile.ok ?? true)}</span>}
+            {verdict !== 'exact' && predictKind === 'choice' && <span>It prints <code>{answerText}</code>.</span>}
+            <span className={styles.muted}> The explanation follows below.</span>
+          </div>
+          {verdict !== 'exact' && predictKind === 'output' && <OutputCompare predicted={prediction} actual={sample.answer.stdout} />}
+        </>
       )}
 
       {revealed && sample.flagged && (
@@ -191,8 +232,14 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
             <p className={styles.warn}>Your edit changes this program, so the stored 64-bit output no longer applies. Run it on your own machine (Module 3 shows how) to see the native result.</p>
           ) : (
             <>
-              {needs64 && <p className={right64 ? styles.goodText : styles.badText}>
-                <Mark ok={right64} /> {right64 ? 'Right for 64-bit too.' : 'The 64-bit answer differs from your prediction:'}</p>}
+              {needs64 && p64Verdict && (
+                <div className={p64Verdict === 'exact' ? styles.good : p64Verdict === 'close' ? styles.close : styles.bad} role="status">
+                  {p64Verdict === 'exact' && <strong><Mark ok /> Right for 64-bit too.</strong>}
+                  {p64Verdict === 'close' && <strong><Mark ok="close" /> {CLOSE_TEXT}</strong>}
+                  {p64Verdict === 'wrong' && <strong><Mark ok={false} /> Not quite.</strong>}
+                </div>
+              )}
+              {needs64 && p64Verdict && p64Verdict !== 'exact' && <OutputCompare predicted={p64} actual={native?.run?.stdout ?? ''} />}
               <div className={styles.nativeLabel}>{TARGET_LABEL[native!.target]}{native!.fallback ? ' (stored; your platform’s run isn’t available yet)' : ' (stored output from a real run)'}</div>
               <pre className={styles.stored}>{storedOutputText(sample, native?.run)}</pre>
               <div className={styles.muted}>{describeOutcome(native?.run, sample.results[native!.target]?.compile.ok ?? true)}</div>

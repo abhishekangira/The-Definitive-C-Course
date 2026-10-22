@@ -139,7 +139,7 @@ function lowerFences(tree: Root, file: string, mod: ModuleCtx, r: FileReporter):
     }
     const info: SampleInfo = { id: meta.id, file, line: at, module: mod.id, where: 'lesson', meta, code: node.value, warns: Object.keys(parsed.ext.warnByTarget).length > 0 };
     mod.samples.set(meta.id, [...(mod.samples.get(meta.id) ?? []), info]);
-    checkSampleMeta(meta, node.value, at, r, { moduleId: mod.id, standalone });
+    checkSampleMeta(meta, node.value, at, r, { moduleId: mod.id, standalone, lesson: true });
     replace(lowered(result.node, node, { lowered: true, sample: info }));
   });
 }

@@ -244,6 +244,8 @@ export interface SampleMeta {
   /** Per-compiler overrides of `expect`, e.g. gcc 13 only warns where clang 22 errors. */
   expectBy?: Partial<Record<CompilerKey, Expect>>;
   predict?: 'output' | 'outcome' | 'choice' | 'none';
+  /** `exact` turns a close prediction into wrong. `close` (the default, written out where formatting could be the lesson) keeps it. */
+  match?: 'exact' | 'close';
   choices?: string[];
   stdin?: string;
   args?: string[];
