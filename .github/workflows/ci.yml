@@ -100,21 +100,21 @@ jobs:
           key: verify-${{ runner.os }}-${{ hashFiles('content/**', 'src/runtime/c/**', 'tools/verify/**', 'tools/shared/**', 'package-lock.json') }}
           restore-keys: verify-${{ runner.os }}-
 
-      # CI owns src/generated/{samples,traces}. On a same-repo PR, regenerate them here (read-only token) and,
+      # CI owns src/generated/{samples,traces,sessions}. On a same-repo PR, regenerate them here (read-only token) and,
       # if a behaviour change shows up, hand the files to the `commit-generated` job as an artifact. This run
       # then skips the remaining checks and fails (last step), because they would be judging a head that is
       # about to be replaced. Fork PRs and pushes to main skip this and rely on the --check steps below.
       # verify keeps files that differ only by version strings or UB garbage, so a PR that changes no code
       # fence produces no commit.
-      - name: Regenerate samples and traces
+      - name: Regenerate samples, traces and sessions
         id: regen
         if: needs.changes.outputs.code == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         run: |
           npm run verify
-          if [ -n "$(git status --porcelain src/generated/samples src/generated/traces)" ]; then
+          if [ -n "$(git status --porcelain src/generated/samples src/generated/traces src/generated/sessions)" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
             mkdir -p regenerated
-            git ls-files -m -o --exclude-standard src/generated/samples src/generated/traces | tar -cf regenerated/files.tar -T -
+            git ls-files -m -o --exclude-standard src/generated/samples src/generated/traces src/generated/sessions | tar -cf regenerated/files.tar -T -
           else
             echo "stale=false" >> "$GITHUB_OUTPUT"
             echo "Generated files already match."
@@ -190,7 +190,7 @@ jobs:
           path: dist
 
   # The only job with write access. It runs none of the PR's build or test code (no npm, no tests): it unpacks the files produced by `check`
-  # (validated by tools/ci/unpack-generated.mjs: regular files under src/generated/{samples,traces} only), commits them as the bot and dispatches CI for the new head.
+  # (validated by tools/ci/unpack-generated.mjs: regular files under src/generated/{samples,traces,sessions} only), commits them as the bot and dispatches CI for the new head.
   #   contents: write  -> git push to the PR branch
   #   actions: write   -> `gh workflow run` (workflow_dispatch). Needed because a push made with GITHUB_TOKEN does
   #                       not trigger workflows, so the new head would otherwise get no CI run at all.
@@ -223,7 +223,7 @@ jobs:
           fi
           # The tarball comes from a job that ran PR-authored code, so treat it as hostile. The validator
           # (tools/ci/unpack-generated.mjs, node built-ins only, unit-tested) accepts only regular files strictly under
-          # src/generated/{samples,traces}/ (no "..", absolute, "./", backslash, links, devices, directories or
+          # src/generated/{samples,traces,sessions}/ (no "..", absolute, "./", backslash, links, devices, directories or
           # extension headers), checks every member before writing anything, and writes 0644 files into a clean dir.
           node tools/ci/unpack-generated.mjs "$RUNNER_TEMP/regenerated/files.tar" "$RUNNER_TEMP/unpacked"
           # Never copy through a symlink that the branch itself may contain.
@@ -231,8 +231,8 @@ jobs:
           cp -r "$RUNNER_TEMP/unpacked/src/generated/." src/generated/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/generated/samples src/generated/traces
-          git commit -m "Regenerate samples and traces (CI)"
+          git add src/generated/samples src/generated/traces src/generated/sessions
+          git commit -m "Regenerate samples, traces and sessions (CI)"
           git push origin "HEAD:refs/heads/$HEAD_REF"
           gh workflow run ci.yml --ref "$HEAD_REF"
 

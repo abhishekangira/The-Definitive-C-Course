@@ -14,6 +14,7 @@ function makeTar(setup: (dir: string) => string[], extra: string[] = []): string
   const dir = path.join(tmp, `tree${n++}`);
   mkdirSync(path.join(dir, 'src/generated/samples'), { recursive: true });
   mkdirSync(path.join(dir, 'src/generated/traces'), { recursive: true });
+  mkdirSync(path.join(dir, 'src/generated/sessions'), { recursive: true });
   const files = setup(dir);
   const out = path.join(tmp, `a${n}.tar`);
   execFileSync('tar', [...extra, '-cf', out, ...files], { cwd: dir });
@@ -32,6 +33,28 @@ describe('unpack-generated', () => {
     expect(unpackGenerated(makeTar(good), dest)).toEqual(['src/generated/samples/m01.json', 'src/generated/traces/x.json']);
     expect(readFileSync(path.join(dest, 'src/generated/samples/m01.json'), 'utf8')).toBe('{"a":1}\n');
     expect(statSync(path.join(dest, 'src/generated/traces/x.json')).mode & 0o777).toBe(0o644);
+  });
+
+  it('accepts a native sessions file next to samples and traces (#89)', () => {
+    const tar = makeTar(dir => {
+      writeFileSync(path.join(dir, 'src/generated/sessions/m03.json'), '{"module":"m03"}\n');
+      return [...good(dir), 'src/generated/sessions/m03.json'];
+    });
+    const dest = path.join(tmp, 'out-sessions');
+    expect(unpackGenerated(tar, dest)).toEqual(['src/generated/samples/m01.json', 'src/generated/traces/x.json', 'src/generated/sessions/m03.json']);
+    expect(readFileSync(path.join(dest, 'src/generated/sessions/m03.json'), 'utf8')).toBe('{"module":"m03"}\n');
+    expect(statSync(path.join(dest, 'src/generated/sessions/m03.json')).mode & 0o777).toBe(0o644);
+  });
+
+  it('still rejects other folders and escapes from sessions', () => {
+    rejects(makeTar(dir => { mkdirSync(path.join(dir, 'src/generated/other'), { recursive: true }); writeFileSync(path.join(dir, 'src/generated/other/x.json'), '{}'); return ['src/generated/other/x.json']; }), /strictly under/);
+    rejects(makeTar(dir => { writeFileSync(path.join(dir, 'src/generated/x'), 'x'); return ['src/generated/sessions/../x']; }, ['-P']), /\.\.|strictly under/);
+    expect(pathProblem('src/generated/sessions/../x')).not.toBeNull();
+    expect(pathProblem('src/generated/sessions-evil/m03.json')).not.toBeNull();
+    expect(pathProblem('src/generated/sessions/')).not.toBeNull();
+    expect(pathProblem('src/generated/sessions')).not.toBeNull();
+    const link = makeTar(dir => { symlinkSync('/etc/passwd', path.join(dir, 'src/generated/sessions/m03.json')); return ['src/generated/sessions/m03.json']; });
+    rejects(link, /not a regular file/);
   });
 
   it('rejects a ".." segment', () => {
