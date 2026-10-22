@@ -338,10 +338,12 @@ export function parseValgrindReport(stderr: string, sources: readonly string[] =
 /**
  * Parses `leaks --atExit -- ./prog` output (macOS). [NOT VERIFIED on real macOS: written from the
  * leaks(1) documentation and published samples; the summary line is "Process 123: 2 leaks for 32 total leaked bytes."]
+ * Returns undefined when that summary line is missing: `leaks` did not report, which is not the same as "0 leaks".
  */
-export function parseLeaksReport(stdout: string, sources: readonly string[] = []): MemoryIssue[] {
+export function parseLeaksReport(stdout: string, sources: readonly string[] = []): MemoryIssue[] | undefined {
   const m = /(\d+) leaks? for (\d+) total leaked bytes/.exec(stdout);
-  if (!m || Number(m[1]) === 0) return [];
+  if (!m) return undefined;
+  if (Number(m[1]) === 0) return [];
   const names = sources.map(basename).map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
   const re = names.length ? new RegExp(`(${names.join('|')}):(\\d+)`) : /([\w.-]+\.[ch]):(\d+)/;
   const loc = re.exec(stdout.slice(m.index));

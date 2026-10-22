@@ -170,6 +170,7 @@ async function main(): Promise<void> {
   const platform = process.env.CHECK_PLATFORM ?? process.platform;
   const backend = new NativeBackend(compiler, {
     dir, cc: compiler.cc, platform, keep: args.keep, noSanitizers: !!process.env.CHECK_NO_SANITIZERS,
+    toolTimeoutMs: Number(process.env.CHECK_TOOL_TIMEOUT_MS) > 0 ? Number(process.env.CHECK_TOOL_TIMEOUT_MS) : undefined,
     learnerFiles: [...spec.sources, ...Object.keys(exerciseFiles), HARNESS_FILE],
   });
   process.on('exit', () => backend.dispose());

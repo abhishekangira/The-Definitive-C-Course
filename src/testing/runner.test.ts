@@ -225,6 +225,27 @@ describe('runTests', () => {
       .toMatchObject({ status: 'pass', note: 'AddressSanitizer, UBSan, leaks NOT checked: no leak detector found' });
   });
 
+  it('native memory check: a tool that gave no result fails it, after any real finding; without one nothing changes', async () => {
+    const hint = 'Build with -fsanitize=address,undefined -g and run it yourself.';
+    const memoryError = 'leaks did not finish within 40 s, so leaks were not checked\nleaks: something went wrong';
+    const withRun = (memory: Partial<ExecOutcome>) => fake({ memoryHint: hint, run: (a, o) => (a.opts.leakcheck ? { memoryTools: ['AddressSanitizer', 'UBSan', 'leaks'], ...memory } : goodRun(a, o)) });
+    const spec = { ...SPEC, memory: true };
+
+    const failed = (await runTests(spec, LEARNER, EXERCISE, withRun({ memoryError } satisfies Partial<ExecOutcome>).backend)).results[4];
+    expect(failed).toEqual({
+      name: 'no memory errors or leaks', kind: 'memory', status: 'fail', ms: expect.any(Number),
+      message: 'leaks did not finish within 40 s, so leaks were not checked',
+      details: ['leaks: something went wrong', 'seen while running ./main with input "Bob\\n"'], hint, hints: [hint],
+    });
+
+    const leak = { kind: 'leak', tool: 'leaks', bytes: 2, message: 'memory leak: 1 block (2 bytes) never freed (allocated at main.c:4)' } as const;
+    const real = (await runTests(spec, LEARNER, EXERCISE, withRun({ memory: [leak], memoryError } satisfies Partial<ExecOutcome>).backend)).results[4];
+    expect(real).toMatchObject({ status: 'fail', message: leak.message, details: ['seen while running ./main with input "Bob\\n"'] });
+
+    const clean = (await runTests(spec, LEARNER, EXERCISE, withRun({ memory: [] } satisfies Partial<ExecOutcome>).backend)).results[4];
+    expect(clean).toMatchObject({ status: 'pass', note: 'AddressSanitizer, UBSan, leaks' });
+  });
+
   it('make tests: skipped without make, failures explained', async () => {
     const spec: TestsSpec = { ...SPEC, tests: [{ name: 'make builds it', make: { target: 'greet', expectRebuild: ['greet.h'] } }] };
     const none = fake({ run: goodRun });

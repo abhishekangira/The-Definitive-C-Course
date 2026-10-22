@@ -153,4 +153,8 @@ describe('parseLeaksReport (macOS leaks --atExit)', () => {
   it('reports nothing when there are no leaks', () => {
     expect(parseLeaksReport('Process 1: 0 leaks for 0 total leaked bytes.', ['caesar.c'])).toEqual([]);
   });
+  it('gives undefined, not [], when the summary line is missing (leaks did not report)', () => {
+    expect(parseLeaksReport('', ['caesar.c'])).toBeUndefined();
+    expect(parseLeaksReport(sample.split('\n').filter(l => !/total leaked bytes/.test(l)).join('\n'), ['caesar.c'])).toBeUndefined();
+  });
 });

@@ -5,7 +5,7 @@
 //   Linux / WSL  ASan + UBSan, with LeakSanitizer (part of ASan) for leaks
 //   macOS        ASan + UBSan with detect_leaks=0 (Apple's runtime has no LSan) + `leaks --atExit` on a plain build
 //   no sanitizer runtime (e.g. clang without compiler-rt): valgrind on a plain build, when installed
-import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
+import { spawn, spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -74,6 +74,8 @@ export interface NativeOptions {
   keep?: boolean;
   /** Pretend there is no sanitizer runtime (CHECK_NO_SANITIZERS), to test the valgrind path. */
   noSanitizers?: boolean;
+  /** Replaces the time limits of `leaks` and valgrind (CHECK_TOOL_TIMEOUT_MS), to test a tool that never finishes. */
+  toolTimeoutMs?: number;
 }
 
 interface Proc {
@@ -100,6 +102,61 @@ export function sh(cmd: string, args: string[], opts: { cwd?: string; input?: st
     missing: code === 'ENOENT',
     outputLimit: code === 'ENOBUFS',
   };
+}
+
+/**
+ * Like sh(), for the memory tools (`leaks`, valgrind). On POSIX the command leads its own process group, which is
+ * SIGKILLed at the timeout and as soon as the leader exits; reading the pipes stops 2 s after it exits. Without this a
+ * process the tool leaves behind keeps the pipes open, so every call lasts until the timeout and the leftover outlives
+ * check.mjs (issue #101; the same fix as tools/verify/proc.ts, which check.mjs can't import).
+ */
+export function shGroup(cmd: string, args: string[], opts: { cwd?: string; input?: string; timeout: number; env?: NodeJS.ProcessEnv }): Promise<Proc> {
+  if (process.platform === 'win32') return Promise.resolve(sh(cmd, args, opts));
+  return new Promise(resolve => {
+    const child = spawn(cmd, args, { cwd: opts.cwd, env: opts.env, stdio: ['pipe', 'pipe', 'pipe'], detached: true });
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    let bytes = 0;
+    let timedOut = false;
+    let outputLimit = false;
+    let done = false;
+    const killGroup = () => { try { process.kill(-child.pid!, 'SIGKILL'); } catch { /* the group is already gone */ } };
+    const finish = (p: Partial<Proc>) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve({ status: null, signal: null, stdout: decodeBytes(Buffer.concat(out)), stderr: decodeBytes(Buffer.concat(err)), timedOut, missing: false, outputLimit, ...p });
+    };
+    const timer = setTimeout(() => { timedOut = true; killGroup(); }, opts.timeout);
+    const take = (into: Buffer[]) => (b: Buffer) => {
+      bytes += b.length;
+      if (bytes > MAX_OUTPUT) { outputLimit = true; killGroup(); return; }
+      into.push(b);
+    };
+    child.stdout.on('data', take(out));
+    child.stderr.on('data', take(err));
+    child.on('exit', () => { killGroup(); setTimeout(() => { child.stdout.destroy(); child.stderr.destroy(); }, 2000).unref(); });
+    child.on('error', e => finish({ missing: (e as NodeJS.ErrnoException).code === 'ENOENT' }));
+    child.on('close', (status, signal) => finish({ status, signal }));
+    child.stdin.on('error', () => {}); // the tool may exit without reading its input
+    child.stdin.end(opts.input ?? '');
+  });
+}
+
+const seconds = (ms: number) => `${Math.round(ms / 100) / 10} s`;
+/**
+ * Why a memory tool gave no result, or undefined when it did. The message says what was not checked, and is followed
+ * by at most the last 5 lines of the tool's stderr.
+ */
+function toolFailure(tool: string, p: Proc, limitMs: number, unchecked: string, noSummary = false): string | undefined {
+  const why = p.missing ? `${tool} was not found`
+    : p.timedOut ? `${tool} did not finish within ${seconds(limitMs)}`
+    : p.outputLimit ? `${tool} printed more than ${MAX_OUTPUT >> 20} MB and was stopped`
+    : noSummary ? `${tool} ${p.signal ? `was killed by ${p.signal}` : `exited with status ${p.status}`} without its summary line`
+    : undefined;
+  if (!why) return undefined;
+  const tail = p.stderr.split('\n').map(l => l.trimEnd()).filter(Boolean).slice(-5);
+  return [`${why}, so ${unchecked} were not checked`, ...tail].join('\n');
 }
 
 /** Finds a working C compiler: preferred, $CC, cc, clang, gcc. */
@@ -251,9 +308,11 @@ export class NativeBackend implements ExecBackend<NativeArtifact> {
     });
 
     if (a.mode === 'valgrind') {
-      const r = sh('valgrind', ['-q', `--error-exitcode=${VALGRIND_EXIT}`, '--leak-check=full', '--errors-for-leak-kinds=definite,indirect',
-        '--show-leak-kinds=definite,indirect', a.exe, ...(o.args ?? [])], { cwd: this.dir, input: o.stdin, timeout: Math.max(o.timeoutMs * 4, 20_000) });
-      return { ...base(r), memory: parseValgrindReport(r.stderr, learner), memoryTools: ['valgrind'], leaksChecked: true };
+      const limit = this.opts.toolTimeoutMs ?? Math.max(o.timeoutMs * 4, 20_000);
+      const r = await shGroup('valgrind', ['-q', `--error-exitcode=${VALGRIND_EXIT}`, '--leak-check=full', '--errors-for-leak-kinds=definite,indirect',
+        '--show-leak-kinds=definite,indirect', a.exe, ...(o.args ?? [])], { cwd: this.dir, input: o.stdin, timeout: limit });
+      const memoryError = toolFailure('valgrind', r, limit, 'memory errors and leaks');
+      return { ...base(r), memory: parseValgrindReport(r.stderr, learner), memoryTools: ['valgrind'], leaksChecked: true, ...(memoryError ? { memoryError } : {}) };
     }
 
     if (a.mode === 'asan') {
@@ -265,24 +324,31 @@ export class NativeBackend implements ExecBackend<NativeArtifact> {
       if (leaksChecked) tools.push('LeakSanitizer');
       // A crashed or timed-out run has no meaningful leak report.
       const finished = !r.timedOut && !r.signal && r.status !== ASAN_EXIT && r.status !== UBSAN_EXIT;
+      let memoryError = r.timedOut
+        ? `the program did not finish within ${seconds(o.timeoutMs)} under AddressSanitizer, so memory errors and leaks were not checked` : undefined;
       if (a.plainExe && this.platform === 'darwin') {
         tools.push('leaks');
         leaksChecked = true;
         if (finished) {
-          const l = sh('leaks', ['--atExit', '--', a.plainExe, ...(o.args ?? [])],
-            { cwd: this.dir, input: o.stdin, timeout: Math.max(o.timeoutMs * 4, 30_000), env: { ...process.env, MallocStackLogging: '1' } });
-          memory.push(...parseLeaksReport(l.stdout, learner));
+          const limit = this.opts.toolTimeoutMs ?? Math.max(o.timeoutMs * 4, 30_000);
+          const l = await shGroup('leaks', ['--atExit', '--', a.plainExe, ...(o.args ?? [])],
+            { cwd: this.dir, input: o.stdin, timeout: limit, env: { ...process.env, MallocStackLogging: '1' } });
+          const found = l.timedOut || l.missing || l.outputLimit ? undefined : parseLeaksReport(l.stdout, learner);
+          if (found) memory.push(...found);
+          else memoryError ??= toolFailure('leaks', l, limit, 'leaks', true);
         }
       } else if (a.plainExe) {
         tools.push('valgrind (leaks)');
         leaksChecked = true;
         if (finished) {
-          const v = sh('valgrind', ['-q', '--leak-check=full', '--errors-for-leak-kinds=definite,indirect', '--show-leak-kinds=definite,indirect',
-            a.plainExe, ...(o.args ?? [])], { cwd: this.dir, input: o.stdin, timeout: Math.max(o.timeoutMs * 4, 20_000) });
+          const limit = this.opts.toolTimeoutMs ?? Math.max(o.timeoutMs * 4, 20_000);
+          const v = await shGroup('valgrind', ['-q', '--leak-check=full', '--errors-for-leak-kinds=definite,indirect', '--show-leak-kinds=definite,indirect',
+            a.plainExe, ...(o.args ?? [])], { cwd: this.dir, input: o.stdin, timeout: limit });
           memory.push(...parseValgrindReport(v.stderr, learner).filter(i => i.kind === 'leak'));
+          memoryError ??= toolFailure('valgrind', v, limit, 'leaks');
         }
       }
-      return { ...base(r), memory, memoryTools: tools, leaksChecked };
+      return { ...base(r), memory, memoryTools: tools, leaksChecked, ...(memoryError ? { memoryError } : {}) };
     }
 
     const r = sh(a.exe, o.args ?? [], { cwd: this.dir, input: o.stdin, timeout: o.timeoutMs, env: this.sanitizerEnv() });

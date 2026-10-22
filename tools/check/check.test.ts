@@ -191,6 +191,94 @@ describe('memory-check fallbacks', () => {
   }, 60_000);
 });
 
+describe('macOS (simulated): a leaks that does not finish fails the memory check (issue #101)', () => {
+  /** A stand-in leaks(1) on PATH: `--help` succeeds, otherwise it runs `body` with the program as "$@". */
+  function fakeLeaks(name: string, body: string[]) {
+    const bin = path.join(tmp, `fakebin-${name}`);
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(path.join(bin, 'leaks'), ['#!/bin/sh', '[ "$1" = "--help" ] && exit 0', 'shift; shift', ...body].join('\n'));
+    chmodSync(path.join(bin, 'leaks'), 0o755);
+    return { CHECK_PLATFORM: 'darwin', PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+  }
+  const MEMORY = 'no memory errors or leaks';
+  const timed = <T>(f: () => T) => { const t0 = Date.now(); const value = f(); return { value, s: (Date.now() - t0) / 1000 }; };
+
+  it('silent: no summary on stdout, one line on stderr, exit 1', () => {
+    const env = fakeLeaks('silent', ['"$@" > /dev/null', 'echo "leaks: cannot examine process" >&2', 'exit 1']);
+    const r = checkJson(project('solution', path.join(VARIANTS, 'leaky.c')), [], env);
+    expect(byName(r, MEMORY)).toMatchObject({ status: 'fail', message: 'leaks exited with status 1 without its summary line, so leaks were not checked' });
+    expect(byName(r, MEMORY).details?.[0]).toBe('leaks: cannot examine process');
+    expect(r.completionToken).toBeUndefined();
+    expect(r.status).toBe(1);
+  }, 60_000);
+
+  it('hanging: runs the program, then never exits', () => {
+    const env = fakeLeaks('hang', ['"$@" > /dev/null', 'exec sleep 600']);
+    const { value: r, s } = timed(() => checkJson(project('solution'), [], { ...env, CHECK_TOOL_TIMEOUT_MS: '1000' }));
+    expect(byName(r, MEMORY)).toMatchObject({ status: 'fail', message: 'leaks did not finish within 1 s, so leaks were not checked' });
+    expect(r.completionToken).toBeUndefined();
+    expect(s).toBeLessThan(30);
+    // A clean summary printed before the hang doesn't count either: the run didn't finish.
+    const late = fakeLeaks('hang-after-summary', ['"$@" > /dev/null', 'echo "Process 4242: 0 leaks for 0 total leaked bytes."', 'exec sleep 600']);
+    const r2 = checkJson(project('solution'), [], { ...late, CHECK_TOOL_TIMEOUT_MS: '1000' });
+    expect(byName(r2, MEMORY)).toMatchObject({ status: 'fail', message: 'leaks did not finish within 1 s, so leaks were not checked' });
+    expect(r2.completionToken).toBeUndefined();
+  }, 60_000);
+
+  it('lingering: a correct report, but a background process keeps stdout open', () => {
+    const pids = path.join(tmp, 'linger-pids');
+    const env = { ...fakeLeaks('linger', [
+      '"$@" > /dev/null',
+      `sleep 600 & echo $! >> ${pids}`,
+      'case "$PWD" in *leaky*) echo "Process 4242: 1 leak for 2 total leaked bytes."; echo "2   caesar   0x100003e94 main + 56  caesar.c:42";;',
+      '  *) echo "Process 4242: 0 leaks for 0 total leaked bytes.";; esac',
+      'exit 0',
+    ]) };
+    const leakyDir = project('solution', path.join(VARIANTS, 'leaky.c'));
+    const leakyPath = `${leakyDir}-leaky`;
+    rmSync(leakyPath, { recursive: true, force: true });
+    spawnSync('mv', [leakyDir, leakyPath]);
+    const leaky = timed(() => checkJson(leakyPath, [], env));
+    expect(byName(leaky.value, MEMORY)).toMatchObject({ status: 'fail', message: 'memory leak: 1 block (2 bytes) never freed (allocated at caesar.c:42)' });
+    const clean = timed(() => checkJson(project('solution'), [], env));
+    expect(byName(clean.value, MEMORY)).toMatchObject({ status: 'pass', note: 'AddressSanitizer, UBSan, leaks' });
+    expect(clean.value.completionToken).toBeDefined();
+    expect([leaky.s, clean.s].every(s => s < 10), `check.mjs took ${leaky.s} s and ${clean.s} s`).toBe(true);
+    const recorded = readFileSync(pids, 'utf8').split('\n').filter(Boolean);
+    expect(recorded.length).toBeGreaterThan(0);
+    const alive = recorded.filter(pid => { const st = spawnSync('ps', ['-o', 'stat=', '-p', pid], { encoding: 'utf8' }).stdout.trim(); return st !== '' && !st.startsWith('Z'); });
+    alive.forEach(pid => spawnSync('kill', ['-9', pid]));
+    expect(alive, 'leftover processes after check.mjs exited').toEqual([]);
+  }, 120_000);
+});
+
+describe('a memory run that does not finish fails the memory check (issue #101)', () => {
+  it('valgrind (no sanitizer runtime) that never exits', () => {
+    const bin = path.join(tmp, 'fakebin-valgrind');
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(path.join(bin, 'valgrind'), ['#!/bin/sh', '[ "$1" = "--version" ] && { echo valgrind-3.22.0; exit 0; }', 'exec sleep 600'].join('\n'));
+    chmodSync(path.join(bin, 'valgrind'), 0o755);
+    const env = { CHECK_NO_SANITIZERS: '1', CHECK_TOOL_TIMEOUT_MS: '1000', PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+    const r = checkJson(project('solution'), [], env);
+    expect(byName(r, 'no memory errors or leaks')).toMatchObject({ status: 'fail', message: 'valgrind did not finish within 1 s, so memory errors and leaks were not checked' });
+    expect(r.completionToken).toBeUndefined();
+  }, 60_000);
+
+  it('a program that times out under AddressSanitizer', () => {
+    const dir = path.join(tmp, 'asan-timeout');
+    mkdirSync(dir, { recursive: true });
+    const spec = { version: 1, sources: ['spin.c'], memory: true, tests: [{ name: 'runs', run: { stdin: '', timeoutMs: 200 }, expect: { stdout: '' } }] };
+    writeFiles(dir, {
+      'check.json': JSON.stringify(spec), 'check.mjs': readFileSync(checkMjs, 'utf8'),
+      'spin.c': '#include <unistd.h>\nint main(void) { for (;;) sleep(1); }\n',
+    });
+    const r = checkJson(dir);
+    expect(byName(r, 'no memory errors or leaks')).toMatchObject({
+      status: 'fail', message: 'the program did not finish within 1 s under AddressSanitizer, so memory errors and leaks were not checked',
+    });
+  }, 60_000);
+});
+
 describe('make checks', () => {
   it('runs make targets and checks that a header change rebuilds the program', () => {
     const dir = path.join(tmp, 'make-proj');
