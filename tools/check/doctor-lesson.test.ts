@@ -1,6 +1,6 @@
 // Lesson 3.1 asks which "my machine" value fits an Apple-chip Mac whose Node runs under Rosetta. The answer is a
-// fact about the doctor, so it is checked against the doctor's own mapping (machineFor) and the labels the
-// <PlatformPicker /> shows: change either the lesson's answer or the mapping and this fails.
+// fact about the doctor, so it is checked against the doctor's own mapping (assess(facts).machine, exported from
+// tools/check/src/doctor.ts) and the labels the <PlatformPicker /> shows: change either the lesson's answer or the mapping and this fails.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +11,12 @@ import { visit } from 'unist-util-visit';
 import { describe, expect, it } from 'vitest';
 import { PLATFORM_LABEL } from '../../src/interactions/platform';
 import type { Platform } from '../../src/progress/store';
-import { assess, machineFor, type DoctorFacts } from './src/doctor';
+import { assess, type DoctorFacts } from './src/doctor';
+
+/** The "my machine" value the doctor suggests for these facts (assess() is what `node check.mjs --doctor` prints). */
+const machineFor = (f: Partial<DoctorFacts>): Platform | undefined => assess({
+  nodeVersion: '22.0.0', wsl: false, tools: { gdb: true, lldb: true, valgrind: true, leaks: true }, sizes: {}, ...f,
+} as DoctorFacts).machine;
 
 const LESSON = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../content/modules/m03-going-native/lessons/01-install-and-doctor.mdx');
 
@@ -47,9 +52,8 @@ describe('lesson 3.1: the "my machine" question after <PlatformPicker />', () =>
 
   it("the lesson's answer is the doctor's value, and every distractor is another PlatformPicker label", () => {
     const { options, answer } = choiceAfterPicker();
-    const want = machineFor(rosetta);
+    const want = assess(rosetta).machine;
     expect(want).toBeDefined();
-    expect(assess(rosetta).machine).toBe(want);
     expect(options[answer]).toBe(PLATFORM_LABEL[want!]);
     const others = new Set(Object.entries(PLATFORM_LABEL).filter(([k]) => k !== want).map(([, label]) => label));
     const distractors = options.filter((_, i) => i !== answer);

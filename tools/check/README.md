@@ -47,7 +47,7 @@ path can be tested on Linux), `CHECK_NO_SANITIZERS=1` pretends no sanitizer runt
 whether gdb, lldb, Valgrind and `leaks` are on `PATH`, which memory checks work (`NativeBackend.capabilities`),
 the cache-line and page size (`getconf` on Linux, `sysctl` on macOS), the `sizeof` table of a small program
 built with that compiler, and the "my machine" value to pick in the course (`mac-arm`, `mac-intel`, `wsl`,
-`linux-x86` or `linux-arm`; `machineFor()`, which `doctor-lesson.test.ts` checks lesson 3.1's question against). On an Apple-chip Mac whose Node runs under Rosetta (`process.arch` is `x64`) it
+`linux-x86` or `linux-arm`; `assess()` returns it, and `doctor-lesson.test.ts` checks lesson 3.1's question against it). On an Apple-chip Mac whose Node runs under Rosetta (`process.arch` is `x64`) it
 says so and how to change it. A value it cannot read prints as `unknown`, never as 0.
 
 Exit status: `1` when there is no C compiler or Node is older than 18, each with the command to install it;
