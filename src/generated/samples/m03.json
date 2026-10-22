@@ -1,0 +1,5 @@
+{
+  "generatedBy": "tools/verify; gcc: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0; clang22: Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80); wasm: yowasp-clang 22.0.0-git20542-10",
+  "module": "m03",
+  "samples": {}
+}

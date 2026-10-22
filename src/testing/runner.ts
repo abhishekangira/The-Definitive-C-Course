@@ -4,17 +4,17 @@
 //
 // Order of checks (this order is also the progress code's pass bitmap):
 //   0. "compiles without warnings" (or "compiles" when spec.warnings is "allow");
-//   1…n. spec.tests in order (I/O, unit, make and scan tests);
+//   1…n. spec.tests in order (I/O, unit, make, scan and file tests);
 //   n+1. "no memory errors or leaks" when spec.leakcheck or spec.memory is set.
 // If the learner's code does not compile, every check after the first is skipped.
-import type { Diagnostic, IoTest, MakeTest, ScanTest, TestsSpec, UnitTest } from '../content-model/types';
-import { checkExit, checkText, commandLine, describeCrash, findRuntimeError, type FirstDiff, type MatchHow } from './compare';
+import type { Diagnostic, FileTest, IoTest, MakeTest, ScanTest, TestsSpec, UnitTest } from '../content-model/types';
+import { checkExit, checkText, commandLine, decodeBytes, describeCrash, findRuntimeError, type FirstDiff, type MatchHow } from './compare';
 import type { CompileOutcome, ExecBackend, ExecOutcome } from './exec';
 import { buildHarness, CHECK_H, CHECK_H_FILE, extractCheckNames, HARNESS_FILE, NEVER_REPORTED, parseHarnessOutput, type SubtestResult } from './harness';
 import { dedupeIssues, leakEventsToIssues, type MemoryIssue } from './memory';
 import { scanFunction } from './scan';
 import {
-  COMPILE_ALLOW_WARNINGS_TEST_NAME, COMPILE_TEST_NAME, hintsOf, isIoTest, isMakeTest, isScanTest, isUnitTest, MEMORY_TEST_NAME, type AnyTest,
+  COMPILE_ALLOW_WARNINGS_TEST_NAME, COMPILE_TEST_NAME, hintsOf, isFileTest, isIoTest, isMakeTest, isScanTest, isUnitTest, MEMORY_TEST_NAME, type AnyTest,
 } from './spec';
 
 // The backend contract lives in exec.ts; it is re-exported so callers need only one import.
@@ -24,7 +24,7 @@ export type { SubtestResult } from './harness';
 export type { MemoryIssue } from './memory';
 
 export type TestStatus = 'pass' | 'fail' | 'skip';
-export type TestKind = 'compile' | 'io' | 'unit' | 'make' | 'scan' | 'memory';
+export type TestKind = 'compile' | 'io' | 'unit' | 'make' | 'scan' | 'file' | 'memory';
 
 export interface TestResult {
   name: string;
@@ -84,6 +84,11 @@ export interface RunTestsOptions {
   makeTimeoutMs?: number;
   /** Executable name used in "ran: ./caesar 23" lines. Defaults to spec.binary, else sources[0] without ".c". */
   binary?: string;
+  /**
+   * Reads a file of the project folder for `file` tests; undefined when there is no such file. Only check.mjs
+   * has the learner's folder: without this, file tests are skipped (a skip is never a pass).
+   */
+  readFile?(path: string): Uint8Array | undefined;
   /** Called as each check finishes (for streaming output). */
   onResult?(result: TestResult, index: number): void;
 }
@@ -104,7 +109,7 @@ const baseName = (p: string) => p.replace(/^.*[\\/]/, '');
 /** The checks a spec produces, in report (and bitmap) order. */
 export function plannedTests(spec: TestsSpec): PlannedTest[] {
   const plan: PlannedTest[] = [{ name: spec.warnings === 'allow' ? COMPILE_ALLOW_WARNINGS_TEST_NAME : COMPILE_TEST_NAME, kind: 'compile' }];
-  for (const t of spec.tests) plan.push({ name: t.name, kind: isIoTest(t) ? 'io' : isUnitTest(t) ? 'unit' : isScanTest(t) ? 'scan' : 'make' });
+  for (const t of spec.tests) plan.push({ name: t.name, kind: isIoTest(t) ? 'io' : isUnitTest(t) ? 'unit' : isScanTest(t) ? 'scan' : isFileTest(t) ? 'file' : 'make' });
   if (spec.leakcheck || spec.memory) plan.push({ name: MEMORY_TEST_NAME, kind: 'memory' });
   return plan;
 }
@@ -302,8 +307,10 @@ export async function runTests<A>(
       r = await makeTest(t);
     } else if (isScanTest(t)) {
       r = scanTest(t);
+    } else if (isFileTest(t)) {
+      r = fileTest(t);
     } else {
-      r = { name: (t as AnyTest).name, kind: plan[i].kind, status: 'fail', message: 'this test has no "run", "unit", "make" or "scan" section (the tests file is malformed)' };
+      r = { name: (t as AnyTest).name, kind: plan[i].kind, status: 'fail', message: 'this test has no "run", "unit", "make", "scan" or "file" section (the tests file is malformed)' };
     }
     if (silentForMemory) r = skip(plan[i], `not selected (only "${options.only}")`);
     emit(i, { ...r, ms: now() - ts });
@@ -357,6 +364,26 @@ export async function runTests<A>(
     const r = scanFunction(source, t.scan);
     if (r.ok) return { ...base, status: 'pass', note: `${r.ops} of ${t.scan.maxOps} operators used` };
     return { ...base, status: 'fail', message: r.message, ...hintFields(t) };
+  }
+
+  /** A file the learner made must exist and match. Binary files are read one byte per character. */
+  function fileTest(t: FileTest): TestResult {
+    const base = { name: t.name, kind: 'file' as const };
+    const p = t.file.path;
+    if (!options.readFile) return { ...base, status: 'skip', message: `this check reads ${p} on your own machine, so only check.mjs runs it` };
+    const bytes = options.readFile(p);
+    if (bytes === undefined) return { ...base, status: 'fail', message: `there is no file ${p}`, ...hintFields(t) };
+    let text = '';
+    if (t.file.binary) for (const b of bytes) text += String.fromCharCode(b);
+    else text = decodeBytes(bytes);
+    const c = checkText(t.file.expect, text);
+    if (c.ok) return { ...base, status: 'pass' };
+    const message =
+      c.how === 'exactly' ? `${p} is not what it should be: ${c.firstDiff?.summary ?? 'it differs'}`
+      : c.how === 'containing' ? `${p} should contain ${JSON.stringify(c.expected)}, but it doesn't`
+      : c.how === 'not containing' ? `${p} should not contain ${JSON.stringify(c.expected)}`
+      : `${p} doesn't match the pattern ${c.expected}`;
+    return { ...base, status: 'fail', message, how: c.how, expected: c.expected, ...hintFields(t) };
   }
 
   async function makeTest(t: MakeTest): Promise<TestResult> {

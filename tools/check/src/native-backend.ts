@@ -86,7 +86,7 @@ interface Proc {
   outputLimit: boolean;
 }
 
-function sh(cmd: string, args: string[], opts: { cwd?: string; input?: string; timeout?: number; env?: NodeJS.ProcessEnv } = {}): Proc {
+export function sh(cmd: string, args: string[], opts: { cwd?: string; input?: string; timeout?: number; env?: NodeJS.ProcessEnv } = {}): Proc {
   const r: SpawnSyncReturns<Buffer> = spawnSync(cmd, args, {
     cwd: opts.cwd, input: opts.input ?? '', timeout: opts.timeout, env: opts.env, killSignal: 'SIGKILL', maxBuffer: MAX_OUTPUT, windowsHide: true,
   });

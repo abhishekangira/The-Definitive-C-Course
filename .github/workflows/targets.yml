@@ -22,6 +22,7 @@ on:
       - 'src/testing/**'
       - 'content/modules/m01-c-in-your-browser/project/mario-more/**'
       - 'content/modules/m02-bits-bytes-numbers/project/credit/**'
+      - 'content/modules/m03-going-native/**'
       - '.github/workflows/targets.yml'
 
 permissions:
@@ -81,24 +82,28 @@ jobs:
           path: targets-out/${{ matrix.target }}
           retention-days: 7
 
-  # check.mjs end to end on the learner platforms we cannot run locally (issue #10): build the Mario
-  # project zip, `make test` the starter (must fail, progress code) and the solution (must pass,
-  # completion token), and check each code with the app's verifyCode(). Windows is not run (WSL only).
+  # check.mjs end to end on the learner platforms we cannot run locally (issue #10): build the project zip
+  # (or an LT exercise's: m03-doctor, lesson 3.1), `make test` the starter (must fail, progress code) and the
+  # solution (must pass, completion token), and check each code with the app's verifyCode(). Windows is not run (WSL only).
   project-runner:
     strategy:
       fail-fast: false
       matrix:
         os: [macos-14, ubuntu-24.04-arm]
-        project: [mario-more, credit]
+        project: [mario-more, credit, m03-doctor]
         include:
           - project: mario-more
             path: content/modules/m01-c-in-your-browser/project/mario-more
           - project: credit
             path: content/modules/m02-bits-bytes-numbers/project/credit
+          # An LT exercise: its codes name the exercise id, not project/<id>. Its memory check is the ASan smoke test.
+          - project: m03-doctor
+            path: content/modules/m03-going-native/exercises/m03-doctor
+            exercise: m03-doctor
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
-      EXERCISE: project/${{ matrix.project }}
+      EXERCISE: ${{ matrix.exercise || format('project/{0}', matrix.project) }}
       PROJECT: ${{ matrix.path }}
       NAME: ${{ matrix.project }}
       SEED: 0123456789abcdef
@@ -118,6 +123,13 @@ jobs:
           make --version | head -1
           cc --version | head -1
           command -v gcc clang || true
+      # The environment report of lesson 3.1 (issue #73), once per runner. The grading steps below don't read its
+      # output. It can still fail the job: these runners have a compiler and Node >= 18, so a non-zero exit is a doctor bug.
+      - name: Doctor (node check.mjs --doctor)
+        if: matrix.project == 'mario-more'
+        run: |
+          node tools/check/build.mjs
+          node dist-tools/check.mjs --doctor
       - name: Starter must fail with a progress code
         run: |
           rm -rf work/starter && mkdir -p work/starter

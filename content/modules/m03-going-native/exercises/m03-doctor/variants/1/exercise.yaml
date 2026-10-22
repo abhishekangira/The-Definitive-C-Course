@@ -1,0 +1,18 @@
+id: m03-doctor/variants/1
+kind: lt
+title: A clean native build
+prompt: |
+  `greet.c` reads a name and greets it, but it declares a variable it never uses. Download the project, unzip it
+  in your home folder, run `make test` there, read the warning, and fix `greet.c` so it compiles without
+  warnings under `-Wall -Wextra -pedantic`. Paste each code `make test` prints.
+runsIn: native
+file: greet.c
+hints:
+  - "Read the first warning: it names the line and the variable the compiler is unhappy about."
+  - "`-Wall` warns about a local variable that is set up but never read. If the program doesn't need it, delete it."
+  - |
+    char name[64];
+    if (scanf("%63s", name) != 1) {
+        return 1;
+    }
+variants: []

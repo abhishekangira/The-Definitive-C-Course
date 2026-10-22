@@ -31,6 +31,7 @@ node check.mjs [folder] [--hint] [--only "check name"] [--cc gcc] [--json] [--ve
 | `--cc COMPILER` | Compiler to use; default `--cc`, then `$CC`, `cc`, `clang`, `gcc`. |
 | `--json` | Machine-readable report (used by `tools/exercises`). |
 | `--verbose` | Also print the full compiler output. `--keep` keeps the temporary build folder. |
+| `--doctor` | Print the environment report instead of running checks (below). Takes `--cc`. |
 
 Exit status: `0` every check passed, `1` some failed, `2` the folder or `check.json` is unusable.
 Output is plain text with colour on a TTY (`NO_COLOR` is respected, `FORCE_COLOR` forces it) and an
@@ -39,11 +40,25 @@ ASCII fallback for `✓ ✗` on Windows consoles that are not Windows Terminal.
 Other environment variables (for tests): `CHECK_PLATFORM=darwin` pretends to be macOS (so the `leaks`
 path can be tested on Linux), `CHECK_NO_SANITIZERS=1` pretends no sanitizer runtime exists (valgrind path).
 
+### `--doctor`
+
+`node check.mjs --doctor` (`src/doctor.ts`, lesson 3.1) needs no project folder. It prints the architecture
+(`uname -m` and Node's `process.arch`), the OS, the compiler `findCompiler` picks and its version, Node,
+whether gdb, lldb, Valgrind and `leaks` are on `PATH`, which memory checks work (`NativeBackend.capabilities`),
+the cache-line and page size (`getconf` on Linux, `sysctl` on macOS), the `sizeof` table of a small program
+built with that compiler, and the "my machine" value to pick in the course (`mac-arm`, `mac-intel`, `wsl`,
+`linux-x86` or `linux-arm`; `assess()` returns it, and `doctor-lesson.test.ts` checks lesson 3.1's question against it). On an Apple-chip Mac whose Node runs under Rosetta (`process.arch` is `x64`) it
+says so and how to change it. A value it cannot read prints as `unknown`, never as 0.
+
+Exit status: `1` when there is no C compiler or Node is older than 18, each with the command to install it;
+otherwise `0`. A missing gdb, lldb, Valgrind or `leaks` is a note. `CHECK_PLATFORM` and `CHECK_NO_SANITIZERS`
+apply to it too.
+
 ### Order of checks (this order is also the bits of the progress code)
 
 1. `compiles without warnings` (`compiles` when `warnings: "allow"`). Builds the learner's *unmodified*
    sources with `-std=c17 -Wall -Wextra -pedantic -g -O0 -lm`. If this fails, every other check is skipped.
-2. Each entry of `tests`, in order: I/O tests, unit tests (harness), make tests, scan tests.
+2. Each entry of `tests`, in order: I/O tests, unit tests (harness), make tests, scan tests, file tests.
 3. `no memory errors or leaks`, when `memory` (or `leakcheck`) is set.
 
 Memory check by platform: Linux and WSL use ASan + UBSan, with LeakSanitizer for leaks (a container that
@@ -71,7 +86,8 @@ compiler-rt) falls back to valgrind when it is installed; otherwise the check is
       "hints": ["nudge", "concept", "partial code"] },              // { equals | contains[] | notContains[] | matches | trim }
     { "name": "rotate() unit tests", "unit": { "harness": "tests/test_rotate.c" }, "hint": "one hint" },
     { "name": "make tracks the header", "make": { "target": "greet", "expectRebuild": ["greet.h"] } },
-    { "name": "bit_and uses only ~ and |", "scan": { "function": "bit_and", "allow": ["~", "|"], "maxOps": 4 } }
+    { "name": "bit_and uses only ~ and |", "scan": { "function": "bit_and", "allow": ["~", "|"], "maxOps": 4 } },
+    { "name": "hello.i is preprocessed", "file": { "path": "hello.i", "expect": { "contains": ["int main"] } } }
   ]
 }
 ```
@@ -88,6 +104,11 @@ compiler-rt) falls back to valgrind when it is installed; otherwise the check is
   (`src/testing/harness.ts`). A check that never reports counts as failed.
 - **Make tests** run `make <target>`; `expectRebuild` touches each listed file and checks that `make -q`
   then considers the target out of date, which verifies the Makefile's prerequisites.
+- **File tests** (`file`, native only) check a file the learner made, relative to the project folder: it
+  must exist (else "there is no file …") and its text must match `expect`, a `TextExpect` as for stdout.
+  With `binary: true` each byte is read as one character, so `matches` can test bytes (`"^\\x7fELF"`).
+  They run after the compile check, in order, so a `make` test can build the file first. A backend without
+  the learner's folder (the browser) skips them with the reason; a skip is never a pass.
 - **Scan tests** (`scan`) limit what one function of the learner's first source may contain, for
   operator-restricted puzzles: only its parameters, its own locals, type names and `return`; integer
   literals up to `maxLiteral` (default 255); only the operators in `allow`; at most `maxOps` operator
@@ -131,6 +152,7 @@ both from `src/testing/project-zip.ts`:
   check.json                 the tests (a project's check.json, or an exercise's tests.json)
   check.mjs                  this runner (executable bit set)
   learnc.h                   the course helper header (src/runtime/c/learnc.h)
+  compile_flags.txt          Module 3 exercises ("m03-…") only: -std=c17 -Wall -Wextra -pedantic, one per line, for clangd
   .learner                   {"version":1,"seed":"<16 hex>","exercise":"<id>"}   (only with a seed)
   tests/...                  unit-test harnesses and data
   *.c, *.h                   the starter files: starter/* of a project, starter.c of an exercise
@@ -150,13 +172,17 @@ starter, a reference solution, a unit-test harness and a memory check) using gcc
 the solution passes everything and earns the token; the starter fails with explanations and a progress
 code that `verifyCode()` accepts; a leak-only variant fails only the memory check; a syntax error
 skips everything after the compile check; the valgrind fallback (clang-18, no sanitizers), the macOS
-`leaks` path (simulated), make tests, the zips and the generated Makefile are covered too.
+`leaks` path (simulated), make tests, file tests (present, missing, wrong, binary), `--doctor` (this machine,
+`CHECK_PLATFORM=darwin` with and without stand-in macOS commands, `CHECK_NO_SANITIZERS=1`, no compiler), the zips
+and the generated Makefile are covered too.
 
 ## Platforms verified by CI
 
-The `project-runner` job in `.github/workflows/targets.yml` builds the Mario project zip, runs `make test` on the starter
+The `project-runner` job in `.github/workflows/targets.yml` builds the Mario and Credit project zips and the zip of the LT exercise
+`m03-doctor` (lesson 3.1; its codes name `m03-doctor`, so the matrix entry sets `exercise:`), runs `make test` on the starter
 (must exit non-zero and print a progress code) and on the `--solution` zip (must exit 0 and print a completion token), and
-checks each code with `verifyCode()`. It runs on pushes to `main` touching these files and on pull requests that do.
+checks each code with `verifyCode()`. Before that, once per runner (in the Mario job), it runs `node check.mjs --doctor`; the
+grading steps don't use its output, but a non-zero exit fails the job, because these runners have a compiler and Node 22. It runs on pushes to `main` touching these files and on pull requests that do.
 
 | Platform | Status |
 |---|---|
@@ -165,4 +191,4 @@ checks each code with `verifyCode()`. It runs on pushes to `main` touching these
 | Linux arm64 (`ubuntu-24.04-arm`, gcc) | `project-runner` |
 | Windows | **not run**: use WSL Ubuntu 24.04 (the Linux path); native Windows is unsupported and untested |
 
-`project-runner` uses only the Mario project, so the macOS `leaks` path (Mario has no `memory` check) is still only simulated.
+Neither Mario nor Credit has a `memory` check, so the macOS `leaks` path is still only simulated.

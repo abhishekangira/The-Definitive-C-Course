@@ -53,7 +53,7 @@ Risk: (does it touch learner-facing app code, the generated-data format, or CI/d
 
 ## Status
 - **Live site:** https://abhishekangira.github.io/The-Definitive-C-Course/ (GitHub Pages; the `deploy` job in `ci.yml` publishes `main`).
-- Modules 1 and 2 are open to learners. **Module 3 is not started** (`available: false` in `content/course.yaml`, no folder); its brief is issue #73. **There is no review gate between modules** (PLAN.md §12 item 11): the owner audits the course while it is built and files issues for any gap, so start the next module when its ticket is assigned. Other open work, such as the AI tutor (#47), is in issues and PRs.
+- Modules 1 and 2 are open to learners. **Module 3 is being built** in the stacked PRs of issue #73: `content/modules/m03-going-native/` is a draft (`available: false` in `content/course.yaml`, so learners can't open it; reviewers use `?preview=m03`) with lesson 3.1 so far. **There is no review gate between modules** (PLAN.md §12 item 11): the owner audits the course while it is built and files issues for any gap, so start the next module when its ticket is assigned. Other open work, such as the AI tutor (#47), is in issues and PRs.
 
 ## Non-negotiables (client spec)
 - **The learner is never passive.** At most ~250 words or one animation/video before an interaction.
