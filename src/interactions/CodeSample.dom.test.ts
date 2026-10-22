@@ -20,7 +20,18 @@ vi.mock('../lesson/LessonContext', () => ({
 vi.mock('../runtime/useCRun', () => ({
   useCRun: () => ({ run: async () => {}, phase: 'idle', diagnostics: [], rawDiagnostics: '', segments: [], result: null, stop: () => {}, sendInput: () => {}, sendEOF: () => {} }),
 }));
-vi.mock('../components/CodeEditor', () => ({ CodeEditor: ({ value }: { value: string }) => createElement('pre', { 'data-editor': '' }, value) }));
+vi.mock('../components/CodeEditor', () => ({
+  preloadCodeEditor: () => {},
+  CodeEditor: ({ value, onChange, readOnly }: { value: string; onChange?: (v: string) => void; readOnly?: boolean }) => createElement('div', null,
+    createElement('pre', { 'data-editor': '' }, value),
+    !readOnly && onChange ? createElement('button', { type: 'button', onClick: () => onChange(`${value}\n/* edited */\n`) }, 'Type an edit') : null,
+  ),
+}));
+vi.mock('./Exercise', () => ({ Exercise: () => null }));
+vi.mock('./MemoryDiagram', () => ({ MemoryDiagram: () => null }));
+vi.mock('./NumberDrill', () => ({ NumberDrill: () => null }));
+vi.mock('../components/Transcript', () => ({ TranscriptPane: () => null }));
+vi.mock('../app/pages/QuizItems', () => ({ SpItem: () => null }));
 // Terminal pulls in the compiler runtime, which needs a generated toolchain file this test never runs.
 vi.mock('../components/Terminal', () => ({ Terminal: () => null, exitLine: () => null }));
 
@@ -68,14 +79,14 @@ function button(name: string): HTMLButtonElement {
 const statuses = () => [...host.querySelectorAll('[role="status"]')] as HTMLElement[];
 const icon = (el: Element) => el.querySelector('svg')?.getAttribute('data-icon');
 
-async function remount() {
+async function remount(keep = false) {
   await act(async () => { root.unmount(); });
   host.remove();
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
   bag.done.mockClear();
-  replaceProgress(emptyProgress());
+  if (!keep) replaceProgress(emptyProgress());
 }
 
 async function show(s: SampleResult) {
@@ -199,10 +210,10 @@ describe('<CodeSample> predict64', () => {
     await show(result({ ...wide().meta, match, flagged: true, stdout: '4\n', nativeStdout: '3 -3 1\n3.5\n', predict64: wide().meta.predict64 }));
     await lockAndRun('4');
     expect(bag.done).not.toHaveBeenCalled();
-    const at = getProgress().samples.s.at;
+    getProgress().samples.s.at = '2000-01-01T00:00:00.000Z';
     await fill(host.querySelector('textarea')!, p64);
     await click(button('Check my 64-bit prediction'));
-    expect(getProgress().samples.s.at).toBe(at);
+    expect(getProgress().samples.s.at).not.toBe('2000-01-01T00:00:00.000Z');
     expect(bag.done).toHaveBeenCalledTimes(1);
   }
 
@@ -271,5 +282,89 @@ describe('<CodeSample> outcome and choice', () => {
     expect(statuses()[0].textContent).not.toContain('Almost');
     expect(host.querySelector('[data-compare]')).toBeNull();
     expect(getProgress().samples.s).toMatchObject({ verdict: 'wrong', correct: false });
+  });
+});
+
+describe('<CodeSample> changing a prediction', () => {
+  it('unlocks the input before running and keeps the text', async () => {
+    await show(result());
+    await fill(host.querySelector('textarea')!, '3, -3, 1\n3.5');
+    await click(button('Lock in my prediction'));
+    expect(host.textContent).not.toContain('Predict again');
+    await click(button('Change prediction'));
+    const area = host.querySelector('textarea')!;
+    expect(area.value).toBe('3, -3, 1\n3.5');
+    expect(host.querySelector('[role="status"]')).toBeNull();
+    expect(host.textContent).not.toContain('Change prediction');
+    getProgress().samples.s.at = '2000-01-01T00:00:00.000Z';
+    await fill(area, '3 -3 1\n3.5');
+    await click(button('Lock in my prediction'));
+    expect(getProgress().samples.s).toMatchObject({ prediction: '3 -3 1\n3.5', verdict: 'exact', correct: true });
+    expect(getProgress().samples.s.at).not.toBe('2000-01-01T00:00:00.000Z');
+    expect(getProgress().samples.s.cleared).toBeUndefined();
+  });
+
+  it('clears the verdict, the output and edited code after running, and leaves a cleared entry', async () => {
+    await show(result());
+    await lockAndRun('3, -3, 1\n3.5');
+    expect(bag.done).toHaveBeenCalledTimes(1);
+    await click(button('Edit and experiment'));
+    await click(button('Type an edit'));
+    expect(host.querySelector('[data-editor]')!.textContent).toContain('/* edited */');
+    await click(button('Predict again'));
+    expect(bag.done).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[role="status"]')).toBeNull();
+    expect(host.querySelector('[data-compare]')).toBeNull();
+    expect(host.querySelector('[data-editor]')!.textContent).not.toContain('/* edited */');
+    expect(host.querySelector('textarea')!.value).toBe('');
+    const cleared = getProgress().samples.s;
+    expect(cleared).toEqual({ prediction: '', correct: false, cleared: true, at: cleared.at });
+    expect(cleared.at).not.toBe('');
+    await remount(true);
+    await show(result());
+    expect(host.querySelector('textarea')!.value).toBe('');
+    expect(host.querySelector('[role="status"]')).toBeNull();
+    expect(host.textContent).not.toContain('Predict again');
+    expect(getProgress().samples.s.cleared).toBe(true);
+  });
+
+  it('clears only the 64-bit fields', async () => {
+    await show(result({ flagged: true, predict64: 'What does the 64-bit run print?', stdout: '4\n', nativeStdout: '3 -3 1\n3.5\n' }));
+    await lockAndRun('4');
+    await fill(host.querySelector('textarea')!, 'nope');
+    await click(button('Check my 64-bit prediction'));
+    expect(bag.done).toHaveBeenCalledTimes(1);
+    const main = { prediction: '4', verdict: 'exact' as const, correct: true };
+    expect(getProgress().samples.s).toMatchObject(main);
+    getProgress().samples.s.at = '2000-01-01T00:00:00.000Z';
+    await click(button('Predict the 64-bit output again'));
+    expect(bag.done).toHaveBeenCalledTimes(1);
+    const s = getProgress().samples.s;
+    expect(s).toMatchObject(main);
+    expect(s.predict64).toBeUndefined();
+    expect(s.predict64Correct).toBeUndefined();
+    expect(s.predict64Verdict).toBeUndefined();
+    expect(s.cleared).toBeUndefined();
+    expect(s.at).not.toBe('2000-01-01T00:00:00.000Z');
+    expect(host.textContent).toContain('What does the 64-bit run print?');
+    expect(host.textContent).toContain('Your prediction was right.');
+    expect(host.textContent).not.toContain('Right for 64-bit too.');
+    expect(host.textContent).not.toContain('Predict the 64-bit output again');
+  });
+
+  it('has neither button on predict=none or on a quiz item', async () => {
+    await show(result({ predict: 'none' }));
+    expect(host.textContent).not.toContain('Change prediction');
+    expect(host.textContent).not.toContain('Predict again');
+    await click(button('Run'));
+    expect(host.textContent).not.toContain('Change prediction');
+    expect(host.textContent).not.toContain('Predict again');
+
+    const { QuizRunner } = await import('../app/pages/QuizRunner');
+    await act(async () => { root.render(createElement(QuizRunner, { moduleId: 'm01', kind: 'checkpoint' })); });
+    expect(host.textContent).toContain('Question 1');
+    expect(host.textContent).not.toContain('Change prediction');
+    expect(host.textContent).not.toContain('Predict again');
+    expect(host.textContent).not.toContain('Predict the 64-bit output again');
   });
 });

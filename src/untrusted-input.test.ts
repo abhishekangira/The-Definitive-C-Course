@@ -80,6 +80,16 @@ describe('progress import: migrate', () => {
     expect(JSON.parse(JSON.stringify(dropped))).toEqual(dropped);
   });
 
+  it('keeps cleared only when it is true', () => {
+    const kept = migrate(hostile(`{${head},"samples":{"a":{"prediction":"","correct":false,"cleared":true,"extra":1,"at":"${at}"}}}`));
+    expect(Object.keys(kept.samples.a).sort()).toEqual(['at', 'cleared', 'correct', 'prediction']);
+    expect(kept.samples.a).toEqual({ prediction: '', correct: false, cleared: true, at });
+    const no = migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":true,"cleared":false,"at":"${at}"}}}`));
+    expect(no.samples.a).toEqual({ prediction: 'p', correct: true, at });
+    const junk = migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":true,"cleared":"yes","at":"${at}"}}}`));
+    expect(junk.samples.a).toEqual({ prediction: 'p', correct: true, at });
+  });
+
   it('ignores unknown top-level keys and bad settings values', () => {
     const p = migrate(hostile(`{${head},"evil":"<script>","settings":{"platform":"amiga","stdinMode":{"a":1},"storedOutputMode":"yes","x":1}}`));
     expect(Object.keys(p).sort()).toEqual(['cards', 'createdAt', 'exercises', 'lessons', 'projects', 'quizzes', 'samples', 'seed', 'settings', 'streak', 'version']);

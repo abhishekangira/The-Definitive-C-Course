@@ -37,6 +37,11 @@ export interface SampleProgress {
   predict64?: string;
   predict64Correct?: boolean;
   predict64Verdict?: SampleVerdict;
+  /**
+   * Set by "Predict again". The entry stays so a merge cannot restore an older copy.
+   * Treat it as no prediction. Only `true` is stored.
+   */
+  cleared?: true;
   at: string;
 }
 
@@ -211,7 +216,7 @@ export function migrate(raw: unknown): ProgressV1 {
     cards,
     lessons: section(o.lessons, x => (typeof x.completedAt === 'string' ? { completedAt: x.completedAt } : undefined)),
     samples: section(o.samples, x => (typeof x.prediction === 'string' && typeof x.correct === 'boolean' && typeof x.at === 'string'
-      ? drop({ prediction: x.prediction, correct: x.correct, verdict: asVerdict(x.verdict), predict64: str(x.predict64), predict64Correct: bool(x.predict64Correct), predict64Verdict: asVerdict(x.predict64Verdict), at: x.at }) : undefined)),
+      ? drop({ prediction: x.prediction, correct: x.correct, verdict: asVerdict(x.verdict), predict64: str(x.predict64), predict64Correct: bool(x.predict64Correct), predict64Verdict: asVerdict(x.predict64Verdict), cleared: x.cleared === true ? true : undefined, at: x.at }) : undefined)),
     exercises: section(o.exercises, cleanExercise),
     quizzes: section(o.quizzes, x => (num(x.score) !== undefined && num(x.total) !== undefined && typeof x.passed === 'boolean' && typeof x.at === 'string'
       ? { score: x.score as number, total: x.total as number, passed: x.passed, at: x.at, answers: isRecord(x.answers) ? Object.fromEntries(Object.entries(x.answers).filter(([k]) => k !== '__proto__')) : {} } : undefined)),
@@ -343,7 +348,7 @@ export function summarise(p: ProgressV1): ImportSummary {
   };
 }
 
-/** Merge keeps the furthest progress from both documents; replace overwrites everything. */
+/** Merge keeps the furthest progress from both documents. A sample keeps the entry with the later `at` (a tie keeps the first document). A cleared entry is that later entry on purpose, so an older copy does not undo "Predict again". */
 export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
   // Keys are data (imported ids), so look them up as own properties only: "constructor" or "toString" must not
   // find Object.prototype members. migrate() drops "__proto__", so assigning by key cannot swap a prototype.
@@ -351,7 +356,10 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
   const out = structuredClone(a);
   for (const [k, v] of Object.entries(b.cards)) out.cards[k] = [...new Set([...(own(out.cards, k) ?? []), ...v])].sort((x, y) => x - y);
   for (const [k, v] of Object.entries(b.lessons)) if (!Object.hasOwn(out.lessons, k)) out.lessons[k] = v;
-  for (const [k, v] of Object.entries(b.samples)) if (!Object.hasOwn(out.samples, k)) out.samples[k] = v;
+  for (const [k, v] of Object.entries(b.samples)) {
+    const cur = own(out.samples, k);
+    if (!cur || v.at > cur.at) out.samples[k] = v;
+  }
   for (const [k, v] of Object.entries(b.exercises)) {
     const cur = own(out.exercises, k);
     if (!cur) {

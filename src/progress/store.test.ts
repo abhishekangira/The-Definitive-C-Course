@@ -38,7 +38,7 @@ describe('migrate', () => {
       settings: { platform: 'wsl', storedOutputMode: true, stdinMode: 'preset' },
       cards: { 'm01-l1': [0, 1, 2] },
       lessons: { 'm01-l1': { completedAt: at } },
-      samples: { s1: { prediction: 'x', correct: true, verdict: 'close', predict64: 'y', predict64Correct: false, predict64Verdict: 'wrong', at } satisfies Required<SampleProgress> },
+      samples: { s1: { prediction: 'x', correct: true, verdict: 'close', predict64: 'y', predict64Correct: false, predict64Verdict: 'wrong', cleared: true, at } satisfies Required<SampleProgress> },
       exercises: {
         e1: {
           attempts: 3, substantive: 2, lastCodeHash: 'abc', code: 'int main(void) { return 0; }', activeMs: 5, hintsViewed: 1, passed: true,
@@ -196,11 +196,17 @@ describe('mergeProgress', () => {
     expect(mergeProgress(doc({ samples: { onlyB: exact } }), doc({ samples: { onlyA: close } })).samples.onlyA).toEqual(close);
   });
 
-  it('keeps the first document when both have the sample', () => {
-    const first = { prediction: 'a', correct: true, verdict: 'close' as const, at: '2026-01-01T00:00:00.000Z' };
+  it('keeps the sample with the later at, and the first document on a tie', () => {
+    const earlier = { prediction: 'a', correct: true, verdict: 'close' as const, at: '2026-01-01T00:00:00.000Z' };
     const later = { prediction: 'b', correct: true, verdict: 'exact' as const, at: '2026-06-01T00:00:00.000Z' };
-    expect(mergeProgress(doc({ samples: { s: first } }), doc({ samples: { s: later } })).samples.s).toEqual(first);
-    expect(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: first } })).samples.s).toEqual(later);
+    const cleared = { prediction: '', correct: false, cleared: true as const, at: '2026-07-01T00:00:00.000Z' };
+    const tie = { prediction: 'other', correct: false, verdict: 'wrong' as const, at: earlier.at };
+    expect(mergeProgress(doc({ samples: { s: earlier } }), doc({ samples: { s: later } })).samples.s).toEqual(later);
+    expect(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: earlier } })).samples.s).toEqual(later);
+    expect(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: cleared } })).samples.s).toEqual(cleared);
+    expect(mergeProgress(doc({ samples: { s: cleared } }), doc({ samples: { s: later } })).samples.s).toEqual(cleared);
+    expect(mergeProgress(doc({ samples: { s: earlier } }), doc({ samples: { s: tie } })).samples.s).toEqual(earlier);
+    expect(mergeProgress(doc({ samples: { s: tie } }), doc({ samples: { s: earlier } })).samples.s).toEqual(tie);
   });
 
   it('does not mutate either input', () => {
