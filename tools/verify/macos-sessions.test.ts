@@ -54,9 +54,9 @@ describe('macos-sessions', () => {
 
   it('(d) is a skip with a reason when the module has no sessions file', () => {
     const empty = path.join(tmp, 'none');
-    expect(checkMacosSessions(empty, 'm90')).toEqual({ status: 'skip', message: 'no sessions (no src/generated/sessions/m90.json)' });
+    expect(checkMacosSessions(empty, 'm90')).toEqual({ status: 'skip', message: 'no sessions: no src/generated/sessions/m90.json' });
     const row = buildSteps({ module: 'm90', contentRoot: dodContent, generatedRoot: empty }).find(s => s.id === 'macos-sessions');
-    expect(row).toMatchObject({ skip: 'no sessions (no src/generated/sessions/m90.json)', command: [] });
+    expect(row).toMatchObject({ skip: 'no sessions: no src/generated/sessions/m90.json', command: [] });
     expect(macosSessionsSkip(generated(), 'm90')).toBeUndefined();
   });
 

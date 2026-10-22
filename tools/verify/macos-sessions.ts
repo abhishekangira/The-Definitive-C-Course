@@ -18,7 +18,7 @@ export const sessionsFilePath = (generatedRoot: string, module: string) => path.
 
 /** Why the row is skipped for this module, or undefined when there is a sessions file to check. */
 export function macosSessionsSkip(generatedRoot: string, module: string): string | undefined {
-  return existsSync(sessionsFilePath(generatedRoot, module)) ? undefined : `no sessions (no src/generated/sessions/${module}.json)`;
+  return existsSync(sessionsFilePath(generatedRoot, module)) ? undefined : `no sessions: no src/generated/sessions/${module}.json`;
 }
 
 /** Ids of the sessions that have macOS steps but no stored macOS run, sorted. */
