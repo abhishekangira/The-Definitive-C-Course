@@ -97,7 +97,8 @@ function nmLine(out, name) {
 function sExcerpt(sText) {
   const lines = sText.split('\n');
   const i = lines.findIndex(l => /\bcall\s+printf\b/.test(l));
-  if (i < 0) throw new Error('hello.s has no call to printf');
+  // gcc turns printf("...\n") into puts. Return '' so the facts test can assert on nm, instead of throwing first.
+  if (i < 0) return '';
   const pick = lines.slice(Math.max(0, i - 3), i + 1);
   if (pick.some(l => /0x[0-9a-fA-F]/.test(l))) throw new Error('assembly excerpt contains an address');
   return pick.map(l => expandTabs(l)).join('\n');
@@ -139,7 +140,6 @@ export function collectFacts({ source, commands }) {
     const nmObjPrintf = nmLine(nmObj, 'printf');
     const nmObjMain = nmLine(nmObj, 'main');
     const nmExePrintf = nmLine(nmExe, 'printf');
-    if (!nmObjMain || !nmObjPrintf || !nmExePrintf) throw new Error('nm did not report main/printf');
     return {
       source, commands, stdout, exit: lastStatus, outputs,
       nmObj, nmExe,
@@ -148,11 +148,11 @@ export function collectFacts({ source, commands }) {
         sLines: String(wcLines(sText)),
         printfDecl: decl[0],
         sExcerpt: sExcerpt(sText),
-        nmObjMain,
-        nmObjPrintf,
+        nmObjMain: nmObjMain ?? '',
+        nmObjPrintf: nmObjPrintf ?? '',
         objBytes: String(statSync(path.join(dir, 'hello.o')).size),
         exeBytes: String(statSync(path.join(dir, 'hello')).size),
-        nmExePrintf,
+        nmExePrintf: nmExePrintf ?? '',
         interpreter: interp[1],
       },
     };
@@ -192,6 +192,8 @@ function isMain() {
 
 if (isMain() && process.argv.includes('--write')) {
   const facts = collectFromProject();
+  const missing = ['nmObjMain', 'nmObjPrintf', 'nmExePrintf', 'sExcerpt'].filter(k => !facts.variables[k]);
+  if (missing.length) throw new Error(`nm did not report main/printf (${missing.join(', ')})\n${facts.nmObj}`);
   const file = path.join(ANIM_DIR, ID, 'variables.json');
   writeFileSync(file, `${JSON.stringify(facts.variables, null, 2)}\n`);
   process.stdout.write(`wrote ${file}\n`);

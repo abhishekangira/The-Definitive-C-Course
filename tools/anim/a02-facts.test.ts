@@ -78,10 +78,10 @@ describe.skipIf(skip)('A2: what the animation shows is what gcc 13 does', () => 
   });
 
   it('nm hello.o reports U printf, not puts', () => {
-    expect(facts.variables.nmObjPrintf).toBe('U printf');
     expect(facts.nmObj).not.toMatch(/\bU puts\b/);
     expect(facts.nmObj).toMatch(/\bU printf\b/);
     expect(facts.nmObj).toMatch(/\bT main\b/);
+    expect(facts.variables.nmObjPrintf).toBe('U printf');
   });
 
   it('variables.json matches the gcc 13 run, and each declared default equals it', () => {

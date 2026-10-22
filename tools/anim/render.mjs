@@ -9,7 +9,7 @@
 //                                                no render: transcode the committed MP4s to VP9 WebM into
 //                                                <dir>/<id>/<id>.webm (deploy step; never committed)
 //
-// Pipeline per project (everything is deterministic, so identical sources give byte-identical files):
+// Pipeline per project (sidecars, poster and stills are byte-identical across renders; the MP4 is not, see animations/README.md):
 //   sync-shared -> static validation -> hyperframes lint -> hyperframes render --crf 30 -> ffprobe checks
 //   -> strip metadata (ffmpeg -c copy) -> poster + step stills (hyperframes snapshot -> WebP)
 //   -> steps.json, <id>.vtt, transcript.txt -> animations/manifest.json

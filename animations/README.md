@@ -24,7 +24,7 @@ export HYPERFRAMES_BROWSER_PATH=/opt/pw-browsers/chromium_headless_shell-1194/ch
 npm run anim:check                  # every project: static rules + hyperframes lint + check --strict + render freshness
 node tools/anim/check.mjs --static  # the same without a browser (seconds): validation, lint, manifest freshness
 npm run anim:render                 # render what changed (hash-cached) into public/animations/<id>/ and update manifest.json
-node tools/anim/render.mjs a01 --force      # re-render one project
+node tools/anim/render.mjs --force a01      # re-render one project (id after the flags; #111)
 node tools/anim/render.mjs --dry-run        # say what is stale
 node tools/anim/render.mjs --webm dist/animations   # deploy step: transcode the committed MP4s to VP9 WebM (not committed)
 node tools/anim/sync-shared.mjs     # copy _shared/vendor and _shared/fonts into the projects (check and render do it for you)
@@ -179,10 +179,14 @@ the pinned CLI version, the render flags and the pipeline version. `anim:check` 
 * an output file is missing, edited by hand or unexpected, or
 * a rendered folder or manifest entry has no project.
 
-`anim:render` skips a project when `sourceHash` and `browser` match and the outputs are intact. Renders are
-deterministic: two full pipeline runs of A1 on this machine (`render.mjs --force`) produced byte-identical files
-(all 15 outputs and the same `manifest.json`). The research prototype also matched across 1 and 4 workers and with the
-network disabled.
+`anim:render` skips a project when `sourceHash` and `browser` match and the outputs are intact. The poster, the stills,
+`steps.json`, the VTT and the transcript are byte-identical across renders; the MP4 is not. Repeated renders on one
+machine with one Chrome build (Google Chrome 155.0.8059.84) differ in pixels: for A2, decoded frames
+(`ffmpeg -f framemd5`) differed from frame 653 on, lowest PSNR 43.7 dB (invisible). A3 behaved the same (two `--force`
+renders gave two MP4s, neither matching main's). `--workers 1` and unsetting `DISPLAY` did not help. Byte-identical
+outputs across two `--force` runs were observed once for A1, on another machine. CI checks the committed files against
+`manifest.json` and never re-renders, so a re-render that produces a different MP4 is safe, but only re-render an
+animation whose sources changed, and commit only the ids you authored.
 
 Measured for A1: MP4 1.55 MB (289 kbit/s, CRF 30); poster 34 KB; six stills 49 to 78 KB each; WebM (VP9, CRF 36,
 `-deadline realtime -cpu-used 8`) 2.7 MB in 17 s. `-deadline good` is 4 to 5 times slower and not smaller on this
@@ -206,9 +210,12 @@ content, so the deploy transcode uses the fast preset.
 Found later (A3, A4, A2):
 
 * **`render.mjs` re-renders other animations when your browser differs.** The manifest records the browser that rendered
-  each MP4; with another local Chrome, `render.mjs <id>` also redid a01 (observed three times). Restore the untouched
-  animations (`git checkout public/animations/<id>` and put their old manifest entry back) and commit only the ids you
-  authored. Set `HYPERFRAMES_BROWSER_PATH` when `/opt/pw-browsers` is absent.
+  each MP4; with another local Chrome, `render.mjs <id>` also redid a01 (observed three times; that form also drops the
+  id, #111). Restore the untouched animations (`git checkout public/animations/<id>` and put their old manifest entry
+  back) and commit only the ids you authored. Set `HYPERFRAMES_BROWSER_PATH` when `/opt/pw-browsers` is absent.
+* **`render.mjs a02 --force` renders every project.** At `tools/anim/render.mjs:205` the id filter is
+  `!a.startsWith('--') && i !== webmIdx + 1`. With no `--webm`, `webmIdx` is -1, so `i !== webmIdx + 1` drops index 0,
+  the first argument (#111). Until #111 lands, put the id after the flags: `node tools/anim/render.mjs --force a02`.
 * `svgOrigin` is rejected by the validator, so rotate an HTML element whose centre is the pivot instead of an SVG group.
 * The card class is `<prefix>-card` (copied with the prefix of the new animation), so a scene written for another
   prefix renders unstyled.
@@ -221,7 +228,7 @@ Found later (A3, A4, A2):
 * **gcc 13 on another distro gives other numbers.** Debian 13's gcc 13.3 (glibc 2.41) printed 816 `.i` lines, 33 `.s`
   lines, a 1408-byte `hello.o` and a 15952-byte `hello`; an Ubuntu 24.04 userland gave 819, 50, 1544 and 15960. Run
   `node tools/anim/a02-facts.mjs --write` on Ubuntu 24.04 (CI, or the official `ubuntu-base` 24.04 tarball in a chroot
-  with `gcc-13`), never on a look-alike.
+  with `gcc-13`), never on a look-alike. Re-running `--write` there leaves the committed `variables.json` unchanged.
 * `hyperframes check` warns `connector_orphan` when an arrow's end is more than 32 px from every visible element
   (cards larger than 15% of the frame do not count) and a hidden element from another scene is that close. Start and
   end each arrow within a few pixels of the boxes it joins.
