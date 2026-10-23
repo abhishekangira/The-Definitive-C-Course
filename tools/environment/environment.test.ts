@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -101,9 +102,46 @@ describe('portable environment setup', () => {
   const prepared = (lines: string) => {
     const dir = mkdtempSync(path.join(scratch, 'prepared-'));
     writeFileSync(path.join(dir, 'status.txt'), lines);
-    tool(dir, 'docker', 'echo "$*" >> "${0%/*}/docker.log"; exit 1'); // every image is missing
+    tool(dir, 'docker', 'echo "$*" >> "${0%/*}/docker.log"; echo "Error response from daemon: No such image: $3" >&2; exit 1');
     return dir;
   };
+  it('doctor and env preserve socket-denial errors without claiming that the image is missing', () => {
+    for (const action of ['doctor', 'run']) {
+      const dir = prepared(`backend: container\nimage: ${image}\nnative: ready\nstate: ready\n`);
+      tool(dir, 'docker', 'echo "$*" >> "${0%/*}/docker.log"; echo "permission denied while trying to connect to the Docker daemon socket: connect: operation not permitted" >&2; exit 1');
+      const r = cli(dir, dir, action, ...(action === 'run' ? ['true'] : []));
+      expect(r.status).toBe(1);
+      expect(r.stderr).toContain('connect: operation not permitted');
+      expect(r.stderr).toContain('Image presence is unknown');
+      expect(r.stderr).not.toContain('is missing');
+      expect(readFileSync(path.join(dir, 'docker.log'), 'utf8')).not.toMatch(/build|pull|run|load/);
+    }
+  });
+  it('maintenance does not try to restore an archive when Docker inspection is denied', () => {
+    const dir = prepared(`backend: container\nimage: ${image}\nnative: ready\nnpm: ready ${lockHash}\nstate: ready\n`);
+    const archive = path.join(dir, 'image.tar');
+    const contents = 'prepared image archive fixture';
+    writeFileSync(archive, contents);
+    writeFileSync(`${archive}.sha256`, `${createHash('sha256').update(contents).digest('hex')}  ${archive}\n`);
+    tool(dir, 'docker', 'echo "$*" >> "${0%/*}/docker.log"; echo "dial unix /var/run/docker.sock: connect: operation not permitted" >&2; exit 1');
+    const r = spawnSync('/bin/bash', [path.join(here, 'cloud-maintain.sh')], {
+      encoding: 'utf8', env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, TDCC_ENVIRONMENT_CACHE: dir },
+    });
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('connect: operation not permitted');
+    expect(r.stderr).not.toContain('is missing');
+    expect(r.stderr).not.toContain('Rerun the environment');
+    expect(readFileSync(path.join(dir, 'docker.log'), 'utf8')).not.toMatch(/load|build|pull/);
+  });
+  it('keeps generic Docker inspection failures distinct from explicit image absence', () => {
+    const dir = prepared(`backend: container\nimage: ${image}\nnative: ready\nstate: ready\n`);
+    tool(dir, 'docker', 'echo "Error response from daemon: client API version is too new" >&2; exit 1');
+    const r = cli(dir, dir, 'doctor');
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('client API version is too new');
+    expect(r.stderr).toContain('Image presence is unknown');
+    expect(r.stderr).not.toContain('is missing');
+  });
   it('doctor and env use the backend setup saved instead of probing again', () => {
     const dir = prepared('backend: container\nimage: tdcc-dev:0000000000000000\nnative: ready\nstate: ready\n');
     const r = cli(dir, dir, 'doctor');

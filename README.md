@@ -109,6 +109,10 @@ CI and cloud setup use the same native installer. See
 [`tools/environment/README.md`](tools/environment/README.md) for prerequisites,
 browser setup and troubleshooting.
 
+If a cloud task denies access to Docker's socket, retry the doctor with the
+platform's approved expanded execution permissions. That error does not mean
+the prepared image is missing; rebuilding cannot repair a sandbox denial.
+
 | Command | What it does |
 |---|---|
 | `npm run build` | Typecheck and produce the static site in `dist/` |
