@@ -5,7 +5,7 @@
 // switched off by `still` and under prefers-reduced-motion.
 import type { ReactNode } from 'react';
 import type { FormId, WarriorMood } from '../progress/warrior';
-import { composeFrame, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
+import { blinkForIdle, composeFrame, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
 import styles from './StreakWarrior.module.css';
 
 /** The sprites' grid. */
@@ -423,9 +423,9 @@ export function WarriorArt({ form, mood, bare = false, aura }: {
         {drawn.map((sprite, i) => (
           <g key={i} data-frame={i} className={drawn.length > 1 ? styles[`pose${i}`] : undefined}>
             <Pixels sprite={sprite} />
+            {blink && <g className={styles.blink} data-blink="">{blinkPaths(blinkForIdle(blink, i)).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
           </g>
         ))}
-        {blink && <g className={styles.blink} data-blink="">{blinkPaths(blink).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
         {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
       </g>
       {stage !== 'none' && form === 'mane' && <Bolts />}

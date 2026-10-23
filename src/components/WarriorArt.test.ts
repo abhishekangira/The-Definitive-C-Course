@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { FormId, WarriorMood } from '../progress/warrior';
 import { WarriorArt, blinkPaths, type AuraStage } from './WarriorArt';
 import { WarriorPortrait } from './StreakWarrior';
-import { composeFrame, ERASE, FORM_FRAMES } from './warrior-sprites';
+import { FORM_FRAMES, IDLE_BLINK_DY, composeFrame, ERASE } from './warrior-sprites';
 
 const markup = (form: FormId, mood: WarriorMood, aura?: AuraStage, bare?: boolean) =>
   renderToStaticMarkup(createElement(WarriorArt, { form, mood, ...(aura === undefined ? {} : { aura }), ...(bare ? { bare } : {}) }));
@@ -178,6 +178,21 @@ describe('blinkPaths', () => {
     expect(html).toContain('M5 5');
     expect(paths.every(([, fill]) => typeof fill === 'string' && fill.startsWith('#'))).toBe(true);
     expect(blinkPaths({ x: 0, y: 0, rows: [' '] })).toEqual([]);
+  });
+
+  it('a lifted idle frame paints the blink one pixel higher, inside that frame', () => {
+    const html = markup('warrior', 'ready');
+    const groups = html.split('data-blink=""').slice(1);
+    expect(groups.length).toBe(FORM_FRAMES.warrior.idle.length);
+    const top = (chunk: string) => {
+      const ys = [...chunk.split('</g>')[0].matchAll(/M-?\d+ (-?\d+)/g)].map(m => Number(m[1]));
+      return Math.min(...ys);
+    };
+    expect(top(groups[1])).toBe(top(groups[0]) + IDLE_BLINK_DY[1]);
+    expect(top(groups[2])).toBe(top(groups[0]) + IDLE_BLINK_DY[2]);
+    expect(top(groups[3])).toBe(top(groups[0]) + IDLE_BLINK_DY[3]);
+    expect(html.indexOf('data-blink=""')).toBeGreaterThan(html.indexOf('data-frame="0"'));
+    expect(html.indexOf('data-blink=""')).toBeLessThan(html.indexOf('data-frame="1"'));
   });
 
   it('WarriorArt paints its blink through blinkPaths, so a space stays transparent', () => {

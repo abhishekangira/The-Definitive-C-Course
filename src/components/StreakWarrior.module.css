@@ -28,7 +28,7 @@
 
 /* Frames that stay hidden until their own step. The first aura frame and the first pose frame have no hidden
    rule, so with the animation off (.still, reduced motion) that frame is the one on screen. */
-.aura1, .aura2, .aura3, .pose1, .pose2, .pose3, .blink { visibility: hidden; }
+.aura1, .aura2, .aura3, .pose1, .pose2, .pose3 { visibility: hidden; }
 
 .art[data-mood='ready'] .figure { animation: bob 1.6s steps(1) infinite; }
 .art[data-mood='ready'][data-form='golden'] .figure,
@@ -36,7 +36,10 @@
 .art[data-mood='ready'][data-form='crimson'] .figure { animation: hover 1.2s steps(1) infinite; }
 .art[data-mood='worried'] .figure { animation: tremble 0.36s steps(1) infinite; }
 .art[data-mood='defeated'] .figure { animation: slump 3s steps(1) infinite; }
-.blink { animation: blink 4.6s steps(1) infinite; }
+/* The blink is a child of each pose frame. A visibility:visible child would paint through a hidden frame,
+   so this toggles opacity in one step and inherits the frame's visibility. Opacity 0 is the resting state:
+   .still and reduced motion set animation: none, and the blink stays shut. */
+.blink { opacity: 0; animation: blink 4.6s steps(1) infinite; }
 /* Four aura frames, 0.16s each, the same pace as the old two-frame flicker. */
 .aura0 { animation: hold4 0.64s steps(4, end) infinite; }
 .aura1 { animation: hold4 0.64s steps(4, end) 0.16s infinite; }
@@ -64,7 +67,7 @@
 @keyframes hover { 0%, 100% { transform: translateY(0); } 25%, 75% { transform: translateY(-1px); } 50% { transform: translateY(-2px); } }
 @keyframes tremble { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(1px); } }
 @keyframes slump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1px); } }
-@keyframes blink { 0%, 95% { visibility: hidden; } 96%, 99% { visibility: visible; } }
+@keyframes blink { 0%, 95% { opacity: 0; } 96%, 99% { opacity: 1; } }
 @keyframes hold2 { 0% { visibility: visible; } 50%, 100% { visibility: hidden; } }
 @keyframes hold3 { 0% { visibility: visible; } 33.334%, 100% { visibility: hidden; } }
 @keyframes hold4 { 0% { visibility: visible; } 25%, 100% { visibility: hidden; } }
