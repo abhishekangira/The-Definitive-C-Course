@@ -22,7 +22,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,12 +33,25 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Prepare the native tools once for the shared video fixture
+        run: sudo bash tools/environment/install-native.sh
       - name: Build one site for every scenario
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
         run: npm run build
+      - name: Prepare the animation fixture once, using the spec's cache key and encoding
+        run: |
+          node --input-type=module <<'JS'
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          import { mkdirSync, readFileSync } from 'node:fs';
+          const mp4 = 'public/animations/a01-press-run/a01-press-run.mp4';
+          const hash = createHash('sha256').update(readFileSync(mp4)).digest('hex').slice(0, 16);
+          mkdirSync('benchmark-animation', { recursive: true });
+          execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', mp4, '-vf', 'scale=480:-2,fps=10', '-an', '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '45', '-deadline', 'realtime', '-cpu-used', '8', '-row-mt', '1', `benchmark-animation/a01-press-run-${hash}.webm`]);
+          JS
       - name: Package site and assets needed by fixture servers
-        run: tar -czf benchmark-site.tgz dist public/toolchain src/generated/toolchain-version.json
+        run: tar -czf benchmark-site.tgz dist public/toolchain src/generated/toolchain-version.json benchmark-animation
       - uses: actions/upload-artifact@v4
         with:
           name: e2e-benchmark-site
@@ -78,11 +91,19 @@ jobs:
         with:
           name: e2e-benchmark-site
       - run: tar -xzf benchmark-site.tgz
-      - name: Install Chromium and check the hosted runner's FFmpeg
+      - name: Restore the prepared animation fixture in the spec's temporary cache
+        run: |
+          node --input-type=module <<'JS'
+          import { cpSync, mkdirSync } from 'node:fs';
+          import os from 'node:os';
+          import path from 'node:path';
+          const destination = path.join(os.tmpdir(), 'tdcc-e2e-animation');
+          mkdirSync(destination, { recursive: true });
+          cpSync('benchmark-animation', destination, { recursive: true });
+          JS
+      - name: Install Chromium
         run: |
           npx playwright install --with-deps chromium
-          command -v ffmpeg
-          ffmpeg -version | head -1
           node --version
           nproc
       - name: Three repetitions with the production retry and worker settings
