@@ -248,6 +248,19 @@ describe('<CodeSample> predict64', () => {
     expect(statuses().some(s => s.textContent!.includes('Not quite.'))).toBe(true);
     expect(getProgress().samples.s.predict64Verdict).toBe('wrong');
   });
+
+  it('does not count a whitespace-only 64-bit answer as right when the native run is missing', async () => {
+    const s = wide();
+    s.results['linux-x86_64-gcc13']!.run = undefined;
+    await show(s);
+    await lockAndRun('4');
+    await fill(host.querySelector('textarea')!, '   \n');
+    await click(button('Check my 64-bit prediction'));
+    expect(host.textContent).not.toContain('Right for 64-bit too.');
+    expect(host.textContent).not.toContain('Almost:');
+    expect(getProgress().samples.s.predict64Correct).toBe(false);
+    expect(getProgress().samples.s.predict64Verdict).toBe('wrong');
+  });
 });
 
 describe('<CodeSample> outcome and choice', () => {

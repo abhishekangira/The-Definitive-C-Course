@@ -287,6 +287,28 @@ describe('fences', () => {
     expect(warningsOf(quizMatch, 'match-format')).toEqual([]);
   });
 
+  it('does not treat match= as useless when the only prediction is a 64-bit question', () => {
+    // predict is outcome, so this is not an output prediction. match= still applies because of predict64.
+    // Forcing sixtyFour false reports the "does nothing" error.
+    const meta = 'id=fx-hello predict=outcome platform predict64="what does the 64-bit run print?" match=exact';
+    const kept = lintGoodWith(formatted('%.1f', meta)).result;
+    expect(errorsOf(kept, 'fence-meta')).toEqual([]);
+    expect(errorsOf(kept, 'match-format')).toEqual([]);
+    expect(warningsOf(kept, 'match-format')).toEqual([]);
+  });
+
+  it('warns when a formatted sample whose only prediction is a 64-bit question has no match=', () => {
+    // Same shape, no match=. The warning depends on sixtyFour: predict is not output.
+    const meta = 'id=fx-hello predict=outcome platform predict64="what does the 64-bit run print?"';
+    const warn = lintGoodWith(formatted('%.1f', meta)).result;
+    expect(errorsOf(warn, 'fence-meta')).toEqual([]);
+    const w = warningsOf(warn, 'match-format');
+    expect(w).toHaveLength(1);
+    expect(w[0].message).toContain('%.1f');
+    expect(w[0].message).toContain('match=');
+    expect(errorsOf(warn, 'match-format')).toEqual([]);
+  });
+
   it('keeps cards the same as the renderer: a fragment fence is not an interaction', () => {
     const r = lintGoodWith({ [`${M1}/lessons/01-hello.mdx`]: sub('```c id=fx-hello', '```c fragment') }).result;
     // card 1 now runs into the analogy and the next Choice: still two interactions fewer than before

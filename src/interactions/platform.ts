@@ -103,6 +103,9 @@ export interface OutputDiff {
 /** Above this, a line pair is marked whole. A character LCS is quadratic and a prediction has no length limit. */
 const DIFF_CAP = 2000;
 
+/** Above this many lines on either side, skip the line LCS (also quadratic) and pair lines by index. */
+const DIFF_LINE_CAP = 2000;
+
 function chunksOf(text: string, marks: Uint8Array | null, markWhole: boolean): DiffChunk[] {
   if (markWhole) return [{ text, mark: true }];
   if (!marks || text.length === 0) return [{ text, mark: false }];
@@ -154,9 +157,23 @@ function charMarks(a: string, b: string): { a: DiffChunk[]; b: DiffChunk[] } {
 }
 
 type LineOp = { kind: 'eq' | 'del' | 'ins'; line: string };
+type AlignedLine = { p?: string; a?: string; equal: boolean };
+
+/** Index pairing. Used past {@link DIFF_LINE_CAP}, where a line LCS would be quadratic in the line count. */
+function alignByIndex(a: string[], b: string[]): AlignedLine[] {
+  const n = Math.max(a.length, b.length);
+  const out: AlignedLine[] = [];
+  for (let i = 0; i < n; i++) {
+    const p = i < a.length ? a[i] : undefined;
+    const got = i < b.length ? b[i] : undefined;
+    out.push({ p, a: got, equal: p !== undefined && p === got });
+  }
+  return out;
+}
 
 /** Line LCS, then a delete run paired with the insert run beside it so differing lines can be compared character by character. */
-function alignLines(a: string[], b: string[]): Array<{ p?: string; a?: string; equal: boolean }> {
+function alignLines(a: string[], b: string[]): AlignedLine[] {
+  if (a.length > DIFF_LINE_CAP || b.length > DIFF_LINE_CAP) return alignByIndex(a, b);
   const n = a.length;
   const m = b.length;
   const w = m + 1;
@@ -207,7 +224,8 @@ function side(line: string | undefined, otherBlank: boolean, chunks?: DiffChunk[
 
 /**
  * Line-level diff of the two normOutput texts, then a character diff inside lines that both exist and differ.
- * A line pair over 2,000 characters is marked whole. An empty side is `predictedEmpty` / `actualEmpty` (the box shows "(nothing)").
+ * A line pair over 2,000 characters is marked whole. Over 2,000 lines on either side, lines are paired by index
+ * instead of a line LCS. An empty side is `predictedEmpty` / `actualEmpty` (the box shows "(nothing)").
  */
 export function outputDiff(pred: string, actual: string): OutputDiff {
   const p = normOutput(pred);

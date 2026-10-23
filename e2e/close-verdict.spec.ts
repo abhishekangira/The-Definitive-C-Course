@@ -3,7 +3,7 @@
 // The spec seeds the warm-up and the two cards before int-division so it does not compile them.
 // Screenshots are written only when SHOTS is a directory.
 import { mkdirSync } from 'node:fs';
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { availableModules, expectAccessible } from './lib';
 
 const mod = availableModules()[0];
@@ -38,6 +38,36 @@ async function openSample(page: Page) {
   const box = page.locator('[data-sample="int-division"]');
   await expect(box).toBeVisible();
   return box;
+}
+
+/** The program-output panel is the terminal log. Compare boxes must use its monospace font and padding. */
+async function expectMonoCompare(box: Locator) {
+  const panel = box.locator('[role="log"]');
+  const panelFont = await panel.evaluate(el => getComputedStyle(el).fontFamily);
+  const panelPad = await panel.evaluate(el => getComputedStyle(el).padding);
+  const mono = await box.evaluate(el => {
+    const probe = document.createElement('span');
+    probe.style.fontFamily = 'var(--font-mono)';
+    el.appendChild(probe);
+    const family = getComputedStyle(probe).fontFamily;
+    probe.remove();
+    return family;
+  });
+  expect(panelFont).toBe(mono);
+  for (const which of ['predicted', 'actual']) {
+    const style = await box.locator(`[data-compare="${which}"]`).evaluate(el => {
+      const cs = getComputedStyle(el);
+      const line = el.querySelector('[data-line]');
+      return { font: cs.fontFamily, pad: cs.padding, display: line ? getComputedStyle(line).display : '' };
+    });
+    expect(style.font, which).toBe(panelFont);
+    // The sans stack is "Geist Variable", Geist, ui-sans-serif. "Geist Mono" does not contain those.
+    expect(style.font, which).not.toContain('Geist Variable');
+    expect(style.font, which).not.toContain('ui-sans-serif');
+    expect(style.pad, which).not.toBe('0px');
+    expect(style.pad, which).toBe(panelPad);
+    expect(style.display, which).toBe('block');
+  }
 }
 
 async function shots(page: Page, box: ReturnType<Page['locator']>, name: string) {
@@ -83,6 +113,7 @@ test('a close prediction on int-division is yellow, with both boxes and the comm
   await expect(status).toHaveCSS('background-color', 'rgb(253, 241, 220)');
   const underline = await box.locator('[data-diff]').first().evaluate(el => getComputedStyle(el).textDecorationLine);
   expect(underline).toContain('underline');
+  await expectMonoCompare(box);
   await expectAccessible(page, 'yellow close box, light');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(status).toHaveCSS('background-color', 'rgb(43, 35, 18)');
@@ -122,6 +153,7 @@ test('a wrong prediction on int-division is red, with both boxes, in light and d
   await expect(box.getByText('Actual output', { exact: true })).toBeVisible();
   await expect(box.locator('[data-compare="predicted"]')).toContainText('nope');
   await expect(box.locator('[data-compare="actual"] [data-line]')).toHaveCount(2);
+  await expectMonoCompare(box);
   await expect(status).toHaveCSS('background-color', 'rgb(253, 236, 235)');
   await expectAccessible(page, 'red prediction box, light');
   await page.emulateMedia({ colorScheme: 'dark' });
