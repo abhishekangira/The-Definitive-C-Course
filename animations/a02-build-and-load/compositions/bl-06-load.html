@@ -1,0 +1,102 @@
+<template id="bl-06-load-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #bl06-hello { left: 192px; top: 360px; width: 360px; height: 180px; }
+    #bl06-ld { left: 192px; top: 570px; width: 720px; height: 220px; }
+    #bl06-ld b { font-size: 28px; overflow-wrap: anywhere; }
+    #bl06-fill { left: 592px; top: 360px; width: 320px; height: 180px; }
+    #bl06-a1 { left: 560px; top: 430px; width: 40px; height: 24px; }
+    #bl06-a2 { left: 912px; top: 430px; width: 100px; height: 24px; }
+    #bl06-term {
+      left: 1024px; top: 360px; width: 704px; height: 470px; overflow: hidden;
+      border-color: var(--program); background: var(--bg-sunken);
+    }
+    #bl06-tbar { height: 56px; display: flex; align-items: center; padding: 0 22px; background: var(--program-soft); border-bottom: 3px solid var(--program); font: 700 26px/1 var(--font-mono); color: var(--program); }
+    #bl06-tbody { position: absolute; left: 22px; top: 76px; width: 660px; }
+    .bl06-row { display: flex; align-items: baseline; gap: 14px; margin-top: 10px; font: 400 28px/1.4 var(--font-mono); color: var(--text); }
+    .bl06-prompt { color: var(--program); font-weight: 700; }
+    #bl06-term .bl-cmd { display: inline; padding: 0; border: none; background: transparent; font: 700 28px/1.4 var(--font-mono); color: var(--text); }
+    #bl06-interp { margin-top: 8px; font: 400 24px/1.35 var(--font-mono); color: var(--native); overflow-wrap: anywhere; }
+    #bl06-interp span { display: block; }
+    #bl06-out { margin-top: 8px; font: 700 32px/1.3 var(--font-mono); color: var(--program); }
+    #bl06-status { margin-top: 8px; font: 700 32px/1.3 var(--font-mono); color: var(--program); }
+    #bl06-foot { position: absolute; left: 192px; top: 868px; width: 1536px; font: 400 28px/1.3 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="bl-06-load" data-width="1920" data-height="1080" data-duration="16"
+       data-steps='{"load":{"label":"Load","start":0,"end":15.5}}'>
+    <div class="bl-stage" id="bl06-stage">
+      <div class="bl-head" id="bl06-head">
+        <h1 class="bl-title" id="bl06-title">The loader fills in printf.</h1>
+        <p class="bl-sub" id="bl06-sub">readelf names the program interpreter. Then ./hello runs.</p>
+      </div>
+
+      <div class="bl-box bl-prog" id="bl06-hello"><b>hello</b><i>executable</i></div>
+      <div class="bl-box bl-nat" id="bl06-fill"><b>printf</b><i>filled in at load</i></div>
+      <div class="bl-box bl-nat" id="bl06-ld">
+        <b data-var-text="interpreter">/lib64/ld-linux-x86-64.so.2</b>
+        <i>program interpreter</i>
+      </div>
+
+      <svg class="bl-arrow bl-nat" id="bl06-a1" viewBox="0 0 40 24" aria-hidden="true">
+        <path class="bl-draw bl06-d" d="M 4 12 H 28" pathLength="1" />
+        <path class="bl06-h" d="M 14 -2 L 30 12 L 14 26" />
+      </svg>
+      <svg class="bl-arrow bl-prog" id="bl06-a2" viewBox="0 0 100 24" aria-hidden="true">
+        <path class="bl-draw bl06-d" d="M 4 12 H 76" pathLength="1" />
+        <path class="bl06-h" d="M 64 -2 L 84 12 L 64 26" />
+      </svg>
+
+      <div class="bl-card" id="bl06-term">
+        <div id="bl06-tbar">terminal</div>
+        <div id="bl06-tbody">
+          <div class="bl06-row" id="bl06-r1"><span class="bl06-prompt">$</span><span class="bl-cmd">readelf -l hello</span></div>
+          <div id="bl06-interp">Requesting program interpreter: <span data-var-text="interpreter">/lib64/ld-linux-x86-64.so.2</span></div>
+          <div class="bl06-row" id="bl06-r2"><span class="bl06-prompt">$</span><span class="bl-cmd">./hello</span></div>
+          <div id="bl06-out">Hello, C!</div>
+          <div class="bl06-row" id="bl06-r3"><span class="bl06-prompt">$</span><span class="bl-cmd">echo $?</span></div>
+          <div id="bl06-status">0</div>
+        </div>
+      </div>
+
+      <p id="bl06-foot">The process printed Hello, C! and exited 0. Load is when printf gets an address.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("bl-06-load", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 16;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      function draw(sel, at, dur) {
+        tl.fromTo(sel + " .bl06-d", { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: dur, ease: "power2.inOut" }, at);
+        tl.fromTo(sel + " .bl06-h", { opacity: 0 }, { opacity: 1, duration: 0.12, ease: "none" }, at + dur - 0.1);
+      }
+      tl.addLabel("load", S.load.start);
+      tl.fromTo("#bl06-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.55 }, 0.1);
+      tl.fromTo("#bl06-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.55 }, 0.25);
+      tl.fromTo("#bl06-hello", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.55 }, 0.7);
+      tl.fromTo("#bl06-ld", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.55 }, 1.2);
+      draw("#bl06-a1", 2.0, 0.4);
+      tl.fromTo("#bl06-fill", { opacity: 0, scale: 0.92 }, { opacity: 1, scale: 1, duration: 0.55, ease: "back.out(1.4)" }, 2.4);
+      draw("#bl06-a2", 3.1, 0.4);
+      tl.fromTo("#bl06-term", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7 }, 5.8);
+      tl.fromTo("#bl06-r1", { opacity: 0 }, { opacity: 1, duration: 0.35 }, 6.5);
+      tl.fromTo("#bl06-interp", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 7.0);
+      tl.fromTo("#bl06-r2", { opacity: 0 }, { opacity: 1, duration: 0.35 }, 8.6);
+      tl.fromTo("#bl06-out", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.45 }, 9.2);
+      tl.fromTo("#bl06-r3", { opacity: 0 }, { opacity: 1, duration: 0.35 }, 10.4);
+      tl.fromTo("#bl06-status", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.45 }, 10.9);
+      tl.fromTo("#bl06-foot", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 12.2);
+      tl.fromTo("#bl06-stage", { opacity: 1 }, { opacity: 0, duration: 0.4, ease: "power1.in" }, D - 0.5);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["bl-06-load"] = tl;
+    })();
+  </script>
+</template>

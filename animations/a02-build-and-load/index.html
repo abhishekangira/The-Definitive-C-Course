@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" data-composition-variables='[{"id":"iLines","type":"string","label":"hello.i lines","default":"819"},{"id":"sLines","type":"string","label":"hello.s lines","default":"50"},{"id":"printfDecl","type":"string","label":"printf declaration","default":"extern int printf (const char *__restrict __format, ...);"},{"id":"sExcerpt","type":"string","label":"hello.s excerpt","default":"        leaq    .LC1(%rip), %rax\n        movq    %rax, %rdi\n        movl    $0, %eax\n        call    printf@PLT"},{"id":"nmObjMain","type":"string","label":"nm hello.o main","default":"T main"},{"id":"nmObjPrintf","type":"string","label":"nm hello.o printf","default":"U printf"},{"id":"objBytes","type":"string","label":"hello.o bytes","default":"1544"},{"id":"exeBytes","type":"string","label":"hello bytes","default":"15960"},{"id":"nmExePrintf","type":"string","label":"nm hello printf","default":"U printf@GLIBC_2.2.5"},{"id":"interpreter","type":"string","label":"program interpreter","default":"/lib64/ld-linux-x86-64.so.2"}]'>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>a02-build-and-load</title>
+    <!-- GSAP is vendored (synced from animations/_shared): no render-time network. -->
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      /* Fonts: shipped woff2 only (OFL, @fontsource 5.3.0, latin subset), synced from animations/_shared.
+         The latin subset has no arrows or math symbols: draw arrows as SVG, never type them. */
+      @font-face { font-family: "Inter"; font-weight: 400; font-style: normal; src: url("assets/fonts/inter-latin-400-normal.woff2") format("woff2"); }
+      @font-face { font-family: "Inter"; font-weight: 700; font-style: normal; src: url("assets/fonts/inter-latin-700-normal.woff2") format("woff2"); }
+      @font-face { font-family: "Inter"; font-weight: 800; font-style: normal; src: url("assets/fonts/inter-latin-800-normal.woff2") format("woff2"); }
+      @font-face { font-family: "JetBrains Mono"; font-weight: 400; font-style: normal; src: url("assets/fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2"); }
+      @font-face { font-family: "JetBrains Mono"; font-weight: 700; font-style: normal; src: url("assets/fonts/jetbrains-mono-latin-700-normal.woff2") format("woff2"); }
+
+      /* Palette = the app's dark theme (src/styles/tokens.css). One dark render, shown in both app themes.
+         Colour says WHO is acting: compiler (violet), program (green), native toolchain and OS (orange). */
+      :root {
+        --bg: #0f1216;
+        --bg-elev: #171b21;
+        --bg-sunken: #0b0d10;
+        --bg-code: #12161b;
+        --border: #2a3039;
+        --border-strong: #3d4552;
+        --text: #e7e9ec;
+        --text-muted: #a4abb6;
+        --text-faint: #8a929e;
+        --page: #7cb2ff;
+        --page-soft: #16233a;
+        --compiler: #c4a7ff;
+        --compiler-soft: #241a3d;
+        --program: #5fd08a;
+        --program-soft: #13291c;
+        --native: #ffa657;
+        --native-soft: #33210f;
+        --warn: #f0c060;
+        --warn-soft: #2d2412;
+        --on-accent: #0b1220;
+        --font-sans: "Inter", sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #0f1216; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #0f1216; }
+      #root > div[data-composition-src] { position: absolute; inset: 0; }
+
+      .bl-stage { position: absolute; inset: 0; }
+      .bl-head { position: absolute; left: 192px; top: 196px; width: 1536px; }
+      .bl-title { font: 800 64px/1.08 var(--font-sans); letter-spacing: -0.02em; color: var(--text); }
+      .bl-sub { margin-top: 14px; font: 400 32px/1.3 var(--font-sans); color: var(--text-muted); }
+      .bl-card { position: absolute; background: var(--bg-elev); border: 3px solid var(--border-strong); border-radius: 22px; }
+      .bl-mono { font-family: var(--font-mono); }
+      .bl-h { font: 700 36px/1.15 var(--font-sans); color: var(--text); }
+      .bl-p { font: 400 28px/1.3 var(--font-sans); color: var(--text-muted); }
+      .bl-cmd {
+        display: inline-flex; align-items: center; padding: 10px 22px;
+        border: 3px solid var(--c, var(--compiler)); border-radius: 14px;
+        background: var(--c-soft, var(--compiler-soft));
+        font: 700 28px/1.2 var(--font-mono); color: var(--c, var(--compiler));
+      }
+      .bl-arrow { position: absolute; overflow: visible; color: var(--c, var(--text-muted)); }
+      .bl-arrow path { fill: none; stroke: currentColor; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+      .bl-arrow .bl-draw { stroke-dasharray: 1 1.5; }
+      .bl-page { --c: var(--page); --c-soft: var(--page-soft); }
+      .bl-comp { --c: var(--compiler); --c-soft: var(--compiler-soft); }
+      .bl-prog { --c: var(--program); --c-soft: var(--program-soft); }
+      .bl-nat { --c: var(--native); --c-soft: var(--native-soft); }
+      .bl-box {
+        position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 6px; padding: 12px 16px; text-align: center;
+        border: 3px solid var(--c, var(--border-strong)); border-radius: 18px; background: var(--c-soft, var(--bg-elev));
+      }
+      .bl-box b { font: 700 34px/1.1 var(--font-mono); color: var(--c, var(--text)); }
+      .bl-box i { font: 400 26px/1.2 var(--font-sans); font-style: normal; color: var(--text-muted); text-wrap: balance; }
+      .bl-packet { position: absolute; display: grid; place-items: center; height: 44px; padding: 0 14px; border: 3px solid var(--c); border-radius: 10px; background: var(--c-soft); font: 700 26px/1 var(--font-mono); color: var(--text); }
+      .bl-code { font: 400 var(--code-size, 32px)/var(--code-lh, 44px) var(--font-mono); color: var(--text); }
+      .bl-line > span { white-space: pre; }
+      .bl-line { display: flex; align-items: baseline; }
+      .bl-ln { display: inline-block; width: 1.3em; margin-right: 0.6em; text-align: right; font-size: max(24px, 0.74em); color: var(--text-faint); }
+      .bl-kw { color: #ff9bd0; }
+      .bl-str { color: #7fe0d0; }
+      .bl-num { color: #ffc58a; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="a02-build-and-load" data-start="0" data-duration="75" data-width="1920" data-height="1080">
+      <div id="el-bg" data-composition-id="bl-00-bg" data-composition-src="compositions/bl-00-bg.html" data-track-kind="graphics" data-start="0" data-duration="75" data-track-index="0" data-width="1920" data-height="1080"></div>
+      <div id="el-source" data-composition-id="bl-01-source" data-composition-src="compositions/bl-01-source.html" data-track-kind="graphics" data-start="0" data-duration="10" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-preprocess" data-composition-id="bl-02-preprocess" data-composition-src="compositions/bl-02-preprocess.html" data-track-kind="graphics" data-start="10" data-duration="12" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-compile" data-composition-id="bl-03-compile" data-composition-src="compositions/bl-03-compile.html" data-track-kind="graphics" data-start="22" data-duration="13" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-assemble" data-composition-id="bl-04-assemble" data-composition-src="compositions/bl-04-assemble.html" data-track-kind="graphics" data-start="35" data-duration="12" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-link" data-composition-id="bl-05-link" data-composition-src="compositions/bl-05-link.html" data-track-kind="graphics" data-start="47" data-duration="12" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-load" data-composition-id="bl-06-load" data-composition-src="compositions/bl-06-load.html" data-track-kind="graphics" data-start="59" data-duration="16" data-track-index="1" data-width="1920" data-height="1080"></div>
+      <div id="el-rail" data-composition-id="bl-00-rail" data-composition-src="compositions/bl-00-rail.html" data-track-kind="graphics" data-start="0" data-duration="75" data-track-index="2" data-width="1920" data-height="1080"></div>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      window.__timelines["a02-build-and-load"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

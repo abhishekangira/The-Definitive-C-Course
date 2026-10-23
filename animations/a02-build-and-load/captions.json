@@ -1,0 +1,56 @@
+[
+  {
+    "step": "source",
+    "start": 0.4,
+    "end": 9.4,
+    "text": "hello.c is only text. Five commands turn it into a running process."
+  },
+  {
+    "step": "preprocess",
+    "start": 10.4,
+    "end": 15.8,
+    "text": "cc -E expands #include into the text of stdio.h."
+  },
+  {
+    "step": "preprocess",
+    "start": 15.8,
+    "end": 21.4,
+    "text": "hello.i is hundreds of lines. The printf declaration is now in the file."
+  },
+  {
+    "step": "compile",
+    "start": 22.4,
+    "end": 28.2,
+    "text": "cc -S writes hello.s: the same program as assembly."
+  },
+  {
+    "step": "compile",
+    "start": 28.2,
+    "end": 34.4,
+    "text": "main calls printf by name. Its address is not known yet."
+  },
+  {
+    "step": "assemble",
+    "start": 35.4,
+    "end": 46.4,
+    "text": "cc -c builds hello.o. nm shows T main defined and U printf still undefined."
+  },
+  {
+    "step": "link",
+    "start": 47.4,
+    "end": 58.4,
+    "text": "The executable is linked, but nm still shows printf undefined. The library is not copied in."
+  },
+  {
+    "step": "load",
+    "start": 59.4,
+    "end": 66.6,
+    "text": "readelf names the program interpreter: the dynamic loader."
+  },
+  {
+    "step": "load",
+    "start": 66.6,
+    "end": 74.4,
+    "text": "./hello prints Hello, C! and exits 0. The loader filled in printf."
+  }
+]
