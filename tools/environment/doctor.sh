@@ -22,12 +22,9 @@ check gdb 'GNU gdb .*15\.'
 check valgrind 'valgrind-3\.22\.'
 node=$(timeout 20 node --version 2>&1) || fail 'Missing node.'
 [[ "$node" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || fail "Unrecognised node version $node."
-# Node 22 is required; package.json engines (>=22.22.2) is only a warning: npm ci only warns too, and CI's setup-node
-# gives the latest 22.
+# Only the major version is checked (owner's decision on #110): any Node 22 passes, as npm ci only warns about
+# package.json engines and CI's setup-node gives the latest 22.
 (( BASH_REMATCH[1] >= 22 )) || fail "Node $node is older than 22, which CI runs. The container backend ships 22.22.2: npm run setup -- --container."
-if (( BASH_REMATCH[1] == 22 && (BASH_REMATCH[2] < 22 || (BASH_REMATCH[2] == 22 && BASH_REMATCH[3] < 2)) )); then
-  echo "warning: node $node is below package.json engines (>=22.22.2); CI runs the latest 22." >&2
-fi
 (( BASH_REMATCH[1] == 22 )) || echo "warning: node $node; CI runs Node 22." >&2
 echo "node: $node"
 for tool in make llvm-symbolizer-22 ffmpeg python3; do

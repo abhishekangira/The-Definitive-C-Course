@@ -1,5 +1,5 @@
 // Dependency-free: setup must run before npm ci on a fresh checkout. Any Node 22 can run it; the toolchain's Node
-// (package.json engines) is checked by doctor.sh in the selected backend.
+// (major 22) is checked by doctor.sh in the selected backend.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';

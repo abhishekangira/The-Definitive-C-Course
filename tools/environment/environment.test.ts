@@ -157,9 +157,9 @@ describe('portable environment setup', () => {
     expect(r.stdout).not.toContain('Ready');
     expect(r.status).toBe(1);
   });
-  it('doctor accepts a Node 22 below package.json engines with a warning, as npm ci does', () => {
+  it('doctor accepts any Node 22, even below package.json engines, without a warning', () => {
     const r = doctor({ FAKE_NODE: 'v22.22.0' });
-    expect(r.stderr).toBe('warning: node v22.22.0 is below package.json engines (>=22.22.2); CI runs the latest 22.\n');
+    expect(r.stderr).toBe('');
     expect(r.stdout).toMatch(/^Ready: /m);
     expect(r.status).toBe(0);
   });
