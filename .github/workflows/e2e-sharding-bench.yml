@@ -1,0 +1,126 @@
+name: E2E sharding benchmark
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/e2e-sharding-bench.yml
+      - tools/ci/e2e-benchmark.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-sharding-bench-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: '1'
+  LC_ALL: C
+  BENCH_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BENCH_SOURCE_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build one site for every scenario
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+        run: npm run build
+      - name: Package site and assets needed by fixture servers
+        run: tar -czf benchmark-site.tgz dist public/toolchain src/generated/toolchain-version.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: e2e-benchmark-site
+          path: benchmark-site.tgz
+          retention-days: 3
+          compression-level: 0
+
+  measure:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { total: 1, index: 1 }
+          - { total: 2, index: 1 }
+          - { total: 2, index: 2 }
+          - { total: 4, index: 1 }
+          - { total: 4, index: 2 }
+          - { total: 4, index: 3 }
+          - { total: 4, index: 4 }
+    name: measure-${{ matrix.total }}-${{ matrix.index }}
+    steps:
+      - name: Start setup measurement
+        run: echo "BENCH_JOB_STARTED_MS=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BENCH_SOURCE_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: e2e-benchmark-site
+      - run: tar -xzf benchmark-site.tgz
+      - name: Install Chromium and check the hosted runner's FFmpeg
+        run: |
+          npx playwright install --with-deps chromium
+          command -v ffmpeg
+          ffmpeg -version | head -1
+          node --version
+          nproc
+      - name: Three repetitions with the production retry and worker settings
+        run: node tools/ci/e2e-benchmark.mjs run ${{ matrix.total }} ${{ matrix.index }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-benchmark-result-${{ matrix.total }}-${{ matrix.index }}
+          path: .cache/e2e-benchmark/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  summary:
+    needs: measure
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BENCH_SOURCE_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: e2e-benchmark-result-*
+          path: benchmark-results
+      - name: Compare duration, retries and coverage
+        run: node tools/ci/e2e-benchmark.mjs summarize benchmark-results
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-benchmark-summary
+          path: |
+            benchmark-summary.md
+            benchmark-summary.json
+          if-no-files-found: error
+          retention-days: 7
