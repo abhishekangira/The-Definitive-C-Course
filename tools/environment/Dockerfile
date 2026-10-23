@@ -7,21 +7,22 @@ ARG BASE=mirror.gcr.io/library/ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7
 FROM ${BASE}
 ARG PLAYWRIGHT_VERSION
 # A proxy's CA bundle, if the host has one, is a BuildKit secret: used by the RUN steps, never stored in a layer.
+# mode=0444: apt downloads as the unprivileged _apt user, which can't read the default 0400 secret (public certificates only).
 # First prove a build step reaches HTTPS, so a proxy or CA problem is reported as one instead of as an install failure.
-RUN --mount=type=secret,id=ca,required=false set -eu; \
+RUN --mount=type=secret,id=ca,required=false,mode=0444 set -eu; \
     if [ -s /run/secrets/ca ]; then export CURL_CA_BUNDLE=/run/secrets/ca; fi; \
     apt-get update -qq; DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends ca-certificates curl >/dev/null; \
     curl -fsS -o /dev/null https://apt.llvm.org/llvm-snapshot.gpg.key \
       || { echo 'tdcc: HTTPS from a docker build step failed (proxy or CA certificates); the curl error is above.' >&2; exit 1; }; \
     rm -rf /var/lib/apt/lists/*
 COPY install-native.sh /tmp/install-native.sh
-RUN --mount=type=secret,id=ca,required=false set -eu; \
+RUN --mount=type=secret,id=ca,required=false,mode=0444 set -eu; \
     if [ -s /run/secrets/ca ]; then \
       export CURL_CA_BUNDLE=/run/secrets/ca SSL_CERT_FILE=/run/secrets/ca; \
       echo 'Acquire::https::CaInfo "/run/secrets/ca";' > /etc/apt/apt.conf.d/80-tdcc-ca; \
     fi; \
     bash /tmp/install-native.sh; rm -f /tmp/install-native.sh /etc/apt/apt.conf.d/80-tdcc-ca
-RUN --mount=type=secret,id=ca,required=false set -eu; cd /tmp; \
+RUN --mount=type=secret,id=ca,required=false,mode=0444 set -eu; cd /tmp; \
     if [ -s /run/secrets/ca ]; then export CURL_CA_BUNDLE=/run/secrets/ca; fi; \
     arch=$(dpkg --print-architecture); \
     case "$arch" in amd64) node_arch=x64;; arm64) node_arch=arm64;; *) exit 1;; esac; \
@@ -33,7 +34,7 @@ RUN --mount=type=secret,id=ca,required=false set -eu; cd /tmp; \
     rm "$file" SHASUMS256.txt
 # Chromium for `npm run e2e`, from the lockfile's Playwright version; readable by the unprivileged run user.
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN --mount=type=secret,id=ca,required=false set -eu; \
+RUN --mount=type=secret,id=ca,required=false,mode=0444 set -eu; \
     if [ -s /run/secrets/ca ]; then \
       export NODE_EXTRA_CA_CERTS=/run/secrets/ca; \
       echo 'Acquire::https::CaInfo "/run/secrets/ca";' > /etc/apt/apt.conf.d/80-tdcc-ca; \

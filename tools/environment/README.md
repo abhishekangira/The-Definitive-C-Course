@@ -22,7 +22,8 @@ npm run build && CI=1 npm run env -- npm run e2e   # the image has its own Chrom
 - **Setup script:** `bash tools/environment/cloud-setup.sh`. The only script that builds or
   installs. It logs what the machine can do (OS, uid, Node, Docker, `vm.mmap_rnd_bits`, free
   disk), runs `npm run setup`, and if the native toolchain can't be had still runs `npm ci`
-  and `toolchain:prepare`. It exits non-zero when the npm dependencies failed.
+  and `toolchain:prepare`. It exits non-zero when the npm dependencies failed. Both scripts, like
+  `cli.mjs`, keep the npm cache in `.cache/npm`, so a missing or read-only `$HOME` (Codex) is fine.
 - **Maintenance script:** `bash tools/environment/cloud-maintain.sh`. Check-only, never builds:
   the saved backend and image must still exist (it restores `.cache/environment/image.tar` if
   `image.tar.sha256` verifies it; make one with `docker save` and `sha256sum`), it reruns
@@ -37,7 +38,7 @@ depends on the provider; `cloud-maintain.sh` and `npm run doctor` show it.
 ## What setup does
 
 It picks a backend: the host if `doctor.sh --versions` passes; else Docker, building or
-reusing `tdcc-dev:<hash>` (the hash covers `Dockerfile`, `install-native.sh`, the base and
+reusing `tdcc-dev:<hash>` (the hash covers `Dockerfile`, `install-native.sh`, the base's digest and
 the lockfile's `@playwright/test` version); else, with root or passwordless sudo on Ubuntu
 24.04, `install-native.sh` on the host. `--container` or `--host` forces one. No `docker` on
 PATH and a daemon it can't reach are reported apart, with `docker info`'s own error (a
@@ -69,7 +70,10 @@ package list there only. It fails with `apt.llvm.org's signing key changed` if t
 fingerprint differs. The base is `docker.io/library/ubuntu:24.04` at a recorded digest,
 pulled by default through `mirror.gcr.io` (no Docker Hub anonymous pull limits);
 `TDCC_BASE_IMAGE` names another approved mirror, which must carry the same digest. There is
-no automatic fallback to another registry. Node is 22.22.2. Apt patch releases drift, as on
+no automatic fallback to another registry. If `mirror.gcr.io` refuses the pull (`Forbidden`, seen
+in Codex), set `TDCC_BASE_IMAGE=docker.io/library/ubuntu:24.04@sha256:68ee22004a9109b44973313b02ff7b1de250f1de0f5ecb628d73f579aaff33ac`
+in the environment's variables. The image tag depends on the digest only, so later tasks
+reuse the image with or without the variable. Node is 22.22.2. Apt patch releases drift, as on
 CI; CI stays the authority for generated output. macOS (Apple clang, `leaks`) runs only in
 `targets.yml`; no image covers it.
 

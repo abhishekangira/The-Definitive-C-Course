@@ -5,6 +5,8 @@
 # state: ready (native, npm, chromium), limited (npm only, or no chromium) or blocked (no npm dependencies; exit 1).
 set -uo pipefail
 cd "$(dirname "$0")/../.."
+# The npm cache cli.mjs uses: the provider's $HOME may be missing or read-only at setup time (Codex: ENOENT on ~/.npm).
+export npm_config_cache=$PWD/.cache/npm
 cache=${TDCC_ENVIRONMENT_CACHE:-.cache/environment}
 mkdir -p "$cache"
 status=$cache/status.txt

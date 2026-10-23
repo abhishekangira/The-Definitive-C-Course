@@ -18,7 +18,8 @@ const baseDigest = defaultBase.slice(defaultBase.indexOf('@'));
 const base = process.env.TDCC_BASE_IMAGE || defaultBase;
 const digest = createHash('sha256');
 for (const file of ['Dockerfile', 'install-native.sh']) digest.update(readFileSync(path.join(here, file)));
-digest.update(`playwright ${playwright}\nbase ${base}`);
+// The base's digest, not its registry: a mirror of the same digest (TDCC_BASE_IMAGE) builds the same image and tag.
+digest.update(`playwright ${playwright}\nbase ${baseDigest}`);
 export const image = `tdcc-dev:${digest.digest('hex').slice(0, 16)}`;
 export const lockHash = createHash('sha256').update(lockfile).digest('hex').slice(0, 16);
 const [action, ...argv] = process.argv.slice(2);

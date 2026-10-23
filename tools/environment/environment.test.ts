@@ -128,6 +128,21 @@ describe('portable environment setup', () => {
     expect(none.stderr).toContain('this environment was never set up');
     expect(none.status).toBe(1);
   });
+  it('cloud-setup.sh and cloud-maintain.sh give npm the repo cache, never $HOME/.npm', () => {
+    const dir = mkdtempSync(path.join(scratch, 'npm-cache-'));
+    // `npm run setup` fails (no toolchain), every other npm call logs the cache it was given.
+    tool(dir, 'npm', 'if [ "$1 $2" = "run setup" ]; then exit 1; fi; echo "$1 $npm_config_cache" >> "${0%/*}/npm.log"');
+    const run = (script: string) => spawnSync('/bin/bash', [path.join(here, script)], {
+      encoding: 'utf8', env: { ...process.env, npm_config_cache: '', HOME: path.join(dir, 'no-home'), PATH: `${dir}:${process.env.PATH}`, TDCC_ENVIRONMENT_CACHE: dir },
+    });
+    const expected = `ci ${path.resolve(here, '../..')}/.cache/npm`;
+    expect(run('cloud-setup.sh').status).toBe(0); // state: limited
+    expect(readFileSync(path.join(dir, 'npm.log'), 'utf8').split('\n')).toContain(expected);
+    rmSync(path.join(dir, 'npm.log'));
+    writeFileSync(path.join(dir, 'status.txt'), 'backend: none\nnpm: ready 0000000000000000\nstate: limited\n'); // lockfile "changed"
+    expect(run('cloud-maintain.sh').status).toBe(0);
+    expect(readFileSync(path.join(dir, 'npm.log'), 'utf8').split('\n')).toContain(expected);
+  });
   it('doctor fails for a missing compiler and does not print Ready', () => {
     const r = spawnSync('/bin/bash', [path.join(here, 'doctor.sh'), '--versions'], {
       encoding: 'utf8', env: { ...process.env, GCC: '', PATH: '/nonexistent-tdcc-tools' },
@@ -168,6 +183,20 @@ describe('portable environment setup', () => {
     expect(r.stderr).toContain('warning: node v24.11.0; CI runs Node 22.');
     expect(r.stdout).toMatch(/^Ready: /m);
     expect(r.status).toBe(0);
+  });
+  it('gives a mirror of the same base digest the same image tag', () => {
+    const digest = readFileSync(path.join(here, 'Dockerfile'), 'utf8').match(/^ARG BASE=\S+(@sha256:[0-9a-f]{64})$/m)![1];
+    const tag = (base: string) => spawnSync(process.execPath, ['--input-type=module', '-e',
+      `import { image } from ${JSON.stringify(path.join(here, 'cli.mjs'))}; console.log(image);`], {
+      encoding: 'utf8', env: { ...process.env, TDCC_BASE_IMAGE: base },
+    }).stdout.trim();
+    expect(tag(`docker.io/library/ubuntu:24.04${digest}`)).toBe(image);
+    expect(image).toMatch(/^tdcc-dev:[0-9a-f]{16}$/);
+  });
+  it('lets apt (the unprivileged _apt user) read the CA secret in every build step', () => {
+    const mounts = readFileSync(path.join(here, 'Dockerfile'), 'utf8').match(/--mount=type=secret\S*/g) ?? [];
+    expect(mounts.length).toBeGreaterThan(0);
+    for (const mount of mounts) expect(mount, 'add mode=0444: the default 0400 secret is unreadable to apt').toContain('mode=0444');
   });
   it('uses the same native installer in CI and Docker', () => {
     const workflow = readFileSync(path.resolve(here, '../../.github/workflows/ci.yml'), 'utf8');
