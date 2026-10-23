@@ -174,8 +174,12 @@ describe('<CodeSample> verdicts', () => {
     await lockAndRun('3 -3 1\n\n3.5');
     const predicted = [...host.querySelectorAll('[data-compare="predicted"] [data-line]')];
     const actual = [...host.querySelectorAll('[data-compare="actual"] [data-line]')];
-    expect(predicted.some(el => el.textContent === 'empty line')).toBe(true);
-    expect(actual.some(el => el.getAttribute('data-gap') !== null && el.textContent === 'empty line')).toBe(true);
+    const blankPred = predicted.find(el => el.getAttribute('data-blank') !== null && el.getAttribute('data-gap') === null)!;
+    const blankAct = actual.find(el => el.getAttribute('data-gap') !== null && el.getAttribute('data-blank') !== null)!;
+    expect(blankPred.getAttribute('aria-label')).toBe('empty line');
+    expect(blankPred.textContent).toBe('\u200b');
+    expect(blankAct.getAttribute('aria-label')).toBe('empty line');
+    expect(blankAct.textContent).toBe('');
     expect(predicted.some(el => el.textContent === '3.5')).toBe(true);
     expect(actual.some(el => el.getAttribute('data-gap') !== null && el.textContent === '')).toBe(true);
   });

@@ -103,8 +103,19 @@ export interface OutputDiff {
 /** Above this, a line pair is marked whole. A character LCS is quadratic and a prediction has no length limit. */
 const DIFF_CAP = 2000;
 
-/** Above this many lines on either side, skip the line LCS (also quadratic) and pair lines by index. */
-const DIFF_LINE_CAP = 2000;
+/**
+ * Line LCS is skipped when `a.length * b.length` exceeds this. 2,000 by 2,000 is the budget.
+ * A cap on either side's length would drop alignment for a long prediction against a short actual,
+ * whose table is only a few thousand cells.
+ */
+const LINE_LCS_CELLS = 4_000_000;
+
+/**
+ * Total character-LCS cells across every line pair that gets a character pass.
+ * Once a pair would exceed what is left, that pair and every later differing pair are marked whole.
+ * Pairs already over {@link DIFF_CAP} do not spend this budget.
+ */
+const CHAR_LCS_CELLS = 4_000_000;
 
 function chunksOf(text: string, marks: Uint8Array | null, markWhole: boolean): DiffChunk[] {
   if (markWhole) return [{ text, mark: true }];
@@ -159,7 +170,7 @@ function charMarks(a: string, b: string): { a: DiffChunk[]; b: DiffChunk[] } {
 type LineOp = { kind: 'eq' | 'del' | 'ins'; line: string };
 type AlignedLine = { p?: string; a?: string; equal: boolean };
 
-/** Index pairing. Used past {@link DIFF_LINE_CAP}, where a line LCS would be quadratic in the line count. */
+/** Index pairing. Used when a line LCS table would exceed {@link LINE_LCS_CELLS}. One inserted line then marks every later line. */
 function alignByIndex(a: string[], b: string[]): AlignedLine[] {
   const n = Math.max(a.length, b.length);
   const out: AlignedLine[] = [];
@@ -173,7 +184,7 @@ function alignByIndex(a: string[], b: string[]): AlignedLine[] {
 
 /** Line LCS, then a delete run paired with the insert run beside it so differing lines can be compared character by character. */
 function alignLines(a: string[], b: string[]): AlignedLine[] {
-  if (a.length > DIFF_LINE_CAP || b.length > DIFF_LINE_CAP) return alignByIndex(a, b);
+  if (a.length * b.length > LINE_LCS_CELLS) return alignByIndex(a, b);
   const n = a.length;
   const m = b.length;
   const w = m + 1;
@@ -224,8 +235,10 @@ function side(line: string | undefined, otherBlank: boolean, chunks?: DiffChunk[
 
 /**
  * Line-level diff of the two normOutput texts, then a character diff inside lines that both exist and differ.
- * A line pair over 2,000 characters is marked whole. Over 2,000 lines on either side, lines are paired by index
- * instead of a line LCS. An empty side is `predictedEmpty` / `actualEmpty` (the box shows "(nothing)").
+ * A line pair over 2,000 characters is marked whole. The line LCS runs only when `a.length * b.length` is at most
+ * 4,000,000 cells; past that, lines are paired by index. Character LCS work across pairs shares a 4,000,000-cell
+ * budget; once it is spent, later differing pairs are marked whole. An empty side is `predictedEmpty` /
+ * `actualEmpty` (the box shows "(nothing)").
  */
 export function outputDiff(pred: string, actual: string): OutputDiff {
   const p = normOutput(pred);
@@ -249,14 +262,25 @@ export function outputDiff(pred: string, actual: string): OutputDiff {
   }
   const predicted: DiffRow[] = [];
   const actualRows: DiffRow[] = [];
+  let charCellsLeft = CHAR_LCS_CELLS;
   for (const pair of alignLines(p.split('\n'), a.split('\n'))) {
     if (pair.p !== undefined && pair.a !== undefined && pair.equal) {
       predicted.push({ gap: false, blank: false, chunks: [{ text: pair.p, mark: false }] });
       actualRows.push({ gap: false, blank: false, chunks: [{ text: pair.a, mark: false }] });
     } else if (pair.p !== undefined && pair.a !== undefined) {
-      const c = charMarks(pair.p, pair.a);
-      predicted.push({ gap: false, blank: false, chunks: c.a });
-      actualRows.push({ gap: false, blank: false, chunks: c.b });
+      const cells = pair.p.length * pair.a.length;
+      const perPairCap = pair.p.length > DIFF_CAP || pair.a.length > DIFF_CAP;
+      // A pair that does not fit exhausts the budget, so a later smaller pair is not given the remainder.
+      if (!perPairCap && cells > charCellsLeft) {
+        predicted.push({ gap: false, blank: false, chunks: [{ text: pair.p, mark: true }] });
+        actualRows.push({ gap: false, blank: false, chunks: [{ text: pair.a, mark: true }] });
+        charCellsLeft = 0;
+      } else {
+        if (!perPairCap) charCellsLeft -= cells;
+        const c = charMarks(pair.p, pair.a);
+        predicted.push({ gap: false, blank: false, chunks: c.a });
+        actualRows.push({ gap: false, blank: false, chunks: c.b });
+      }
     } else if (pair.p !== undefined) {
       const blank = pair.p === '';
       predicted.push(side(pair.p, blank, blank ? [{ text: '', mark: true }] : undefined));
