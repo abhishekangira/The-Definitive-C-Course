@@ -11,6 +11,7 @@ import { update, useProgress } from '../progress/store';
 import { PlatformPicker } from './PlatformPicker';
 import { applyMatch, describeOutcome, nativeFor, normOutput, outputDiff, predictionVerdict, storedOutputText, TARGET_LABEL, type DiffRow, type PredictionVerdict } from './platform';
 import { Mark } from '../components/Icon';
+import { onCompareCopy } from './compareCopy';
 import styles from './Interaction.module.css';
 
 const OUTCOMES = [
@@ -27,10 +28,8 @@ function countsAsRight(v: PredictionVerdict): boolean { return v === 'exact' || 
 
 function DiffLines({ row }: { row: DiffRow }) {
   const chunks = row.gap ? [] : row.chunks.filter(c => c.text !== '');
-  // An empty block span copies as nothing, so a blank line in the middle is dropped. A zero-width space
-  // keeps that line in innerText. Gaps are the other side's lines, so they stay empty. The "empty line"
-  // note is ::before (not a text node) plus aria-label, so copying the box does not include the words.
-  const keepBlank = !row.gap && chunks.length === 0;
+  // A blank row is an empty span: min-height keeps it one line tall, and the "empty line" note is ::before plus
+  // aria-label. No zero-width space: the box's onCopy (compareCopy.ts) writes the exact lines to the clipboard.
   return (
     <span
       className={styles.compareLine}
@@ -39,7 +38,6 @@ function DiffLines({ row }: { row: DiffRow }) {
       data-blank={row.blank ? '' : undefined}
       {...(row.blank ? { role: 'img' as const, 'aria-label': 'empty line' } : {})}
     >
-      {keepBlank ? '\u200b' : null}
       {chunks.map((c, i) => (
         c.mark
           ? <span key={i} className={styles.diffMark} data-diff="">{c.text}</span>
@@ -56,7 +54,7 @@ function CompareColumn({ label, which, rows, empty }: { label: string; which: 'p
     <div className={styles.compareCol}>
       <div id={labelId} className={styles.compareLabel}>{label}</div>
       {/* One expression, so the pre has no whitespace text nodes (they would show as blank lines). */}
-      <pre className={`${styles.stored} ${styles.compareBox}`} data-compare={which} tabIndex={0} role="region" aria-labelledby={labelId}>{empty
+      <pre className={`${styles.stored} ${styles.compareBox}`} data-compare={which} tabIndex={0} role="region" aria-labelledby={labelId} onCopy={empty ? undefined : onCompareCopy}>{empty
         ? <span className={styles.compareLine} data-line="">(nothing)</span>
         : rows.map((row, i) => <DiffLines key={i} row={row} />)}</pre>
     </div>
