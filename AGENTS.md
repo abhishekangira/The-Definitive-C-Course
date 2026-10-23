@@ -103,7 +103,7 @@ CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub P
 | `tools/exercises/` | `verify:exercises`, `exercises:expect` | `tools/exercises/README.md` |
 | `tools/videos/`, `videos.json` | YouTube segments and transcript excerpts | `tools/videos/README.md` |
 | `tools/dod/` | The definition-of-done table | `tools/dod/README.md` |
-| `tools/` (the rest) | `verify`, `trace`, `toolchain`, `mdx` (remark plugin), `shared`, `ci`, `docs` | — |
+| `tools/` (the rest) | `verify`, `trace`, `toolchain`, `mdx` (remark plugin), `shared`, `ci`, `docs`, `rio` | — |
 | `.github/` | `workflows/ci.yml`, `workflows/targets.yml` | `.github/AGENTS.md` |
 | `docs/adr/` | Decision records: what was decided, the options and the evidence | `docs/adr/README.md` |
 | `.agents/skills/` (each linked from `.claude/skills/`) | Procedures: `add-exercise`, `review-and-merge-pr`, `write-issue`; the HyperFrames skills are vendored (`skills-lock.json`) | that skill's `SKILL.md` |
