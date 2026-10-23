@@ -6,6 +6,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFi
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { imageExists } from './docker-image.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
@@ -120,7 +121,7 @@ function dockerArgs(targetImage = image) {
 function buildImage() {
   if (!base.endsWith(baseDigest)) throw new Error(`TDCC_BASE_IMAGE must be a mirror of the recorded base, ending in ${baseDigest}; got ${base}.`);
   // Pull separately so a registry or daemon-proxy problem is reported as such, not as a build failure.
-  if (!works('docker', ['image', 'inspect', base])) {
+  if (!imageExists(base, { cwd: root, env })) {
     const pull = run('docker', ['pull', base], { stdio: ['ignore', 'inherit', 'pipe'], encoding: 'utf8' });
     if (pull.status !== 0) throw new Error(`The Docker daemon could not pull ${base}: ${firstLines(pull.stderr ?? String(pull.error))}. The daemon's own proxy settings apply here, not this shell's.`);
   }
@@ -192,7 +193,7 @@ function main() {
   selected = backend;
   console.log(`Toolchain: ${backend}${backend === 'container' ? ` (${image})` : ''}`);
   if (backend === 'container') {
-    if (!works('docker', ['image', 'inspect', image])) {
+    if (!imageExists(image, { cwd: root, env })) {
       if (action !== 'setup') throw new Error(`The prepared image ${image} is missing. Run npm run setup (or npm run setup -- --container).`);
       buildImage();
     } else if (action === 'setup') console.log(`Reusing the image ${image}.`);

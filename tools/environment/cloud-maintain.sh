@@ -9,15 +9,25 @@ cd "$(dirname "$0")/../.."
 export npm_config_cache=$PWD/.cache/npm
 cache=${TDCC_ENVIRONMENT_CACHE:-.cache/environment}
 status=$cache/status.txt
-fail() { echo "cloud-maintain: $1 Rerun the environment's setup script (cloud-setup.sh)." >&2; exit 1; }
+fail() {
+  local advice=${2:-}
+  [[ -n $advice ]] || advice="Rerun the environment's setup script (cloud-setup.sh)."
+  echo "cloud-maintain: $1 $advice" >&2
+  exit 1
+}
 [[ -f $status ]] || fail "No $status: this environment was never set up."
 field() { sed -n "s/^$1: //p" "$status" | head -1; }
 backend=$(field backend) image=$(field image) npm=$(field npm)
-if [[ $backend == container ]] && ! docker image inspect "$image" >/dev/null 2>&1; then
+image_status=0
+if [[ $backend == container ]]; then
+  node tools/environment/docker-image.mjs "$image" || image_status=$?
+  (( image_status == 0 || image_status == 2 )) || fail 'Docker image inspection failed; image presence is unknown.' 'Check task execution permissions and Docker access before retrying this check.'
+fi
+if (( image_status == 2 )); then
   archive=$cache/image.tar
   [[ -f $archive && -f $archive.sha256 ]] || fail "The prepared image $image is missing and there is no $archive."
   sha256sum -c --status "$archive.sha256" || fail "$archive does not match $archive.sha256."
-  docker load -i "$archive" && docker image inspect "$image" >/dev/null 2>&1 || fail "$archive did not restore $image."
+  docker load -i "$archive" && node tools/environment/docker-image.mjs "$image" || fail "$archive did not restore $image."
 fi
 lock=$(sha256sum package-lock.json | cut -c1-16)
 if [[ $npm != "ready $lock" ]]; then
