@@ -216,4 +216,50 @@ describe('useCRun cancellation', () => {
     expect(slot.api!.result).toBeNull();
     expect(button().disabled).toBe(false);
   });
+
+  it('two stop() calls in the same task still end in the killed result, and Run is usable again', async () => {
+    await start();
+    await releaseCompile(0);
+    expect(slot.api!.phase).toBe('running');
+    await act(async () => {
+      slot.api!.stop();
+      slot.api!.stop();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(gate.runs[0].kill).toHaveBeenCalledTimes(1);
+    expect(slot.api!.phase).toBe('done');
+    expect(slot.api!.result).toMatchObject({ kind: 'killed', message: 'Stopped.' });
+    expect(button().disabled).toBe(false);
+    // And a stop with nothing to stop changes nothing.
+    await act(async () => { slot.api!.stop(); await Promise.resolve(); });
+    expect(slot.api!.phase).toBe('done');
+  });
+
+  it('two stop() calls during compile leave Run usable, and the next run still starts its program', async () => {
+    await start();
+    await act(async () => { slot.api!.stop(); slot.api!.stop(); });
+    expect(slot.api!.phase).toBe('idle');
+    await releaseCompile(0);
+    expect(gate.run).not.toHaveBeenCalled();
+    await start();
+    await releaseCompile(1);
+    expect(gate.run).toHaveBeenCalledTimes(1);
+    expect(slot.api!.phase).toBe('running');
+  });
+
+  it('output the program flushes while stop() kills it still reaches the terminal', async () => {
+    await start();
+    await releaseCompile(0);
+    const h = gate.runs[0];
+    // The real worker's kill flushes the decoder's tail through onOutput before it resolves done.
+    h.kill.mockImplementation(() => { h.emit(1, 'tail'); h.finish({ kind: 'killed', exitCode: null, message: 'Stopped.', ms: 0, wallMs: 1 }); });
+    await act(async () => {
+      slot.api!.stop();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(slot.api!.segments).toEqual([{ kind: 'out', text: 'tail' }]);
+    expect(slot.api!.phase).toBe('done');
+  });
 });

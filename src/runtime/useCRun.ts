@@ -46,6 +46,9 @@ export function useCRun() {
   // kill() resolves `done` on a microtask, after the next run has already set its phase.
   const generation = useRef(0);
   const mounted = useRef(true);
+  // True from run() until the current run's compile returns (or is cancelled). stop() uses it to tell a compile
+  // in flight from "no program".
+  const compiling = useRef(false);
   useEffect(() => () => { mounted.current = false; generation.current += 1; handle.current?.kill(); }, []);
 
   const append = useCallback((seg: Segment) => {
@@ -64,12 +67,14 @@ export function useCRun() {
     prev?.kill();
     setSegments([]); setResult(null); setDiagnostics([]); setRawDiagnostics('');
     setPhase('compiling');
+    compiling.current = true;
     const compile = await rt.compile({
       files: req.files, sources: req.sources ?? Object.keys(req.files).filter(f => f.endsWith('.c')),
       guardrail: req.guardrail, leakcheck: req.leakcheck, extraFlags: req.extraFlags,
     });
     // Cancelled or replaced while compiling. Do not start the program and do not write state.
     if (!mounted.current || id !== generation.current) return { compile, stdout: '', stderr: '' };
+    compiling.current = false;
     setDiagnostics(compile.diagnostics);
     setRawDiagnostics(compile.raw);
     if (!compile.ok || !compile.wasm) { setPhase('done'); return { compile, stdout: '', stderr: '' }; }
@@ -111,16 +116,22 @@ export function useCRun() {
 
   const stop = useCallback(() => {
     const h = handle.current;
-    handle.current = null;
-    // Kill while this run is still current, so a decoder flush still reaches the terminal. The bump is next:
-    // kill() resolves `done` on a microtask, and that continuation must not write once the run is cancelled.
-    if (h) h.kill();
-    const mine = ++generation.current;
     if (!h) {
+      // No program: either a compile is in flight, or there is nothing to stop (idle, done, or a stop already
+      // killed the program and its continuation below will publish the result). Only the compile case bumps:
+      // a second stop() in the same task must not cancel the first stop's continuation, or the run stays 'running'.
+      if (!compiling.current) return;
+      compiling.current = false;
+      generation.current += 1;
       // Still compiling: nothing else will leave this phase, and Run stays disabled while it does.
       setPhase(p => (p === 'compiling' ? 'idle' : p));
       return;
     }
+    handle.current = null;
+    // Kill while this run is still current, so a decoder flush still reaches the terminal. The bump is next:
+    // kill() resolves `done` on a microtask, and that continuation must not write once the run is cancelled.
+    h.kill();
+    const mine = ++generation.current;
     void h.done.then(r => {
       if (!mounted.current || generation.current !== mine) return;
       setResult(r);
@@ -130,6 +141,7 @@ export function useCRun() {
 
   const reset = useCallback(() => {
     generation.current += 1;
+    compiling.current = false;
     const h = handle.current;
     handle.current = null;
     h?.kill();
