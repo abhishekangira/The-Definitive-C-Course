@@ -67,15 +67,7 @@ jobs:
 
       - name: Install the native toolchain
         if: needs.changes.outputs.code == 'true'
-        run: |
-          sudo install -d -m 0755 /etc/apt/keyrings
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/keyrings/apt.llvm.org.asc >/dev/null
-          echo "deb [signed-by=/etc/apt/keyrings/apt.llvm.org.asc] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
-            | sudo tee /etc/apt/sources.list.d/llvm-22.list
-          sudo apt-get update
-          # lldb-22: lldb transcripts in native sessions; llvm-22: llvm-symbolizer, so clang's ASan reports name file:line
-          # (tools/verify/session.ts, docs/adr/0005-native-sessions.md).
-          sudo apt-get install -y --no-install-recommends gcc-13 clang-22 lld-22 libclang-rt-22-dev lldb-22 llvm-22 gdb valgrind ffmpeg python3
+        run: sudo bash tools/environment/install-native.sh
 
       - name: Log the reference environment
         if: needs.changes.outputs.code == 'true'

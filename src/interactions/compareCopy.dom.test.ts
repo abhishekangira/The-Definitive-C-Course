@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // The compare box's copy text (issue #105): exact lines, blank lines kept, gap rows and notes left out.
 import { afterEach, describe, expect, it } from 'vitest';
-import { compareCopyText, onCompareCopy } from './compareCopy';
+import { compareCopyText, listenForCopy, onCompareCopy, selectionCopyText } from './compareCopy';
 
 type Row = string | { gap: true } | { blank: true; gap?: true };
 
@@ -63,6 +63,14 @@ describe('compareCopyText', () => {
     expect(compareCopyText(pre, whole(other))).toBeNull();
     expect(compareCopyText(pre, whole(document.body))).toBeNull();
   });
+
+  it('returns null, not an empty string, for a selection in the box that touches no row', () => {
+    const pre = box(['a', 'b']);
+    const r = document.createRange();
+    r.setStart(pre, 0);
+    r.setEnd(pre, 0);
+    expect(compareCopyText(pre, r)).toBeNull();
+  });
 });
 
 describe('onCompareCopy', () => {
@@ -87,10 +95,76 @@ describe('onCompareCopy', () => {
     expect(prevented).toBe(true);
   });
 
+  it('leaves a collapsed selection (a caret in a row) to the browser', () => {
+    const pre = box(['nope', 'more']);
+    const r = document.createRange();
+    r.setStart(pre.querySelector('[data-line]')!.firstChild!, 2);
+    const { data, prevented } = copy(pre, r);
+    expect(data.size).toBe(0);
+    expect(prevented).toBe(false);
+  });
+
   it('leaves a copy that starts outside the box to the browser', () => {
     const pre = box(['nope']);
     const { data, prevented } = copy(pre, whole(document.body));
     expect(data.size).toBe(0);
     expect(prevented).toBe(false);
+  });
+});
+
+describe('selectionCopyText and listenForCopy', () => {
+  function select(range: Range) {
+    const sel = document.getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  it('is null for a selection inside one box (its onCopy handles it) or touching no box', () => {
+    const pre = box(['nope', { blank: true }, 'more']);
+    pre.setAttribute('data-compare', 'predicted');
+    select(whole(pre));
+    expect(selectionCopyText(document)).toBeNull();
+    const p = document.createElement('p');
+    p.textContent = 'elsewhere';
+    document.body.append(p);
+    select(whole(p));
+    expect(selectionCopyText(document)).toBeNull();
+  });
+
+  it('keeps the blank line and drops gap rows for a selection over two labelled boxes, and restores the selection', () => {
+    const label = (t: string) => { const d = document.createElement('div'); d.textContent = t; document.body.append(d); };
+    label('You predicted');
+    const a = box(['nope', { blank: true }, 'more']);
+    label('Actual output');
+    const b = box(['nope', { gap: true }, 'more']);
+    label('after');
+    a.setAttribute('data-compare', 'predicted');
+    b.setAttribute('data-compare', 'actual');
+    select(whole(document.body));
+    const before = document.getSelection()!.getRangeAt(0).cloneRange();
+    expect(selectionCopyText(document)).toBe('You predicted\nnope\n\nmore\nActual output\nnope\nmore\nafter');
+    const after = document.getSelection()!.getRangeAt(0);
+    expect([after.startContainer, after.startOffset, after.endContainer, after.endOffset]).toEqual([before.startContainer, before.startOffset, before.endContainer, before.endOffset]);
+  });
+
+  it('keeps the document listener until the last compare goes away', () => {
+    const a = box(['nope', { blank: true }, 'more']);
+    const b = box(['x']);
+    a.setAttribute('data-compare', 'predicted');
+    b.setAttribute('data-compare', 'actual');
+    const fire = () => {
+      select(whole(document.body));
+      const data = new Map<string, string>();
+      const e = new Event('copy', { cancelable: true }) as Event & { clipboardData: unknown };
+      e.clipboardData = { setData: (t: string, v: string) => { data.set(t, v); } };
+      document.dispatchEvent(e);
+      return data.get('text/plain');
+    };
+    const stopA = listenForCopy(document);
+    const stopB = listenForCopy(document);
+    stopA();
+    expect(fire()).toBe('nope\n\nmore\nx');
+    stopB();
+    expect(fire()).toBeUndefined();
   });
 });
