@@ -210,7 +210,8 @@ describe('portable environment setup', () => {
     const script = readFileSync(path.join(here, 'install-native.sh'), 'utf8');
     const installs = workflow.match(/^\s*run: .*install-native\.sh.*$/gm) ?? [];
     expect(installs.length).toBe(2);
-    for (const run of installs) expect(run).toContain('TDCC_APT_ARCHIVES="$HOME/.cache/tdcc-apt"');
+    // The runner creates the folder first; created by root inside the script, ~/.cache would be root-owned (EACCES later).
+    for (const run of installs) expect(run).toContain('mkdir -p "$HOME/.cache/tdcc-apt" && sudo TDCC_APT_ARCHIVES="$HOME/.cache/tdcc-apt" bash');
     expect(workflow.match(/path: ~\/\.cache\/tdcc-apt$/gm)?.length).toBe(2);
     // Every install goes through the array that adds the archive folder; a bare apt-get install would bypass the cache.
     expect(script).toContain('apt_install+=(-o "Dir::Cache::archives=$TDCC_APT_ARCHIVES")');

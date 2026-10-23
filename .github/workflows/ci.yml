@@ -86,7 +86,8 @@ jobs:
         if: needs.changes.outputs.code == 'true'
         # Usually under 1 min. A crawling Ubuntu mirror once took 22 min (144 kB/s); fail fast and re-run instead.
         timeout-minutes: 10
-        run: sudo TDCC_APT_ARCHIVES="$HOME/.cache/tdcc-apt" bash tools/environment/install-native.sh
+        # mkdir first: as root, the script would create ~/.cache itself, root-owned, and later steps (Playwright) fail with EACCES.
+        run: mkdir -p "$HOME/.cache/tdcc-apt" && sudo TDCC_APT_ARCHIVES="$HOME/.cache/tdcc-apt" bash tools/environment/install-native.sh
 
       - name: Log the reference environment
         if: needs.changes.outputs.code == 'true'
@@ -207,7 +208,8 @@ jobs:
           restore-keys: apt-ffmpeg-${{ runner.os }}-${{ hashFiles('tools/environment/install-native.sh') }}-
       - name: Install FFmpeg
         timeout-minutes: 10
-        run: sudo TDCC_APT_ARCHIVES="$HOME/.cache/tdcc-apt" bash tools/environment/install-native.sh --ffmpeg-only
+        # mkdir first: as root, the script would create ~/.cache itself, root-owned, and later steps (Playwright) fail with EACCES.
+        run: mkdir -p "$HOME/.cache/tdcc-apt" && sudo TDCC_APT_ARCHIVES="$HOME/.cache/tdcc-apt" bash tools/environment/install-native.sh --ffmpeg-only
 
       - run: npm ci
 
