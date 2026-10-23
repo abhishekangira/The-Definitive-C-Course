@@ -28,6 +28,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # A stalled cache restore gives up after about 2 min instead of the default 10 (.github/AGENTS.md).
+  SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
+
 concurrency:
   # PR runs get their own group per ref so they never queue behind (or replace a pending) run on main.
   group: ${{ github.event_name == 'pull_request' && format('targets-pr-{0}', github.ref) || 'targets' }}
@@ -54,7 +58,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - name: Set up MSVC
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
@@ -117,7 +120,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - run: npm ci
       - name: Log the runner
         run: |

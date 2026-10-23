@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Shared by CI and the portable development image. Run as root on Ubuntu 24.04.
 # --ffmpeg-only installs just FFmpeg (CI's e2e jobs need no compilers).
+# TDCC_APT_ARCHIVES=<dir> keeps the downloaded .deb files there, also for later apt runs (CI caches that folder).
 set -euo pipefail
 . /etc/os-release
 if [[ "$ID" != ubuntu || "$VERSION_ID" != 24.04 || "$EUID" != 0 ]]; then
@@ -8,15 +9,28 @@ if [[ "$ID" != ubuntu || "$VERSION_ID" != 24.04 || "$EUID" != 0 ]]; then
   exit 1
 fi
 export DEBIAN_FRONTEND=noninteractive
+apt_install=(apt-get install -y --no-install-recommends)
+key=
+cleanup() {
+  if [[ -n "$key" ]]; then rm -f "$key"; fi
+  # Make everything readable (apt's lock and partial/ are root-only), so the unprivileged cache step can archive the folder.
+  if [[ -n "${TDCC_APT_ARCHIVES:-}" ]]; then chmod -R a+rX "$TDCC_APT_ARCHIVES"; fi
+}
+trap cleanup EXIT
+if [[ -n "${TDCC_APT_ARCHIVES:-}" ]]; then
+  mkdir -p "$TDCC_APT_ARCHIVES/partial"
+  apt_install+=(-o "Dir::Cache::archives=$TDCC_APT_ARCHIVES")
+  # Later apt runs on this machine use the folder too (CI: Playwright's --with-deps install).
+  echo "Dir::Cache::archives \"$TDCC_APT_ARCHIVES/\";" > /etc/apt/apt.conf.d/99tdcc-archives
+fi
 apt-get update
 if [[ "${1:-}" == --ffmpeg-only ]]; then
-  apt-get install -y --no-install-recommends ffmpeg
+  "${apt_install[@]}" ffmpeg
   exit 0
 fi
-apt-get install -y --no-install-recommends ca-certificates curl gnupg
+"${apt_install[@]}" ca-certificates curl gnupg
 install -d -m 0755 /etc/apt/keyrings
 key=$(mktemp)
-trap 'rm -f "$key"' EXIT
 curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key -o "$key"
 fingerprint=$(gpg --batch --show-keys --with-colons "$key" | awk -F: '$1 == "fpr" {print $10; exit}')
 if [[ "$fingerprint" != 6084F3CF814B57C1CF12EFD515CF4D18AF4F7421 ]]; then
@@ -26,4 +40,4 @@ fi
 install -m 0644 "$key" /etc/apt/keyrings/apt.llvm.org.asc
 echo 'deb [signed-by=/etc/apt/keyrings/apt.llvm.org.asc] https://apt.llvm.org/noble/ llvm-toolchain-noble-22 main' > /etc/apt/sources.list.d/llvm-22.list
 apt-get update
-apt-get install -y --no-install-recommends gcc gcc-13 make clang-22 lld-22 libclang-rt-22-dev lldb-22 llvm-22 gdb valgrind ffmpeg python3 git xz-utils
+"${apt_install[@]}" gcc gcc-13 make clang-22 lld-22 libclang-rt-22-dev lldb-22 llvm-22 gdb valgrind ffmpeg python3 git xz-utils
