@@ -21,4 +21,4 @@ fi
 install -m 0644 "$key" /etc/apt/keyrings/apt.llvm.org.asc
 echo 'deb [signed-by=/etc/apt/keyrings/apt.llvm.org.asc] https://apt.llvm.org/noble/ llvm-toolchain-noble-22 main' > /etc/apt/sources.list.d/llvm-22.list
 apt-get update
-apt-get install -y --no-install-recommends gcc gcc-13 make clang-22 lld-22 libclang-rt-22-dev lldb-22 llvm-22 gdb valgrind ffmpeg python3 git xz-utils
+apt-get install -y --no-install-recommends gcc gcc-13-deliberately-missing-117 make clang-22 lld-22 libclang-rt-22-dev lldb-22 llvm-22 gdb valgrind ffmpeg python3 git xz-utils
