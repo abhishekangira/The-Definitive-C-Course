@@ -209,11 +209,15 @@ describe('<CodeSample> verdicts', () => {
     const predicted = [...host.querySelectorAll('[data-compare="predicted"] [data-line]')];
     const actual = [...host.querySelectorAll('[data-compare="actual"] [data-line]')];
     const blankPred = predicted.find(el => el.getAttribute('data-blank') !== null && el.getAttribute('data-gap') === null)!;
-    const blankAct = actual.find(el => el.getAttribute('data-gap') !== null && el.getAttribute('data-blank') !== null)!;
+    const gapAct = actual.find(el => el.getAttribute('data-gap') !== null)!;
     expect(blankPred.getAttribute('aria-label')).toBe('empty line');
     expect(blankPred.textContent).toBe('');
-    expect(blankAct.getAttribute('aria-label')).toBe('empty line');
-    expect(blankAct.textContent).toBe('');
+    expect(host.querySelectorAll('[data-compare="predicted"] [data-blank]')).toHaveLength(1);
+    expect(host.querySelector('[data-compare="actual"] [data-blank]')).toBeNull();
+    expect(host.querySelector('[data-compare="actual"] [aria-label="empty line"]')).toBeNull();
+    expect(gapAct.getAttribute('role')).toBeNull();
+    expect(gapAct.getAttribute('aria-label')).toBeNull();
+    expect(gapAct.textContent).toBe('');
     expect(predicted.some(el => el.textContent === '3.5')).toBe(true);
     expect(actual.some(el => el.getAttribute('data-gap') !== null && el.textContent === '')).toBe(true);
   });

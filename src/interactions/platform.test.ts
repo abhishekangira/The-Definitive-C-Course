@@ -82,10 +82,18 @@ describe('outputDiff', () => {
     expect(marked([d.predicted[1]])).toBe('3.5');
   });
 
-  it('marks an extra blank line in the middle with blank on both sides', () => {
+  it('marks an extra blank line only on the predicted side, with a plain gap opposite it', () => {
     const d = outputDiff('3 -3 1\n\n3.5', '3 -3 1\n3.5');
     expect(d.predicted[1]).toMatchObject({ gap: false, blank: true });
-    expect(d.actual[1]).toMatchObject({ gap: true, blank: true });
+    expect(d.actual[1]).toMatchObject({ gap: true, blank: false, chunks: [] });
+    expect(d.predicted[2].chunks).toEqual([{ text: '3.5', mark: false }]);
+    expect(d.actual[2].chunks).toEqual([{ text: '3.5', mark: false }]);
+  });
+
+  it('marks a missing blank line only on the actual side, with a plain gap opposite it', () => {
+    const d = outputDiff('3 -3 1\n3.5', '3 -3 1\n\n3.5');
+    expect(d.predicted[1]).toMatchObject({ gap: true, blank: false, chunks: [] });
+    expect(d.actual[1]).toMatchObject({ gap: false, blank: true });
     expect(d.predicted[2].chunks).toEqual([{ text: '3.5', mark: false }]);
     expect(d.actual[2].chunks).toEqual([{ text: '3.5', mark: false }]);
   });
@@ -138,7 +146,7 @@ describe('outputDiff', () => {
     expect(atPred.length * atAct.length).toBe(4_000_000);
     const atCap = outputDiff(atPred.join('\n'), atAct.join('\n'));
     expect(atCap.predicted[0]).toMatchObject({ gap: false, blank: true });
-    expect(atCap.actual[0]).toMatchObject({ gap: true, blank: true });
+    expect(atCap.actual[0]).toMatchObject({ gap: true, blank: false });
     expect(atCap.predicted[1].chunks).toEqual([{ text: 'L0', mark: false }]);
     expect(atCap.actual[1].chunks).toEqual([{ text: 'L0', mark: false }]);
     expect(atCap.predicted[1999].chunks).toEqual([{ text: 'L1998', mark: false }]);

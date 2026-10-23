@@ -53,8 +53,8 @@
 .compareBox { overflow-x: auto; font-size: 14px; line-height: 1.5; }
 /* Block span: the compare box is a <pre> (base.css gives pre the monospace font and padding; a div does not), and a div inside it is invalid. An inline span would run the lines together. */
 .compareLine { display: block; white-space: pre; min-height: 1lh; }
-/* Colour plus an underline: the mark is not colour alone. The pair is --terminal-err on --terminal-bg. */
-.diffMark { color: var(--terminal-err); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+/* A tinted fill makes a lone comma or space visible; the underline keeps the mark from relying on colour alone. */
+.diffMark { color: var(--terminal-diff-text); background-color: var(--terminal-diff-bg); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
 /* ::before, not a text node, so the note is never copied. min-height: 1lh keeps a blank or gap row as tall as a text row. */
 .compareLine[data-blank]::before { content: "empty line"; color: var(--terminal-muted); font-size: 0.85em; user-select: none; }
 @media (max-width: 600px) {
