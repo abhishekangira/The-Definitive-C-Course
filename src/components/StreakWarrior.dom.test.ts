@@ -98,6 +98,18 @@ describe('transformation sequence clearing', () => {
     expect(steps()).toHaveLength(0);
   });
 
+  it('a child loop\'s animationend or animationcancel bubbling to the last beat does not clear it', async () => {
+    await show();
+    const child = beat(5)!.querySelector('svg g')!;
+    expect(child).not.toBeNull();
+    await act(async () => {
+      child.dispatchEvent(beatEvent('animationcancel'));
+      child.dispatchEvent(beatEvent('animationend'));
+    });
+    expect(transforming()).not.toBeNull();
+    expect(steps()).toHaveLength(6);
+  });
+
   it('a cancel for a sequence that is no longer the current one does not clear the new one', async () => {
     await show();
     const last = beat(5)!;
@@ -129,12 +141,18 @@ describe('transformation sequence clearing', () => {
     await show();
     expect(beat(0)?.getAttribute('data-form')).toBe('kid');
     expect(beat(5)?.getAttribute('data-form')).toBe('warrior');
+    const sequenceBefore = host.querySelector('[data-transform-sequence]')!;
+    const lastBefore = beat(5)!;
     await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
     await act(async () => { setDays(7); });
     expect(localStorage.getItem(SEEN_KEY)).toBe('golden');
     expect(beat(0)?.getAttribute('data-form')).toBe('warrior');
     expect(beat(5)?.getAttribute('data-form')).toBe('golden');
     expect(host.querySelector('[data-transform-to]')?.getAttribute('data-transform-to')).toBe('golden');
+    // Keyed on the target form: new nodes, so the browser restarts every beat's CSS animation from beat 0.
+    expect(sequenceBefore.isConnected).toBe(false);
+    expect(host.querySelector('[data-transform-sequence]')).not.toBe(sequenceBefore);
+    expect(lastBefore.isConnected).toBe(false);
     // The old fallback was due at 2800. A restarted one is due 2800 after the change.
     await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
     expect(transforming()).not.toBeNull();

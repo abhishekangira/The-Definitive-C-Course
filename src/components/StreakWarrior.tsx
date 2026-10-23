@@ -49,7 +49,7 @@ interface PortraitProps {
   /** An accessible name; without one the art is hidden from assistive technology. */
   label?: string;
   className?: string;
-  /** Drop the figure by whole viewBox units (`CROUCH_DY`). Not a CSS px translate. */
+  /** Draw the crouch pose (`crouchSprite`): head and torso lowered on bent knees, feet planted. */
   crouch?: boolean;
   onAnimationEnd?: (e: ReactAnimationEvent<HTMLSpanElement>) => void;
 }
@@ -65,7 +65,7 @@ export function WarriorPortrait({ form, mood = 'ready', still = false, bare = fa
   );
 }
 
-/** One-shot transformation. Poses reuse the form's sprites; the aura prop supplies the charge. No extra sprite rows. */
+/** One-shot transformation. Stand, the crouch drawn from the standing frame (`crouchSprite`), the charge as the aura ramps, a flash, the new form. */
 export type TransformBeat =
   | { kind: 'pose'; who: 'from' | 'to'; aura: AuraStage; crouch: boolean }
   | { kind: 'flash' };

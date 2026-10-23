@@ -60,20 +60,19 @@ describe('transformation sequence', () => {
     expect(stepSlice(markup, 5)).toContain('data-aura-layer="tongue"');
   });
 
-  it('crouches by a whole number of viewBox units, and no CSS rule translates the crouch in px', () => {
+  it('crouch beats draw the crouch pose in place, with no translate, and no CSS rule moves the crouch', () => {
     const markup = html('kid', 'warrior');
-    const translated = (n: number) => {
-      const m = stepSlice(markup, n).match(/transform="translate\(0 (\d+)\)"/);
-      expect(m, `beat ${n}`).not.toBeNull();
-      return Number(m![1]);
-    };
-    const dy = translated(1);
-    expect(Number.isInteger(dy)).toBe(true);
-    expect(dy).toBe(5);
-    expect(translated(2)).toBe(dy);
-    expect(translated(3)).toBe(dy);
-    for (const n of [0, 5]) expect(stepSlice(markup, n), `beat ${n}`).not.toContain('transform="translate(0 ');
-    expect(stepSlice(markup, 1)).toMatch(/transform="translate\(0 5\)"[\s\S]*data-pose=/);
+    for (const n of [1, 2, 3]) {
+      expect(stepSlice(markup, n), `beat ${n}`).toMatch(/<g[^>]*data-crouch=""/);
+      expect(stepSlice(markup, n), `beat ${n}`).not.toContain('transform="translate(');
+    }
+    for (const n of [0, 5]) expect(stepSlice(markup, n), `beat ${n}`).not.toContain('data-crouch=""');
+    // The crouch draws different pixels from the stand, and every crouch beat draws the same crouch.
+    const figure = (n: number) => stepSlice(markup, n).match(/<g[^>]*data-frame="0"[^>]*>[\s\S]*?<\/g>/)?.[0];
+    expect(figure(1)).toBeDefined();
+    expect(figure(1)).not.toBe(figure(0));
+    expect(figure(2)).toBe(figure(1));
+    expect(figure(3)).toBe(figure(1));
     expect(css).not.toMatch(/\[data-crouch\][^{]*\{[^}]*\}/);
     expect(css).toContain('--beat: 0.4s');
     expect(css).not.toContain('radial-gradient');

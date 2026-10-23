@@ -992,6 +992,77 @@ export const FORM_FRAMES: Record<FormId, {
   },
 };
 
+/**
+ * The crouch for the transformation, derived from the standing frame: rows above `hip` (head, torso, arms) drop by
+ * `drop`, the trouser rows [hip, cuff) lose `drop` rows from the thigh and bow outward up to `splay` px at the knee
+ * (left of `CROUCH_CX` moves left, the rest right), and the shins and feet from `cuff` down stay planted. So the feet,
+ * the shadow and the aura's base stay where the standing pose has them.
+ */
+export interface CrouchCut { hip: number; cuff: number; drop: number; splay: number }
+export const CROUCH_CX = 48;
+export const CROUCH: Record<FormId, CrouchCut> = {
+  kid: { hip: 81, cuff: 88, drop: 3, splay: 2 },
+  warrior: { hip: 69, cuff: 82, drop: 5, splay: 3 },
+  golden: { hip: 69, cuff: 82, drop: 5, splay: 3 },
+  mane: { hip: 69, cuff: 82, drop: 5, splay: 3 },
+  crimson: { hip: 69, cuff: 82, drop: 5, splay: 3 },
+  ape: { hip: 81, cuff: 87, drop: 2, splay: 2 },
+};
+
+const crouchCache = new WeakMap<PixelSprite, PixelSprite>();
+
+/** The crouched pose of `standing` (a composed frame of `form`). Whole-pixel moves of its own pixels only. */
+export function crouchSprite(form: FormId, standing: PixelSprite): PixelSprite {
+  const hit = crouchCache.get(standing);
+  if (hit) return hit;
+  const { hip, cuff, drop, splay } = CROUCH[form];
+  const cells = new Map<string, string>();
+  const put = (x: number, y: number, ch: string) => { cells.set(`${x},${y}`, ch); };
+  const at = (x: number, y: number) => {
+    const ch = standing.rows[y - standing.y]?.[x - standing.x];
+    return ch && ch !== '.' ? ch : undefined;
+  };
+  const width = standing.rows.reduce((m, r) => Math.max(m, r.length), 0);
+  const xs = Array.from({ length: width }, (_, i) => standing.x + i);
+  for (let y = cuff; y < standing.y + standing.rows.length; y++) {
+    for (const x of xs) { const ch = at(x, y); if (ch) put(x, y, ch); }
+  }
+  // The thigh loses `drop` rows, spread over the band's inside (its top row and the hem stay).
+  const band = Array.from({ length: cuff - hip }, (_, i) => hip + i);
+  const inner = band.slice(1, -2);
+  const cut = new Set(Array.from({ length: drop }, (_, k) => inner[Math.round(((k + 0.5) * inner.length) / drop - 0.5)]));
+  const kept = band.filter(y => !cut.has(y));
+  const knee = kept.length * 0.55;
+  kept.forEach((src, t) => {
+    const f = t < knee ? (t + 1) / (knee + 1) : (kept.length - t) / (kept.length - knee);
+    const dx = Math.max(0, Math.round(splay * f));
+    const y = hip + drop + t;
+    for (const x of xs) {
+      const ch = at(x, src);
+      if (ch) put(x < CROUCH_CX ? x - dx : x + dx, y, ch);
+    }
+    // Where the two legs are still joined, close the gap the bow opens with the pixels either side of the middle.
+    const l = at(CROUCH_CX - 1, src);
+    const r = at(CROUCH_CX, src);
+    if (dx && l && r) {
+      for (let k = 1; k <= dx; k++) { put(CROUCH_CX - 1 - dx + k, y, l); put(CROUCH_CX + dx - k, y, r); }
+    }
+  });
+  // Head, torso and arms last, so the fists stay in front of the trousers.
+  for (let y = standing.y; y < hip; y++) {
+    for (const x of xs) { const ch = at(x, y); if (ch) put(x, y + drop, ch); }
+  }
+  let x0 = Infinity; let x1 = -Infinity; let y0 = Infinity; let y1 = -Infinity;
+  for (const key of cells.keys()) {
+    const [x, y] = key.split(',').map(Number);
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x + 1); y0 = Math.min(y0, y); y1 = Math.max(y1, y + 1);
+  }
+  const rows = Array.from({ length: y1 - y0 }, (_, j) => Array.from({ length: x1 - x0 }, (_, i) => cells.get(`${x0 + i},${y0 + j}`) ?? '.').join(''));
+  const out: PixelSprite = { x: x0, y: y0, rows };
+  crouchCache.set(standing, out);
+  return out;
+}
+
 /** `shift.dy` of each kid idle frame. The other forms use the same list. */
 export const IDLE_BLINK_DY: readonly number[] = FORM_FRAMES.kid.idle.map(entry => entry.shift?.dy ?? 0);
 

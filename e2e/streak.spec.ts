@@ -55,24 +55,29 @@ async function seekBeats(page: Page) {
 }
 
 /**
- * Crouch offset in CSS pixels. The pose loop only toggles visibility, so the figure box does not move,
- * and seeking those loops would fire `animationend` on the last beat.
+ * The crouch is a drawn pose, not a translate: the crouched figure's top is lower than the standing one by the
+ * crouch's drop in grid units, its feet are where they were, and its shadow is inside the beat's box (not clipped).
+ * Reads boxes only: seeking the pose loops would fire `animationend` on the last beat.
  */
-async function crouchOffset(page: Page) {
+async function crouchBoxes(page: Page) {
   return page.evaluate(() => {
     const root = document.querySelector('main [data-transform-sequence]');
     if (!root) return null;
     const beats = [...root.querySelectorAll<HTMLElement>('[data-transform-step]')];
-    const box = (beat: Element | undefined) => beat?.querySelector('[data-pose]')?.getBoundingClientRect();
-    const stand = box(beats[0]);
-    const crouched = box(beats[1]);
+    const stand = beats[0]?.querySelector('[data-pose]')?.getBoundingClientRect();
+    const fig = beats[1]?.querySelector('g[data-crouch]');
+    const crouched = fig?.getBoundingClientRect();
     const svg = beats[1]?.querySelector('svg');
-    const raw = beats[1]?.querySelector('g[data-crouch]')?.getAttribute('transform') ?? '';
-    const n = /^translate\(0 (-?\d+)\)$/.exec(raw)?.[1];
-    if (!stand || !crouched || !svg || n === undefined) return { dy: crouched && stand ? crouched.top - stand.top : 0, n: null, width: 0, vb: 0, raw };
-    const width = svg.getBoundingClientRect().width;
-    const vb = svg.viewBox.baseVal.width;
-    return { dy: crouched.top - stand.top, n: Number(n), width, vb, raw };
+    const shadow = beats[1]?.querySelector('path[class*="shadow"]')?.getBoundingClientRect();
+    const box = beats[1]?.getBoundingClientRect();
+    if (!stand || !crouched || !svg || !shadow || !box) return null;
+    return {
+      top: crouched.top - stand.top,
+      bottom: crouched.bottom - stand.bottom,
+      unit: svg.getBoundingClientRect().width / svg.viewBox.baseVal.width,
+      translated: [...beats[1].querySelectorAll('[transform]')].some(el => /translate/.test(el.getAttribute('transform') ?? '')),
+      shadowInside: shadow.bottom <= box.bottom + 0.01 && shadow.top >= box.top,
+    };
   });
 }
 
@@ -202,11 +207,14 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
     await expect(beats.nth(4)).toHaveAttribute('data-flash', '');
     await expect(beats.nth(5)).toHaveAttribute('data-form', 'warrior');
     await expect(beats.nth(5)).toHaveAttribute('data-aura', 'blaze');
-    // Pause and seek. Counting the nodes does not prove one beat is on screen, and a CSS px crouch is not on the grid.
-    const crouched = await crouchOffset(page);
-    expect(crouched?.n, 'crouch translate').toBe(5);
-    expect(crouched!.dy).toBeGreaterThan(1);
-    expect(Math.abs(crouched!.dy - crouched!.n! * (crouched!.width / crouched!.vb))).toBeLessThan(0.75);
+    // Pause and seek. Counting the nodes does not prove one beat is on screen.
+    const crouched = await crouchBoxes(page);
+    expect(crouched, 'crouch boxes').not.toBeNull();
+    expect(crouched!.translated, 'no translate on the crouch').toBe(false);
+    // The kid's crouch drops the head 3 grid px (CROUCH.kid.drop) and keeps the feet planted.
+    expect(Math.abs(crouched!.top - 3 * crouched!.unit)).toBeLessThan(0.75);
+    expect(Math.abs(crouched!.bottom)).toBeLessThan(0.75);
+    expect(crouched!.shadowInside, 'the crouched shadow is inside the beat').toBe(true);
     const sought = await seekBeats(page);
     expect(sought?.missing, 'every beat has a step animation').toBe(false);
     for (const [step, rows] of sought!.frames.entries()) {

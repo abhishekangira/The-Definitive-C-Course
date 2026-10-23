@@ -5,7 +5,7 @@
 // switched off by `still` and under prefers-reduced-motion.
 import type { ReactNode } from 'react';
 import type { FormId, WarriorMood } from '../progress/warrior';
-import { blinkForIdle, composeFrame, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
+import { blinkForIdle, composeFrame, CROUCH, crouchSprite, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
 import styles from './StreakWarrior.module.css';
 
 /** The sprites' grid. */
@@ -17,11 +17,6 @@ const W = 112;
 const H = 112;
 /** Every figure is shown in this viewBox, so a transformation never changes the scale. */
 export const VIEWBOX = `${OX} ${OY} ${W} ${H}`;
-/**
- * How far a crouch beat drops, in viewBox units. A CSS px translate misses this grid:
- * 8px is 5.6 units at the 160px stage and 8.6 at 104px. 5 is a whole step at every size.
- */
-export const CROUCH_DY = 5;
 
 type Paths = Array<[key: string, colour: string, d: string]>;
 
@@ -407,33 +402,17 @@ export function WarriorArt({ form, mood, bare = false, aura, crouch = false }: {
   bare?: boolean;
   /** Power-up stage. Omit it for the form's default (`defaultAura`). */
   aura?: AuraStage;
-  /** Drop the figure, its aura and its shadow by `CROUCH_DY` grid units. The night sky stays where it is. */
+  /** Draw the crouch (`crouchSprite`): the body lowered on bent knees, the feet and the shadow where they stand. */
   crouch?: boolean;
 }): ReactNode {
   const frames = poseFrames(form, mood);
-  const drawn = frames.map(composeFrame);
+  const standing = frames.map(composeFrame);
+  // The crouch is one drawn frame. Its head moved down by the crouch's drop, so the blink and the sweat follow it.
+  const drop = crouch ? CROUCH[form].drop : 0;
+  const drawn = crouch ? [crouchSprite(form, standing[0])] : standing;
   const stage: AuraStage = bare ? 'none' : aura ?? defaultAura(form);
   const blink = mood === 'ready' ? FORM_FRAMES[form].blink : undefined;
   const sky = form === 'ape' && !bare;
-  // The wrapper carries the crouch. The animated `.figure` stays inside it: a CSS transform on the same
-  // element would replace this attribute (src/AGENTS.md, transform-origin).
-  const body = (
-    <>
-      {stage !== 'none' && <Aura stage={stage} sprite={drawn[0]} kind={auraKind(form)} />}
-      {!sky && <path className={styles.shadow} d={shadowPath(form)} />}
-      <g className={drawn.length > 1 ? `${styles.figure} ${styles.multi}` : styles.figure} data-pose={drawn.length > 1 ? drawn.length : undefined}>
-        <path className={styles.rim} d={rimPath(drawn[0])} />
-        {drawn.map((sprite, i) => (
-          <g key={i} data-frame={i} className={drawn.length > 1 ? styles[`pose${i}`] : undefined}>
-            <Pixels sprite={sprite} />
-            {blink && <g className={styles.blink} data-blink="">{blinkPaths(blinkForIdle(blink, frames[i])).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
-          </g>
-        ))}
-        {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
-      </g>
-      {stage !== 'none' && form === 'mane' && <Bolts />}
-    </>
-  );
   return (
     <>
       {sky && (
@@ -442,7 +421,19 @@ export function WarriorArt({ form, mood, bare = false, aura, crouch = false }: {
           <g className={styles.stars}><Pixels sprite={STARS} palette={SKY_PALETTE} /></g>
         </g>
       )}
-      {crouch ? <g data-crouch="" transform={`translate(0 ${CROUCH_DY})`}>{body}</g> : body}
+      {stage !== 'none' && <Aura stage={stage} sprite={drawn[0]} kind={auraKind(form)} />}
+      {!sky && <path className={styles.shadow} d={shadowPath(form)} />}
+      <g className={crouch ? undefined : drawn.length > 1 ? `${styles.figure} ${styles.multi}` : styles.figure} data-pose={drawn.length > 1 ? drawn.length : undefined} data-crouch={crouch ? '' : undefined}>
+        <path className={styles.rim} d={rimPath(drawn[0])} />
+        {drawn.map((sprite, i) => (
+          <g key={i} data-frame={i} className={drawn.length > 1 ? styles[`pose${i}`] : undefined}>
+            <Pixels sprite={sprite} />
+            {blink && <g className={styles.blink} data-blink="">{blinkPaths(crouch ? { ...blink, y: blink.y + drop } : blinkForIdle(blink, frames[i])).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
+          </g>
+        ))}
+        {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={drop ? { ...SWEAT[form], y: SWEAT[form].y + drop } : SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
+      </g>
+      {stage !== 'none' && form === 'mane' && <Bolts />}
     </>
   );
 }

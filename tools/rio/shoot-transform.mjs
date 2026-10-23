@@ -34,8 +34,8 @@ async function arm(page, theme) {
   await page.waitForSelector('[data-transforming]');
 }
 
-// Pauses the beat animations and seeks one of them. The crouch is an SVG
-// translate in viewBox units, not a CSS px transform on the step.
+// Pauses the beat animations and seeks one of them. The crouch is a drawn pose
+// (crouchSprite), marked data-crouch on the figure; nothing is translated.
 function seek(step) {
   const steps = [...document.querySelectorAll('[data-transform-step]')];
   for (const el of steps) {
@@ -54,7 +54,7 @@ function seek(step) {
     return {
       step: el.getAttribute('data-transform-step'),
       clip: s.clipPath,
-      crouch: g ? g.getAttribute('transform') : null,
+      crouch: Boolean(g),
       flash: el.hasAttribute('data-flash'),
       form: el.getAttribute('data-form'),
       aura: el.getAttribute('data-aura'),
