@@ -10,8 +10,8 @@
 //
 // Frames. A frame is a full sprite plus optional patches, painted in order (a later patch wins, and a space erases).
 // `FORM_FRAMES` lists them per form:
-//   idle      the loop while Rio is fired up. `.still`, the gallery and the header head show the first frame of
-//             the current pose's list (an at-risk streak shows worried[0], not idle[0]).
+//   idle      the loop while Rio is fired up. Under `.still`, the header head draws the first frame of the
+//             streak mood's list (worried[0] when at risk); the gallery always draws idle[0] (it passes no mood).
 //   defeated  the defeated loop, when that pose is its own drawing (the kid).
 //   worried   the worried loop.
 //   blink     one patch for the resting head (idle frame 0), drawn through composeFrame so a space stays
