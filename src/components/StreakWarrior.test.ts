@@ -83,11 +83,13 @@ describe('transformation sequence', () => {
 
   it('the flash beat has no fill of its own: no background, border, gradient or shadow on [data-flash]', () => {
     expect(css).not.toMatch(/\[data-flash\][^{]*\{/);
-    expect(css).toMatch(/\.flashCore \{ fill: #fffdf0; \}/);
-    expect(css).toMatch(/\.flashEdge \{ fill: var\(--flash-edge\); \}/);
-    // A warm edge on a light page (the white core would vanish), pale yellow on a dark page.
-    expect(css).toContain('--flash-edge: #ff9a00;');
-    expect(css).toContain(":root[data-theme='dark'] .art { --warrior-rim: #59627d; --flash-edge: #fff3a8; }");
+    for (const part of ['Core', 'Ring', 'Edge']) expect(css).toContain(`.flash${part} { fill: var(--flash-${part.toLowerCase()}); }`);
+    // Light page: a warm pale-yellow core (near-white vanished into the page) and a 2-cell amber outline (ring = edge).
+    expect(css).toContain('--flash-core: #fff1a6; --flash-ring: #f08c00; --flash-edge: #f08c00;');
+    // Dark page, chosen in the app or by the system: the white-hot core, which the ring joins, and a 1-cell pale-yellow edge.
+    const dark = '--warrior-rim: #59627d; --flash-core: #fffdf0; --flash-ring: #fffdf0; --flash-edge: #fff3a8; }';
+    expect(css).toContain(`@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .art { ${dark} }`);
+    expect(css).toContain(`:root[data-theme='dark'] .art { ${dark}`);
   });
 });
 
@@ -107,9 +109,10 @@ describe('the flash beat paints only Rio\'s pixels', () => {
       const markup = renderToStaticMarkup(createElement(TransformationSequence, { from, to: 'ape', mood: 'ready' }));
       const slice = stepSlice(markup, 4);
       const paths = [...slice.matchAll(/<path\b([^>]*)\/?>/g)].map(m => m[1]);
-      expect(paths, 'a core and an edge').toHaveLength(2);
+      expect(paths, 'a core, a ring and an edge').toHaveLength(3);
       expect(paths[0]).toMatch(/class="[^"]*flashCore/);
-      expect(paths[1]).toMatch(/class="[^"]*flashEdge/);
+      expect(paths[1]).toMatch(/class="[^"]*flashRing/);
+      expect(paths[2]).toMatch(/class="[^"]*flashEdge/);
       expect(slice).not.toMatch(/data-aura|data-blink|data-frame|<rect|style=/);
       const painted = paths.flatMap(p => cellsOf(p.match(/ d="([^"]*)"/)![1]));
       expect(new Set(painted).size, 'no cell painted twice').toBe(painted.length);
@@ -117,10 +120,11 @@ describe('the flash beat paints only Rio\'s pixels', () => {
       const opaque: string[] = [];
       sprite.rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') opaque.push(`${sprite.x + i},${sprite.y + j}`); }));
       expect(painted.sort()).toEqual(opaque.sort());
-      // The edge is a 1-cell inner rim, so a full-frame fill (or the whole sprite as edge) fails.
-      const edge = cellsOf(paths[1].match(/ d="([^"]*)"/)![1]).length;
+      // The edge and the ring are 1-cell inner outlines, so a full-frame fill (or the whole sprite as outline) fails.
+      const [core, ring, edge] = paths.map(p => cellsOf(p.match(/ d="([^"]*)"/)![1]).length);
       expect(edge).toBeGreaterThan(0);
-      expect(edge).toBeLessThan(opaque.length);
+      expect(ring).toBeGreaterThan(0);
+      expect(core, 'the core is most of Rio').toBeGreaterThan(edge + ring);
     });
   }
 });

@@ -18,11 +18,11 @@
 @media (max-width: 480px) { .warrior { flex-direction: column; align-items: flex-start; } }
 
 /* ---------- the art: pixel sprites, so everything moves in whole pixels (steps) ---------- */
-.art { display: block; line-height: 0; --warrior-rim: transparent; --flash-edge: #ff9a00; }
+.art { display: block; line-height: 0; --warrior-rim: transparent; --flash-core: #fff1a6; --flash-ring: #f08c00; --flash-edge: #f08c00; }
 .svg { display: block; width: 100%; height: 100%; overflow: visible; shape-rendering: crispEdges; }
 /* A light rim keeps black hair and outlines visible on a dark page; a light page doesn't need it. */
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .art { --warrior-rim: #59627d; --flash-edge: #fff3a8; } }
-:root[data-theme='dark'] .art { --warrior-rim: #59627d; --flash-edge: #fff3a8; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .art { --warrior-rim: #59627d; --flash-core: #fffdf0; --flash-ring: #fffdf0; --flash-edge: #fff3a8; } }
+:root[data-theme='dark'] .art { --warrior-rim: #59627d; --flash-core: #fffdf0; --flash-ring: #fffdf0; --flash-edge: #fff3a8; }
 .rim { fill: var(--warrior-rim); }
 .shadow { fill: var(--border-strong); }
 
@@ -99,9 +99,11 @@
 .sequence [data-transform-step='4'] { animation-delay: calc(var(--beat) * 4); }
 .sequence [data-transform-step='5'] { animation-delay: calc(var(--beat) * 5); animation-fill-mode: forwards; }
 .sequence .art { position: absolute; inset: 0; }
-/* The flash paints only Rio's pixels (WarriorArt `flash`): a white-hot core and its outermost cells as a warm edge,
-   orange on a light page so the white doesn't vanish, pale yellow on a dark page. The beat itself has no fill. */
-.flashCore { fill: #fffdf0; }
+/* The flash paints only Rio's pixels (WarriorArt `flash`). Dark page: a white-hot core with a 1-cell pale-yellow edge.
+   Light page: a near-white core vanished into the page and read as an empty outline, so the core is a warm pale yellow
+   and the outline is 2 cells of amber (the ring takes the edge colour). The beat itself has no fill. */
+.flashCore { fill: var(--flash-core); }
+.flashRing { fill: var(--flash-ring); }
 .flashEdge { fill: var(--flash-edge); }
 @keyframes stepOn { from, to { clip-path: inset(0); } }
 

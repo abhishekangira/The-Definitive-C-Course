@@ -118,14 +118,18 @@ function erode(m: Mask): Mask {
   return m.map((v, i) => (v && m[i - 1] && m[i + 1] && m[i - W] && m[i + W] ? 1 : 0));
 }
 
-const flashCache = new Map<PixelSprite, { core: string; edge: string }>();
-/** The flash: the sprite's own cells, white-hot, with its outermost cells as a warm edge. Nothing outside the sprite. */
-export function flashPaths(s: PixelSprite): { core: string; edge: string } {
+const flashCache = new Map<PixelSprite, { core: string; ring: string; edge: string }>();
+/**
+ * The flash: the sprite's own cells, white-hot, nothing outside them. `edge` is the outermost cell of the outline and
+ * `ring` the one inside it, so the CSS can make the outline 2 cells thick on a light page and 1 on a dark one.
+ */
+export function flashPaths(s: PixelSprite): { core: string; ring: string; edge: string } {
   let hit = flashCache.get(s);
   if (!hit) {
     const m = maskOf(s);
     const inner = erode(m);
-    hit = { core: maskPath(inner), edge: maskPath(minus(m, inner)) };
+    const core = erode(inner);
+    hit = { core: maskPath(core), ring: maskPath(minus(inner, core)), edge: maskPath(minus(m, inner)) };
     flashCache.set(s, hit);
   }
   return hit;
@@ -422,7 +426,7 @@ export function WarriorArt({ form, mood, bare = false, aura, crouch = false, fla
   aura?: AuraStage;
   /** Draw the crouch (`crouchSprite`): the body lowered on bent knees, the feet and the shadow where they stand. */
   crouch?: boolean;
-  /** The transformation's flash: only Rio's silhouette, white-hot with a warm edge. No aura, sky, shadow, blink or sweat. */
+  /** The transformation's flash: only Rio's silhouette, white-hot with a warm outline. No aura, sky, shadow, blink or sweat. */
   flash?: boolean;
 }): ReactNode {
   const frames = poseFrames(form, mood);
@@ -431,10 +435,11 @@ export function WarriorArt({ form, mood, bare = false, aura, crouch = false, fla
   const drop = crouch ? CROUCH[form].drop : 0;
   const drawn = crouch ? [crouchSprite(form, standing[0])] : standing;
   if (flash) {
-    const { core, edge } = flashPaths(drawn[0]);
+    const { core, ring, edge } = flashPaths(drawn[0]);
     return (
       <g data-flash-figure="">
         <path className={styles.flashCore} d={core} />
+        <path className={styles.flashRing} d={ring} />
         <path className={styles.flashEdge} d={edge} />
       </g>
     );

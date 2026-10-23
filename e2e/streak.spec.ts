@@ -81,7 +81,7 @@ async function crouchBoxes(page: Page) {
   });
 }
 
-/** The flash beat in light and dark: its own fill and the fills of the silhouette's paths. Restores the theme attribute. */
+/** The flash beat in light, dark and the system theme (no `data-theme`): its own fill and the fills of the silhouette's paths. Restores the theme attribute. */
 async function flashColours(page: Page) {
   return page.evaluate(() => {
     const el = document.querySelector('main [data-flash]');
@@ -89,7 +89,8 @@ async function flashColours(page: Page) {
     const root = document.documentElement;
     const prev = root.getAttribute('data-theme');
     const read = (theme: string) => {
-      root.setAttribute('data-theme', theme);
+      if (theme === 'system') root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', theme);
       const cs = getComputedStyle(el);
       return {
         background: cs.backgroundColor,
@@ -99,7 +100,7 @@ async function flashColours(page: Page) {
         page: getComputedStyle(document.body).backgroundColor,
       };
     };
-    const out = { light: read('light'), dark: read('dark') };
+    const out = { light: read('light'), dark: read('dark'), system: read('system') };
     if (prev === null) root.removeAttribute('data-theme');
     else root.setAttribute('data-theme', prev);
     return out;
@@ -223,17 +224,26 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
       expect(Number(row.delay), `beat ${row.n} delay`).toBeCloseTo(row.n * BEAT_MS, 0);
       expect(row.fill, `beat ${row.n} fill`).toBe(row.n === 5 ? 'forwards' : 'none');
     }
+    // The system theme is dark here and the app has no theme chosen, so the flash must take the dark colours.
+    await page.emulateMedia({ colorScheme: 'dark' });
     const flash = await flashColours(page);
-    // Rio's shape goes white-hot: no fill on the beat, two paths (core, edge), and the edge is warm on a light page.
-    for (const theme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme: 'light' });
+    // Rio's shape goes white-hot: no fill on the beat, three paths (core, ring, edge). On a light page the core is a
+    // warm pale yellow with a 2-cell amber outline; on a dark page (chosen or system) a white core and a pale-yellow edge.
+    const want = {
+      light: ['rgb(255, 241, 166)', 'rgb(240, 140, 0)', 'rgb(240, 140, 0)'],
+      dark: ['rgb(255, 253, 240)', 'rgb(255, 253, 240)', 'rgb(255, 243, 168)'],
+      system: ['rgb(255, 253, 240)', 'rgb(255, 253, 240)', 'rgb(255, 243, 168)'],
+    };
+    for (const theme of ['light', 'dark', 'system'] as const) {
       const colours = flash?.[theme];
       expect(colours?.background, theme).toBe('rgba(0, 0, 0, 0)');
       expect(colours?.image, theme).toBe('none');
       expect(colours?.shadow, theme).toBe('none');
-      expect(colours?.fills[0], theme).toBe('rgb(255, 253, 240)');
-      expect(colours?.fills[1], theme).toBe(theme === 'light' ? 'rgb(255, 154, 0)' : 'rgb(255, 243, 168)');
-      expect(colours?.fills[1], theme).not.toBe(colours?.page);
+      expect(colours?.fills, theme).toEqual(want[theme]);
+      expect(colours?.fills[2], theme).not.toBe(colours?.page);
     }
+    expect(flash?.system.page, 'the system theme is dark').toBe(flash?.dark.page);
     await page.evaluate(() => {
       const nameOf = (anim: Animation) => (anim as unknown as { animationName?: string }).animationName ?? '';
       for (const el of document.querySelectorAll('main [data-transform-step]')) {
