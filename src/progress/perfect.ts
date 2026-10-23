@@ -8,7 +8,8 @@ export function lessonPredictionStats(samples: SamplesFile | null, stem: string,
     if (s.lesson.startsWith('quiz:') || s.lesson !== stem) continue;
     const saved = Object.hasOwn(progress.samples, s.id) ? progress.samples[s.id] : undefined;
     const answered = saved && !saved.cleared;
-    if (s.meta.predict === 'output' || s.meta.predict === 'outcome' || s.meta.predict === 'choice') {
+    const kind = s.meta.predict ?? 'output';
+    if (kind !== 'none') {
       total++;
       if (answered && sampleVerdict(saved) === 'exact') right++;
     }

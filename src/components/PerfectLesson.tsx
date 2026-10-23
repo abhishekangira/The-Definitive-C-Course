@@ -20,11 +20,12 @@ export function claimPerfectLesson(id: string): boolean {
   return true;
 }
 
-export function PerfectLesson({ title, onClose, still = false }: { title: string; onClose: () => void; still?: boolean }) {
+export function PerfectLesson({ title, onClose, returnFocus, still = false }: { title: string; onClose: () => void; returnFocus?: HTMLElement; still?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const progress = useProgress();
   const form = formFor(streakStatus(progress.streak, new Date()).current);
   const [reduced, setReduced] = useState(() => still || window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [announcement, setAnnouncement] = useState('');
   const [stage, setStage] = useState<'none' | 'flicker' | 'blaze'>('none');
   useEffect(() => {
     const query = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -33,27 +34,33 @@ export function PerfectLesson({ title, onClose, still = false }: { title: string
     return () => query.removeEventListener('change', change);
   }, [still]);
   useEffect(() => {
-    const previous = document.activeElement;
+    const previous = returnFocus ?? document.activeElement;
     const el = dialog.current!;
     el.showModal(); el.focus();
-    return () => { el.close(); if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
-  }, []);
+    const announce = setTimeout(() => setAnnouncement(`Perfect lesson: ${title}.`), 0);
+    return () => { clearTimeout(announce); el.close(); if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
+  }, [returnFocus, title]);
   useEffect(() => {
     const timers = reduced ? [] : [setTimeout(() => setStage('flicker'), 350), setTimeout(() => setStage('blaze'), 850)];
-    timers.push(setTimeout(onClose, reduced ? 4000 : 2500));
+    // Explicit browser-test hold: keep just this dialog open for axe/screenshots, without changing global timers.
+    timers.push(setTimeout(() => { if (!dialog.current?.hasAttribute('data-hold')) onClose(); }, reduced ? 4000 : 2500));
     return () => timers.forEach(clearTimeout);
   }, [reduced, onClose]);
   return createPortal(
-    <dialog ref={dialog} role="dialog" aria-modal="true" aria-labelledby="perfect-title" aria-describedby="perfect-lesson-title"
+    <dialog ref={dialog} aria-modal="true" aria-labelledby="perfect-title" aria-describedby="perfect-lesson-title"
       tabIndex={-1} className={`${styles.dialog} ${reduced ? styles.still : ''}`} data-perfect-lesson=""
       onClick={onClose} onCancel={e => { e.preventDefault(); onClose(); }}
-      onKeyDown={e => { e.preventDefault(); e.stopPropagation(); onClose(); }}>
+      onKeyDown={e => {
+        if (e.ctrlKey || e.metaKey || e.altKey || ['Shift', 'Control', 'Meta', 'Alt'].includes(e.key)) return;
+        e.preventDefault(); e.stopPropagation(); onClose();
+      }}>
       <div className={styles.power} data-power="">
         <WarriorPortrait form={form.id} mood="ready" aura={reduced ? 'blaze' : stage} still={reduced} label={warriorLabel(form.id, 'ready')} />
       </div>
       {!reduced && <div className={styles.confetti} aria-hidden="true" data-confetti="">
-        {Array.from({ length: 24 }, (_, i) => <i key={i} style={{ '--i': i, '--x': `${(i % 8) * 13}%`, '--drift': `${((i % 5) - 2) * 28}px` } as CSSProperties} />)}
+        {Array.from({ length: 24 }, (_, i) => <i key={i} style={{ '--i': i, '--x': `${(i % 8) * 13}%`, '--drift': `${((i % 5) - 2) * 36}px` } as CSSProperties} />)}
       </div>}
+      <span className="visually-hidden" role="status">{announcement}</span>
       <h2 id="perfect-title">Perfect lesson!</h2>
       <p id="perfect-lesson-title">{title}</p>
       <p className={styles.hint}>Every prediction exact. Click or press any key to continue.</p>

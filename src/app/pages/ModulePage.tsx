@@ -25,10 +25,11 @@ function StepMark({ state }: { state: StepState }) {
 export function ModulePage() {
   const { moduleId = '' } = useParams();
   const m = moduleById(moduleId);
-  const [loaded, setLoaded] = useState<{ id: string; samples: SamplesFile | null } | null>(null);
+  const [loaded, setLoaded] = useState<{ id: string; samples: SamplesFile | null; failed?: boolean } | null>(null);
   useEffect(() => {
     let live = true;
-    void samplesFor(moduleId).then(samples => { if (live) setLoaded({ id: moduleId, samples }); });
+    void samplesFor(moduleId).then(samples => { if (live) setLoaded({ id: moduleId, samples }); })
+      .catch(() => { if (live) setLoaded({ id: moduleId, samples: null, failed: true }); });
     return () => { live = false; };
   }, [moduleId]);
   const samples = loaded?.id === moduleId ? loaded.samples : null;
@@ -87,6 +88,7 @@ export function ModulePage() {
               <StepMark state={lessonsState} />
               <div className={`${styles.stepMain} ${styles.stepWide}`}>
                 <div className={styles.stepHead}><span>Lessons</span><span className="badge">{st.lessonsDone}/{st.lessonsTotal}</span></div>
+                {loaded?.id === moduleId && loaded.failed && <p>Perfect lesson marks unavailable. Reload to try again.</p>}
                 <ol className={styles.lessonList}>
                   {m.lessons.map((l, i) => {
                     const done = isLessonComplete(progress, l.frontmatter.id);

@@ -188,7 +188,8 @@ export async function completePredict(mod: ModuleInfo, box: Locator): Promise<vo
 
 async function dismissPerfectLesson(page: Page): Promise<void> {
   const overlay = page.getByRole('dialog', { name: 'Perfect lesson!', exact: true });
-  if (await overlay.isVisible()) { await page.keyboard.press('Escape'); await expect(overlay).toBeHidden(); }
+  const appeared = await overlay.waitFor({ state: 'visible', timeout: 500 }).then(() => true, () => false);
+  if (appeared) { await page.keyboard.press('Escape'); await expect(overlay).toBeHidden(); }
 }
 
 /** Authored multiple choice: answer, read which option the page marks correct, and answer again. */

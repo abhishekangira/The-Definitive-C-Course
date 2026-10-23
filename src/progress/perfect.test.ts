@@ -45,3 +45,8 @@ describe('perfect lessons are derived from current predictions', () => {
     expect(lessonPredictionStats(null, 'empty', p).perfect).toBe(false);
   });
 });
+
+it('an omitted prediction kind uses the same output default as CodeSample', () => {
+  const p = emptyProgress(); p.samples.a = entry();
+  expect(lessonPredictionStats(file(sample('a', { meta: { id: 'a' } })), 'lesson', p)).toEqual({ right: 1, total: 1, perfect: true });
+});

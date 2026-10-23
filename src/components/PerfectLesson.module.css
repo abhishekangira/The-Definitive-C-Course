@@ -28,7 +28,7 @@
 .confetti i:nth-child(3n) { background: var(--data); }
 .confetti i:nth-child(3n + 1) { background: var(--ok); }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 33% { transform: translateX(-2px); } 66% { transform: translateX(2px); } }
-@keyframes burst { from { visibility: visible; transform: translate(0, 0) rotate(0); } to { visibility: visible; transform: translate(var(--drift), 320px) rotate(240deg); } }
+@keyframes burst { from { visibility: visible; transform: translate(0, 0) rotate(0); } to { visibility: visible; transform: translate(var(--drift), 324px) rotate(240deg); } }
 .still .power, .still .confetti i { animation: none; }
 .still .confetti { display: none; }
 @media (prefers-reduced-motion: reduce) {

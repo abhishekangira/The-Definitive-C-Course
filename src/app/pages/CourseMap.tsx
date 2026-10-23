@@ -13,10 +13,11 @@ import styles from './Pages.module.css';
 export function CourseMap() {
   const progress = useProgress();
   const [loaded, setLoaded] = useState<Array<{ samples: SamplesFile | null; lessons: Array<{ stem: string }> }> | null>(null);
+  const [samplesFailed, setSamplesFailed] = useState(false);
   useEffect(() => {
     let live = true;
     void Promise.all(Object.entries(modules).map(async ([id, m]) => ({ samples: await samplesFor(id), lessons: m.lessons })))
-      .then(value => { if (live) setLoaded(value); });
+      .then(value => { if (live) setLoaded(value); }).catch(() => { if (live) setSamplesFailed(true); });
     return () => { live = false; };
   }, []);
   const perfect = loaded ? coursePredictionStats(loaded, progress) : null;
@@ -60,6 +61,7 @@ export function CourseMap() {
         </section>
       </div>
 
+      {samplesFailed && <p>Perfect lesson counts unavailable. Reload to try again.</p>}
       {perfect && <p data-perfect-total="">Perfect lessons: {perfect.perfect} of {perfect.total}</p>}
       <div className={styles.ledgerHead}>
         <h2>The course</h2>

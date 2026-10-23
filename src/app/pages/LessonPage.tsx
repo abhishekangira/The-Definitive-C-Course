@@ -23,12 +23,22 @@ import styles from './Pages.module.css';
 export function LessonPage() {
   const { moduleId = '', lessonStem = '' } = useParams();
   const m = moduleById(moduleId);
-  const [celebrating, setCelebrating] = useState<string | null>(null);
+  const [celebrating, setCelebrating] = useState<{ id: string; returnFocus: HTMLElement } | null>(null);
   const closePerfect = useCallback(() => setCelebrating(null), []);
   const progress = useProgress();
   const [Lesson, setLesson] = useState<ComponentType<{ components?: Record<string, unknown> }> | null>(null);
   const [samples, setSamples] = useState<SamplesFile | null | undefined>(undefined);
   const [sessions, setSessions] = useState<SessionsFile | null | undefined>(undefined);
+  const currentLesson = m?.lessons.find(l => l.stem === lessonStem);
+  const latest = useRef({ samples, lessonStem, id: currentLesson?.frontmatter.id });
+  latest.current = { samples, lessonStem, id: currentLesson?.frontmatter.id };
+  const predictionShown = useCallback((returnFocus: HTMLElement) => {
+    const value = latest.current;
+    if (value.id && lessonPredictionStats(value.samples ?? null, value.lessonStem, getProgress()).perfect && claimPerfectLesson(value.id)) {
+      setCelebrating({ id: value.id, returnFocus });
+    }
+  }, []);
+  useEffect(() => { setCelebrating(null); }, [moduleId, lessonStem]);
   const storedMode = Boolean(progress.settings.storedOutputMode);
   // The lesson chat and the highlight toolbar exist only for a learner who has set the tutor up.
   const tutorOn = Boolean(useTutorSettings().apiKey);
@@ -71,12 +81,7 @@ export function LessonPage() {
   const next = m.lessons[idx + 1];
   const done = Boolean(progress.lessons[lesson.frontmatter.id]);
   const stats = lessonPredictionStats(samples ?? null, lessonStem, progress);
-  const predictionShown = () => {
-    if (lessonPredictionStats(samples ?? null, lessonStem, getProgress()).perfect && claimPerfectLesson(lesson.frontmatter.id)) {
-      setCelebrating(lesson.frontmatter.id);
-    }
-  };
-  const perfectOpen = celebrating === lesson.frontmatter.id;
+  const perfectOpen = celebrating?.id === lesson.frontmatter.id;
 
   const label = m.meta.number === 'cap' ? 'Capstone' : `Module ${m.meta.number}`;
   const doneCount = m.lessons.filter(l => progress.lessons[l.frontmatter.id]).length;
@@ -107,7 +112,7 @@ export function LessonPage() {
         ) : <p>Loading lesson…</p>}
         <footer className={styles.lessonFooter}>
           {done ? <p className={styles.okBox}>Lesson complete.</p> : <p className={styles.muted}>Finish each part to reveal the next one.</p>}
-          {done && samples && <p data-prediction-count="">{stats.right} of {stats.total} predictions right</p>}
+          {done && samples && stats.total > 0 && <p data-prediction-count="">{stats.right} of {stats.total} prediction{stats.total === 1 ? '' : 's'} right</p>}
           <div className={styles.pager}>
             {prev ? <Link className="btn" to={`/m/${moduleId}/${prev.stem}`}><Icon name="arrow-left" /> {prev.frontmatter.title}</Link> : <span />}
             {next ? (
@@ -140,8 +145,7 @@ export function LessonPage() {
           <span className={styles.nextCount}>{doneCount} of {m.lessons.length} lessons</span>
         </div>
       </aside>
-      <span className="visually-hidden" role="status">{perfectOpen ? `Perfect lesson: ${lesson.frontmatter.title}.` : ''}</span>
-      {perfectOpen && <PerfectLesson title={lesson.frontmatter.title} onClose={closePerfect} />}
+      {perfectOpen && <PerfectLesson title={lesson.frontmatter.title} returnFocus={celebrating!.returnFocus} onClose={closePerfect} />}
       {tutorOn && (
         <>
           <SelectionToolbar container={prose} onAction={(action, quote) => { setChatOpen(true); chat.current?.ask(action, quote); }} />

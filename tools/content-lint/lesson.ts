@@ -458,6 +458,14 @@ export function checkLesson(lesson: LoadedLesson, mod: ModuleCtx, site: SiteCtx,
     if (!name) continue;
     const at = line(node);
     if (!KNOWN_ELEMENTS.has(name)) r.warn(at, 'unknown-component', `<${name}> is not a known lesson component (known: ${[...KNOWN_ELEMENTS].sort().join(', ')})`);
+    if (['CompilerError', 'MemoryDiagram', 'Stepper', 'PipelineExplorer'].includes(name)) {
+      for (const nested of nestedLowered(node)) {
+        const sample = nested.data?.sample as SampleInfo | undefined;
+        if (sample && (sample.meta.predict !== 'none' || (sample.meta.predict64 && sample.meta.predict64 !== 'none'))) {
+          r.error(sample.line, 'nested-predict', `sample "${sample.id}" is consumed by <${name}>: use predict=none and no 64-bit question, because the prediction widget is never rendered`);
+        }
+      }
+    }
     switch (name) {
       case 'Analogy': checkAnalogy(node, r); break;
       case 'Choice': checkChoiceProps(node, 'Choice', r); break;

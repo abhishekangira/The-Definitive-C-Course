@@ -20,7 +20,7 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); host.remove(); trigger.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); reduced = false; });
 async function mount(still = false) {
   const close = vi.fn(() => root.render(null));
-  await act(async () => root.render(createElement(PerfectLesson, { title: 'Hello C', onClose: close, still })));
+  await act(async () => root.render(createElement(PerfectLesson, { title: 'Hello C', onClose: close, returnFocus: trigger, still })));
   return close;
 }
 it.each(['click', 'Escape', 'a'])('closes on %s and restores focus', async method => {
@@ -69,4 +69,15 @@ it('uses the current streak form even when the learner is worried', async () => 
   p.streak.days = Array.from({ length: 7 }, (_, i) => { const date = new Date(); date.setDate(date.getDate() - (7 - i)); return dayKey(date); });
   p.streak.longest = 7; replaceProgress(p);
   await mount(); expect(document.querySelector('[data-form="golden"][data-mood="ready"]')).not.toBeNull();
+});
+
+it('announces inside the modal after it opens', async () => {
+  await mount(); const live = document.querySelector('dialog [role="status"]')!;
+  expect(live.textContent).toBe('');
+  act(() => vi.advanceTimersByTime(0)); expect(live.textContent).toBe('Perfect lesson: Hello C.');
+});
+it.each([{ key: 'Shift' }, { key: 'r', ctrlKey: true }, { key: 'l', metaKey: true }])('does not swallow browser shortcuts or modifier presses (%j)', async init => {
+  const close = await mount(); const event = new KeyboardEvent('keydown', { ...init, bubbles: true, cancelable: true });
+  await act(async () => document.querySelector('dialog')!.dispatchEvent(event));
+  expect(event.defaultPrevented).toBe(false); expect(close).not.toHaveBeenCalled();
 });
