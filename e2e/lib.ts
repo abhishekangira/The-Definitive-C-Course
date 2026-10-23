@@ -186,23 +186,26 @@ export async function completePredict(mod: ModuleInfo, box: Locator): Promise<vo
   }
 }
 
-async function dismissPerfectLesson(page: Page): Promise<void> {
+/** The celebration stays open until closed (Close or Esc), and it is modal, so close it before touching the lesson again. */
+async function dismissPerfectLesson(page: Page, timeout = 500): Promise<void> {
   const overlay = page.getByRole('dialog', { name: 'Perfect lesson!', exact: true });
-  const appeared = await overlay.waitFor({ state: 'visible', timeout: 500 }).then(() => true, () => false);
+  const appeared = await overlay.waitFor({ state: 'visible', timeout }).then(() => true, () => false);
   if (appeared) { await page.keyboard.press('Escape'); await expect(overlay).toBeHidden(); }
 }
 
 /** Authored multiple choice: answer, read which option the page marks correct, and answer again. */
-async function answerAuthoredChoice(box: Locator, submit: string, scope: Locator = box): Promise<void> {
+async function answerAuthoredChoice(box: Locator, submit: string, scope: Locator = box, scored = false): Promise<void> {
   await scope.locator('input[type=radio]').first().check();
   await box.getByRole('button', { name: submit, exact: true }).click();
+  // A lesson question is a scored item: a right first answer to the last one opens the perfect-lesson dialog.
+  if (scored) { await expect(box.locator('[role="status"]')).toBeVisible(); await dismissPerfectLesson(box.page(), 300); }
   await scope.locator('[data-correct="true"] input[type=radio]').check();
   await box.getByRole('button', { name: /^(Check|Check again)$/ }).click();
   await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
 }
 
 export async function completeChoice(box: Locator): Promise<void> {
-  await answerAuthoredChoice(box, 'Check');
+  await answerAuthoredChoice(box, 'Check', box, true);
 }
 
 /** The code of a fence by id: its generated sample, or (in a fixture app with no samples file) the lesson fence itself. */

@@ -5,7 +5,7 @@
 // switched off by `still` and under prefers-reduced-motion.
 import type { ReactNode } from 'react';
 import type { FormId, WarriorMood } from '../progress/warrior';
-import { blinkForIdle, composeFrame, CROUCH, crouchSprite, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
+import { blinkForIdle, composeFrame, CROUCH, crouchSprite, dabFrames, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
 import styles from './StreakWarrior.module.css';
 
 /** The sprites' grid. */
@@ -417,7 +417,7 @@ function poseFrames(form: FormId, mood: WarriorMood): readonly SpriteFrame[] {
   return art.idle;
 }
 
-export function WarriorArt({ form, mood, bare = false, aura, crouch = false, flash = false }: {
+export function WarriorArt({ form, mood, bare = false, aura, crouch = false, flash = false, dab = false }: {
   form: FormId;
   mood: WarriorMood;
   /** No aura and no night sky (silhouettes, the header head). An explicit `aura` does not override this. */
@@ -428,7 +428,11 @@ export function WarriorArt({ form, mood, bare = false, aura, crouch = false, fla
   crouch?: boolean;
   /** The transformation's flash: only Rio's silhouette, white-hot with a warm outline. No aura, sky, shadow, blink or sweat. */
   flash?: boolean;
+  /** The perfect-lesson dab (`dabFrames`): stand, wind up, the dab hold, back, looped by CSS. Each frame has its own aura
+   *  and rim. With the animation off (.still, reduced motion) only the dab hold shows. No blink or sweat. */
+  dab?: boolean;
 }): ReactNode {
+  if (dab) return <DabFigure form={form} stage={bare ? 'none' : aura ?? defaultAura(form)} sky={form === 'ape' && !bare} />;
   const frames = poseFrames(form, mood);
   const standing = frames.map(composeFrame);
   // The crouch is one drawn frame. Its head moved down by the crouch's drop, so the blink and the sweat follow it.
@@ -466,6 +470,30 @@ export function WarriorArt({ form, mood, bare = false, aura, crouch = false, fla
           </g>
         ))}
         {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={drop ? { ...SWEAT[form], y: SWEAT[form].y + drop } : SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
+      </g>
+      {stage !== 'none' && form === 'mane' && <Bolts />}
+    </>
+  );
+}
+
+function DabFigure({ form, stage, sky }: { form: FormId; stage: AuraStage; sky: boolean }) {
+  return (
+    <>
+      {sky && (
+        <g aria-hidden="true">
+          <Pixels sprite={SKY} palette={SKY_PALETTE} />
+          <g className={styles.stars}><Pixels sprite={STARS} palette={SKY_PALETTE} /></g>
+        </g>
+      )}
+      {!sky && <path className={styles.shadow} d={shadowPath(form)} />}
+      <g data-dab="">
+        {dabFrames(form).map((sprite, i) => (
+          <g key={i} data-dab-frame={i} className={styles[`dab${i}`]}>
+            {stage !== 'none' && <Aura stage={stage} sprite={sprite} kind={auraKind(form)} />}
+            <path className={styles.rim} d={rimPath(sprite)} />
+            <Pixels sprite={sprite} />
+          </g>
+        ))}
       </g>
       {stage !== 'none' && form === 'mane' && <Bolts />}
     </>

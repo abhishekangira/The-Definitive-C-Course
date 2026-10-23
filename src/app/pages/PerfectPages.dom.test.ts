@@ -16,12 +16,17 @@ import type { RunPhase, RunSummary, useCRun } from '../../runtime/useCRun';
 const samples = samplesJson as SamplesFile;
 const bag = vi.hoisted(() => ({ pending: null as Promise<RunSummary> | null, file: null as SamplesFile | null, failSamples: false, callbacks: new Set<unknown>() }));
 const stem = '01-hello-compiled-world';
+/** M1 L1's <Choice> count (the `?frontmatter` loader's `choices`; checked below). */
+const QUIZ = 3;
 function ObserveCallback() { bag.callbacks.add(usePredictionShown()); return null; }
 const predictions = () => Object.values((bag.file ?? samples).samples).filter(s => s.lesson === stem && s.meta.predict !== 'none');
 vi.mock('../../content-runtime/course', async importOriginal => {
   const real = await importOriginal<typeof import('../../content-runtime/course')>();
   return { ...real, samplesFor: async (id: string) => { if (bag.failSamples) throw new Error('chunk failed'); return id === 'm01' ? bag.file ?? samples : null; }, sessionsFor: async () => null,
-    lessonLoader: () => async () => ({ default: () => createElement(Fragment, null, createElement(ObserveCallback), ...predictions().map(s => createElement(CodeSample, { key: s.id, id: s.id, code: s.code, meta: JSON.stringify(s.meta) }))) }),
+    lessonLoader: () => async () => ({ default: () => createElement(Fragment, null, createElement(ObserveCallback),
+      ...predictions().map(s => createElement(CodeSample, { key: s.id, id: s.id, code: s.code, meta: JSON.stringify(s.meta) })),
+      // The lesson's "Check your understanding" questions, numbered the way remark-course numbers them. Option 0 is right.
+      ...Array.from({ length: QUIZ }, (_, i) => createElement(Choice, { key: `q${i}`, qid: String(i), question: `Question ${i}`, options: ['Right', 'Wrong'], answer: 0 }))) }),
   };
 });
 vi.mock('../../content-runtime/mdx-components', () => ({ mdxComponents: {} }));
@@ -39,6 +44,8 @@ vi.mock('../../tutor/settings', () => ({ useTutorSettings: () => ({}) }));
 vi.mock('../../tutor/LessonChat', () => ({ LESSON_CHAT_ID: 'chat', LessonChat: () => null }));
 vi.mock('../../tutor/SelectionToolbar', () => ({ SelectionToolbar: () => null }));
 const { CodeSample } = await import('../../interactions/CodeSample');
+const { Choice } = await import('../../interactions/Choice');
+const { modules } = await import('../../content-runtime/course');
 const { LessonPage } = await import('./LessonPage');
 const { ModulePage } = await import('./ModulePage');
 const { CourseMap } = await import('./CourseMap');
@@ -68,44 +75,102 @@ async function exact(index: number) {
   await click(button(box, 'Lock in my prediction'));
   return box;
 }
+async function answer(q: number, option = 0) {
+  const box = host.querySelector(`[data-qid="${q}"]`)!;
+  await act(async () => box.querySelectorAll('input')[option].click());
+  const submit = box.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  submit.focus(); await act(async () => submit.click());
+  return box;
+}
+const answerQuizInStore = (correct = true) => act(async () => update(p => {
+  for (let i = 0; i < QUIZ; i++) p.choices[`m01-l1#${i}`] = { picked: correct ? 0 : 1, correct, at: new Date().toISOString() };
+}));
+async function escapeDialog() {
+  await act(async () => document.querySelector('dialog')!.dispatchEvent(new Event('cancel', { cancelable: true })));
+}
+it('reads the lesson\'s quiz question count from its frontmatter', () => {
+  expect(modules.m01.lessons.find(l => l.stem === stem)!.frontmatter.choices).toBe(QUIZ);
+  expect(modules.m01.lessons.find(l => l.stem === '02-types-are-layouts')!.frontmatter.choices).toBeUndefined();
+});
+it('does not celebrate after the first exact prediction while quiz questions are unanswered (the M1 L1 bug); it fires after the last one', async () => {
+  const box = await exact(0); await click(button(box, 'Reveal the result'));
+  expect(document.querySelector('dialog')).toBeNull();
+  await answer(0); await answer(1); expect(document.querySelector('dialog')).toBeNull();
+  const last = await answer(2);
+  expect(document.querySelector('dialog')).not.toBeNull();
+  expect(getProgress().choices).toMatchObject({ 'm01-l1#0': { picked: 0, correct: true }, 'm01-l1#2': { picked: 0, correct: true } });
+  await act(async () => { await new Promise(r => setTimeout(r, 0)); });
+  expect(document.querySelector('dialog [role="status"]')?.textContent).toContain('Perfect lesson:');
+  await escapeDialog();
+  expect(document.querySelector('dialog')).toBeNull();
+  expect(document.activeElement).toBe(last.querySelector('button[type="submit"]'));
+});
+it('a quiz question missed on the first try is never perfect, even after Check again', async () => {
+  await answer(0); await answer(1, 1); await answer(2);
+  await answer(1, 0); // Check again, now right
+  expect(getProgress().choices['m01-l1#1']).toMatchObject({ picked: 1, correct: false });
+  const box = await exact(0); await click(button(box, 'Reveal the result'));
+  expect(document.querySelector('dialog')).toBeNull();
+  expect(localStorage.getItem(PERFECT_SEEN_KEY)).toBeNull();
+});
 it('celebrates after the last exact reveal, never lock-in or rerun, and only once after a reset', async () => {
+  await answerQuizInStore();
   const last = await exact(0); expect(document.querySelector('dialog')).toBeNull();
   expect(getProgress().samples[predictions()[0].id].verdict).toBe('exact');
   const trigger = button(last, 'Reveal the result'); await click(trigger);
   expect(document.querySelector('dialog')).not.toBeNull();
-  await act(async () => { await new Promise(r => setTimeout(r, 0)); });
-  expect(document.querySelector('dialog [role="status"]')?.textContent).toContain('Perfect lesson:');
-  await act(async () => document.querySelector('dialog')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  expect(getProgress().samples[predictions()[0].id].first).toBe('exact');
+  await act(async () => document.querySelector('dialog')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true })));
+  expect(document.querySelector('dialog')).not.toBeNull();
+  await click(document.querySelector<HTMLButtonElement>('[data-perfect-close]')!);
+  expect(document.querySelector('dialog')).toBeNull();
   expect(document.activeElement).toBe(trigger);
   await click(trigger); expect(document.querySelector('dialog')).toBeNull();
-  await click(button(last, 'Predict again')); await exact(0); await click(trigger);
+  await click(button(last, 'Predict again'));
+  expect(getProgress().samples[predictions()[0].id]).toMatchObject({ cleared: true, first: 'exact' });
+  await exact(0); await click(trigger);
   expect(document.querySelector('dialog')).toBeNull();
   expect(JSON.parse(localStorage.getItem(PERFECT_SEEN_KEY)!)).toContain('m01-l1');
 });
-it('shows the count only after completion at the footer, and removes a perfect module mark after Predict again', async () => {
+it('a wrong first prediction stays wrong after Predict again and an exact second try', async () => {
+  await answerQuizInStore();
+  const box = host.querySelector(`[data-sample="${predictions()[0].id}"]`)!;
+  const input = box.querySelector('textarea')!;
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, 'surely not this');
+  await act(async () => input.dispatchEvent(new Event('input', { bubbles: true })));
+  await click(button(box, 'Lock in my prediction')); await click(button(box, 'Reveal the result'));
+  expect(getProgress().samples[predictions()[0].id].first).toBe('wrong');
+  await click(button(box, 'Predict again')); await exact(0); await click(button(box, 'Reveal the result'));
+  expect(document.querySelector('dialog')).toBeNull();
+  expect(getProgress().samples[predictions()[0].id]).toMatchObject({ verdict: 'exact', first: 'wrong' });
+});
+it('shows the count of predictions and quiz questions only after completion at the footer; a module mark needs the quiz too', async () => {
   expect(host.querySelector('[data-prediction-count]')).toBeNull();
   await act(async () => update(p => {
     p.lessons['m01-l1'] = { completedAt: new Date().toISOString() };
     for (const s of predictions()) p.samples[s.id] = { prediction: s.answer.stdout, correct: true, verdict: 'exact', at: new Date().toISOString() };
   }));
   const count = host.querySelector('[data-prediction-count]')!;
-  expect(count.textContent).toBe('1 of 1 prediction right'); expect(count.closest('footer')).not.toBeNull();
+  expect(count.textContent).toBe(`1 of ${1 + QUIZ} predictions and quiz questions right`); expect(count.closest('footer')).not.toBeNull();
   await act(async () => router.navigate('/m/m01'));
+  expect(host.querySelector('[aria-label="Perfect lesson"]')).toBeNull();
+  await answerQuizInStore();
   expect(host.querySelectorAll('[aria-label="Perfect lesson"]')).toHaveLength(1);
   expect(host.querySelector('[aria-label="Perfect lesson"]')?.closest('a')?.getAttribute('href')).toContain(stem);
   await act(async () => router.navigate('/'));
-  expect(host.querySelector('[data-perfect-total]')?.textContent).toBe('Perfect lessons: 1 of 6');
+  expect(host.querySelector('[data-perfect-total]')?.textContent).toBe('Perfect lessons: 1 of 8'); // lessons with predictions or quiz questions
   await act(async () => router.navigate(`/m/m01/${stem}`));
+  expect(host.querySelector('[data-prediction-count]')?.textContent).toBe(`${1 + QUIZ} of ${1 + QUIZ} predictions and quiz questions right`);
+  // Predict again keeps the first try: the lesson stays perfect.
   await click(button(host.querySelector(`[data-sample="${predictions()[0].id}"]`)!, 'Predict again'));
-  expect(host.querySelector('[data-prediction-count]')?.textContent).toBe('0 of 1 prediction right');
+  expect(host.querySelector('[data-prediction-count]')?.textContent).toBe(`${1 + QUIZ} of ${1 + QUIZ} predictions and quiz questions right`);
+  await answerQuizInStore(false);
+  expect(host.querySelector('[data-prediction-count]')?.textContent).toBe(`1 of ${1 + QUIZ} predictions and quiz questions right`);
   await act(async () => router.navigate('/m/m01')); expect(host.querySelector('[aria-label="Perfect lesson"]')).toBeNull();
 });
 
-
-async function escapeDialog() {
-  await act(async () => document.querySelector('dialog')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
-}
 it('browser mode waits for the deferred run and then restores focus to the enabled Run button', async () => {
+  await answerQuizInStore();
   let finish!: (summary: RunSummary) => void;
   bag.pending = new Promise(resolve => { finish = resolve; });
   await act(async () => update(p => { p.settings.storedOutputMode = false; }));
@@ -128,6 +193,7 @@ it('the 64-bit check returns focus to its replacement button after the form unmo
   const source = Object.values(samples.samples).find(s => s.flagged && s.meta.predict64 && s.meta.predict64 !== 'none')!;
   const s = { ...source, lesson: stem };
   bag.file = { ...samples, samples: { [s.id]: s } };
+  await answerQuizInStore();
   await act(async () => router.navigate('/m/m01')); await act(async () => router.navigate(`/m/m01/${stem}`));
   const box = await exact(0); await click(button(box, 'Reveal the result')); expect(document.querySelector('dialog')).toBeNull();
   const input = box.querySelector('textarea')!;
@@ -137,16 +203,19 @@ it('the 64-bit check returns focus to its replacement button after the form unmo
   expect(check.isConnected).toBe(false); expect(document.querySelector('dialog')).not.toBeNull();
   await escapeDialog(); expect(document.activeElement).toBe(button(box, 'Predict the 64-bit output again'));
 });
-it('navigation interrupts a celebration permanently even when returning before its timeout', async () => {
+it('navigation interrupts a celebration permanently', async () => {
+  await answerQuizInStore();
   const box = await exact(0); await click(button(box, 'Reveal the result')); expect(document.querySelector('dialog')).not.toBeNull();
   await act(async () => router.navigate('/m/m01/02-types-are-layouts')); expect(document.querySelector('dialog')).toBeNull();
   await act(async () => router.navigate(`/m/m01/${stem}`)); expect(document.querySelector('dialog')).toBeNull();
 });
-it('hides the footer count for a completed lesson without prediction questions', async () => {
+it('counts only quiz questions for a lesson without predictions, and hides the count with no scored items', async () => {
   bag.file = { ...samples, samples: {} };
   await act(async () => router.navigate('/m/m01'));
-  await act(async () => update(p => { p.lessons['m01-l1'] = { completedAt: new Date().toISOString() }; }));
+  await act(async () => update(p => { p.lessons['m01-l1'] = { completedAt: new Date().toISOString() }; p.lessons['m01-l2'] = { completedAt: new Date().toISOString() }; }));
   await act(async () => router.navigate(`/m/m01/${stem}`));
+  expect(host.querySelector('[data-prediction-count]')?.textContent).toBe(`0 of ${QUIZ} quiz questions right`);
+  await act(async () => router.navigate('/m/m01/02-types-are-layouts'));
   expect(host.querySelector('[data-prediction-count]')).toBeNull();
 });
 it('reports failed samples chunks without publishing partial course totals', async () => {

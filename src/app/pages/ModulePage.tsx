@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { SamplesFile } from '../../content-model/types';
-import { lessonPredictionStats } from '../../progress/perfect';
+import { lessonPredictionStats, lessonQuiz } from '../../progress/perfect';
 import { Link, Navigate, useParams } from 'react-router';
 import { moduleById, quizFor, exercises, samplesFor } from '../../content-runtime/course';
 import { isCheckpointUnlocked, isLessonComplete, isModuleUnlocked, moduleStatus } from '../../progress/gating';
@@ -97,12 +97,12 @@ export function ModulePage() {
                         {st.retrievalDone ? (
                           <Link to={`/m/${moduleId}/${l.stem}`} className={styles.lessonLink}>
                             <span className={styles.lessonNo}>{i + 1}</span>
-                            <span className={styles.lessonTitle}>{l.frontmatter.title}{lessonPredictionStats(samples, l.stem, progress).perfect && <span className={styles.perfectMark}><Icon name="flame" label="Perfect lesson" /></span>}</span>
+                            <span className={styles.lessonTitle}>{l.frontmatter.title}{lessonPredictionStats(samples, l.stem, progress, lessonQuiz(l.frontmatter)).perfect && <span className={styles.perfectMark}><Icon name="flame" label="Perfect lesson" /></span>}</span>
                             <span className={styles.lessonMeta}>{l.frontmatter.minutes} min {done ? <span className="badge badge-ok">done</span> : firstOpen?.stem === l.stem ? <span className="badge badge-accent">next</span> : null}</span>
                           </Link>
                         ) : (
                           <span className={`${styles.lessonLink} ${styles.lessonOff}`} aria-disabled="true">
-                            <span className={styles.lessonNo}>{i + 1}</span><span className={styles.lessonTitle}>{l.frontmatter.title}{lessonPredictionStats(samples, l.stem, progress).perfect && <span className={styles.perfectMark}><Icon name="flame" label="Perfect lesson" /></span>}</span><span className={styles.lessonMeta}>{l.frontmatter.minutes} min</span>
+                            <span className={styles.lessonNo}>{i + 1}</span><span className={styles.lessonTitle}>{l.frontmatter.title}{lessonPredictionStats(samples, l.stem, progress, lessonQuiz(l.frontmatter)).perfect && <span className={styles.perfectMark}><Icon name="flame" label="Perfect lesson" /></span>}</span><span className={styles.lessonMeta}>{l.frontmatter.minutes} min</span>
                           </span>
                         )}
                       </li>

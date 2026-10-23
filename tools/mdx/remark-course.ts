@@ -1,7 +1,8 @@
 // remark plugin for lesson MDX:
 //  1. ```c fences with id=… become <CodeSample id code meta/> (predict-before-run widgets);
 //     ```c fragment fences become <CodeBlock/> (static); other fences stay as code.
-//  2. Top-level content is wrapped into <Card index gated> groups (see src/content-model/cards.ts).
+//  2. Each <Choice> gets qid="<n>", its place among the lesson's questions (choiceNodes).
+//  3. Top-level content is wrapped into <Card index gated> groups (see src/content-model/cards.ts).
 import type { Root, RootContent, Code } from 'mdast';
 import { visit } from 'unist-util-visit';
 import { parseRawMeta, toSampleMeta } from '../../src/content-model/fence-meta.ts';
@@ -60,6 +61,16 @@ export function lowerCodeFence<P extends ParsedFenceMeta = { meta: SampleMeta | 
   return { ok: true, node: replacement, meta, parsed };
 }
 
+/** The lesson's <Choice> questions in document order. Their index is the `qid` (the key of a saved answer), and their count is the `choices` field the `?frontmatter` loader adds. */
+export function choiceNodes(tree: Root): Array<{ attributes: JsxAttr[] }> {
+  const out: Array<{ attributes: JsxAttr[] }> = [];
+  visit(tree, node => {
+    const n = node as unknown as { type: string; name?: string; attributes?: JsxAttr[] };
+    if ((n.type === 'mdxJsxFlowElement' || n.type === 'mdxJsxTextElement') && n.name === 'Choice') out.push(n as { attributes: JsxAttr[] });
+  });
+  return out;
+}
+
 export default function remarkCourse() {
   return (tree: Root, file: { path?: string; message?: (m: string) => void }) => {
     visit(tree, 'code', (node: Code, index, parent) => {
@@ -72,6 +83,8 @@ export default function remarkCourse() {
       }
       (parent.children as RootContent[])[index] = lowered.node;
     });
+
+    choiceNodes(tree).forEach((n, i) => { n.attributes = [...n.attributes.filter(a => a.name !== 'qid'), attr('qid', String(i))]; });
 
     const { hoisted, cards } = groupCards(tree);
     tree.children = [

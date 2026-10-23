@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   daysSinceExport, emptyProgress, exerciseProgress, getProgress, mergeProgress, markCard, migrate, parseProgressFile, sample64Verdict, sampleVerdict, summarise, update,
-  type ExerciseProgress, type ProgressV1, type ProjectProgress, type QuizProgress, type SampleProgress,
+  type ChoiceProgress, type ExerciseProgress, type ProgressV1, type ProjectProgress, type QuizProgress, type SampleProgress,
 } from './store';
 import type { StreakData } from './streak';
 import { encodeProgressCode } from '../testing/token';
@@ -38,7 +38,8 @@ describe('migrate', () => {
       settings: { platform: 'wsl', storedOutputMode: true, stdinMode: 'preset' },
       cards: { 'm01-l1': [0, 1, 2] },
       lessons: { 'm01-l1': { completedAt: at } },
-      samples: { s1: { prediction: 'x', correct: true, verdict: 'close', predict64: 'y', predict64Correct: false, predict64Verdict: 'wrong', cleared: true, at } satisfies Required<SampleProgress> },
+      samples: { s1: { prediction: 'x', correct: true, verdict: 'close', predict64: 'y', predict64Correct: false, predict64Verdict: 'wrong', cleared: true, first: 'exact', first64: 'close', at } satisfies Required<SampleProgress> },
+      choices: { 'm01-l1#0': { picked: 2, correct: true, at } satisfies Required<ChoiceProgress> },
       exercises: {
         e1: {
           attempts: 3, substantive: 2, lastCodeHash: 'abc', code: 'int main(void) { return 0; }', activeMs: 5, hintsViewed: 1, passed: true,
@@ -165,6 +166,21 @@ describe('streak in a progress document', () => {
 });
 
 describe('mergeProgress', () => {
+  it('keeps the earliest first submission of a quiz question, and the worse first try of a prediction', () => {
+    const early = { picked: 1, correct: false, at: '2026-01-01T00:00:00.000Z' };
+    const late = { picked: 0, correct: true, at: '2026-01-02T00:00:00.000Z' };
+    expect(mergeProgress(doc({ choices: { 'l#0': late } }), doc({ choices: { 'l#0': early, 'l#1': late } })).choices).toEqual({ 'l#0': early, 'l#1': late });
+    const a = doc({ samples: { s: { prediction: 'x', correct: true, verdict: 'exact', first: 'wrong', at: '2026-01-01T00:00:00.000Z' } } });
+    const b = doc({ samples: { s: { prediction: 'x', correct: true, verdict: 'exact', first: 'exact', at: '2026-01-02T00:00:00.000Z' } } });
+    expect(mergeProgress(a, b).samples.s).toMatchObject({ verdict: 'exact', first: 'wrong', at: '2026-01-02T00:00:00.000Z' });
+  });
+
+  it('drops a malformed quiz answer and reads a document without choices as none', () => {
+    expect(migrate({ version: 1, seed: SEED }).choices).toEqual({});
+    const m = migrate({ version: 1, seed: SEED, choices: { ok: { picked: 0, correct: true, at }, neg: { picked: -1, correct: true, at }, str: { picked: '0', correct: true, at }, noAt: { picked: 0, correct: true } } });
+    expect(m.choices).toEqual({ ok: { picked: 0, correct: true, at } });
+  });
+
   it('unions completed cards and keeps them sorted', () => {
     const a = doc({ cards: { l1: [0, 2] } });
     const b = doc({ cards: { l1: [1, 2], l2: [0] } });

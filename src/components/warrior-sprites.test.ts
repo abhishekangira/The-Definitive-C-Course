@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { FormId } from '../progress/warrior';
 import {
-  FORM_FRAMES, IDLE_BLINK_DY, PATCHES, SPRITES, blinkForIdle, composeFrame, type PixelSprite, type SpriteFrame,
+  FORM_FRAMES, IDLE_BLINK_DY, PALETTE, PATCHES, SPRITES, blinkForIdle, composeFrame, crouchSprite, dabFrames, dabSprite, type PixelSprite, type SpriteFrame,
 } from './warrior-sprites';
 
 const FORMS = ['kid', 'warrior', 'golden', 'mane', 'crimson', 'ape'] as const satisfies readonly FormId[];
@@ -317,5 +317,45 @@ describe('a shift stands in for copied rows', () => {
     expect(cells(closed).get('0,-1')).toBe('A');
     expect(cells(closed).get('0,0')).toBe('A');
     expect(cells(closed).get('0,1')).toBe('B');
+  });
+});
+
+describe('the perfect-lesson dab re-poses the original pixels', () => {
+  const cells = (s: PixelSprite) => {
+    const out = new Map<string, string>();
+    s.rows.forEach((row, j) => [...row].forEach((ch, i) => { if (ch !== '.') out.set(`${s.x + i},${s.y + j}`, ch); }));
+    return out;
+  };
+  const histogram = (m: Map<string, string>) => {
+    const h = new Map<string, number>();
+    for (const ch of m.values()) h.set(ch, (h.get(ch) ?? 0) + 1);
+    return h;
+  };
+  it.each(FORMS)('%s: every dab cell is a colour that frame already had, in no greater number, inside the mask grid', form => {
+    const standing = composeFrame(FORM_FRAMES[form].idle[0]);
+    const dab = dabSprite(form, standing);
+    const before = histogram(cells(standing)); const after = histogram(cells(dab));
+    for (const [ch, n] of after) {
+      expect(PALETTE[ch as keyof typeof PALETTE], ch).toBeDefined();
+      expect(n, `${form} ${ch}`).toBeLessThanOrEqual(before.get(ch) ?? 0);
+    }
+    // Moving parts cover each other, and hair that only hung beside an arm is pruned (mane, crimson), never most of the figure.
+    const total = (h: Map<string, number>) => [...h.values()].reduce((a, b) => a + b, 0);
+    expect(total(after)).toBeGreaterThan(total(before) * 0.75);
+    for (const k of cells(dab).keys()) {
+      const [x, y] = k.split(',').map(Number);
+      expect(x).toBeGreaterThanOrEqual(-8); expect(x).toBeLessThan(104);
+      expect(y).toBeGreaterThanOrEqual(-14); expect(y).toBeLessThan(98);
+    }
+    expect(dab.rows).not.toEqual(standing.rows);
+    expect(dabSprite(form, standing)).toBe(dab);
+  });
+  it.each(FORMS)('%s: the loop is stand, wind-up (the crouch), the dab hold, back (the dab crouched)', form => {
+    const [stand, windUp, hold, back] = dabFrames(form);
+    const standing = composeFrame(FORM_FRAMES[form].idle[0]);
+    expect(stand.rows).toEqual(standing.rows);
+    expect(windUp).toBe(crouchSprite(form, standing));
+    expect(hold).toBe(dabSprite(form, standing));
+    expect(back).toBe(crouchSprite(form, hold));
   });
 });

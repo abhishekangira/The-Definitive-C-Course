@@ -42,8 +42,20 @@ export interface SampleProgress {
    * Treat it as no prediction. Only `true` is stored.
    */
   cleared?: true;
+  /**
+   * The verdict the first time this prediction was revealed. Kept through "Predict again" (perfect lessons count
+   * first tries). Absent on progress saved before it existed: `firstSampleVerdict` then reads the current answer.
+   */
+  first?: SampleVerdict;
+  /** The same for the 64-bit prediction, kept through its reset. */
+  first64?: SampleVerdict;
   at: string;
 }
+
+/** One "Check your understanding" question's first submission. Later "Check again" submissions are not stored. */
+export interface ChoiceProgress { picked: number; correct: boolean; at: string }
+/** `progress.choices` key: the lesson id and the question's place in the lesson (`qid`, from remark-course). */
+export const choiceKey = (lessonId: string, qid: string) => `${lessonId}#${qid}`;
 
 const VERDICTS: readonly SampleVerdict[] = ['exact', 'close', 'wrong'];
 const asVerdict = (v: unknown): SampleVerdict | undefined => (typeof v === 'string' && (VERDICTS as readonly string[]).includes(v) ? v as SampleVerdict : undefined);
@@ -52,6 +64,18 @@ const asVerdict = (v: unknown): SampleVerdict | undefined => (typeof v === 'stri
 export function sampleVerdict(s: { correct: boolean; verdict?: string }): SampleVerdict {
   return asVerdict(s.verdict) ?? (s.correct ? 'exact' : 'wrong');
 }
+
+/** The first-try verdict: `first`, else (older progress) the current answer, else undefined (never answered). */
+export function firstSampleVerdict(s: SampleProgress): SampleVerdict | undefined {
+  return s.first ?? (s.cleared ? undefined : sampleVerdict(s));
+}
+/** The first-try 64-bit verdict, the same way. */
+export function firstSample64Verdict(s: SampleProgress): SampleVerdict | undefined {
+  return s.first64 ?? (s.cleared ? undefined : sample64Verdict(s));
+}
+const VERDICT_RANK: Record<SampleVerdict, number> = { wrong: 0, close: 1, exact: 2 };
+/** Of two first-try verdicts for one sample (two devices), the worse: a first try that missed stays missed. */
+const worseVerdict = (a?: SampleVerdict, b?: SampleVerdict) => (a && b ? (VERDICT_RANK[a] <= VERDICT_RANK[b] ? a : b) : a ?? b);
 
 /** The stored 64-bit verdict. Undefined when that question was never answered. A missing verdict reads `predict64Correct` the same way as `sampleVerdict`. */
 export function sample64Verdict(s: { predict64Correct?: boolean; predict64Verdict?: string }): SampleVerdict | undefined {
@@ -93,6 +117,8 @@ export interface ProgressV1 {
   cards: Record<string, number[]>;
   lessons: Record<string, { completedAt: string }>;
   samples: Record<string, SampleProgress>;
+  /** `choiceKey(lessonId, qid)` → the first submission of that quiz question. */
+  choices: Record<string, ChoiceProgress>;
   exercises: Record<string, ExerciseProgress>;
   quizzes: Record<string, QuizProgress>;
   projects: Record<string, ProjectProgress>;
@@ -107,7 +133,7 @@ function randomSeed(): string {
 }
 
 export function emptyProgress(): ProgressV1 {
-  return { version: 1, seed: randomSeed(), createdAt: new Date().toISOString(), settings: {}, cards: {}, lessons: {}, samples: {}, exercises: {}, quizzes: {}, projects: {}, streak: emptyStreak() };
+  return { version: 1, seed: randomSeed(), createdAt: new Date().toISOString(), settings: {}, cards: {}, lessons: {}, samples: {}, choices: {}, exercises: {}, quizzes: {}, projects: {}, streak: emptyStreak() };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -171,6 +197,8 @@ function cleanSample(x: Record<string, unknown>, now: number): SampleProgress | 
     predict64Correct: bool(x.predict64Correct),
     predict64Verdict: asVerdict(x.predict64Verdict),
     cleared: (x.cleared === true ? true : undefined) as true | undefined,
+    first: asVerdict(x.first),
+    first64: asVerdict(x.first64),
     at: at > limit ? new Date(limit).toISOString() : x.at,
   });
 }
@@ -247,6 +275,8 @@ export function migrate(raw: unknown, now = Date.now()): ProgressV1 {
     cards,
     lessons: section(o.lessons, x => (typeof x.completedAt === 'string' ? { completedAt: x.completedAt } : undefined)),
     samples: section(o.samples, x => cleanSample(x, now)),
+    choices: section(o.choices, x => (Number.isInteger(x.picked) && (x.picked as number) >= 0 && typeof x.correct === 'boolean' && typeof x.at === 'string' && Number.isFinite(Date.parse(x.at))
+      ? { picked: x.picked as number, correct: x.correct, at: x.at } : undefined)),
     exercises: section(o.exercises, cleanExercise),
     quizzes: section(o.quizzes, x => (num(x.score) !== undefined && num(x.total) !== undefined && typeof x.passed === 'boolean' && typeof x.at === 'string'
       ? { score: x.score as number, total: x.total as number, passed: x.passed, at: x.at, answers: isRecord(x.answers) ? Object.fromEntries(Object.entries(x.answers).filter(([k]) => k !== '__proto__')) : {} } : undefined)),
@@ -390,6 +420,16 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
     const cur = own(out.samples, k);
     // "2026-01-10T00:00:00Z" is greater as text than "2026-01-10T00:00:00.000Z" and names the same instant. An offset can sort earlier and happen later.
     if (!cur || Date.parse(v.at) > Date.parse(cur.at)) out.samples[k] = v;
+    const kept = out.samples[k];
+    if (cur && kept) {
+      const first = worseVerdict(cur.first, v.first); const first64 = worseVerdict(cur.first64, v.first64);
+      out.samples[k] = drop({ ...kept, first, first64 });
+    }
+  }
+  // A quiz question keeps its earliest first submission.
+  for (const [k, v] of Object.entries(b.choices)) {
+    const cur = own(out.choices, k);
+    if (!cur || Date.parse(v.at) < Date.parse(cur.at)) out.choices[k] = v;
   }
   for (const [k, v] of Object.entries(b.exercises)) {
     const cur = own(out.exercises, k);
