@@ -423,7 +423,7 @@ export function WarriorArt({ form, mood, bare = false, aura }: {
         {drawn.map((sprite, i) => (
           <g key={i} data-frame={i} className={drawn.length > 1 ? styles[`pose${i}`] : undefined}>
             <Pixels sprite={sprite} />
-            {blink && <g className={styles.blink} data-blink="">{blinkPaths(blinkForIdle(blink, i)).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
+            {blink && <g className={styles.blink} data-blink="">{blinkPaths(blinkForIdle(blink, frames[i])).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
           </g>
         ))}
         {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={SWEAT[form]} palette={SWEAT_PALETTE} /></g>}

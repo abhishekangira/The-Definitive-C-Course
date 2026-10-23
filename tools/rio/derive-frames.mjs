@@ -10,21 +10,16 @@
 //   node tools/rio/derive-frames.mjs --preview out/   write a PNG contact sheet per pose
 //
 // What each extra frame is:
-//   idle 1     head and upper torso lifted 1px. The row the lift vacates is painted back with
-//              the colour that moved, so the neck and chest stay closed (a one-pixel stretch).
-//   idle 2     the idle-1 patch plus a second patch that stretches a few hair or fur tips
-//              1px further up. Stacking keeps the breath in the file once.
-//   idle 3     the tip stretch only, on the resting body. Blink dy for the four frames is
-//              0, -1, -1, 0 (IDLE_BLINK_DY): the blink patch is the resting eyes, shifted by
-//              the same lift.
-//   defeated 1 the kid's head droops 1px (band moves down; the collar row it covers keeps an
-//              adjacent pixel of the same colour).
-//   defeated 2 the defeated-1 patch plus a hair tip poked 1px to the side.
-//   worried 1  the top of the hair or fur shivers 1px to the right. The face, and the sweat
-//              drop that sits on it, stay put.
-//   worried 2  the same tips shiver 1px to the left.
-// Frame 0 of every list is the original sprite, or the sprite plus its original worried patch,
-// and this script does not emit a patch for it.
+//   idle 1     a `shift` of the head and upper torso, dy -1, fill. Not stored as rows.
+//   idle 2     that same shift, plus a patch that stretches a few hair or fur tips 1px up.
+//   idle 3     the tip patch only, on the resting body. Blink dy is the frame's shift.dy
+//              (0, -1, -1, 0).
+//   defeated 1 a `shift` of the kid's head, dy 1, no fill. Not stored as rows.
+//   defeated 2 that shift plus a hair tip poked 1px to the side.
+//   worried 1  a `shift` of the hair or fur rows, dx 1, then the original worried patch.
+//   worried 2  the same band, dx -1. The face and the sweat drop stay put.
+// Frame 0 of every list is the original sprite, or the sprite plus its original worried patch.
+// This script emits only the tip and poke patches. The shifts live on FORM_FRAMES.
 //
 // Gotcha: a lift that only deletes the vacated row opens a one-pixel crack wherever the body
 // continued below the band. Restoring that row with the colour that moved closes it. The cut
@@ -123,6 +118,26 @@ function droopBand(map, y0, y1) {
 /** Shift rows [y0, y1] sideways by dx. */
 function shiverBand(map, y0, y1, dx) {
   return moved(map, cellsInRows(map, y0, y1), dx, 0);
+}
+
+/** The `shift` op composeFrame applies: rows [top, bottom), then the breath's fill. */
+function bandShift(map, top, bottom, dx, dy, fill) {
+  const cells = [];
+  for (const [key, ch] of map) {
+    const [x, y] = key.split(',').map(Number);
+    if (y >= top && y < bottom) cells.push({ x, y, ch });
+  }
+  const next = new Map(map);
+  for (const c of cells) next.delete(`${c.x},${c.y}`);
+  for (const c of cells) next.set(`${c.x + dx},${c.y + dy}`, c.ch);
+  if (fill) {
+    for (const c of cells) {
+      if (c.y !== bottom - 1) continue;
+      if (!map.get(`${c.x},${c.y + 1}`)) continue;
+      next.set(`${c.x},${c.y}`, c.ch);
+    }
+  }
+  return next;
 }
 
 /** Highest pixels of the hair or fur: empty above, ink below, spaced apart. */
@@ -314,9 +329,11 @@ for (const form of FORMS) {
     shiverBand(worriedBase, y0, hairEnd, -1),
   ];
   frames[form.id] = { idle, worried, blink: form.blink ? patches[form.blink] : null, sprite };
-  // Frame 2 stacks the lift patch and a tip patch, so the breath is stored once.
+  const breathBottom = y1 + 1;
+  const breath = bandShift(base, y0, breathBottom, 0, -1, true);
+  if (!sameMap(breath, idle[1])) report.push(`${form.id} idle shift diverges from the lift`);
+  else report.push(`${form.id} idle 1: ok shift [${y0}, ${breathBottom}) dy -1 fill`);
   const idlePatch = [
-    [1, base, idle[1]],
     [2, idle[1], idle[2]],
     [3, base, idle[3]],
   ];
@@ -326,11 +343,24 @@ for (const form of FORMS) {
     if (why.length) continue;
     derived.push(emit(`${form.id}-idle-${i}`, diffPatch(from, to)));
   }
-  for (let i = 1; i < worried.length; i++) {
+  const hairBottom = hairEnd + 1;
+  for (const [i, dx] of [[1, 1], [2, -1]]) {
     const why = problems(worriedBase, worried[i]);
-    report.push(`${form.id} worried ${i}: ${why.length ? why.join('; ') : 'ok'}`);
-    if (why.length) continue;
-    derived.push(emit(`${form.id}-worried-${i}`, diffPatch(worriedBase, worried[i])));
+    const shifted = bandShift(base, y0, hairBottom, dx, 0, false);
+    // The worried patch is painted after the shift, which matches composeFrame.
+    const after = new Map(shifted);
+    const patch = patches[form.worried];
+    patch.rows.forEach((row, j) => {
+      for (let x = 0; x < row.length; x++) {
+        const ch = row[x];
+        if (ch === '.') continue;
+        const key = `${patch.x + x},${patch.y + j}`;
+        if (ch === ' ') after.delete(key);
+        else after.set(key, ch);
+      }
+    });
+    if (!sameMap(after, worried[i])) report.push(`${form.id} worried ${i} shift diverges`);
+    report.push(`${form.id} worried ${i}: ${why.length ? why.join('; ') : 'ok'} shift dx ${dx}`);
   }
   if (form.blink) {
     const blink = patches[form.blink];
@@ -356,16 +386,13 @@ const downCut = kidDown.y + CUT.kidDown;
 const drooped = droopBand(downBase, kidDown.y, downCut);
 const defeated = [downBase, drooped, pokeTips(drooped, kidDown, TIPS.kidDown)];
 frames.kidDown = defeated;
-const downPatch = [
-  [1, downBase, defeated[1]],
-  [2, defeated[1], defeated[2]],
-];
-for (const [i, from, to] of downPatch) {
-  const why = problems(downBase, defeated[i]);
-  report.push(`kidDown defeated ${i}: ${why.length ? why.join('; ') : 'ok'} patch ${diffPatch(from, to).rows.join('').length}`);
-  if (why.length) continue;
-  derived.push(emit(`kidDown-${i}`, diffPatch(from, to)));
-}
+const droopBottom = downCut + 1;
+const droop = bandShift(downBase, kidDown.y, droopBottom, 0, 1, false);
+if (!sameMap(droop, defeated[1])) report.push('kidDown defeated shift diverges from the droop');
+else report.push(`kidDown defeated 1: ok shift [${kidDown.y}, ${droopBottom}) dy 1`);
+const why2 = problems(downBase, defeated[2]);
+report.push(`kidDown defeated 2: ${why2.length ? why2.join('; ') : 'ok'} patch ${diffPatch(defeated[1], defeated[2]).rows.join('').length}`);
+if (!why2.length) derived.push(emit('kidDown-2', diffPatch(defeated[1], defeated[2])));
 
 const bad = report.filter(line => !line.endsWith('ok') && !line.includes(': ok'));
 if (process.argv.includes('--preview')) {

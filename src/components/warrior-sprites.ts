@@ -8,15 +8,14 @@
 //   ` `   erase (a space, `ERASE`). A patch paints that pixel transparent, so a later frame can remove ink.
 //   any other character is a colour in PALETTE. Colours are fixed hex values.
 //
-// Frames. A frame is a full sprite plus optional patches, painted in order (a later patch wins, and a space erases).
-// `FORM_FRAMES` lists them per form. Frame 0 of every list is the original drawing. Extra rows come from
-// tools/rio/derive-frames.mjs and stay hand-editable.
-//   idle      four frames. 1 lifts the head and upper torso 1px. 2 stacks that lift and a hair or fur tip. 3 is the tip on the resting body.
+// Frames. A frame is a full sprite, an optional `shift`, then optional patches (a later patch wins, and a space erases).
+// `shift` moves pixels on rows [top, bottom) by dx, dy before the patches. `fill` repaints the vacated row where the
+// body continued (deleting it cracks the neck). Tips come from tools/rio/derive-frames.mjs and stay hand-editable.
+//   idle      four frames. 1 and 2 shift the head and upper torso up 1px with `fill`; 2 also stretches a tip; 3 is the tip.
 //             Under `.still`, the header head draws the first frame of the streak mood's list (`worried[0]` when at risk); the gallery always draws `idle[0]`.
-//   defeated  the kid's loop: kidDown, a 1px head droop, then that droop with a hair tip poked sideways.
-//   worried   three frames. 0 is the sprite plus its worried patch. 1 and 2 shiver the hair or fur tips.
-//   blink     the resting eyes, through composeFrame so a space stays transparent. `blinkForIdle` shifts it by
-//             `IDLE_BLINK_DY`. Absent for the ape.
+//   defeated  kidDown, a 1px head droop (`dy` 1), then that droop with a hair tip poked sideways.
+//   worried   three frames. 0 is the sprite plus its worried patch. 1 and 2 shift the hair or fur rows by 1px in x.
+//   blink     the resting eyes. `blinkForIdle` moves it by that frame's `shift.dy` (`IDLE_BLINK_DY`). Absent for the ape.
 // The aura is not in these rows: WarriorArt computes it (`aura="none" | "flicker" | "blaze"`).
 import type { FormId } from '../progress/warrior';
 
@@ -25,8 +24,11 @@ export interface PixelSprite { x: number; y: number; rows: readonly string[] }
 /** A patch character that paints the pixel transparent. `.` leaves the pixel underneath unchanged. */
 export const ERASE = ' ';
 
-/** One drawn frame: a sprite, then patches painted over it. A space in a patch erases. */
-export interface SpriteFrame { sprite: PixelSprite; patches?: readonly PixelSprite[] }
+/** Rows [top, bottom) move by `dx` and `dy`. `fill` restores the vacated row where the body continued below. */
+export interface BandShift { top: number; bottom: number; dx?: number; dy?: number; fill?: boolean }
+
+/** A sprite, an optional band shift, then patches. A space in a patch erases. */
+export interface SpriteFrame { sprite: PixelSprite; shift?: BandShift; patches?: readonly PixelSprite[] }
 
 export const PALETTE: Readonly<Record<string, string>> = {
   '6': '#8fd4ff',
@@ -840,41 +842,6 @@ export const PATCHES = {
     '..s........s.',
   ] },
   // --- derived frames: tools/rio/derive-frames.mjs (hand-editable) ---
-  'kid-idle-1': { x: 30, y: 26, rows: [
-    '...............kk........k..........',
-    '..............kggk......kgk.........',
-    '.....k..........H.....kkg...........',
-    '....kgkk.....kHh.gk..kHH.H......k...',
-    '.... kgHkk..........kHhg.k ..kkkgk..',
-    '......HhHgkk....hHgkHh..H.kkkHggk ..',
-    '..... kHhHggkHh...hHh.....HHHg.k ...',
-    '...... kHhHhHh.....h...HhHhhg.k ....',
-    '.kkkk.....hHh....h.......h.g.k .....',
-    'kHHggkk.kH.hH..........h..g.k ......',
-    ' k.HhHHHHh..h.............h.gkkk....',
-    '. k.H...h..................hhHggkkk.',
-    '.. kk.hhHH.................ggg.hHggk',
-    '...  kH.hh.....K....K......hhhhgg.k ',
-    '..... kH.....KKdK.gKdK.K...ggkkkkk .',
-    '....kk.....gKd..dKKS.dKdK.g.k     ..',
-    '..kkHHH.H....SS...........h.gk......',
-    '.kHH..hhh.....sssSSsssd...g..gk.....',
-    '. kkk.....g.eeeS.ssddeeegkkH..gk....',
-    '..   kkkkkKKSSSs...ssSddK. kkkkgk...',
-    '.....    .d.eeeeS.ddeeeeddk    k ...',
-    '...........di.i......i.i....... ....',
-    '............d.eSs.s.de.d............',
-    '............SSSs...ssSd.............',
-    '......... kkdss.dddS.s..kk .........',
-    '..........  kS..ssSs.d.k  ...kk.....',
-    '.............dddDppDS.......kddk....',
-    '............ k..dPPSd.k ...kSs.dk...',
-    '............. kSsSSd.k ...kSsds.dk..',
-    '...............dddd..........s......',
-    '..........kkkkMD....DMkkkk kS.d.k ..',
-    '........kkmMOqq.DDDD.OqqMmk.kS...k..',
-    '.......kNNN..OOqMNmMO.O..NNmNNNNmmk.',
-  ] },
   'kid-idle-2': { x: 35, y: 26, rows: [
     '.........k.........k........',
     'k...........................',
@@ -888,65 +855,6 @@ export const PATCHES = {
     'k...........................',
     '...........................k',
     '...............k............',
-  ] },
-  'kid-worried-1': { x: 30, y: 27, rows: [
-    '............... .k....... k........',
-    '.............. k.gk..... kgk.......',
-    '..... k....... kgHk... .k.gk.......',
-    '.... kg.k.... kHhHgk. k.HgHk.... k.',
-    '..... kgH.k.. kHhHgk kHh.gk.. ..kgk',
-    '..... kHhHg.k kH.hHgkH.hgH...kH.gk.',
-    '...... kHhH.gkH..hHhH..hgHk..H.gk..',
-    '....... kHhHhH...hH....hHhH.h.gk...',
-    '. ...k. kH.hH..........hH..h.gk....',
-    ' k.H.g...kH.hH............h.gk.....',
-  ] },
-  'kid-worried-2': { x: 29, y: 27, rows: [
-    '...............k. .......k ........',
-    '..............kg.k .....kgk .......',
-    '.....k .......kgHk ...k.g.k .......',
-    '....kgk. ....kHhHgk .kH.gHk ....k .',
-    '.....kgHk. ..kHhHgk kHhg.k ..k..gk ',
-    '.....kHhHgk. kHh.HgkHh.gHk...Hg.k .',
-    '......kHhHg.kHh..HhHh..gHkH..g.k ..',
-    '.......kHhHhHh...Hh....HhHh.g.k ...',
-    '.k... .kHh.Hh..........Hh..g.k ....',
-    'kH.g.k...Hh.Hh............g.k .....',
-  ] },
-  'warrior-idle-1': { x: 30, y: -1, rows: [
-    '...............k........kgk..........',
-    '..............kgk.....kkg............',
-    '.....k.......kHHgk...kHHH............',
-    '....kgkk...........kkHhg.k ..........',
-    '.... kgHkk.....hHgkHHh.Hg....kkkk....',
-    '......HhHgkkkHh..hHhh.....kkkHHggk...',
-    '..... kHhHgg....hHh...HhhHHHHhg.k ...',
-    '...... kHhHhHh...........hhhhgHk ....',
-    '..........hHh....h....h.....gHk .....',
-    '.kkkkkk.kH.hH....g.........HHk ......',
-    'kHHHHHHHHh..h..ggh........Hhggkkkkk..',
-    ' k.hh...h....gghh.........gghhHHHggk.',
-    '. kkHhhhHH..ghh.K....K....hhgggghh.gk',
-    '..  kkH.hh..hKgKdK.gKdK.....hhh.gkkk ',
-    '....  kH...gKdKS.dKKd.......ggkkk   .',
-    '....kk.......eSs......eeH..g.k.  ....',
-    '..kkHHH.H.gKddeee.deeeddKgghhggk.....',
-    '.kHH..hhh...SsSSSssSSS...hKgg..gkk...',
-    '. kkk....K.geeee..ddeeeegKdkkkH.ggk..',
-    '..   kkkkdK.i..Ss.s.d..iKd..  kkkk ..',
-    '.....   ..dKd.Ss...s.d.d......    ...',
-    '...........S.Ss.....ssS.d............',
-    '........ k.k.s..dddS..d.k.k .........',
-    '......... k.Sd.d..D......k ..........',
-    '..........  k..ssSSs.d.k  ...........',
-    '..............dddDDdS................',
-    '............ k.sSSSSd.k .............',
-    '..............Ddsssd.D...............',
-    '................ddd..................',
-    '..........kkk...sSSs...kkk...........',
-    '..kkkkkkkkOOqq...ss...OOqqkkkkkkkk...',
-    '.kNNNNmMOOoo...DDDDDD..oooqqMNNNmmk..',
-    'kNn..mMOoo..o.qMNNNmMOo...o.qMn.N.mk.',
   ] },
   'warrior-idle-2': { x: 35, y: -1, rows: [
     '.........k.......k.......',
@@ -962,61 +870,6 @@ export const PATCHES = {
     '........................k',
     '.....k...................',
   ] },
-  'warrior-worried-1': { x: 34, y: 0, rows: [
-    '........... k....... kgk.......',
-    '.......... kgk.... .k.gk.......',
-    '. k...... k.Hgk.. k..Hgk.......',
-    ' kg.k.... k.Hgk .kHhgHk........',
-    '. kgH.k.. kHhHgk.H.hHgk.. ...k.',
-    '. kHhHg..kH.hHhH...hHg...k.H.gk',
-    '.. kHhH.gkH..hH...hH.h...Hh.gk.',
-    '... kHhHhH...hH...hH.....hgHk..',
-  ] },
-  'warrior-worried-2': { x: 33, y: 0, rows: [
-    '...........k .......kgk .......',
-    '..........kgk ....k.g.k .......',
-    '.k ......kH.gk ..kH..gk .......',
-    'kgk. ....kH.gk k.HhgHk ........',
-    '.kgHk. ..kHhHgkH.h.Hgk ..k... .',
-    '.kHhHgk..Hh.HhHh...Hgk...H.g.k ',
-    '..kHhHg.kHh..Hh...Hh.H...hg.k .',
-    '...kHhHhHh...Hh...Hh.....gHk ..',
-  ] },
-  'golden-idle-1': { x: 26, y: -1, rows: [
-    '......kbkk..........kk.......kbk........k...',
-    '...... kbAk........kbbk....kkb........kkbk..',
-    '........AbAkk.....kAaAbk..kAA.......kkbbk ..',
-    '....... kAaAbkk..........kAaa......kAb.k ...',
-    '...........aAbbk.kAa...bkAa.b.k .kkAb.k ....',
-    '.k...... kA.aA.bkAa..aAaAa.....kkAAb.k .....',
-    'kbkkkk... kA.aAaAa......a......AAaa.........',
-    ' kAAbbkkkk....aAa...........a.Aaa.b.k ......',
-    '. kkAAAAbb.kA..aA.....a.....baa..b.k .......',
-    '..  k...aaAAa...a...............b.k ..kkkkk.',
-    '.... kk.AAaa.....AA.........a..b.k.kkkAAAbbk',
-    '.....  kk.AA...AAaa.............aAAAAAbbkkk ',
-    '.......  k.aAAAaaBBB...BBBBB...a.aaabbkk   .',
-    '........k...aaabBSddBbBSSSddB....bbbkk  ....',
-    '.....kkkAAa..........BSsss.....bbkkk  ......',
-    '...kkAAA..AAA....b......ddbBa...... ........',
-    '..kAA...aaaaa.bBddbbA.dbbbddB.b..bbkkk......',
-    '.. kkkk.........SsddBSsSSS...Bkkk..bbbkk....',
-    '...    kkkkkkB.beeee..ddeeee.dd. kkkkkbbk...',
-    '.......     .dB.it.d..s.d.ti.....     kk ...',
-    '..............dBdTSsSs.s.dTd..........  ....',
-    '...............S.Ss.s...ssS.d...............',
-    '............ k.k.s..dddS..d.k.k ............',
-    '............. k.Sd.d..D......k .............',
-    '..............  k..ssSSs.d.k  ..............',
-    '..................dddDDdS...................',
-    '................ k.sSSSSd.k ................',
-    '..................Ddsssd.D..................',
-    '....................ddd.....................',
-    '..............kkk...sSSs...kkk..............',
-    '......kkkkkkkkOOqq...ss...OOqqkkkkkkkk......',
-    '.....kNNNNmMOOoo...DDDDDD..oooqqMNNNmmk.....',
-    '....kNn..mMOoo..o.qMNNNmMOo...o.qMn.N.mk....',
-  ] },
   'golden-idle-2': { x: 36, y: -1, rows: [
     'k........k.......k..........k',
     '.............................',
@@ -1027,62 +880,6 @@ export const PATCHES = {
     'b............k........k..........k',
     '..................................',
     '.....k............................',
-  ] },
-  'golden-worried-1': { x: 26, y: 0, rows: [
-    '...... kb.k......... .k...... kbk....... k.',
-    '....... kbAk....... k.bk... .k.bk..... .kbk',
-    '....... kAbA.k.... kAaAbk. k.A.bk... .k.bk.',
-    '........ kAaAb.k.. kAaAbk kA.a.bk.. kA.bk..',
-    '........ kA.aA.bk kA.aA.bkA.a.bk. .kA.bk...',
-    '. k...... kA.aA.bkA...aAaA..a.b..k.A.bk....',
-    ' kb...k... kA.aAaA....aA....a.bk.A.a.bk....',
-    '. k.A.b....kA..aA.....aA.....abA..a.bk.....',
-  ] },
-  'golden-worried-2': { x: 25, y: 0, rows: [
-    '......kbk. .........k. ......kbk .......k .',
-    '.......kbAk .......kb.k ...k.b.k .....k.bk ',
-    '.......kAbAk. ....kAaAbk .kA.b.k ...k.b.k .',
-    '........kAaAbk. ..kAaAbk kAa.b.k ..kAb.k ..',
-    '........kAa.Ab.k kAa.Ab.kAa.b.k .k.Ab.k ...',
-    '.k ......kAa.Ab.kAa...AaAa..b.k..A.b.k ....',
-    'kbk... ...kAa.AaAa....Aa....b.kA.a.b.k ....',
-    '.kA.b.k....Aa..Aa.....Aa.....bAa..b.k .....',
-  ] },
-  'mane-idle-1': { x: 20, y: -1, rows: [
-    '..........................kk........k...................',
-    '.........................kbbk......kbk..................',
-    '.............k..........kA.A.....kkb....................',
-    '............kbkk.......kAaa.bk..kAA.....................',
-    '............ kbbkkk............kAaa.....................',
-    '............. kAAbbkk.kAa..aAbkAa.b.k .....k............',
-    '................aaabAkAa.....aAa.....kk.kkkbk...........',
-    '.............. kA..aaAa.......a.....AbbkAbbk ...........',
-    '..............k......aA.....a.......bAAAb.k ............',
-    '.............kAbbA....a............aAaab................',
-    '............kb.A.bA....AA.........a.a.b.A.bk............',
-    '..........kkAabbAAa..AAaa..BBB.......b.Aaa.bkk..........',
-    '.........kAAbbAAaaAAAaa..bBSddB.....b.Aa.b..bbk.........',
-    '........kAbbAAaa..aaa..B....s.dB.b..aa.bb..AA.bk........',
-    '.......kAa...a.......bBdBBSs.....B...bbaa...aa.bk.......',
-    '......kAa.aabbAAAAA.bBd.........BdB..aa.......a.bk......',
-    '.....kAabbAAAAbb.aa.......ddd..dd...bbbAAAAa.A.a.bk.....',
-    '....kAa.aa....aabbA...SsSSSssSSS...BA..bbbbA....a.bk....',
-    '...kAa...Aaaaa..a.bB.beeee..ddeeee.dDAaAA..bbbA..a.bk...',
-    '... kA.............DB.it.Ss.s.d.ti.....aaaaAAA...b.k ...',
-    '.... kA.............dBdTSs...s.dTd.........aaa..b.k ....',
-    '..... kkAa...........D.Ss.....ssS.D...........bAkk .....',
-    '.......b.........a.bDbDs..dddS..dDbDAa........a.b.......',
-    '........a.........aab..d.d..D.....AAa..........b........',
-    '.....kba............a.bD.ssSSs.dDAaa...........a.bk.....',
-    '........................dddDDdS.........................',
-    '....kA..A............a.bDsSSSSdDAa.............Aa.bk....',
-    '...kAa...................dsssd.....................bk...',
-    '..kAaba...................ddd....................a..bk..',
-    '.kAa...Aa.................sSSs.................aA..a.bk.',
-    'kAa...............bbQQQQ...ss...QQQQA...............a.bk',
-    ' kkA.a....bbMMMMMMQQooqq.DDDDDD.OoooQQMMMMMMA.....abbkk ',
-    '.  kkkA..b.MnNNm.Ooo..o.qMNNNmMOo...oqq.nNNmMA...bkkk  .',
-    '...   ............................................   ...',
   ] },
   'mane-idle-2': { x: 33, y: -1, rows: [
     '............k.........k',
@@ -1098,61 +895,6 @@ export const PATCHES = {
     '........................',
     '.....k............k.....',
   ] },
-  'mane-worried-1': { x: 32, y: 0, rows: [
-    '.............. .k....... k........',
-    '............. k.bk..... kbk.......',
-    '. k......... kAbAk... .k.bk.......',
-    ' kb.k...... kA.aAbk. k.A.bk.......',
-    '. k.b..k... kA.aAbk kA.a.bk.......',
-    '.. k.A.b.k kA...aAbkA.a.bk..... k.',
-    '.. kA..abAkA....aAaA..a.b..k ..kbk',
-    '... kA...aA.....aA....a.bA.bkA.bk.',
-  ] },
-  'mane-worried-2': { x: 31, y: 0, rows: [
-    '..............k. .......k ........',
-    '.............kb.k .....kbk .......',
-    '.k .........kAbAk ...k.b.k .......',
-    'kbk. ......kAa.Abk .kA.b.k .......',
-    '.kb.k.. ...kAa.Abk kAa.b.k .......',
-    '..kA.b.k. kAa...AbkAa.b.k .....k .',
-    '..kAa..bAkAa....AaAa..b.k.. k..bk ',
-    '...kAa...Aa.....Aa....b.Ab.kAb.k .',
-  ] },
-  'crimson-idle-1': { x: 24, y: -1, rows: [
-    '.........k...........kk........kgk..............',
-    '........kgkk........kggk.....kkg................',
-    '........ kggkk.......HHgk..kkHgHk ..............',
-    '..........HHggkk...kHh...kkHHhHg.......kkk......',
-    '......... k.Hhggkkk.....ggHhh.....kkkkkHggk.....',
-    '............hHhhgggHh.hHhHh..Hg.gkHHHHHgHk .....',
-    '.............hH.hhHh.....h....hHHHhhhh.Hk ......',
-    '.......... kH.hH..h.........Hh.hhh...Hgk .......',
-    '..kkkkk...kg...hH......h............Hgk ........',
-    '.kHHHggkkkH.gH..hH..........h.....HHg...........',
-    '. k..HhHHH.HHh...h...............HggH.gkk.......',
-    '.. kk.H..hhhh....ggDDDDDDDDDDH...hhh.HHggkkkk...',
-    '...  k.hhHHH....g.DsssssssssdDH....gggg..ggggk..',
-    '......gH.hhhHH.....................hhhhh..kkk ..',
-    '......HggH..hh.g.Ds.........sdDH......gg...  ...',
-    '....kHhh.gH.......eeS.....ddee.....ggHHHh.gk....',
-    '...kHh............ddeeeddeeeSd........hh.h.gk...',
-    '..kHh.ggHHh...g.DdzzzzSs.dzzzzdDH.gh.gH...h.gk..',
-    '.. kgHHHhhHHHg.Ddzeeee....eeeezdDHhg..gH..g.k ..',
-    '..kHHh..HHhhh.....iu.Ss.s.d.ui.....hh..ggHkk ...',
-    '.. kkHhhhh.......ddUSs...s.dUdd......hh..g. ....',
-    '... ..HHggH......D.Ss.....ssS.D...HHggHhh.gk....',
-    '......hhhh.Hg..gDgDs..dddS..dDgDHhhhhh.HH.H.....',
-    '...kH.....hhhh..g..d.d..D......Hh.....hhhh.gk...',
-    '..............hhH.gD.ssSSs.dDHHh................',
-    '..kH.h..........h...dddDDdS...h...........hHgk..',
-    '.kHh.............h.gDsSSSSdDHh...............gk.',
-    'kHh.h................dsssd.................hh.gk',
-    ' kkkH.................ddd.................ggkkk ',
-    '.   kkkH..............sSSs.............ggkkk   .',
-    '.... .Hh......ggDDDD...ss...DDDDH......h.H. ....',
-    '.......gVVVVVVVVVSdd........SddVVVVVVVVV........',
-    '....kg.VfffvvFF.SsssSSSSSSSSss.d.FvFfffvV.gk....',
-  ] },
   'crimson-idle-2': { x: 34, y: -1, rows: [
     'k.........k........k..........',
     '..............................',
@@ -1163,69 +905,6 @@ export const PATCHES = {
     '.......................',
     '.......................',
     '.....k...........k.....',
-  ] },
-  'crimson-worried-1': { x: 32, y: 0, rows: [
-    '. k.......... .k....... kgk.........',
-    ' kg.k....... k.gk.... .k.gk.........',
-    '. k.g.k..... k.Hgk. .kHgHk..........',
-    '. k.H.g.k.. kHhHg..k.HhHgk..... ..k.',
-    '.. k.Hh.g...kHhH..gH..hHgk ....kH.gk',
-    '.. kHhH.h..gH..hHhH..hH..gk....HgHk.',
-    '.. kH.hH..hH...hH....hHh..H...h.Hk..',
-    '... kH.hH......hH...hH.......hHgk...',
-  ] },
-  'crimson-worried-2': { x: 31, y: 0, rows: [
-    '.k ..........k. .......kgk .........',
-    'kgk. .......kg.k ....k.g.k .........',
-    '.kg.k. .....kH.gk .k.HgHk ..........',
-    '.kH.g.k. ..kHhHgk..H.hHgk .....k.. .',
-    '..kH.hg.k...HhHg..Hh..Hgk k....Hg.k ',
-    '..kHhHh.g..Hh..HhHh..Hg..kH....gHk .',
-    '..kHh.Hh..Hh...Hh....HhH..h...H.k ..',
-    '...kHh.Hh......Hh...Hh.......Hgk ...',
-  ] },
-  'ape-idle-1': { x: 5, y: -1, rows: [
-    '..........................................kLk.........................................',
-    '....................................k.............k...................................',
-    '...................................kLk...kL.Lk...kLk..................................',
-    '.....................................Lk.........kL....................................',
-    '......................................Lk.......kL.....................................',
-    '..............................k........LkL...LkL........k.............................',
-    '.............................kLk........L.....Ll.......kLk............................',
-    '...............................Lkk...................kkL..............................',
-    '............................. k.LLkl................kLL.k ............................',
-    '..................................Lkl...............L.................................',
-    '........................kk.........L...............L........kk........................',
-    '.......................kllkkkk......Ll.................k.kkkllk.......................',
-    '....................... kJJJJll..........JJll..L.......JJJJl.k .......................',
-    '........................ k.jjj.l.....LJJJjjjjJJll.......jjl.k ........................',
-    '......................... kJ......JJJJjjj....jjjjJJll....l.k .........................',
-    '.......................... klc..JJjjjj...........jjj.lllc.k ..........................',
-    '........................... klccLlllllJ.......llllll.Lcclk ...........................',
-    '............................ klLl.....llJ...ll.......lLlk ............................',
-    '............................. kl........llll..........lk .............................',
-    '......................................................................................',
-    '...............................JjJJ..ZZG......GZZJJJJ.................................',
-    '.................................jjjjllEEEEEEEEJJjjjj.................................',
-    '...................................llEEccccccccEEJ....................................',
-    '......kk..........................l.Ecc........ccEJ...........................kk......',
-    '...kkkcckkk......................l.Ec...LL..LL...cEJ.......................kkkcckkk...',
-    '..kccc..ccck.................. kJ.......cc..cc......l.k ..................kccc..ccck..',
-    '.kc..CCC...ck.............................pp.............................kc...CCC..ck.',
-    'kc...ccc....ck................. k.Ec...ppp..ppp...cE.k .................kc....ccc...ck',
-    '...EEEEEEEEE.................... klE..w.ZZZZZZ.w..Elk ....................EEEEEEEEE...',
-    '...ccccccccc....................k.kc..pZ......Zp..ck.k....................ccccccccc...',
-    '..............................kkJllE.....GGGG.....EJllkk..............................',
-    '...EEEEEEEEE......kkkkkk...kkkJJjj.lEE.p.ZZZZ.p.EEJjjjllkkk...kkkkkk......EEEEEEEEE...',
-    '...ccccccccc....kkJJJJllkkkJJJjj..j.l.Ewpp..ppwE.Jj...jjJllkkkJJJJllkk....ccccccccc...',
-    ' k..........k kkJJjjjjjjllJjjj.....jjllEEEppEEEJJj......jj.lJJjjjjjjllkk k..........k ',
-    '..l..E..E..l.kJJjj...JJJjjllJ........JJJJJJJJJJ.........llJJjjJJJ...jjllk.l..E..E..l..',
-    '..JJll..JJl....j.JJJJjjj........JJJJJjjjjjjjjjjjjJJJJJ.....j..jjjJJJJ.....JJll..JJl...',
-    '...jjjJJjj...JjJJjjjj.....j.lJJJj....J..........J....jJJJJj......jjjjJJ.l..jjjJJjj....',
-    '......jj..jjJj.jj..........j.l..Jjjjjj..........jjjjjJ...j...........jjjjJj...jj......',
-    '............j..................jj....................jll.................j............',
-    '......................................................................................',
-    '...l......J................................................................J..........',
   ] },
   'ape-idle-2': { x: 35, y: -1, rows: [
     '......k.............k......',
@@ -1242,56 +921,6 @@ export const PATCHES = {
     '...........................',
     'k.........................k',
   ] },
-  'ape-worried-1': { x: 34, y: 0, rows: [
-    '............. kLk.............',
-    '....... k.... kLk.... k.......',
-    '...... kLk.. k..Lk.. kLk......',
-    '...... k.Lk. k..Lk. k.Lk......',
-    '...... k..Lk k..Lk k..Lk......',
-    '. k... k...Lk....Lk...Lk... k.',
-    ' kLk.. k..........Ll..Lk.. kLk',
-    ' k.L.k k..........Ll..Lk .k.Lk',
-  ] },
-  'ape-worried-2': { x: 33, y: 0, rows: [
-    '.............kLk .............',
-    '.......k ....kLk ....k .......',
-    '......kLk ..kL..k ..kLk ......',
-    '......kL.k .kL..k .kL.k ......',
-    '......kL..k kL..k kL..k ......',
-    '.k ...kL...kL....kL...k ...k .',
-    'kLk ..kL..........lL..k ..kLk ',
-    'kL.k. kL..........lL..k k.L.k ',
-  ] },
-  'kidDown-1': { x: 30, y: 27, rows: [
-    '...............  ........ ..........',
-    '.............. kk ...... k .........',
-    '..... ..........g.....  k...........',
-    '.... k  ..... kg.k .. kk.g...... ...',
-    '....kgkk  .......... kHH.Hk..   k ..',
-    '......gHkk  ....Hgk kH..g.   kkkgk..',
-    '.....kHhHgkk kH...gkH.....kkkH.gk...',
-    '......kHhHggkH.....H...gHkHHH.gk....',
-    '.    .....HhH....H.......H.h.gk.....',
-    ' kkkk  .Hh.Hh..........H..h.gk......',
-    'kH.ggkkkkH..H.............g.k   ....',
-    '.kH.h...H..................ggkkk   .',
-    '..kHH.HHhh.................hhH.gkkk ',
-    '...kkHh.HH.....h....h......gggghH.gk',
-    '.....kHh.....hhKh.hhKh.h...hhhhgggk.',
-    '....  .....hhK..KhgK.KhKh.h.gkkkkk..',
-    '..  kkk.h....dK...........g.k ......',
-    '. kk..HHH.....SddKKSddK...h..k .....',
-    '.kHHH.....hgKSsssSSsss...hgg..k ....',
-    '..kkkHhhhhg.SddeeddeeSd...kHgggk ...',
-    '.....kkkk.K.deeSS..ddee.Kk kkkkgk...',
-    '...........KSSSss.sssSdd.......k....',
-    '............e..eS.d.e..e............',
-    '.............eeS.....eed............',
-    '.........kdd....sss...89ddk.........',
-    '..........kkd6..ddd...98.k..........',
-    '.............7SsssSdd889k...........',
-    '............kds.dDDDS.dk............',
-  ] },
   'kidDown-2': { x: 36, y: 28, rows: [
     '....................k.......',
     '............................',
@@ -1304,14 +933,72 @@ export const PATCHES = {
 const frame = (sprite: PixelSprite, ...patches: PixelSprite[]): SpriteFrame =>
   patches.length ? { sprite, patches } : { sprite };
 
-/** How far the resting blink patch moves on each idle frame. Frames 1 and 2 lift the head by one pixel. */
-export const IDLE_BLINK_DY = [0, -1, -1, 0] as const;
+const shifted = (sprite: PixelSprite, shift: BandShift, ...patches: PixelSprite[]): SpriteFrame =>
+  patches.length ? { sprite, shift, patches } : { sprite, shift };
+
+const BREATH: Record<FormId, BandShift> = {
+  kid: { top: 27, bottom: 60, dy: -1, fill: true },
+  warrior: { top: 0, bottom: 33, dy: -1, fill: true },
+  golden: { top: 0, bottom: 33, dy: -1, fill: true },
+  mane: { top: 0, bottom: 33, dy: -1, fill: true },
+  crimson: { top: 0, bottom: 33, dy: -1, fill: true },
+  ape: { top: 0, bottom: 41, dy: -1, fill: true },
+};
+
+const HAIR_ROWS: Record<FormId, number> = { kid: 10, warrior: 8, golden: 8, mane: 8, crimson: 8, ape: 8 };
+
+const hair = (form: FormId, dx: number): BandShift => {
+  const top = BREATH[form].top;
+  return { top, bottom: top + HAIR_ROWS[form], dx };
+};
+
+const KID_DROOP: BandShift = { top: 27, bottom: 54, dy: 1 };
+
+export const FORM_FRAMES: Record<FormId, {
+  idle: readonly SpriteFrame[];
+  defeated?: readonly SpriteFrame[];
+  worried?: readonly SpriteFrame[];
+  blink?: PixelSprite;
+}> = {
+  kid: {
+    idle: [frame(SPRITES.kid), shifted(SPRITES.kid, BREATH.kid), shifted(SPRITES.kid, BREATH.kid, PATCHES['kid-idle-2']), frame(SPRITES.kid, PATCHES['kid-idle-3'])],
+    defeated: [frame(SPRITES.kidDown), shifted(SPRITES.kidDown, KID_DROOP), shifted(SPRITES.kidDown, KID_DROOP, PATCHES['kidDown-2'])],
+    worried: [frame(SPRITES.kid, PATCHES['kid-worried']), shifted(SPRITES.kid, hair('kid', 1), PATCHES['kid-worried']), shifted(SPRITES.kid, hair('kid', -1), PATCHES['kid-worried'])],
+    blink: PATCHES['kid-blink'],
+  },
+  warrior: {
+    idle: [frame(SPRITES.warrior), shifted(SPRITES.warrior, BREATH.warrior), shifted(SPRITES.warrior, BREATH.warrior, PATCHES['warrior-idle-2']), frame(SPRITES.warrior, PATCHES['warrior-idle-3'])],
+    worried: [frame(SPRITES.warrior, PATCHES['warrior-worried']), shifted(SPRITES.warrior, hair('warrior', 1), PATCHES['warrior-worried']), shifted(SPRITES.warrior, hair('warrior', -1), PATCHES['warrior-worried'])],
+    blink: PATCHES['warrior-blink'],
+  },
+  golden: {
+    idle: [frame(SPRITES.golden), shifted(SPRITES.golden, BREATH.golden), shifted(SPRITES.golden, BREATH.golden, PATCHES['golden-idle-2']), frame(SPRITES.golden, PATCHES['golden-idle-3'])],
+    worried: [frame(SPRITES.golden, PATCHES['golden-worried']), shifted(SPRITES.golden, hair('golden', 1), PATCHES['golden-worried']), shifted(SPRITES.golden, hair('golden', -1), PATCHES['golden-worried'])],
+    blink: PATCHES['golden-blink'],
+  },
+  mane: {
+    idle: [frame(SPRITES.mane), shifted(SPRITES.mane, BREATH.mane), shifted(SPRITES.mane, BREATH.mane, PATCHES['mane-idle-2']), frame(SPRITES.mane, PATCHES['mane-idle-3'])],
+    worried: [frame(SPRITES.mane, PATCHES['mane-worried']), shifted(SPRITES.mane, hair('mane', 1), PATCHES['mane-worried']), shifted(SPRITES.mane, hair('mane', -1), PATCHES['mane-worried'])],
+    blink: PATCHES['mane-blink'],
+  },
+  crimson: {
+    idle: [frame(SPRITES.crimson), shifted(SPRITES.crimson, BREATH.crimson), shifted(SPRITES.crimson, BREATH.crimson, PATCHES['crimson-idle-2']), frame(SPRITES.crimson, PATCHES['crimson-idle-3'])],
+    worried: [frame(SPRITES.crimson, PATCHES['crimson-worried']), shifted(SPRITES.crimson, hair('crimson', 1), PATCHES['crimson-worried']), shifted(SPRITES.crimson, hair('crimson', -1), PATCHES['crimson-worried'])],
+    blink: PATCHES['crimson-blink'],
+  },
+  ape: {
+    idle: [frame(SPRITES.ape), shifted(SPRITES.ape, BREATH.ape), shifted(SPRITES.ape, BREATH.ape, PATCHES['ape-idle-2']), frame(SPRITES.ape, PATCHES['ape-idle-3'])],
+    worried: [frame(SPRITES.ape, PATCHES['ape-worried']), shifted(SPRITES.ape, hair('ape', 1), PATCHES['ape-worried']), shifted(SPRITES.ape, hair('ape', -1), PATCHES['ape-worried'])],
+  },
+};
+
+/** `shift.dy` of each kid idle frame. The other forms use the same list. */
+export const IDLE_BLINK_DY: readonly number[] = FORM_FRAMES.kid.idle.map(entry => entry.shift?.dy ?? 0);
 
 const blinkShiftCache = new WeakMap<PixelSprite, Map<number, PixelSprite>>();
 
-/** The blink patch placed on idle frame `index`. Same rows; only `y` changes. */
-export function blinkForIdle(patch: PixelSprite, index: number): PixelSprite {
-  const dy = IDLE_BLINK_DY[index] ?? 0;
+export function blinkForIdle(patch: PixelSprite, frame: SpriteFrame): PixelSprite {
+  const dy = frame.shift?.dy ?? 0;
   if (dy === 0) return patch;
   let byDy = blinkShiftCache.get(patch);
   if (!byDy) blinkShiftCache.set(patch, byDy = new Map());
@@ -1320,48 +1007,47 @@ export function blinkForIdle(patch: PixelSprite, index: number): PixelSprite {
   return hit;
 }
 
-/** Per-form loops. Frame 0 is the original drawing. `blinkForIdle` shifts `blink` with the breath. */
-export const FORM_FRAMES: Record<FormId, {
-  idle: readonly SpriteFrame[];
-  defeated?: readonly SpriteFrame[];
-  worried?: readonly SpriteFrame[];
-  blink?: PixelSprite;
-}> = {
-  kid: {
-    idle: [frame(SPRITES.kid), frame(SPRITES.kid, PATCHES['kid-idle-1']), frame(SPRITES.kid, PATCHES['kid-idle-1'], PATCHES['kid-idle-2']), frame(SPRITES.kid, PATCHES['kid-idle-3'])],
-    defeated: [frame(SPRITES.kidDown), frame(SPRITES.kidDown, PATCHES['kidDown-1']), frame(SPRITES.kidDown, PATCHES['kidDown-1'], PATCHES['kidDown-2'])],
-    worried: [frame(SPRITES.kid, PATCHES['kid-worried']), frame(SPRITES.kid, PATCHES['kid-worried'], PATCHES['kid-worried-1']), frame(SPRITES.kid, PATCHES['kid-worried'], PATCHES['kid-worried-2'])],
-    blink: PATCHES['kid-blink'],
-  },
-  warrior: {
-    idle: [frame(SPRITES.warrior), frame(SPRITES.warrior, PATCHES['warrior-idle-1']), frame(SPRITES.warrior, PATCHES['warrior-idle-1'], PATCHES['warrior-idle-2']), frame(SPRITES.warrior, PATCHES['warrior-idle-3'])],
-    worried: [frame(SPRITES.warrior, PATCHES['warrior-worried']), frame(SPRITES.warrior, PATCHES['warrior-worried'], PATCHES['warrior-worried-1']), frame(SPRITES.warrior, PATCHES['warrior-worried'], PATCHES['warrior-worried-2'])],
-    blink: PATCHES['warrior-blink'],
-  },
-  golden: {
-    idle: [frame(SPRITES.golden), frame(SPRITES.golden, PATCHES['golden-idle-1']), frame(SPRITES.golden, PATCHES['golden-idle-1'], PATCHES['golden-idle-2']), frame(SPRITES.golden, PATCHES['golden-idle-3'])],
-    worried: [frame(SPRITES.golden, PATCHES['golden-worried']), frame(SPRITES.golden, PATCHES['golden-worried'], PATCHES['golden-worried-1']), frame(SPRITES.golden, PATCHES['golden-worried'], PATCHES['golden-worried-2'])],
-    blink: PATCHES['golden-blink'],
-  },
-  mane: {
-    idle: [frame(SPRITES.mane), frame(SPRITES.mane, PATCHES['mane-idle-1']), frame(SPRITES.mane, PATCHES['mane-idle-1'], PATCHES['mane-idle-2']), frame(SPRITES.mane, PATCHES['mane-idle-3'])],
-    worried: [frame(SPRITES.mane, PATCHES['mane-worried']), frame(SPRITES.mane, PATCHES['mane-worried'], PATCHES['mane-worried-1']), frame(SPRITES.mane, PATCHES['mane-worried'], PATCHES['mane-worried-2'])],
-    blink: PATCHES['mane-blink'],
-  },
-  crimson: {
-    idle: [frame(SPRITES.crimson), frame(SPRITES.crimson, PATCHES['crimson-idle-1']), frame(SPRITES.crimson, PATCHES['crimson-idle-1'], PATCHES['crimson-idle-2']), frame(SPRITES.crimson, PATCHES['crimson-idle-3'])],
-    worried: [frame(SPRITES.crimson, PATCHES['crimson-worried']), frame(SPRITES.crimson, PATCHES['crimson-worried'], PATCHES['crimson-worried-1']), frame(SPRITES.crimson, PATCHES['crimson-worried'], PATCHES['crimson-worried-2'])],
-    blink: PATCHES['crimson-blink'],
-  },
-  ape: {
-    idle: [frame(SPRITES.ape), frame(SPRITES.ape, PATCHES['ape-idle-1']), frame(SPRITES.ape, PATCHES['ape-idle-1'], PATCHES['ape-idle-2']), frame(SPRITES.ape, PATCHES['ape-idle-3'])],
-    worried: [frame(SPRITES.ape, PATCHES['ape-worried']), frame(SPRITES.ape, PATCHES['ape-worried'], PATCHES['ape-worried-1']), frame(SPRITES.ape, PATCHES['ape-worried'], PATCHES['ape-worried-2'])],
-  },
-};
-
 const composedCache = new WeakMap<SpriteFrame, PixelSprite>();
 
-/** Paint `frame`'s patches over its sprite. `.` skips, a space erases, any other character paints. */
+const paintPart = (grid: string[][], x0: number, y0: number, part: PixelSprite) => {
+  part.rows.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i];
+      if (ch === '.') continue;
+      grid[part.y + j - y0][part.x + i - x0] = ch === ERASE ? '.' : ch;
+    }
+  });
+};
+
+const applyShift = (grid: string[][], x0: number, y0: number, shift: BandShift) => {
+  const dx = shift.dx ?? 0;
+  const dy = shift.dy ?? 0;
+  const height = grid.length;
+  const width = grid[0].length;
+  const at = (x: number, y: number) => {
+    const j = y - y0;
+    const i = x - x0;
+    if (j < 0 || i < 0 || j >= height || i >= width) return undefined;
+    return grid[j][i];
+  };
+  const clears: { x: number; y: number }[] = [];
+  const writes: { x: number; y: number; ch: string }[] = [];
+  for (let y = shift.top; y < shift.bottom; y++) {
+    for (let x = x0; x < x0 + width; x++) {
+      const ch = at(x, y);
+      if (!ch || ch === '.') continue;
+      clears.push({ x, y });
+      writes.push({ x: x + dx, y: y + dy, ch });
+      if (shift.fill && y === shift.bottom - 1) {
+        const below = at(x, y + 1);
+        if (below && below !== '.') writes.push({ x, y, ch });
+      }
+    }
+  }
+  for (const cell of clears) grid[cell.y - y0][cell.x - x0] = '.';
+  for (const cell of writes) grid[cell.y - y0][cell.x - x0] = cell.ch;
+};
+
 export function composeFrame(frame: SpriteFrame): PixelSprite {
   const hit = composedCache.get(frame);
   if (hit) return hit;
@@ -1377,16 +1063,20 @@ export function composeFrame(frame: SpriteFrame): PixelSprite {
     x1 = Math.max(x1, p.x + w);
     y1 = Math.max(y1, p.y + p.rows.length);
   }
-  const grid = Array.from({ length: y1 - y0 }, () => Array.from({ length: x1 - x0 }, () => '.'));
-  for (const p of parts) {
-    p.rows.forEach((row, j) => {
-      for (let i = 0; i < row.length; i++) {
-        const ch = row[i];
-        if (ch === '.') continue;
-        grid[p.y + j - y0][p.x + i - x0] = ch === ERASE ? '.' : ch;
-      }
-    });
+  const shift = frame.shift;
+  if (shift) {
+    const dx = shift.dx ?? 0;
+    const dy = shift.dy ?? 0;
+    const sw = frame.sprite.rows.reduce((m, r) => Math.max(m, r.length), 0);
+    x0 = Math.min(x0, frame.sprite.x + dx);
+    x1 = Math.max(x1, frame.sprite.x + sw + dx);
+    y0 = Math.min(y0, shift.top + dy);
+    y1 = Math.max(y1, shift.bottom + dy);
   }
+  const grid = Array.from({ length: y1 - y0 }, () => Array.from({ length: x1 - x0 }, () => '.'));
+  paintPart(grid, x0, y0, frame.sprite);
+  if (shift) applyShift(grid, x0, y0, shift);
+  for (const p of frame.patches ?? []) paintPart(grid, x0, y0, p);
   const out: PixelSprite = { x: x0, y: y0, rows: grid.map(r => r.join('')) };
   composedCache.set(frame, out);
   return out;

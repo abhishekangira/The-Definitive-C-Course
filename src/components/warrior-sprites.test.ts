@@ -1,4 +1,5 @@
 // Idle, worried and defeated loops derived from the original sprites, and the blink that follows a lifted head.
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -144,15 +145,77 @@ describe('Rio loops from the original sprites', () => {
   });
 });
 
+/** Ink hash of every composed frame, taken before the breath became a `shift`. */
+const FRAME_HASH = `
+kid idle 0 6dadbb41030cac50
+kid idle 1 d2fb0e798b37b0df
+kid idle 2 d12ada41b9d214e6
+kid idle 3 a2dc5cc6b31a2fdc
+kid worried 0 e1e6747eb9da8436
+kid worried 1 e711b1d0b7fd01fb
+kid worried 2 df375fb59bbbc5f5
+kid defeated 0 5e11c4ab4318eb68
+kid defeated 1 79952729056bef83
+kid defeated 2 a5e42285188f8c67
+warrior idle 0 9519a3c15daed03b
+warrior idle 1 63669d81262bc2ae
+warrior idle 2 bfeafddc95fa13f1
+warrior idle 3 ff25a79d35086cb6
+warrior worried 0 a119fe37d17ddc53
+warrior worried 1 b74a1a9e89cf1041
+warrior worried 2 4c4d2aa33774e5b8
+golden idle 0 cc48773653d89e89
+golden idle 1 1bf9081b59da74c3
+golden idle 2 9b804514cd046464
+golden idle 3 77702df70dbe13fd
+golden worried 0 416f6bf9d9ee5410
+golden worried 1 e39014f4e3782ed6
+golden worried 2 c6441a4ffef50207
+mane idle 0 1d71764289641094
+mane idle 1 8972a7a503fe54b9
+mane idle 2 90ea05b152776da9
+mane idle 3 00f4e9685d234990
+mane worried 0 8b6cb7e3e724f067
+mane worried 1 109466feb8906f98
+mane worried 2 81455c617386f861
+crimson idle 0 2db4a8673771ace1
+crimson idle 1 77c51084878a2155
+crimson idle 2 82c0fb0a4a305e20
+crimson idle 3 10970ad4bfc77f4f
+crimson worried 0 89aaf62e5cbf8634
+crimson worried 1 5cbb05f545d90225
+crimson worried 2 4f8c8e63881c0fde
+ape idle 0 40abe892eadb9328
+ape idle 1 e3940087694bda66
+ape idle 2 5e71dcd4f2c78e78
+ape idle 3 3fc3114e4ccea04d
+ape worried 0 5cc584b7e65e07e9
+ape worried 1 2616521bb0a75b41
+ape worried 2 c26eca7561360297
+`.trim().split('\n').map(line => {
+  const [form, pose, index, hash] = line.split(' ');
+  return { form, pose, index: Number(index), hash };
+});
+
+function inkHash(sprite: PixelSprite): string {
+  const ink: string[] = [];
+  sprite.rows.forEach((row, j) => {
+    for (let x = 0; x < row.length; x++) if (row[x] !== '.') ink.push(`${sprite.x + x},${sprite.y + j},${row[x]}`);
+  });
+  ink.sort();
+  return createHash('sha256').update(ink.join(';')).digest('hex').slice(0, 16);
+}
+
 describe('blink follows the head lift', () => {
   it('lands every blink pixel on the eye ink of that idle frame', () => {
     for (const form of BLINK) {
       const patch = FORM_FRAMES[form].blink!;
       const base = cells(composeFrame(FORM_FRAMES[form].idle[0]));
       FORM_FRAMES[form].idle.forEach((entry, i) => {
-        const dy = IDLE_BLINK_DY[i] ?? 0;
-        const placed = blinkForIdle(patch, i);
+        const dy = entry.shift?.dy ?? 0;
+        const placed = blinkForIdle(patch, entry);
         expect(placed.y, `${form} ${i}`).toBe(patch.y + dy);
+        expect(IDLE_BLINK_DY[i], `${form} ${i}`).toBe(dy);
         expect(placed.x).toBe(patch.x);
         expect(placed.rows).toBe(patch.rows);
         const ink = cells(composeFrame(entry));
@@ -178,9 +241,10 @@ describe('blink follows the head lift', () => {
     expect(lifted).toBeGreaterThan(0);
     for (const form of BLINK) {
       const patch = FORM_FRAMES[form].blink!;
-      const dy = IDLE_BLINK_DY[lifted] ?? 0;
+      const entry = FORM_FRAMES[form].idle[lifted];
+      const dy = entry.shift?.dy ?? 0;
       const base = cells(composeFrame(FORM_FRAMES[form].idle[0]));
-      const ink = cells(composeFrame(FORM_FRAMES[form].idle[lifted]));
+      const ink = cells(composeFrame(entry));
       let misses = 0;
       patch.rows.forEach((row, j) => {
         for (let x = 0; x < row.length; x++) {
@@ -192,7 +256,66 @@ describe('blink follows the head lift', () => {
         }
       });
       expect(misses, form).toBeGreaterThan(0);
-      expect(blinkForIdle(patch, lifted).y).toBe(patch.y + dy);
+      expect(blinkForIdle(patch, entry).y).toBe(patch.y + dy);
     }
+  });
+
+  it('reads the blink dy from the frame shift, so a different lift cannot drift', () => {
+    const patch = FORM_FRAMES.warrior.blink!;
+    const lifted = { sprite: SPRITES.warrior, shift: { top: 0, bottom: 4, dy: -3 } };
+    expect(blinkForIdle(patch, lifted).y).toBe(patch.y - 3);
+    expect(blinkForIdle(patch, { sprite: SPRITES.warrior }).y).toBe(patch.y);
+    for (const form of FORMS) {
+      FORM_FRAMES[form].idle.forEach((entry, i) => {
+        expect(entry.shift?.dy ?? 0, `${form} ${i}`).toBe(IDLE_BLINK_DY[i]);
+      });
+    }
+  });
+});
+
+describe('a shift stands in for copied rows', () => {
+  it('keeps every composed frame pixel-identical to the rows it replaced', () => {
+    for (const { form, pose, index, hash } of FRAME_HASH) {
+      const art = FORM_FRAMES[form as FormId];
+      const list = pose === 'idle' ? art.idle : pose === 'worried' ? art.worried : art.defeated;
+      expect(inkHash(composeFrame(list![index])), `${form} ${pose} ${index}`).toBe(hash);
+    }
+  });
+
+  it('stores the breath, droop and shiver as a shift, and the tips as patches', () => {
+    for (const form of FORMS) {
+      const idle = FORM_FRAMES[form].idle;
+      expect(idle[1].shift, form).toMatchObject({ dy: -1, fill: true });
+      expect(idle[1].patches, form).toBeUndefined();
+      expect(idle[2].shift, form).toEqual(idle[1].shift);
+      expect(idle[2].patches?.length, form).toBe(1);
+      expect(idle[3].shift, form).toBeUndefined();
+      const worried = FORM_FRAMES[form].worried!;
+      expect(worried[1].shift).toMatchObject({ dx: 1 });
+      expect(worried[1].shift?.dy, form).toBeUndefined();
+      expect(worried[2].shift).toMatchObject({ dx: -1 });
+      expect(worried[1].patches).toEqual(worried[0].patches);
+    }
+    const defeated = FORM_FRAMES.kid.defeated!;
+    expect(defeated[1].shift).toMatchObject({ dy: 1 });
+    expect(defeated[1].shift?.fill).toBeUndefined();
+    expect(defeated[1].patches).toBeUndefined();
+    expect(defeated[2].patches?.length).toBe(1);
+  });
+
+  it('a filled lift restores the vacated row only where the body continues', () => {
+    const open = composeFrame({
+      sprite: { x: 0, y: 0, rows: ['A.', '.B'] },
+      shift: { top: 0, bottom: 1, dy: -1, fill: true },
+    });
+    expect(cells(open).get('0,-1')).toBe('A');
+    expect(cells(open).has('0,0')).toBe(false);
+    const closed = composeFrame({
+      sprite: { x: 0, y: 0, rows: ['A', 'B'] },
+      shift: { top: 0, bottom: 1, dy: -1, fill: true },
+    });
+    expect(cells(closed).get('0,-1')).toBe('A');
+    expect(cells(closed).get('0,0')).toBe('A');
+    expect(cells(closed).get('0,1')).toBe('B');
   });
 });
