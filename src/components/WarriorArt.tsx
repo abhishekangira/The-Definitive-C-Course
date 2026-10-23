@@ -49,6 +49,20 @@ function Pixels({ sprite, palette }: { sprite: PixelSprite; palette?: Readonly<R
   return <>{toPaths(sprite, palette).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</>;
 }
 
+const blinkPathCache = new WeakMap<PixelSprite, Paths>();
+
+/**
+ * Paths for a blink patch drawn on its own. The patch goes through `composeFrame` first, so a space
+ * (`ERASE`) is transparent. `toPaths` would treat that space as a palette key and paint it black.
+ */
+export function blinkPaths(patch: PixelSprite): Paths {
+  const hit = blinkPathCache.get(patch);
+  if (hit) return hit;
+  const out = toPaths(composeFrame({ sprite: patch }));
+  blinkPathCache.set(patch, out);
+  return out;
+}
+
 // ---------- masks: which grid cells a sprite covers, and shapes grown from them ----------
 type Mask = Uint8Array;
 
@@ -411,7 +425,7 @@ export function WarriorArt({ form, mood, bare = false, aura }: {
             <Pixels sprite={sprite} />
           </g>
         ))}
-        {blink && <g className={styles.blink} data-blink=""><Pixels sprite={blink} /></g>}
+        {blink && <g className={styles.blink} data-blink="">{blinkPaths(blink).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
         {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
       </g>
       {stage !== 'none' && form === 'mane' && <Bolts />}
