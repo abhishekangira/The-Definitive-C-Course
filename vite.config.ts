@@ -8,10 +8,7 @@ import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { parse as parseYaml } from 'yaml';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkMdx from 'remark-mdx';
-import remarkCourse, { choiceNodes } from './tools/mdx/remark-course.ts';
+import remarkCourse, { lessonChoiceIds } from './tools/mdx/remark-course.ts';
 
 /** `import x from './file.yaml'` → parsed object. */
 function yamlPlugin(): Plugin {
@@ -26,8 +23,8 @@ function yamlPlugin(): Plugin {
 
 /**
  * `import fm from './lesson.mdx?frontmatter'` → just the YAML frontmatter, without compiling the lesson, plus
- * `choices`: how many "Check your understanding" questions the lesson has (perfect lessons count them; the
- * same `choiceNodes` walk numbers them in remark-course). The lesson is parsed, not compiled.
+ * `choices`: the `qid` of each "Check your understanding" question in the lesson (perfect lessons count them;
+ * `lessonChoiceIds` hashes each question's text the same way remark-course does). The lesson is parsed, not compiled.
  * The module gets a virtual id ("\0" prefix) so the MDX plugin, which also matches *.mdx files by their
  * path, never sees it and cannot replace the data with the compiled lesson component.
  */
@@ -52,9 +49,8 @@ function frontmatterPlugin(): Plugin {
       this.addWatchFile(file);
       const text = (await readFile(file, 'utf8')).replace(/\r\n/g, '\n');
       const m = /^---\n([\s\S]*?)\n---/.exec(text);
-      const tree = unified().use(remarkParse).use(remarkMdx).use(remarkFrontmatter).use(remarkGfm).parse(text);
-      const choices = choiceNodes(tree as Parameters<typeof choiceNodes>[0]).length;
-      return `export default ${JSON.stringify({ ...(m ? parseYaml(m[1]) : {}), ...(choices ? { choices } : {}) })};`;
+      const choices = lessonChoiceIds(text);
+      return `export default ${JSON.stringify({ ...(m ? parseYaml(m[1]) : {}), ...(choices.length ? { choices } : {}) })};`;
     },
   };
 }

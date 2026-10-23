@@ -4,6 +4,9 @@ import { act, createElement, Fragment, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { lessonChoiceIds } from '../../../tools/mdx/remark-course';
 import type { SamplesFile } from '../../content-model/types';
 import samplesJson from '../../generated/samples/m01.json';
 import { emptyProgress, getProgress, replaceProgress, update } from '../../progress/store';
@@ -16,8 +19,9 @@ import type { RunPhase, RunSummary, useCRun } from '../../runtime/useCRun';
 const samples = samplesJson as SamplesFile;
 const bag = vi.hoisted(() => ({ pending: null as Promise<RunSummary> | null, file: null as SamplesFile | null, failSamples: false, callbacks: new Set<unknown>() }));
 const stem = '01-hello-compiled-world';
-/** M1 L1's <Choice> count (the `?frontmatter` loader's `choices`; checked below). */
-const QUIZ = 3;
+/** M1 L1's <Choice> qids, hashed from the lesson's MDX the way remark-course does (the `?frontmatter` loader's `choices`; checked below). */
+const QIDS = lessonChoiceIds(readFileSync(join(process.cwd(), 'content/modules/m01-c-in-your-browser/lessons', `${stem}.mdx`), 'utf8'));
+const QUIZ = QIDS.length;
 function ObserveCallback() { bag.callbacks.add(usePredictionShown()); return null; }
 const predictions = () => Object.values((bag.file ?? samples).samples).filter(s => s.lesson === stem && s.meta.predict !== 'none');
 vi.mock('../../content-runtime/course', async importOriginal => {
@@ -25,8 +29,8 @@ vi.mock('../../content-runtime/course', async importOriginal => {
   return { ...real, samplesFor: async (id: string) => { if (bag.failSamples) throw new Error('chunk failed'); return id === 'm01' ? bag.file ?? samples : null; }, sessionsFor: async () => null,
     lessonLoader: () => async () => ({ default: () => createElement(Fragment, null, createElement(ObserveCallback),
       ...predictions().map(s => createElement(CodeSample, { key: s.id, id: s.id, code: s.code, meta: JSON.stringify(s.meta) })),
-      // The lesson's "Check your understanding" questions, numbered the way remark-course numbers them. Option 0 is right.
-      ...Array.from({ length: QUIZ }, (_, i) => createElement(Choice, { key: `q${i}`, qid: String(i), question: `Question ${i}`, options: ['Right', 'Wrong'], answer: 0 }))) }),
+      // The lesson's "Check your understanding" questions, with the qids remark-course gives them. Option 0 is right.
+      ...QIDS.map((qid, i) => createElement(Choice, { key: qid, qid, question: `Question ${i}`, options: ['Right', 'Wrong'], answer: 0 }))) }),
   };
 });
 vi.mock('../../content-runtime/mdx-components', () => ({ mdxComponents: {} }));
@@ -76,20 +80,22 @@ async function exact(index: number) {
   return box;
 }
 async function answer(q: number, option = 0) {
-  const box = host.querySelector(`[data-qid="${q}"]`)!;
+  const box = host.querySelector(`[data-qid="${QIDS[q]}"]`)!;
   await act(async () => box.querySelectorAll('input')[option].click());
   const submit = box.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   submit.focus(); await act(async () => submit.click());
   return box;
 }
 const answerQuizInStore = (correct = true) => act(async () => update(p => {
-  for (let i = 0; i < QUIZ; i++) p.choices[`m01-l1#${i}`] = { picked: correct ? 0 : 1, correct, at: new Date().toISOString() };
+  for (const qid of QIDS) p.choices[`m01-l1#${qid}`] = { picked: correct ? 0 : 1, correct, at: new Date().toISOString() };
 }));
 async function escapeDialog() {
   await act(async () => document.querySelector('dialog')!.dispatchEvent(new Event('cancel', { cancelable: true })));
 }
-it('reads the lesson\'s quiz question count from its frontmatter', () => {
-  expect(modules.m01.lessons.find(l => l.stem === stem)!.frontmatter.choices).toBe(QUIZ);
+it('reads the lesson\'s quiz question ids from its frontmatter', () => {
+  expect(QUIZ).toBe(3);
+  expect(QIDS.every(q => /^q[0-9a-f]{8}$/.test(q))).toBe(true);
+  expect(modules.m01.lessons.find(l => l.stem === stem)!.frontmatter.choices).toEqual(QIDS);
   expect(modules.m01.lessons.find(l => l.stem === '02-types-are-layouts')!.frontmatter.choices).toBeUndefined();
 });
 it('does not celebrate after the first exact prediction while quiz questions are unanswered (the M1 L1 bug); it fires after the last one', async () => {
@@ -98,9 +104,10 @@ it('does not celebrate after the first exact prediction while quiz questions are
   await answer(0); await answer(1); expect(document.querySelector('dialog')).toBeNull();
   const last = await answer(2);
   expect(document.querySelector('dialog')).not.toBeNull();
-  expect(getProgress().choices).toMatchObject({ 'm01-l1#0': { picked: 0, correct: true }, 'm01-l1#2': { picked: 0, correct: true } });
+  expect(getProgress().choices).toMatchObject({ [`m01-l1#${QIDS[0]}`]: { picked: 0, correct: true }, [`m01-l1#${QIDS[2]}`]: { picked: 0, correct: true } });
   await act(async () => { await new Promise(r => setTimeout(r, 0)); });
   expect(document.querySelector('dialog [role="status"]')?.textContent).toContain('Perfect lesson:');
+  expect(document.querySelector('[data-perfect-hint]')?.textContent).toBe('Every prediction and quiz question right on the first try. Press Esc or Close to continue.');
   await escapeDialog();
   expect(document.querySelector('dialog')).toBeNull();
   expect(document.activeElement).toBe(last.querySelector('button[type="submit"]'));
@@ -108,9 +115,18 @@ it('does not celebrate after the first exact prediction while quiz questions are
 it('a quiz question missed on the first try is never perfect, even after Check again', async () => {
   await answer(0); await answer(1, 1); await answer(2);
   await answer(1, 0); // Check again, now right
-  expect(getProgress().choices['m01-l1#1']).toMatchObject({ picked: 1, correct: false });
+  expect(getProgress().choices[`m01-l1#${QIDS[1]}`]).toMatchObject({ picked: 1, correct: false });
   const box = await exact(0); await click(button(box, 'Reveal the result'));
   expect(document.querySelector('dialog')).toBeNull();
+  expect(localStorage.getItem(PERFECT_SEEN_KEY)).toBeNull();
+});
+it('after importing perfect progress, a quiz answer (wrong, right or Check again) never opens the celebration', async () => {
+  // perfect-seen is local, so a fresh browser that imports a perfect lesson has not seen it.
+  await answerQuizInStore();
+  await act(async () => update(p => { for (const s of predictions()) p.samples[s.id] = { prediction: s.answer.stdout, correct: true, verdict: 'exact', first: 'exact', at: new Date().toISOString() }; }));
+  await answer(0, 1); expect(document.querySelector('dialog')).toBeNull();
+  await answer(0, 0); expect(document.querySelector('dialog')).toBeNull();
+  await answer(1, 0); expect(document.querySelector('dialog')).toBeNull();
   expect(localStorage.getItem(PERFECT_SEEN_KEY)).toBeNull();
 });
 it('celebrates after the last exact reveal, never lock-in or rerun, and only once after a reset', async () => {
@@ -203,6 +219,26 @@ it('the 64-bit check returns focus to its replacement button after the form unmo
   expect(check.isConnected).toBe(false); expect(document.querySelector('dialog')).not.toBeNull();
   await escapeDialog(); expect(document.activeElement).toBe(button(box, 'Predict the 64-bit output again'));
 });
+it('a second 64-bit try after "Predict the 64-bit output again" keeps the first 64-bit verdict', async () => {
+  const source = Object.values(samples.samples).find(s => s.flagged && s.meta.predict64 && s.meta.predict64 !== 'none')!;
+  const s = { ...source, lesson: stem };
+  bag.file = { ...samples, samples: { [s.id]: s } };
+  await answerQuizInStore();
+  await act(async () => router.navigate('/m/m01')); await act(async () => router.navigate(`/m/m01/${stem}`));
+  const box = await exact(0); await click(button(box, 'Reveal the result'));
+  const fill64 = async (text: string) => {
+    const input = box.querySelector('textarea')!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, text);
+    await act(async () => input.dispatchEvent(new Event('input', { bubbles: true })));
+    await click(button(box, 'Check my 64-bit prediction'));
+  };
+  await fill64('surely not the 64-bit output');
+  expect(getProgress().samples[s.id]).toMatchObject({ first: 'exact', predict64Verdict: 'wrong', first64: 'wrong' });
+  await click(button(box, 'Predict the 64-bit output again'));
+  await fill64(nativeFor(s, undefined).run!.stdout);
+  expect(getProgress().samples[s.id]).toMatchObject({ predict64Verdict: 'exact', first64: 'wrong' });
+  expect(document.querySelector('dialog')).toBeNull();
+});
 it('navigation interrupts a celebration permanently', async () => {
   await answerQuizInStore();
   const box = await exact(0); await click(button(box, 'Reveal the result')); expect(document.querySelector('dialog')).not.toBeNull();
@@ -217,6 +253,13 @@ it('counts only quiz questions for a lesson without predictions, and hides the c
   expect(host.querySelector('[data-prediction-count]')?.textContent).toBe(`0 of ${QUIZ} quiz questions right`);
   await act(async () => router.navigate('/m/m01/02-types-are-layouts'));
   expect(host.querySelector('[data-prediction-count]')).toBeNull();
+});
+it('a lesson with only quiz questions celebrates after the last one, and its hint names quiz questions only', async () => {
+  bag.file = { ...samples, samples: {} };
+  await act(async () => router.navigate('/m/m01')); await act(async () => router.navigate(`/m/m01/${stem}`));
+  await answer(0); await answer(1); expect(document.querySelector('dialog')).toBeNull();
+  await answer(2);
+  expect(document.querySelector('[data-perfect-hint]')?.textContent).toBe('Every quiz question right on the first try. Press Esc or Close to continue.');
 });
 it('reports failed samples chunks without publishing partial course totals', async () => {
   bag.failSamples = true;

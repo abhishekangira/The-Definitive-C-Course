@@ -1,8 +1,8 @@
 import type { SamplesFile } from '../content-model/types';
 import { choiceKey, firstSample64Verdict, firstSampleVerdict, type ProgressV1 } from './store';
 
-/** The lesson's "Check your understanding" questions: its id (the key prefix in `progress.choices`) and how many. */
-export interface LessonQuiz { lessonId: string; count: number }
+/** The lesson's "Check your understanding" questions: its id (the key prefix in `progress.choices`) and each question's `qid`. */
+export interface LessonQuiz { lessonId: string; qids: readonly string[] }
 
 /**
  * A lesson is perfect when every scored item was right on the first try: every prediction (and every 64-bit
@@ -32,9 +32,9 @@ export function lessonPredictionStats(samples: SamplesFile | null, stem: string,
     }
   }
   const choices = progress.choices ?? {};
-  for (let q = 0; quiz && q < quiz.count; q++) {
+  for (const qid of quiz?.qids ?? []) {
     total++; questions++;
-    const key = choiceKey(quiz.lessonId, String(q));
+    const key = choiceKey(quiz!.lessonId, qid);
     const saved = Object.hasOwn(choices, key) ? choices[key] : undefined;
     if (saved) answered++;
     if (saved?.correct) right++;
@@ -50,11 +50,17 @@ export function scoredItemsLabel(stats: { predictions: number; questions: number
   return 'predictions and quiz questions';
 }
 
-/** The quiz count a lesson's frontmatter carries (the `?frontmatter` loader adds `choices`). */
-export const lessonQuiz = (frontmatter: { id: string; choices?: number } | undefined): LessonQuiz | undefined =>
-  frontmatter && frontmatter.choices ? { lessonId: frontmatter.id, count: frontmatter.choices } : undefined;
+/** The celebration's hint: "Every prediction …", "Every quiz question …" or both, for the kinds the lesson scored. */
+export function perfectHint(stats: { predictions: number; questions: number }): string {
+  const what = stats.questions === 0 ? 'prediction' : stats.predictions === 0 ? 'quiz question' : 'prediction and quiz question';
+  return `Every ${what} right on the first try.`;
+}
 
-export function coursePredictionStats(modules: Array<{ samples: SamplesFile | null; lessons: Array<{ stem: string; frontmatter?: { id: string; choices?: number } }> }>, progress: Pick<ProgressV1, 'samples'> & Partial<Pick<ProgressV1, 'choices'>>) {
+/** The quiz question ids a lesson's frontmatter carries (the `?frontmatter` loader adds `choices`). */
+export const lessonQuiz = (frontmatter: { id: string; choices?: readonly string[] } | undefined): LessonQuiz | undefined =>
+  frontmatter && frontmatter.choices?.length ? { lessonId: frontmatter.id, qids: frontmatter.choices } : undefined;
+
+export function coursePredictionStats(modules: Array<{ samples: SamplesFile | null; lessons: Array<{ stem: string; frontmatter?: { id: string; choices?: readonly string[] } }> }>, progress: Pick<ProgressV1, 'samples'> & Partial<Pick<ProgressV1, 'choices'>>) {
   let perfect = 0, total = 0;
   for (const m of modules) for (const lesson of m.lessons) {
     const stats = lessonPredictionStats(m.samples, lesson.stem, progress, lessonQuiz(lesson.frontmatter));

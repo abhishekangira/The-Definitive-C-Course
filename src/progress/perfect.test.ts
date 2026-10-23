@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SampleResult, SamplesFile } from '../content-model/types';
 import { emptyProgress, type SampleProgress } from './store';
-import { coursePredictionStats, lessonPredictionStats, scoredItemsLabel } from './perfect';
+import { coursePredictionStats, lessonPredictionStats, perfectHint, scoredItemsLabel } from './perfect';
 
 const sample = (id: string, extra: Partial<SampleResult> = {}): SampleResult => ({
   id, module: 'm', lesson: 'lesson', code: '', meta: { id, predict: 'output' }, hash: '', flagged: false, results: {},
@@ -52,36 +52,48 @@ it('an omitted prediction kind uses the same output default as CodeSample', () =
 });
 
 describe('quiz questions count toward a perfect lesson', () => {
-  const quiz = { lessonId: 'm-l1', count: 2 };
+  const quiz = { lessonId: 'm-l1', qids: ['qaaaa0001', 'qbbbb0002'] };
   const right = (at = new Date().toISOString()) => ({ picked: 0, correct: true, at });
   it('is perfect only when every prediction and every quiz question was right on the first try', () => {
     const p = emptyProgress(); p.samples.a = entry();
     const samples = file(sample('a'));
     // The M1 L1 bug: one exact prediction is not a perfect lesson while its questions are unanswered.
     expect(lessonPredictionStats(samples, 'lesson', p, quiz)).toMatchObject({ right: 1, total: 3, predictions: 1, questions: 2, answered: 1, perfect: false });
-    p.choices['m-l1#0'] = right();
+    p.choices['m-l1#qaaaa0001'] = right();
     expect(lessonPredictionStats(samples, 'lesson', p, quiz).perfect).toBe(false);
-    p.choices['m-l1#1'] = right();
+    p.choices['m-l1#qbbbb0002'] = right();
     expect(lessonPredictionStats(samples, 'lesson', p, quiz)).toMatchObject({ right: 3, total: 3, answered: 3, perfect: true });
-    p.choices['m-l1#1'] = { picked: 2, correct: false, at: new Date().toISOString() };
+    p.choices['m-l1#qbbbb0002'] = { picked: 2, correct: false, at: new Date().toISOString() };
     expect(lessonPredictionStats(samples, 'lesson', p, quiz)).toMatchObject({ right: 2, perfect: false });
   });
   it('a lesson with only quiz questions can be perfect; one with no scored items never is', () => {
-    const p = emptyProgress(); p.choices['m-l1#0'] = right(); p.choices['m-l1#1'] = right();
+    const p = emptyProgress(); p.choices['m-l1#qaaaa0001'] = right(); p.choices['m-l1#qbbbb0002'] = right();
     expect(lessonPredictionStats(null, 'lesson', p, quiz)).toMatchObject({ total: 2, perfect: true });
-    expect(lessonPredictionStats(null, 'lesson', p, { lessonId: 'm-l1', count: 0 })).toMatchObject({ total: 0, perfect: false });
+    expect(lessonPredictionStats(null, 'lesson', p, { lessonId: 'm-l1', qids: [] })).toMatchObject({ total: 0, perfect: false });
     expect(lessonPredictionStats(file(sample('n', { meta: { id: 'n', predict: 'none' } })), 'lesson', p)).toMatchObject({ total: 0, perfect: false });
   });
+  it('reads answers by question id, so a key for a question the lesson no longer has (or a position key) does not count', () => {
+    const p = emptyProgress(); p.choices['m-l1#0'] = right(); p.choices['m-l1#1'] = right(); p.choices['m-l1#qgone0003'] = right();
+    expect(lessonPredictionStats(null, 'lesson', p, quiz)).toMatchObject({ right: 0, answered: 0, total: 2, perfect: false });
+    // A question added before the others does not move them: their answers stay under their own ids.
+    p.choices['m-l1#qaaaa0001'] = right(); p.choices['m-l1#qbbbb0002'] = right();
+    expect(lessonPredictionStats(null, 'lesson', p, { lessonId: 'm-l1', qids: ['qnew00003', ...quiz.qids] })).toMatchObject({ right: 2, total: 3, perfect: false });
+  });
   it('another lesson\'s answers do not count', () => {
-    const p = emptyProgress(); p.choices['m-l2#0'] = right(); p.choices['m-l2#1'] = right();
+    const p = emptyProgress(); p.choices['m-l2#qaaaa0001'] = right(); p.choices['m-l2#qbbbb0002'] = right();
     expect(lessonPredictionStats(null, 'lesson', p, quiz).right).toBe(0);
   });
   it('counts quiz questions in course totals from the lesson frontmatter', () => {
     const p = emptyProgress(); p.samples.a = entry();
-    const modules = [{ samples: file(sample('a')), lessons: [{ stem: 'lesson', frontmatter: { id: 'm-l1', choices: 2 } }] }];
+    const modules = [{ samples: file(sample('a')), lessons: [{ stem: 'lesson', frontmatter: { id: 'm-l1', choices: ['qaaaa0001', 'qbbbb0002'] } }] }];
     expect(coursePredictionStats(modules, p)).toEqual({ perfect: 0, total: 1 });
-    p.choices['m-l1#0'] = right(); p.choices['m-l1#1'] = right();
+    p.choices['m-l1#qaaaa0001'] = right(); p.choices['m-l1#qbbbb0002'] = right();
     expect(coursePredictionStats(modules, p)).toEqual({ perfect: 1, total: 1 });
+  });
+  it('the celebration hint names only the kinds the lesson scored', () => {
+    expect(perfectHint({ predictions: 2, questions: 3 })).toBe('Every prediction and quiz question right on the first try.');
+    expect(perfectHint({ predictions: 1, questions: 0 })).toBe('Every prediction right on the first try.');
+    expect(perfectHint({ predictions: 0, questions: 2 })).toBe('Every quiz question right on the first try.');
   });
   it('names what was scored', () => {
     expect(scoredItemsLabel({ predictions: 2, questions: 3, total: 5 })).toBe('predictions and quiz questions');

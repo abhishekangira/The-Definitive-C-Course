@@ -12,7 +12,7 @@ import styles from './Pages.module.css';
 
 export function CourseMap() {
   const progress = useProgress();
-  const [loaded, setLoaded] = useState<Array<{ samples: SamplesFile | null; lessons: Array<{ stem: string; frontmatter: { id: string; choices?: number } }> }> | null>(null);
+  const [loaded, setLoaded] = useState<Array<{ samples: SamplesFile | null; lessons: Array<{ stem: string; frontmatter: { id: string; choices?: readonly string[] } }> }> | null>(null);
   const [samplesFailed, setSamplesFailed] = useState(false);
   useEffect(() => {
     let live = true;

@@ -10,7 +10,7 @@ import type { SamplesFile, SessionsFile } from '../../content-model/types';
 import { preloadCodeEditor } from '../../components/CodeEditor';
 import { getRuntime } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
-import { lessonPredictionStats, lessonQuiz, scoredItemsLabel } from '../../progress/perfect';
+import { lessonPredictionStats, lessonQuiz, perfectHint, scoredItemsLabel } from '../../progress/perfect';
 import { claimPerfectLesson, PerfectLesson } from '../../components/PerfectLesson';
 import { Cells } from '../../components/Cells';
 import { LESSON_CHAT_ID, LessonChat, type LessonChatHandle } from '../../tutor/LessonChat';
@@ -148,7 +148,7 @@ export function LessonPage() {
           <span className={styles.nextCount}>{doneCount} of {m.lessons.length} lessons</span>
         </div>
       </aside>
-      {perfectOpen && <PerfectLesson title={lesson.frontmatter.title} returnFocus={celebrating!.returnFocus} fallbackFocus={prose} onClose={closePerfect} />}
+      {perfectOpen && <PerfectLesson title={lesson.frontmatter.title} hint={perfectHint(stats)} returnFocus={celebrating!.returnFocus} fallbackFocus={prose} onClose={closePerfect} />}
       {tutorOn && (
         <>
           <SelectionToolbar container={prose} onAction={(action, quote) => { setChatOpen(true); chat.current?.ask(action, quote); }} />

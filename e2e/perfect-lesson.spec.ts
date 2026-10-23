@@ -5,29 +5,32 @@ import path from 'node:path';
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { availableModules, expectAccessible } from './lib';
 import { nativeFor } from '../src/interactions/platform';
+import { lessonChoiceIds } from '../tools/mdx/remark-course';
 
 const mod = availableModules()[0];
 const lesson = mod.lessons.find(l => l.stem === '01-hello-compiled-world')!;
 const sample = mod.samples.samples['hello-two-lines'];
-/** Each <Choice>'s answer index, in document order (its qid). */
-const QUIZ_ANSWERS = [...readFileSync(path.join(mod.base, mod.dir, 'lessons', `${lesson.stem}.mdx`), 'utf8')
-  .matchAll(/^<Choice\b[\s\S]*?\banswer=\{(\d+)\}/gm)].map(m => Number(m[1]));
-const quizRight = (at: string) => Object.fromEntries(QUIZ_ANSWERS.map((a, i) => [`${lesson.id}#${i}`, { picked: a, correct: true, at }]));
+const MDX = readFileSync(path.join(mod.base, mod.dir, 'lessons', `${lesson.stem}.mdx`), 'utf8');
+/** Each <Choice>'s answer index, in document order. */
+const QUIZ_ANSWERS = [...MDX.matchAll(/^<Choice\b[\s\S]*?\banswer=\{(\d+)\}/gm)].map(m => Number(m[1]));
+/** Each <Choice>'s qid (a hash of its question, as remark-course assigns it), in document order. */
+const QIDS = lessonChoiceIds(MDX);
+const quizRight = (at: string) => Object.fromEntries(QUIZ_ANSWERS.map((a, i) => [`${lesson.id}#${QIDS[i]}`, { picked: a, correct: true, at }]));
 async function shot(page: Page, name: string) {
   if (!process.env.SHOTS) return;
   mkdirSync(process.env.SHOTS, { recursive: true });
   await page.screenshot({ path: path.join(process.env.SHOTS, `${name}.png`), fullPage: false });
 }
-async function answerQuestion(page: Page, qid: number) {
-  const box = page.locator(`[data-interaction="choice"][data-qid="${qid}"]`);
-  await box.locator('input[type=radio]').nth(QUIZ_ANSWERS[qid]).check();
+async function answerQuestion(page: Page, q: number) {
+  const box = page.locator(`[data-interaction="choice"][data-qid="${QIDS[q]}"]`);
+  await box.locator('input[type=radio]').nth(QUIZ_ANSWERS[q]).check();
   await box.getByRole('button', { name: 'Check', exact: true }).click();
   await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
   return box;
 }
 const visibleDabFrames = (overlay: Locator) => overlay.locator('[data-dab-frame]').evaluateAll(els => els.filter(e => getComputedStyle(e).opacity !== '0').map(e => e.getAttribute('data-dab-frame')));
 
-test('the lesson has the quiz questions the spec answers', () => { expect(QUIZ_ANSWERS).toHaveLength(3); });
+test('the lesson has the quiz questions the spec answers', () => { expect(QUIZ_ANSWERS).toHaveLength(3); expect(QIDS).toHaveLength(3); });
 
 for (const theme of ['light', 'dark'] as const) for (const width of [1400, 390]) {
   test(`perfect needs the quiz too; the overlay stays until closed: ${theme}, ${width}px`, async ({ page }) => {
@@ -59,6 +62,7 @@ for (const theme of ['light', 'dark'] as const) for (const width of [1400, 390])
     await expect(overlay).toBeVisible();
     await expect(overlay.locator('[data-perfect-close]')).toBeFocused();
     await expect(overlay.getByRole('heading', { name: 'Perfect lesson!', exact: true })).toBeVisible();
+    await expect(overlay.locator('[data-perfect-hint]')).toHaveText('Every prediction and quiz question right on the first try. Press Esc or Close to continue.');
     await expect(overlay.locator('[data-aura="blaze"]').first()).toBeAttached();
     await expect(overlay.locator('[data-dab]')).toBeVisible();
     // Confetti over the whole viewport, behind the panel, still falling later.
@@ -107,7 +111,7 @@ test('a wrong first quiz answer is never perfect, even after Check again', async
   });
   await page.goto(`#/m/${mod.id}/${lesson.stem}`);
   await answerQuestion(page, 0); await answerQuestion(page, 1);
-  const q = page.locator('[data-interaction="choice"][data-qid="2"]');
+  const q = page.locator(`[data-interaction="choice"][data-qid="${QIDS[2]}"]`);
   await q.locator('input[type=radio]').nth(QUIZ_ANSWERS[2] === 0 ? 1 : 0).check();
   await q.getByRole('button', { name: 'Check', exact: true }).click();
   await q.locator('input[type=radio]').nth(QUIZ_ANSWERS[2]).check();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  daysSinceExport, emptyProgress, exerciseProgress, getProgress, mergeProgress, markCard, migrate, parseProgressFile, sample64Verdict, sampleVerdict, summarise, update,
+  daysSinceExport, emptyProgress, exerciseProgress, getProgress, mergeProgress, markCard, migrate, parseProgressFile, firstSampleVerdict, sample64Verdict, sampleVerdict, summarise, update,
   type ChoiceProgress, type ExerciseProgress, type ProgressV1, type ProjectProgress, type QuizProgress, type SampleProgress,
 } from './store';
 import type { StreakData } from './streak';
@@ -165,6 +165,9 @@ describe('streak in a progress document', () => {
   });
 });
 
+/** The merged sample without `first`/`first64`, which merge sets from both sides (checked on their own below). */
+const atWinner = (p: ProgressV1) => { const { first: _f, first64: _f64, ...rest } = p.samples.s; return rest; };
+
 describe('mergeProgress', () => {
   it('keeps the earliest first submission of a quiz question, and the worse first try of a prediction', () => {
     const early = { picked: 1, correct: false, at: '2026-01-01T00:00:00.000Z' };
@@ -173,6 +176,22 @@ describe('mergeProgress', () => {
     const a = doc({ samples: { s: { prediction: 'x', correct: true, verdict: 'exact', first: 'wrong', at: '2026-01-01T00:00:00.000Z' } } });
     const b = doc({ samples: { s: { prediction: 'x', correct: true, verdict: 'exact', first: 'exact', at: '2026-01-02T00:00:00.000Z' } } });
     expect(mergeProgress(a, b).samples.s).toMatchObject({ verdict: 'exact', first: 'wrong', at: '2026-01-02T00:00:00.000Z' });
+  });
+
+  it('reads a legacy sample (no first) as its current answer, so a merge never turns a missed first try into exact', () => {
+    // Researcher's case on #131: an old device saved a wrong answer before `first` existed; a newer one has first: exact.
+    const legacy = doc({ samples: { s: { prediction: 'x', correct: false, verdict: 'wrong', predict64: 'y', predict64Correct: false, at: '2026-01-01T00:00:00.000Z' } } });
+    const newer = doc({ samples: { s: { prediction: 'z', correct: true, verdict: 'exact', first: 'exact', predict64: 'z', predict64Verdict: 'exact', first64: 'exact', at: '2026-01-02T00:00:00.000Z' } } });
+    for (const m of [mergeProgress(legacy, newer), mergeProgress(newer, legacy)]) {
+      expect(m.samples.s).toMatchObject({ verdict: 'exact', first: 'wrong', first64: 'wrong', at: '2026-01-02T00:00:00.000Z' });
+      expect(firstSampleVerdict(m.samples.s)).toBe('wrong');
+    }
+    // Two legacy copies: the worse current answer stands for the first try. A cleared legacy copy has no answer to add.
+    const legacyExact = doc({ samples: { s: { prediction: 'z', correct: true, verdict: 'exact', at: '2026-01-02T00:00:00.000Z' } } });
+    expect(mergeProgress(legacy, legacyExact).samples.s).toMatchObject({ verdict: 'exact', first: 'wrong' });
+    const clearedLegacy = doc({ samples: { s: { prediction: '', correct: false, cleared: true, at: '2026-01-03T00:00:00.000Z' } } });
+    expect(mergeProgress(legacyExact, clearedLegacy).samples.s).toMatchObject({ cleared: true, first: 'exact' });
+    expect(mergeProgress(clearedLegacy, legacy).samples.s).toMatchObject({ cleared: true, first: 'wrong' });
   });
 
   it('drops a malformed quiz answer and reads a document without choices as none', () => {
@@ -248,12 +267,12 @@ describe('mergeProgress', () => {
     const later = { prediction: 'b', correct: true, verdict: 'exact' as const, at: '2026-06-01T00:00:00.000Z' };
     const cleared = { prediction: '', correct: false, cleared: true as const, at: '2026-07-01T00:00:00.000Z' };
     const tie = { prediction: 'other', correct: false, verdict: 'wrong' as const, at: earlier.at };
-    expect(mergeProgress(doc({ samples: { s: earlier } }), doc({ samples: { s: later } })).samples.s).toEqual(later);
-    expect(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: earlier } })).samples.s).toEqual(later);
-    expect(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: cleared } })).samples.s).toEqual(cleared);
-    expect(mergeProgress(doc({ samples: { s: cleared } }), doc({ samples: { s: later } })).samples.s).toEqual(cleared);
-    expect(mergeProgress(doc({ samples: { s: earlier } }), doc({ samples: { s: tie } })).samples.s).toEqual(earlier);
-    expect(mergeProgress(doc({ samples: { s: tie } }), doc({ samples: { s: earlier } })).samples.s).toEqual(tie);
+    expect(atWinner(mergeProgress(doc({ samples: { s: earlier } }), doc({ samples: { s: later } })))).toEqual(later);
+    expect(atWinner(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: earlier } })))).toEqual(later);
+    expect(atWinner(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: cleared } })))).toEqual(cleared);
+    expect(atWinner(mergeProgress(doc({ samples: { s: cleared } }), doc({ samples: { s: later } })))).toEqual(cleared);
+    expect(atWinner(mergeProgress(doc({ samples: { s: earlier } }), doc({ samples: { s: tie } })))).toEqual(earlier);
+    expect(atWinner(mergeProgress(doc({ samples: { s: tie } }), doc({ samples: { s: earlier } })))).toEqual(tie);
   });
 
   it('compares sample at as an instant, so a later time wins even when its string sorts first, and a tie keeps the first', () => {
@@ -265,8 +284,8 @@ describe('mergeProgress', () => {
     const laterOffset = load('later', true, '2026-01-01T22:00:00-05:00');
     expect(laterOffset.samples.s.at < earlier.samples.s.at).toBe(true);
     expect(Date.parse(laterOffset.samples.s.at)).toBeGreaterThan(Date.parse(earlier.samples.s.at));
-    expect(mergeProgress(earlier, laterOffset).samples.s).toEqual(laterOffset.samples.s);
-    expect(mergeProgress(laterOffset, earlier).samples.s).toEqual(laterOffset.samples.s);
+    expect(atWinner(mergeProgress(earlier, laterOffset))).toEqual(laterOffset.samples.s);
+    expect(atWinner(mergeProgress(laterOffset, earlier))).toEqual(laterOffset.samples.s);
     // The no-milliseconds form is later in time than the January 2 stamp, whichever way the strings compare.
     const jan2 = load('jan2', true, '2026-01-02T00:00:00.000Z');
     const jan10 = load('jan10', true, '2026-01-10T00:00:00Z');
@@ -277,8 +296,8 @@ describe('mergeProgress', () => {
     const plain = load('plain', false, '2026-01-10T00:00:00Z');
     expect(Date.parse(millis.samples.s.at)).toBe(Date.parse(plain.samples.s.at));
     expect(millis.samples.s.at < plain.samples.s.at).toBe(true);
-    expect(mergeProgress(millis, plain).samples.s).toEqual(millis.samples.s);
-    expect(mergeProgress(plain, millis).samples.s).toEqual(plain.samples.s);
+    expect(atWinner(mergeProgress(millis, plain))).toEqual(millis.samples.s);
+    expect(atWinner(mergeProgress(plain, millis))).toEqual(plain.samples.s);
   });
 
   it('lets a later real stamp overtake a sample whose far-future at was clamped', () => {
@@ -289,15 +308,15 @@ describe('mergeProgress', () => {
     expect(loaded.samples.s).toEqual({ ...cleared, at: cap });
     // The clamped entry is still later than an older copy, so Predict again is not undone.
     const older = doc({ samples: { s: { prediction: 'old', correct: true, verdict: 'exact', at: '2026-06-14T00:00:00.000Z' } } });
-    expect(mergeProgress(older, loaded).samples.s).toEqual(loaded.samples.s);
-    expect(mergeProgress(loaded, older).samples.s).toEqual(loaded.samples.s);
+    expect(atWinner(mergeProgress(older, loaded))).toEqual(loaded.samples.s);
+    expect(atWinner(mergeProgress(loaded, older))).toEqual(loaded.samples.s);
     const laterNow = Date.parse('2026-06-18T12:00:00.000Z');
     const freshAt = new Date(laterNow).toISOString();
     const fresh = migrate({ version: 1, seed: SEED, samples: { s: { prediction: 'fresh', correct: true, verdict: 'exact', at: freshAt } } }, laterNow);
     expect(fresh.samples.s.at).toBe(freshAt);
     expect(Date.parse(freshAt)).toBeGreaterThan(Date.parse(cap));
-    expect(mergeProgress(loaded, fresh).samples.s).toEqual(fresh.samples.s);
-    expect(mergeProgress(fresh, loaded).samples.s).toEqual(fresh.samples.s);
+    expect(atWinner(mergeProgress(loaded, fresh))).toEqual(fresh.samples.s);
+    expect(atWinner(mergeProgress(fresh, loaded))).toEqual(fresh.samples.s);
   });
 
   it('does not mutate either input', () => {

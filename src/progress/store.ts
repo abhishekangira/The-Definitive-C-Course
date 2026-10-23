@@ -54,7 +54,7 @@ export interface SampleProgress {
 
 /** One "Check your understanding" question's first submission. Later "Check again" submissions are not stored. */
 export interface ChoiceProgress { picked: number; correct: boolean; at: string }
-/** `progress.choices` key: the lesson id and the question's place in the lesson (`qid`, from remark-course). */
+/** `progress.choices` key: the lesson id and the question's `qid` (a hash of its question text, from remark-course `choiceIds`). */
 export const choiceKey = (lessonId: string, qid: string) => `${lessonId}#${qid}`;
 
 const VERDICTS: readonly SampleVerdict[] = ['exact', 'close', 'wrong'];
@@ -408,7 +408,7 @@ export function summarise(p: ProgressV1): ImportSummary {
   };
 }
 
-/** Merge keeps the furthest progress from both documents. A sample keeps the entry with the later `at` instant (`Date.parse`, not string order; a tie keeps the first document). A cleared entry is that later entry on purpose, so an older copy does not undo "Predict again". */
+/** Merge keeps the furthest progress from both documents. A sample keeps the entry with the later `at` instant (`Date.parse`, not string order; a tie keeps the first document), with `first`/`first64` set to the worse of both sides' first tries (`firstSampleVerdict`, so legacy entries count). A cleared entry is that later entry on purpose, so an older copy does not undo "Predict again". */
 export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
   // Keys are data (imported ids), so look them up as own properties only: "constructor" or "toString" must not
   // find Object.prototype members. migrate() drops "__proto__", so assigning by key cannot swap a prototype.
@@ -422,8 +422,17 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
     if (!cur || Date.parse(v.at) > Date.parse(cur.at)) out.samples[k] = v;
     const kept = out.samples[k];
     if (cur && kept) {
-      const first = worseVerdict(cur.first, v.first); const first64 = worseVerdict(cur.first64, v.first64);
-      out.samples[k] = drop({ ...kept, first, first64 });
+      // Read each side's effective first try: a legacy entry (no `first`) stands for its current answer, so merging
+      // its miss with a newer exact `first` keeps the miss. Of the two, the worse first try wins.
+      const first = worseVerdict(firstSampleVerdict(cur), firstSampleVerdict(v));
+      const first64 = worseVerdict(firstSample64Verdict(cur), firstSample64Verdict(v));
+      // Written only when it says something the kept entry does not already imply, so merging two legacy copies
+      // that agree leaves the entry as it was.
+      out.samples[k] = drop({
+        ...kept,
+        first: kept.first !== undefined || first !== firstSampleVerdict(kept) ? first : undefined,
+        first64: kept.first64 !== undefined || first64 !== firstSample64Verdict(kept) ? first64 : undefined,
+      });
     }
   }
   // A quiz question keeps its earliest first submission.

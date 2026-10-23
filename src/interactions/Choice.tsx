@@ -14,7 +14,7 @@ export function Choice({ question, options, answer, explain, why, qid }: {
   explain?: string;
   /** Optional per-option feedback, same order as options. */
   why?: string[];
-  /** Its place among the lesson's questions, added by remark-course. The first submission is saved under it (perfect lessons). */
+  /** A hash of the question text, added by remark-course (`choiceIds`). The first submission is saved under it (perfect lessons). */
   qid?: string;
 }) {
   const name = useId();
@@ -34,13 +34,20 @@ export function Choice({ question, options, answer, explain, why, qid }: {
   }, [shownTick, scored]);
   const submit = (choice: number) => {
     setSubmitted(choice);
+    // Report to the perfect-lesson check only when this submission newly saved a right first answer. "Check again",
+    // a wrong answer, and an answer already in imported progress cannot complete the lesson, so they never celebrate.
+    let newlyRight = false;
     if (lesson && qid !== undefined) {
       const key = choiceKey(lesson.lessonId, qid);
       // Only the first submission counts; "Check again" never rewrites it.
-      update(p => { if (!Object.hasOwn(p.choices, key)) p.choices[key] = { picked: choice, correct: choice === answer, at: new Date().toISOString() }; });
+      update(p => {
+        if (Object.hasOwn(p.choices, key)) return;
+        p.choices[key] = { picked: choice, correct: choice === answer, at: new Date().toISOString() };
+        newlyRight = choice === answer;
+      });
     }
     markDone();
-    setShownTick(t => t + 1);
+    if (newlyRight) setShownTick(t => t + 1);
   };
   const correct = submitted === answer;
   return (

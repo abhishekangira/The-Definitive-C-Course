@@ -58,8 +58,8 @@ export interface LessonFrontmatter {
   title: string;
   minutes: number;
   summary: string;
-  /** Added by the `?frontmatter` loader, not written by authors: the lesson's <Choice> question count (absent when 0). */
-  choices?: number;
+  /** Added by the `?frontmatter` loader, not written by authors: each <Choice> question's `qid` (a hash of its text; absent when none). */
+  choices?: string[];
 }
 
 // ---------- exercises (content/modules/*/exercises/<id>/exercise.yaml) ----------

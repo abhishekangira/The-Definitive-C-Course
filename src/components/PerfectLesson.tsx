@@ -45,8 +45,10 @@ function spawnPiece(layer: HTMLElement) {
  * and it stays until the learner closes it (the Close button or Esc). No auto-close, no click-anywhere.
  * Reduced motion (or `still`): no confetti, the dab hold only, the title in its colours without the pop.
  */
-export function PerfectLesson({ title, onClose, returnFocus, fallbackFocus, still = false }: {
+export function PerfectLesson({ title, hint, onClose, returnFocus, fallbackFocus, still = false }: {
   title: string;
+  /** What was right, for the kinds the lesson scores (`perfectHint`). */
+  hint: string;
   onClose: () => void;
   /** Where focus goes back on close. If it is gone by then: its interaction box, then `fallbackFocus`. */
   returnFocus?: HTMLElement;
@@ -122,7 +124,7 @@ export function PerfectLesson({ title, onClose, returnFocus, fallbackFocus, stil
           </span>
         </h2>
         <p id="perfect-lesson-title">{title}</p>
-        <p className={styles.hint}>Every prediction and quiz question right on the first try. Press Esc or Close to continue.</p>
+        <p className={styles.hint} data-perfect-hint="">{hint} Press Esc or Close to continue.</p>
         <button ref={closeButton} type="button" className="btn btn-primary" data-perfect-close="" onClick={onClose}>Close</button>
       </div>
     </dialog>, document.body,

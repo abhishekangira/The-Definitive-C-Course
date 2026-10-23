@@ -20,7 +20,7 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); host.remove(); trigger.remove(); vi.useRealTimers(); vi.unstubAllGlobals(); reduced = false; });
 async function mount(still = false, extra: Partial<Parameters<typeof PerfectLesson>[0]> = {}) {
   const close = vi.fn(() => root.render(null));
-  await act(async () => root.render(createElement(PerfectLesson, { title: 'Hello C', onClose: close, returnFocus: trigger, still, ...extra })));
+  await act(async () => root.render(createElement(PerfectLesson, { title: 'Hello C', hint: 'Every prediction right on the first try.', onClose: close, returnFocus: trigger, still, ...extra })));
   return close;
 }
 /** The intervals started (the confetti loop is the only one) and those not cleared yet. */
@@ -48,7 +48,7 @@ it.each([{ key: 'a' }, { key: 'Enter' }, { key: ' ' }, { key: 'Shift' }, { key: 
   await act(async () => document.querySelector('h2')!.dispatchEvent(new MouseEvent('click', { bubbles: true })));
   act(() => vi.advanceTimersByTime(60_000));
   expect(event.defaultPrevented).toBe(false); expect(close).not.toHaveBeenCalled(); expect(dialog.hasAttribute('open')).toBe(true);
-  expect(document.querySelector('[data-perfect-lesson] p:not([id])')!.textContent).toBe('Every prediction and quiz question right on the first try. Press Esc or Close to continue.');
+  expect(document.querySelector('[data-perfect-lesson] p:not([id])')!.textContent).toBe('Every prediction right on the first try. Press Esc or Close to continue.');
 });
 it('falls back to the interaction box, then the lesson container, never <body>, when the return target is gone', async () => {
   const lesson = document.createElement('div'); const box = document.createElement('div'); box.dataset.interaction = 'choice'; box.tabIndex = -1;
