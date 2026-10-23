@@ -169,6 +169,20 @@ describe('portable environment setup', () => {
     expect(r.stdout).toMatch(/^Ready: /m);
     expect(r.status).toBe(0);
   });
+  it('gives a mirror of the same base digest the same image tag', () => {
+    const digest = readFileSync(path.join(here, 'Dockerfile'), 'utf8').match(/^ARG BASE=\S+(@sha256:[0-9a-f]{64})$/m)![1];
+    const tag = (base: string) => spawnSync(process.execPath, ['--input-type=module', '-e',
+      `import { image } from ${JSON.stringify(path.join(here, 'cli.mjs'))}; console.log(image);`], {
+      encoding: 'utf8', env: { ...process.env, TDCC_BASE_IMAGE: base },
+    }).stdout.trim();
+    expect(tag(`docker.io/library/ubuntu:24.04${digest}`)).toBe(image);
+    expect(image).toMatch(/^tdcc-dev:[0-9a-f]{16}$/);
+  });
+  it('lets apt (the unprivileged _apt user) read the CA secret in every build step', () => {
+    const mounts = readFileSync(path.join(here, 'Dockerfile'), 'utf8').match(/--mount=type=secret\S*/g) ?? [];
+    expect(mounts.length).toBeGreaterThan(0);
+    for (const mount of mounts) expect(mount, 'add mode=0444: the default 0400 secret is unreadable to apt').toContain('mode=0444');
+  });
   it('uses the same native installer in CI and Docker', () => {
     const workflow = readFileSync(path.resolve(here, '../../.github/workflows/ci.yml'), 'utf8');
     const dockerfile = readFileSync(path.join(here, 'Dockerfile'), 'utf8');
