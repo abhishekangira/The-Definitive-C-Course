@@ -37,6 +37,11 @@ export interface SampleProgress {
   predict64?: string;
   predict64Correct?: boolean;
   predict64Verdict?: SampleVerdict;
+  /**
+   * Set by "Predict again". The entry stays so a merge cannot restore an older copy.
+   * Treat it as no prediction. Only `true` is stored.
+   */
+  cleared?: true;
   at: string;
 }
 
@@ -140,6 +145,37 @@ function cleanStreak(v: unknown): StreakData {
 const drop = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T;
 
 /**
+ * How far ahead of this clock an imported sample `at` may be. Two devices, or a file saved just before a clock
+ * step, can disagree by minutes and still be the same learner. Further ahead, the stamp is clamped to this
+ * instant so it cannot win every merge. The sample is kept: dropping it on load would delete a cleared
+ * prediction and let an older copy come back.
+ */
+const SAMPLE_AT_SKEW_MS = 24 * 60 * 60 * 1000;
+
+/** `toISOString` (`….sssZ`), or the same ISO-8601 form without milliseconds or with a `±HH:MM` offset. */
+const SAMPLE_AT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/;
+
+function cleanSample(x: Record<string, unknown>, now: number): SampleProgress | undefined {
+  if (typeof x.prediction !== 'string' || typeof x.correct !== 'boolean') return undefined;
+  if (typeof x.at !== 'string' || !SAMPLE_AT.test(x.at)) return undefined;
+  const at = Date.parse(x.at);
+  // Month 13 and second 60 match the shape above and parse as NaN. NaN is not greater than any stamp, so a merge would keep the sample forever.
+  if (!Number.isFinite(at)) return undefined;
+  const limit = now + SAMPLE_AT_SKEW_MS;
+  // Exactly `limit` stays as written (an offset form must not be rewritten). One millisecond past is clamped.
+  return drop({
+    prediction: x.prediction,
+    correct: x.correct,
+    verdict: asVerdict(x.verdict),
+    predict64: str(x.predict64),
+    predict64Correct: bool(x.predict64Correct),
+    predict64Verdict: asVerdict(x.predict64Verdict),
+    cleared: (x.cleared === true ? true : undefined) as true | undefined,
+    at: at > limit ? new Date(limit).toISOString() : x.at,
+  });
+}
+
+/**
  * Distinct `src` values among progress codes, or undefined when none of them is a progress code.
  * Completion tokens have no source hash. An exercise with no progress codes keeps its stored count
  * (browser exercises never store codes).
@@ -183,8 +219,8 @@ function cleanExercise(x: Record<string, unknown>): ExerciseProgress {
   });
 }
 
-/** Accepts unknown JSON, returns a valid ProgressV1 (unknown keys dropped, wrong-typed parts replaced by defaults) or throws with a readable message. */
-export function migrate(raw: unknown): ProgressV1 {
+/** Accepts unknown JSON, returns a valid ProgressV1 (unknown keys dropped, wrong-typed parts replaced by defaults) or throws with a readable message. `now` is the clock for the sample `at` check and the 24-hour clamp; tests pass a fixed instant. */
+export function migrate(raw: unknown, now = Date.now()): ProgressV1 {
   if (!isRecord(raw)) throw new Error('Not a progress file.');
   const o = raw;
   if (o.version !== 1) throw new Error(`Unsupported progress version: ${String(o.version)}.`);
@@ -210,8 +246,7 @@ export function migrate(raw: unknown): ProgressV1 {
     }),
     cards,
     lessons: section(o.lessons, x => (typeof x.completedAt === 'string' ? { completedAt: x.completedAt } : undefined)),
-    samples: section(o.samples, x => (typeof x.prediction === 'string' && typeof x.correct === 'boolean' && typeof x.at === 'string'
-      ? drop({ prediction: x.prediction, correct: x.correct, verdict: asVerdict(x.verdict), predict64: str(x.predict64), predict64Correct: bool(x.predict64Correct), predict64Verdict: asVerdict(x.predict64Verdict), at: x.at }) : undefined)),
+    samples: section(o.samples, x => cleanSample(x, now)),
     exercises: section(o.exercises, cleanExercise),
     quizzes: section(o.quizzes, x => (num(x.score) !== undefined && num(x.total) !== undefined && typeof x.passed === 'boolean' && typeof x.at === 'string'
       ? { score: x.score as number, total: x.total as number, passed: x.passed, at: x.at, answers: isRecord(x.answers) ? Object.fromEntries(Object.entries(x.answers).filter(([k]) => k !== '__proto__')) : {} } : undefined)),
@@ -343,7 +378,7 @@ export function summarise(p: ProgressV1): ImportSummary {
   };
 }
 
-/** Merge keeps the furthest progress from both documents; replace overwrites everything. */
+/** Merge keeps the furthest progress from both documents. A sample keeps the entry with the later `at` instant (`Date.parse`, not string order; a tie keeps the first document). A cleared entry is that later entry on purpose, so an older copy does not undo "Predict again". */
 export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
   // Keys are data (imported ids), so look them up as own properties only: "constructor" or "toString" must not
   // find Object.prototype members. migrate() drops "__proto__", so assigning by key cannot swap a prototype.
@@ -351,7 +386,11 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
   const out = structuredClone(a);
   for (const [k, v] of Object.entries(b.cards)) out.cards[k] = [...new Set([...(own(out.cards, k) ?? []), ...v])].sort((x, y) => x - y);
   for (const [k, v] of Object.entries(b.lessons)) if (!Object.hasOwn(out.lessons, k)) out.lessons[k] = v;
-  for (const [k, v] of Object.entries(b.samples)) if (!Object.hasOwn(out.samples, k)) out.samples[k] = v;
+  for (const [k, v] of Object.entries(b.samples)) {
+    const cur = own(out.samples, k);
+    // "2026-01-10T00:00:00Z" is greater as text than "2026-01-10T00:00:00.000Z" and names the same instant. An offset can sort earlier and happen later.
+    if (!cur || Date.parse(v.at) > Date.parse(cur.at)) out.samples[k] = v;
+  }
   for (const [k, v] of Object.entries(b.exercises)) {
     const cur = own(out.exercises, k);
     if (!cur) {

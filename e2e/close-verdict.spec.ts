@@ -1,6 +1,7 @@
 // Yellow and red prediction results on m01 lesson 2, sample int-division (issue #105).
-// "Predict again" is not on this branch. The spec seeds the warm-up and the two cards before
-// int-division so it does not compile them. Screenshots are written only when SHOTS is a directory.
+// The yellow test then uses Predict again and an exact prediction, which is green.
+// The spec seeds the warm-up and the two cards before int-division so it does not compile them.
+// Screenshots are written only when SHOTS is a directory.
 import { mkdirSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import { test, expect, type Locator, type Page } from '@playwright/test';
@@ -125,6 +126,22 @@ test('a close prediction on int-division is yellow, with both boxes and the comm
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   await shots(page, box, 'yellow');
+
+  const again = box.getByRole('button', { name: 'Predict again' });
+  await again.focus();
+  await expect(again).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(box.getByRole('button', { name: 'Lock in my prediction' })).toBeVisible();
+  await expect(box.locator('textarea')).toHaveValue('');
+  await expect(box.getByRole('status')).toHaveCount(0);
+  await box.locator('textarea').fill('3 -3 1\n3.5');
+  await box.getByRole('button', { name: 'Lock in my prediction' }).click();
+  await box.getByRole('button', { name: 'Run', exact: true }).click();
+  await expect(box.getByText(/^(Program exited with status|Program crashed|Stopped)/).first()).toBeVisible({ timeout: RUN_TIMEOUT });
+  const green = box.getByRole('status').filter({ hasText: 'Your prediction was right.' });
+  await expect(green).toBeVisible();
+  await expect(green.locator('svg')).toHaveAttribute('data-icon', 'check');
+  await expect(box.getByText('You predicted')).toHaveCount(0);
 });
 
 test('a wrong prediction on int-division is red, with both boxes, in light and dark', async ({ page }) => {

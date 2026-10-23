@@ -80,6 +80,32 @@ describe('progress import: migrate', () => {
     expect(JSON.parse(JSON.stringify(dropped))).toEqual(dropped);
   });
 
+  it('keeps cleared only when it is true', () => {
+    const kept = migrate(hostile(`{${head},"samples":{"a":{"prediction":"","correct":false,"cleared":true,"extra":1,"at":"${at}"}}}`));
+    expect(Object.keys(kept.samples.a).sort()).toEqual(['at', 'cleared', 'correct', 'prediction']);
+    expect(kept.samples.a).toEqual({ prediction: '', correct: false, cleared: true, at });
+    const no = migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":true,"cleared":false,"at":"${at}"}}}`));
+    expect(no.samples.a).toEqual({ prediction: 'p', correct: true, at });
+    const junk = migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":true,"cleared":"yes","at":"${at}"}}}`));
+    expect(junk.samples.a).toEqual({ prediction: 'p', correct: true, at });
+  });
+
+  it('drops an unparseable sample at, and clamps one more than 24 hours ahead without dropping the sample', () => {
+    const now = Date.parse('2026-06-15T12:00:00.000Z');
+    const cap = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+    const fields = { prediction: 'p', correct: true, verdict: 'close', predict64: '8', predict64Correct: false, predict64Verdict: 'wrong', cleared: true };
+    const one = (stamp: string) => migrate(hostile(`{${head},"samples":{"a":${JSON.stringify({ ...fields, at: stamp })}}}`), now);
+    expect(one('9999').samples).toEqual({});
+    expect(one('not a date').samples).toEqual({});
+    expect(one('2026-13-01T00:00:00Z').samples).toEqual({});
+    expect(one('2026-01-01T23:59:60Z').samples).toEqual({});
+    expect(one('2026-01-10T00:00:00Z').samples.a).toEqual({ ...fields, at: '2026-01-10T00:00:00Z' });
+    // Exactly +24h, spelled without milliseconds, stays as written. One millisecond past is clamped; a far-future stamp is too.
+    expect(one('2026-06-16T12:00:00Z').samples.a).toEqual({ ...fields, at: '2026-06-16T12:00:00Z' });
+    expect(one(new Date(now + 24 * 60 * 60 * 1000 + 1).toISOString()).samples.a).toEqual({ ...fields, at: cap });
+    expect(one('2099-01-01T00:00:00.000Z').samples.a).toEqual({ ...fields, at: cap });
+  });
+
   it('ignores unknown top-level keys and bad settings values', () => {
     const p = migrate(hostile(`{${head},"evil":"<script>","settings":{"platform":"amiga","stdinMode":{"a":1},"storedOutputMode":"yes","x":1}}`));
     expect(Object.keys(p).sort()).toEqual(['cards', 'createdAt', 'exercises', 'lessons', 'projects', 'quizzes', 'samples', 'seed', 'settings', 'streak', 'version']);
