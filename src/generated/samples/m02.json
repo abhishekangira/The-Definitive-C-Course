@@ -19,7 +19,7 @@
       "meta": {
         "expect": "warning",
         "id": "binary-literal",
-        "predict": "output"
+        "predict": "none"
       },
       "module": "m02",
       "results": {
@@ -1954,7 +1954,7 @@
       "meta": {
         "expect": "warning",
         "id": "precedence-trap",
-        "predict": "output"
+        "predict": "none"
       },
       "module": "m02",
       "results": {
@@ -2807,7 +2807,7 @@
       "meta": {
         "expect": "warning",
         "id": "sign-compare",
-        "predict": "output"
+        "predict": "none"
       },
       "module": "m02",
       "results": {
