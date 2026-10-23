@@ -50,6 +50,15 @@ permission error is not a stopped daemon). Then it runs the doctor, `npm ci` (ca
 reason). `doctor` and `env` use the saved backend without probing again, and stop if the
 saved image is missing or no longer matches the Dockerfile.
 
+An image inspection failure is not always a missing image. `doctor`, `env` and
+maintenance preserve Docker socket/daemon errors and report image presence as
+unknown; they restore or rebuild only after Docker explicitly reports an absent
+image. A task sandbox can deny `/var/run/docker.sock` even when setup succeeded.
+Where the agent platform supports approved expanded execution permissions, retry
+the same doctor check with those permissions before requesting daemon repairs.
+If that passes, use the permitted execution context for Docker-backed commands;
+no rebuild, socket permission change or daemon restart is needed.
+
 `doctor` checks the commands the tools call (`GCC`, default `gcc`, and plain `gcc` too;
 `CLANG22`; `LLDB22`) and Node (major 22; older fails, newer warns), then with a timeout on each probe compiles
 with gcc and clang under ASan+UBSan, needs ASan to catch a heap overflow and valgrind to

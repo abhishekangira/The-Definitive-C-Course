@@ -137,7 +137,7 @@ CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub P
 - **GitHub closes issues on negated keywords.** "Do not close #1" in a PR description closed #1 when the PR merged. For partial work write "Partial progress on #N" and never use close, closes, fix, fixes, resolve or resolves next to an issue number; the maintainer also re-checks the issue state after every merge.
 
 ## Environment (the cloud container)
-- **Environment problems are not your ticket.** Spend at most two commands on one (a missing tool, a failed download, no Docker), then stop and report it with the exact error. `.cache/environment/status.txt` says what the setup script prepared.
+- **Environment problems are not your ticket.** Spend at most two commands on one (a missing tool, a failed download, no Docker), then stop and report it with the exact error. For Docker socket access denied by the task sandbox, retry the same check with approved expanded execution permissions where supported; do not infer a missing image or rebuild it. `.cache/environment/status.txt` says what the setup script prepared.
 - **GitHub.** Web and API access is limited to repos attached to the session. `gh repo create` and GraphQL are blocked; use repo-scoped REST. API quirks, local PR review and branch clean-up: the `review-and-merge-pr` skill.
 
 ## Git
