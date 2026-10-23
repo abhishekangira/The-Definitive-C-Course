@@ -65,6 +65,11 @@ off address randomisation, as on the CI runner, which has no seccomp filter. No
 
 ## CI and container parity
 
+`.github/workflows/toolchain-image.yml` builds the image with `cli.mjs setup --container`
+and runs `npm run env -- npm test` inside it on changes to `tools/environment/**`,
+`package-lock.json` or the workflow itself (PRs and pushes to `main`), or on manual dispatch.
+It logs build/setup time, image size and the doctor's status, and never publishes the image.
+
 `.github/workflows/ci.yml` and the Dockerfile both call `install-native.sh`; change the
 package list there only. It fails with `apt.llvm.org's signing key changed` if the key's
 fingerprint differs. The base is `docker.io/library/ubuntu:24.04` at a recorded digest,
