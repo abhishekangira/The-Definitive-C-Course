@@ -15,7 +15,7 @@ import styles from './Interaction.module.css';
 type CRun = ReturnType<typeof useCRun>;
 const idleSummary = { compile: { ok: true, diagnostics: [], raw: '', ms: 0 }, stdout: '', stderr: '' } satisfies RunSummary;
 
-const bag = vi.hoisted(() => ({ done: vi.fn(), samples: null as SamplesFile | null }));
+const bag = vi.hoisted(() => ({ done: vi.fn(), shown: vi.fn(), samples: null as SamplesFile | null }));
 const runnerBag = vi.hoisted(() => ({
   phase: 'idle' as RunPhase,
   stop: vi.fn(),
@@ -23,6 +23,7 @@ const runnerBag = vi.hoisted(() => ({
 }));
 vi.mock('../lesson/LessonContext', () => ({
   useSamples: () => bag.samples,
+  usePredictionShown: () => bag.shown,
   useCardDone: () => bag.done,
   useSessions: () => null,
 }));
@@ -79,6 +80,7 @@ beforeEach(() => {
   localStorage.clear();
   replaceProgress(emptyProgress());
   bag.done.mockClear();
+  bag.shown.mockClear();
   bag.samples = null;
   runnerBag.phase = 'idle';
   runnerBag.stop.mockClear();
@@ -109,6 +111,7 @@ async function remount(keep = false) {
   document.body.appendChild(host);
   root = createRoot(host);
   bag.done.mockClear();
+  bag.shown.mockClear();
   if (!keep) replaceProgress(emptyProgress());
 }
 
@@ -464,4 +467,21 @@ describe('<CodeSample> changing a prediction', () => {
     expect(host.textContent).not.toContain('Change prediction');
     expect(host.textContent).toContain('Predict again');
   });
+});
+
+
+it.each([false, true])('notifies only after new verdicts render, including 64-bit, native-only=%s', async nativeOnly => {
+  const s = result({ flagged: true, predict64: 'Native output?', stdout: '4\n', nativeStdout: '8\n' });
+  if (nativeOnly) s.meta.target = 'native';
+  await show(s);
+  await fill(host.querySelector('textarea')!, '4'); await click(button('Lock in my prediction'));
+  expect(bag.shown).not.toHaveBeenCalled();
+  bag.shown.mockImplementation(() => expect(host.textContent).toContain('Your prediction was right.'));
+  const runName = nativeOnly ? 'Reveal the result' : 'Run';
+  await click(button(runName)); expect(bag.shown).toHaveBeenCalledTimes(1);
+  await click(button(nativeOnly ? 'Reveal the result' : 'Run again')); expect(bag.shown).toHaveBeenCalledTimes(1);
+  await fill(host.querySelector('textarea')!, '8'); await click(button('Check my 64-bit prediction'));
+  expect(bag.shown).toHaveBeenCalledTimes(2);
+  if (!nativeOnly) { await click(button('Edit and experiment')); expect(bag.shown).toHaveBeenCalledTimes(2); }
+  bag.shown.mockReset();
 });

@@ -22,6 +22,7 @@ const gate = vi.hoisted(() => {
 
 vi.mock('../lesson/LessonContext', () => ({
   useSamples: () => bag.samples,
+  usePredictionShown: () => undefined,
   useCardDone: () => bag.done,
   useSessions: () => null,
 }));

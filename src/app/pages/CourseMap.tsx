@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
+import type { SamplesFile } from '../../content-model/types';
+import { coursePredictionStats } from '../../progress/perfect';
 import { Link } from 'react-router';
-import { course, orderedModules } from '../../content-runtime/course';
+import { course, modules, orderedModules, samplesFor } from '../../content-runtime/course';
 import { isModuleUnlocked, moduleStatus } from '../../progress/gating';
 import { moduleLabel, nextStep } from '../../progress/next';
 import { Cells } from '../../components/Cells';
@@ -9,6 +12,14 @@ import styles from './Pages.module.css';
 
 export function CourseMap() {
   const progress = useProgress();
+  const [loaded, setLoaded] = useState<Array<{ samples: SamplesFile | null; lessons: Array<{ stem: string }> }> | null>(null);
+  useEffect(() => {
+    let live = true;
+    void Promise.all(Object.entries(modules).map(async ([id, m]) => ({ samples: await samplesFor(id), lessons: m.lessons })))
+      .then(value => { if (live) setLoaded(value); });
+    return () => { live = false; };
+  }, []);
+  const perfect = loaded ? coursePredictionStats(loaded, progress) : null;
   const total = course.modules.reduce((s, m) => s + m.hours, 0);
   const list = orderedModules();
   const next = nextStep(progress);
@@ -49,6 +60,7 @@ export function CourseMap() {
         </section>
       </div>
 
+      {perfect && <p data-perfect-total="">Perfect lessons: {perfect.perfect} of {perfect.total}</p>}
       <div className={styles.ledgerHead}>
         <h2>The course</h2>
         <ul className={styles.facts}>

@@ -67,7 +67,7 @@ Operator precedence has a trap. In C, `==` and `!=` bind **tighter** than `&`, `
   explain="`x & 1 == 0` is parsed as `x & (1 == 0)`, so the test is never true and the program always says odd. Write `(x & 1) == 0`. When you mix bitwise operators with comparisons, always add the parentheses."
 >
 
-```c id=precedence-trap expect=warning warn=-Wparentheses
+```c id=precedence-trap predict=none expect=warning warn=-Wparentheses
 #include <stdio.h>
 
 int main(void) {

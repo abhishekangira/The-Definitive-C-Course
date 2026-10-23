@@ -5,11 +5,13 @@ import { lessonLoader, moduleById, samplesFor, sessionsFor } from '../../content
 import { mdxComponents } from '../../content-runtime/mdx-components';
 import { LessonProvider } from '../../lesson/LessonContext';
 import { isModuleUnlocked, moduleStatus } from '../../progress/gating';
-import { useProgress } from '../../progress/store';
+import { getProgress, useProgress } from '../../progress/store';
 import type { SamplesFile, SessionsFile } from '../../content-model/types';
 import { preloadCodeEditor } from '../../components/CodeEditor';
 import { getRuntime } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
+import { lessonPredictionStats } from '../../progress/perfect';
+import { claimPerfectLesson, PerfectLesson } from '../../components/PerfectLesson';
 import { Cells } from '../../components/Cells';
 import { LESSON_CHAT_ID, LessonChat, type LessonChatHandle } from '../../tutor/LessonChat';
 import { lessonTextFrom } from '../../tutor/lessonText';
@@ -21,6 +23,8 @@ import styles from './Pages.module.css';
 export function LessonPage() {
   const { moduleId = '', lessonStem = '' } = useParams();
   const m = moduleById(moduleId);
+  const [celebrating, setCelebrating] = useState<string | null>(null);
+  const closePerfect = useCallback(() => setCelebrating(null), []);
   const progress = useProgress();
   const [Lesson, setLesson] = useState<ComponentType<{ components?: Record<string, unknown> }> | null>(null);
   const [samples, setSamples] = useState<SamplesFile | null | undefined>(undefined);
@@ -66,6 +70,13 @@ export function LessonPage() {
   const prev = m.lessons[idx - 1];
   const next = m.lessons[idx + 1];
   const done = Boolean(progress.lessons[lesson.frontmatter.id]);
+  const stats = lessonPredictionStats(samples ?? null, lessonStem, progress);
+  const predictionShown = () => {
+    if (lessonPredictionStats(samples ?? null, lessonStem, getProgress()).perfect && claimPerfectLesson(lesson.frontmatter.id)) {
+      setCelebrating(lesson.frontmatter.id);
+    }
+  };
+  const perfectOpen = celebrating === lesson.frontmatter.id;
 
   const label = m.meta.number === 'cap' ? 'Capstone' : `Module ${m.meta.number}`;
   const doneCount = m.lessons.filter(l => progress.lessons[l.frontmatter.id]).length;
@@ -88,7 +99,7 @@ export function LessonPage() {
           <p className={styles.meta}>Lesson {idx + 1} of {m.lessons.length} · {lesson.frontmatter.minutes} min</p>
         </div>
         {Lesson && samples !== undefined && sessions !== undefined ? (
-          <LessonProvider lessonId={lesson.frontmatter.id} moduleId={moduleId} samples={samples} sessions={sessions}>
+          <LessonProvider lessonId={lesson.frontmatter.id} moduleId={moduleId} samples={samples} sessions={sessions} onPredictionShown={predictionShown}>
             <MDXProvider components={mdxComponents}>
               <div ref={prose} className={styles.prose}><Lesson components={mdxComponents} /></div>
             </MDXProvider>
@@ -96,6 +107,7 @@ export function LessonPage() {
         ) : <p>Loading lesson…</p>}
         <footer className={styles.lessonFooter}>
           {done ? <p className={styles.okBox}>Lesson complete.</p> : <p className={styles.muted}>Finish each part to reveal the next one.</p>}
+          {done && samples && <p data-prediction-count="">{stats.right} of {stats.total} predictions right</p>}
           <div className={styles.pager}>
             {prev ? <Link className="btn" to={`/m/${moduleId}/${prev.stem}`}><Icon name="arrow-left" /> {prev.frontmatter.title}</Link> : <span />}
             {next ? (
@@ -128,6 +140,8 @@ export function LessonPage() {
           <span className={styles.nextCount}>{doneCount} of {m.lessons.length} lessons</span>
         </div>
       </aside>
+      <span className="visually-hidden" role="status">{perfectOpen ? `Perfect lesson: ${lesson.frontmatter.title}.` : ''}</span>
+      {perfectOpen && <PerfectLesson title={lesson.frontmatter.title} onClose={closePerfect} />}
       {tutorOn && (
         <>
           <SelectionToolbar container={prose} onAction={(action, quote) => { setChatOpen(true); chat.current?.ask(action, quote); }} />

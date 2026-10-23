@@ -76,7 +76,7 @@ That is easy to do by accident, which is why compilers warn about it when both s
   explain="Comparing a signed `int` with an `unsigned` one converts the signed value first, so `a < b` is false for `a = -1`. The fix is to compare as signed (`a < (int)b`, when `b` is known to be small) or to make both sides the same signedness at the source."
 >
 
-```c id=sign-compare expect=warning warn=-Wsign-compare
+```c id=sign-compare predict=none expect=warning warn=-Wsign-compare
 #include <stdio.h>
 
 int main(void) {

@@ -25,7 +25,7 @@ You've read a few compiler messages already. Every clang diagnostic has the same
   explain="An **undeclared identifier** means the name doesn't exist in this scope. Here `cuont` is a typo for `count`. Clang 22 printed no suggestion for it (gcc does print `did you mean 'count'?`), so don't count on one: read the message against your code. In JavaScript this would be a runtime ReferenceError; in C you find out before anything runs."
 >
 
-```c id=typo-identifier expect=compile-error
+```c id=typo-identifier predict=none expect=compile-error
 #include <stdio.h>
 
 int main(void) {
@@ -63,7 +63,7 @@ int main(void) {
   explain={"The error points at the `{` where clang expected `)`. The note \"to match this '('\" shows where the unmatched parenthesis began, and fixing the first message is usually enough."}
 >
 
-```c id=missing-paren expect=compile-error
+```c id=missing-paren predict=none expect=compile-error
 #include <stdio.h>
 
 int main(void) {

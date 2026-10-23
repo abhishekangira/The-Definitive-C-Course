@@ -1,12 +1,12 @@
 // PR: predict-before-run. The learner commits to a prediction, then Run unlocks.
 // Expected answers come from src/generated/samples (tools/verify ran this exact code).
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { SampleMeta, SampleResult } from '../content-model/types';
 import { CodeEditor } from '../components/CodeEditor';
 import { Terminal } from '../components/Terminal';
 import { DiagnosticsList } from '../components/DiagnosticsList';
 import { useCRun } from '../runtime/useCRun';
-import { useCardDone, useSamples } from '../lesson/LessonContext';
+import { useCardDone, usePredictionShown, useSamples } from '../lesson/LessonContext';
 import { update, useProgress } from '../progress/store';
 import { PlatformPicker } from './PlatformPicker';
 import { applyMatch, describeOutcome, nativeFor, normOutput, outputDiff, predictionVerdict, storedOutputText, TARGET_LABEL, type DiffRow, type PredictionVerdict } from './platform';
@@ -84,6 +84,8 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   // A cleared entry is "Predict again": it stays in the document so a merge cannot bring the old prediction back, and the card looks unanswered.
   const kept = saved && !saved.cleared ? saved : undefined;
   const markDone = useCardDone();
+  const predictionShown = usePredictionShown();
+  const pendingReveal = useRef(false);
   const runner = useCRun();
   const [prediction, setPrediction] = useState(kept?.prediction ?? '');
   const [committed, setCommitted] = useState(Boolean(kept));
@@ -92,6 +94,10 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const [source, setSource] = useState(code);
   const [p64, setP64] = useState(kept?.predict64 ?? '');
   const [p64Done, setP64Done] = useState(kept?.predict64 !== undefined);
+  // Effects run after the verdict has rendered. The pending flag is set only by a first reveal or a 64-bit check.
+  useEffect(() => {
+    if (pendingReveal.current) { pendingReveal.current = false; predictionShown?.(); }
+  }, [revealed, p64Done, predictionShown]);
   const native = sample ? nativeFor(sample, progress.settings.platform) : null;
   const edited = source !== code;
   const predictKind = meta.predict ?? 'output';
@@ -121,12 +127,14 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   };
 
   const run = async () => {
+    if (!revealed && predictKind !== 'none') pendingReveal.current = true;
     setRevealed(true);
     if (!nativeOnly && !storedMode) await runner.run({ files: { 'main.c': source }, stdin: meta.stdin ?? (edited ? undefined : ''), args: meta.args, guardrail: meta.guardrail });
     if (!sample?.flagged || !sample.meta.predict64 || sample.meta.predict64 === 'none') markDone();
   };
 
   const submitP64 = () => {
+    pendingReveal.current = true;
     setP64Done(true);
     const verdict = verdictFor64(p64);
     update(p => {
