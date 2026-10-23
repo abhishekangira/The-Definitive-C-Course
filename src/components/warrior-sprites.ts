@@ -1,8 +1,34 @@
-// Rio's pixel art: one character per pixel on a 96 x 96 grid (x, y is the top-left of `rows`), colours in PALETTE, `.` is
-// transparent. Edit the pixels here directly. A patch is drawn over its sprite (for a mood or a blink frame) and can only
-// paint pixels, not erase them. WarriorArt.tsx turns the rows into SVG paths; the aura, rim and shadow are computed there.
+// Rio's pixel art: one character per pixel. Edit the rows by hand.
+//
+// Grid. A sprite is `{ x, y, rows }`. `x, y` is the top-left of `rows` on the 96 x 96 grid. WarriorArt.tsx turns one
+// frame into SVG paths and computes the aura, the dark-page rim, the shadow and the Great Ape's night sky.
+//
+// Characters.
+//   `.`   empty. On a base sprite the pixel is transparent. On a patch it leaves the pixel underneath unchanged.
+//   ` `   erase (a space, `ERASE`). A patch paints that pixel transparent, so a later frame can remove ink.
+//   any other character is a colour in PALETTE. Colours are fixed hex values.
+//
+// Frames. A frame is a full sprite, an optional `shift`, then optional patches (a later patch wins, and a space erases).
+// `shift` moves pixels on rows [top, bottom) by dx, dy before the patches. `fill` repaints the vacated row where the
+// body continued (deleting it cracks the neck). Tips come from tools/rio/derive-frames.mjs and stay hand-editable.
+//   idle      four frames. 1 and 2 shift the head and upper torso up 1px with `fill`; 2 also stretches a tip; 3 is the tip.
+//             Under `.still`, the header head draws the first frame of the streak mood's list (`worried[0]` when at risk); the gallery always draws `idle[0]`.
+//   defeated  kidDown, a 1px head droop (`dy` 1), then that droop with a hair tip poked sideways.
+//   worried   three frames. 0 is the sprite plus its worried patch. 1 and 2 shift the hair or fur rows by 1px in x.
+//   blink     the resting eyes. `blinkForIdle` moves it by that frame's `shift.dy` (`IDLE_BLINK_DY`). Absent for the ape.
+// The aura is not in these rows: WarriorArt computes it (`aura="none" | "flicker" | "blaze"`).
+import type { FormId } from '../progress/warrior';
 
 export interface PixelSprite { x: number; y: number; rows: readonly string[] }
+
+/** A patch character that paints the pixel transparent. `.` leaves the pixel underneath unchanged. */
+export const ERASE = ' ';
+
+/** Rows [top, bottom) move by `dx` and `dy`. `fill` restores the vacated row where the body continued below. */
+export interface BandShift { top: number; bottom: number; dx?: number; dy?: number; fill?: boolean }
+
+/** A sprite, an optional band shift, then patches. A space in a patch erases. */
+export interface SpriteFrame { sprite: PixelSprite; shift?: BandShift; patches?: readonly PixelSprite[] }
 
 export const PALETTE: Readonly<Record<string, string>> = {
   '6': '#8fd4ff',
@@ -815,4 +841,243 @@ export const PATCHES = {
     'SSS.S....SSS.',
     '..s........s.',
   ] },
+  // --- derived frames: tools/rio/derive-frames.mjs (hand-editable) ---
+  'kid-idle-2': { x: 35, y: 26, rows: [
+    '.........k.........k........',
+    'k...........................',
+    '...........................k',
+    '............................',
+    '..............k.............',
+  ] },
+  'kid-idle-3': { x: 35, y: 26, rows: [
+    '..........k.........k.......',
+    '............................',
+    'k...........................',
+    '...........................k',
+    '...............k............',
+  ] },
+  'warrior-idle-2': { x: 35, y: -1, rows: [
+    '.........k.......k.......',
+    'k........................',
+    '.........................',
+    '........................k',
+  ] },
+  'warrior-idle-3': { x: 35, y: -1, rows: [
+    '..........k........k.....',
+    '.........................',
+    'k........................',
+    '.........................',
+    '........................k',
+    '.....k...................',
+  ] },
+  'golden-idle-2': { x: 36, y: -1, rows: [
+    'k........k.......k..........k',
+    '.............................',
+    '.............................',
+    '.......................k.....',
+  ] },
+  'golden-idle-3': { x: 33, y: -1, rows: [
+    'b............k........k..........k',
+    '..................................',
+    '.....k............................',
+  ] },
+  'mane-idle-2': { x: 33, y: -1, rows: [
+    '............k.........k',
+    'k......................',
+    '.......................',
+    '.....k.................',
+    '.................k.....',
+  ] },
+  'mane-idle-3': { x: 33, y: -1, rows: [
+    '.............k.........k',
+    '........................',
+    'k.......................',
+    '........................',
+    '.....k............k.....',
+  ] },
+  'crimson-idle-2': { x: 34, y: -1, rows: [
+    'k.........k........k..........',
+    '..............................',
+    '.....k.......................k',
+  ] },
+  'crimson-idle-3': { x: 33, y: -1, rows: [
+    'k...........k.........k',
+    '.......................',
+    '.......................',
+    '.....k...........k.....',
+  ] },
+  'ape-idle-2': { x: 35, y: -1, rows: [
+    '......k.............k......',
+    '...........k...............',
+    '...........................',
+    '...........................',
+    'k.........................k',
+  ] },
+  'ape-idle-3': { x: 35, y: -1, rows: [
+    '............k..............',
+    '......k.............k......',
+    '...........................',
+    '...........................',
+    '...........................',
+    'k.........................k',
+  ] },
+  'kidDown-2': { x: 36, y: 28, rows: [
+    '....................k.......',
+    '............................',
+    'k...........................',
+    '...........................k',
+  ] },
+  // --- end derived frames ---
 } as const satisfies Record<string, PixelSprite>;
+
+const frame = (sprite: PixelSprite, ...patches: PixelSprite[]): SpriteFrame =>
+  patches.length ? { sprite, patches } : { sprite };
+
+const shifted = (sprite: PixelSprite, shift: BandShift, ...patches: PixelSprite[]): SpriteFrame =>
+  patches.length ? { sprite, shift, patches } : { sprite, shift };
+
+const BREATH: Record<FormId, BandShift> = {
+  kid: { top: 27, bottom: 60, dy: -1, fill: true },
+  warrior: { top: 0, bottom: 33, dy: -1, fill: true },
+  golden: { top: 0, bottom: 33, dy: -1, fill: true },
+  mane: { top: 0, bottom: 33, dy: -1, fill: true },
+  crimson: { top: 0, bottom: 33, dy: -1, fill: true },
+  ape: { top: 0, bottom: 41, dy: -1, fill: true },
+};
+
+const HAIR_ROWS: Record<FormId, number> = { kid: 10, warrior: 8, golden: 8, mane: 8, crimson: 8, ape: 8 };
+
+const hair = (form: FormId, dx: number): BandShift => {
+  const top = BREATH[form].top;
+  return { top, bottom: top + HAIR_ROWS[form], dx };
+};
+
+const KID_DROOP: BandShift = { top: 27, bottom: 54, dy: 1 };
+
+export const FORM_FRAMES: Record<FormId, {
+  idle: readonly SpriteFrame[];
+  defeated?: readonly SpriteFrame[];
+  worried?: readonly SpriteFrame[];
+  blink?: PixelSprite;
+}> = {
+  kid: {
+    idle: [frame(SPRITES.kid), shifted(SPRITES.kid, BREATH.kid), shifted(SPRITES.kid, BREATH.kid, PATCHES['kid-idle-2']), frame(SPRITES.kid, PATCHES['kid-idle-3'])],
+    defeated: [frame(SPRITES.kidDown), shifted(SPRITES.kidDown, KID_DROOP), shifted(SPRITES.kidDown, KID_DROOP, PATCHES['kidDown-2'])],
+    worried: [frame(SPRITES.kid, PATCHES['kid-worried']), shifted(SPRITES.kid, hair('kid', 1), PATCHES['kid-worried']), shifted(SPRITES.kid, hair('kid', -1), PATCHES['kid-worried'])],
+    blink: PATCHES['kid-blink'],
+  },
+  warrior: {
+    idle: [frame(SPRITES.warrior), shifted(SPRITES.warrior, BREATH.warrior), shifted(SPRITES.warrior, BREATH.warrior, PATCHES['warrior-idle-2']), frame(SPRITES.warrior, PATCHES['warrior-idle-3'])],
+    worried: [frame(SPRITES.warrior, PATCHES['warrior-worried']), shifted(SPRITES.warrior, hair('warrior', 1), PATCHES['warrior-worried']), shifted(SPRITES.warrior, hair('warrior', -1), PATCHES['warrior-worried'])],
+    blink: PATCHES['warrior-blink'],
+  },
+  golden: {
+    idle: [frame(SPRITES.golden), shifted(SPRITES.golden, BREATH.golden), shifted(SPRITES.golden, BREATH.golden, PATCHES['golden-idle-2']), frame(SPRITES.golden, PATCHES['golden-idle-3'])],
+    worried: [frame(SPRITES.golden, PATCHES['golden-worried']), shifted(SPRITES.golden, hair('golden', 1), PATCHES['golden-worried']), shifted(SPRITES.golden, hair('golden', -1), PATCHES['golden-worried'])],
+    blink: PATCHES['golden-blink'],
+  },
+  mane: {
+    idle: [frame(SPRITES.mane), shifted(SPRITES.mane, BREATH.mane), shifted(SPRITES.mane, BREATH.mane, PATCHES['mane-idle-2']), frame(SPRITES.mane, PATCHES['mane-idle-3'])],
+    worried: [frame(SPRITES.mane, PATCHES['mane-worried']), shifted(SPRITES.mane, hair('mane', 1), PATCHES['mane-worried']), shifted(SPRITES.mane, hair('mane', -1), PATCHES['mane-worried'])],
+    blink: PATCHES['mane-blink'],
+  },
+  crimson: {
+    idle: [frame(SPRITES.crimson), shifted(SPRITES.crimson, BREATH.crimson), shifted(SPRITES.crimson, BREATH.crimson, PATCHES['crimson-idle-2']), frame(SPRITES.crimson, PATCHES['crimson-idle-3'])],
+    worried: [frame(SPRITES.crimson, PATCHES['crimson-worried']), shifted(SPRITES.crimson, hair('crimson', 1), PATCHES['crimson-worried']), shifted(SPRITES.crimson, hair('crimson', -1), PATCHES['crimson-worried'])],
+    blink: PATCHES['crimson-blink'],
+  },
+  ape: {
+    idle: [frame(SPRITES.ape), shifted(SPRITES.ape, BREATH.ape), shifted(SPRITES.ape, BREATH.ape, PATCHES['ape-idle-2']), frame(SPRITES.ape, PATCHES['ape-idle-3'])],
+    worried: [frame(SPRITES.ape, PATCHES['ape-worried']), shifted(SPRITES.ape, hair('ape', 1), PATCHES['ape-worried']), shifted(SPRITES.ape, hair('ape', -1), PATCHES['ape-worried'])],
+  },
+};
+
+/** `shift.dy` of each kid idle frame. The other forms use the same list. */
+export const IDLE_BLINK_DY: readonly number[] = FORM_FRAMES.kid.idle.map(entry => entry.shift?.dy ?? 0);
+
+const blinkShiftCache = new WeakMap<PixelSprite, Map<number, PixelSprite>>();
+
+export function blinkForIdle(patch: PixelSprite, frame: SpriteFrame): PixelSprite {
+  const dy = frame.shift?.dy ?? 0;
+  if (dy === 0) return patch;
+  let byDy = blinkShiftCache.get(patch);
+  if (!byDy) blinkShiftCache.set(patch, byDy = new Map());
+  let hit = byDy.get(dy);
+  if (!hit) byDy.set(dy, hit = { x: patch.x, y: patch.y + dy, rows: patch.rows });
+  return hit;
+}
+
+const composedCache = new WeakMap<SpriteFrame, PixelSprite>();
+
+const paintPart = (grid: string[][], x0: number, y0: number, part: PixelSprite) => {
+  part.rows.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) {
+      const ch = row[i];
+      if (ch === '.') continue;
+      grid[part.y + j - y0][part.x + i - x0] = ch === ERASE ? '.' : ch;
+    }
+  });
+};
+
+const applyShift = (grid: string[][], x0: number, y0: number, shift: BandShift) => {
+  const dx = shift.dx ?? 0;
+  const dy = shift.dy ?? 0;
+  const height = grid.length;
+  const width = grid[0].length;
+  const at = (x: number, y: number) => {
+    const j = y - y0;
+    const i = x - x0;
+    if (j < 0 || i < 0 || j >= height || i >= width) return undefined;
+    return grid[j][i];
+  };
+  const clears: { x: number; y: number }[] = [];
+  const writes: { x: number; y: number; ch: string }[] = [];
+  for (let y = shift.top; y < shift.bottom; y++) {
+    for (let x = x0; x < x0 + width; x++) {
+      const ch = at(x, y);
+      if (!ch || ch === '.') continue;
+      clears.push({ x, y });
+      writes.push({ x: x + dx, y: y + dy, ch });
+      if (shift.fill && y === shift.bottom - 1) {
+        const below = at(x, y + 1);
+        if (below && below !== '.') writes.push({ x, y, ch });
+      }
+    }
+  }
+  for (const cell of clears) grid[cell.y - y0][cell.x - x0] = '.';
+  for (const cell of writes) grid[cell.y - y0][cell.x - x0] = cell.ch;
+};
+
+export function composeFrame(frame: SpriteFrame): PixelSprite {
+  const hit = composedCache.get(frame);
+  if (hit) return hit;
+  const parts = [frame.sprite, ...(frame.patches ?? [])];
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const p of parts) {
+    const w = p.rows.reduce((m, r) => Math.max(m, r.length), 0);
+    x0 = Math.min(x0, p.x);
+    y0 = Math.min(y0, p.y);
+    x1 = Math.max(x1, p.x + w);
+    y1 = Math.max(y1, p.y + p.rows.length);
+  }
+  const shift = frame.shift;
+  if (shift) {
+    const dx = shift.dx ?? 0;
+    const dy = shift.dy ?? 0;
+    const sw = frame.sprite.rows.reduce((m, r) => Math.max(m, r.length), 0);
+    x0 = Math.min(x0, frame.sprite.x + dx);
+    x1 = Math.max(x1, frame.sprite.x + sw + dx);
+    y0 = Math.min(y0, shift.top + dy);
+    y1 = Math.max(y1, shift.bottom + dy);
+  }
+  const grid = Array.from({ length: y1 - y0 }, () => Array.from({ length: x1 - x0 }, () => '.'));
+  paintPart(grid, x0, y0, frame.sprite);
+  if (shift) applyShift(grid, x0, y0, shift);
+  for (const p of frame.patches ?? []) paintPart(grid, x0, y0, p);
+  const out: PixelSprite = { x: x0, y: y0, rows: grid.map(r => r.join('')) };
+  composedCache.set(frame, out);
+  return out;
+}

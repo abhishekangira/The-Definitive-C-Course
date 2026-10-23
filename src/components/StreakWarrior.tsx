@@ -10,7 +10,7 @@ import {
   type FormId, type WarriorMood,
 } from '../progress/warrior';
 import { useNow } from './useNow';
-import { BeanArt, HEAD_VIEWBOX, VIEWBOX, WarriorArt } from './WarriorArt';
+import { BeanArt, HEAD_VIEWBOX, VIEWBOX, WarriorArt, type AuraStage } from './WarriorArt';
 import styles from './StreakWarrior.module.css';
 
 export const SEEN_KEY = `${STORAGE_PREFIX}warrior`;
@@ -39,8 +39,10 @@ interface PortraitProps {
   mood?: WarriorMood;
   /** No motion (gallery, header). */
   still?: boolean;
-  /** No aura or night sky (silhouettes, header). */
+  /** No aura or night sky (silhouettes, header). Wins over `aura`. */
   bare?: boolean;
+  /** Power-up stage. Omit it and the form keeps its default: flicker for golden, mane and crimson, none otherwise. */
+  aura?: AuraStage;
   /** Just the head. */
   head?: boolean;
   /** An accessible name; without one the art is hidden from assistive technology. */
@@ -50,11 +52,11 @@ interface PortraitProps {
 }
 
 /** The art in its own SVG, inside the element the CSS animations key on. */
-export function WarriorPortrait({ form, mood = 'ready', still = false, bare = false, head = false, label, className, onAnimationEnd }: PortraitProps) {
+export function WarriorPortrait({ form, mood = 'ready', still = false, bare = false, aura, head = false, label, className, onAnimationEnd }: PortraitProps) {
   return (
     <span className={[styles.art, still ? styles.still : '', className ?? ''].join(' ').trim()} data-form={form} data-mood={mood} onAnimationEnd={onAnimationEnd}>
       <svg className={styles.svg} viewBox={head ? HEAD_VIEWBOX[form] : VIEWBOX} focusable="false" {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}>
-        <WarriorArt form={form} mood={mood} bare={bare} />
+        <WarriorArt form={form} mood={mood} bare={bare} aura={aura} />
       </svg>
     </span>
   );
