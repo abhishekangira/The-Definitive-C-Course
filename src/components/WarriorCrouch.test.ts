@@ -72,3 +72,59 @@ describe('crouchSprite', () => {
     });
   }
 });
+
+// The transformation crouches the `from` form, which is never the Great Ape (the top form). These pins are the
+// crouches a learner can see; a shallower crouch, or one without the fill between the legs, changes the hash.
+const REACHABLE = ['kid', 'warrior', 'golden', 'mane', 'crimson'] as const;
+const MIN_DROP: Record<(typeof REACHABLE)[number], number> = { kid: 3, warrior: 5, golden: 5, mane: 5, crimson: 5 };
+
+/** FNV-1a over the rows, so a pin is short and any changed pixel changes it. */
+const hash = (s: PixelSprite) => {
+  let h = 0x811c9dc5;
+  for (const ch of `${s.x},${s.y};${s.rows.join('/')}`) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+  return h.toString(16).padStart(8, '0');
+};
+const CROUCH_HASH: Record<(typeof REACHABLE)[number], string> = { kid: '0e6eae75', warrior: '92f16cd9', golden: '2c1219c0', mane: 'b7674822', crimson: '0ef8a756' };
+
+const render = (form: (typeof REACHABLE)[number], mood: 'ready' | 'worried', crouch: boolean, aura?: 'blaze') =>
+  renderToStaticMarkup(createElement('svg', null, createElement(WarriorArt, { form, mood, crouch, aura })));
+/** Smallest y of every `M x y` in the markup inside the first group that matches `open`. */
+const topOf = (markup: string, open: RegExp) => {
+  const at = markup.search(open);
+  if (at < 0) return NaN;
+  const end = markup.indexOf('</g>', at);
+  return Math.min(...[...markup.slice(at, end).matchAll(/M-?\d+ (-?\d+)/g)].map(m => Number(m[1])));
+};
+
+describe('the crouch a learner sees (every form a transformation starts from)', () => {
+  for (const form of REACHABLE) {
+    const drop = CROUCH[form].drop;
+
+    it(`${form}: drops at least ${MIN_DROP[form]} px, and its pixels are pinned`, () => {
+      expect(drop).toBeGreaterThanOrEqual(MIN_DROP[form]);
+      expect(CROUCH[form].splay).toBeGreaterThanOrEqual(2);
+      expect(hash(crouchSprite(form, composeFrame(FORM_FRAMES[form].idle[0])))).toBe(CROUCH_HASH[form]);
+    });
+
+    it(`${form}: the aura is computed from the crouch, so its tongues are lower by the drop`, () => {
+      const stand = topOf(render(form, 'ready', false, 'blaze'), /data-aura-frame="0"/);
+      const crouched = topOf(render(form, 'ready', true, 'blaze'), /data-aura-frame="0"/);
+      // A tongue's height depends on the outline under it, so the
+      // top moves by the drop give or take one pixel. Computed from the standing frame, it does not move at all.
+      expect(crouched - stand).toBeGreaterThanOrEqual(drop - 1);
+      expect(crouched - stand).toBeLessThanOrEqual(drop);
+    });
+
+    it(`${form}: the sweat drop follows the head down`, () => {
+      const sweat = /<g class="[^"]*sweat[^"]*">/;
+      expect(topOf(render(form, 'worried', true), sweat) - topOf(render(form, 'worried', false), sweat)).toBe(drop);
+    });
+
+    it(`${form}: the crouched figure has no idle loop (no figure class, one frame)`, () => {
+      const g = render(form, 'ready', true).match(/<g[^>]*data-crouch=""[^>]*>/)?.[0] ?? '';
+      expect(g).not.toBe('');
+      expect(g).not.toMatch(/class=/);
+      expect(render(form, 'ready', true).match(/data-frame="/g)).toHaveLength(1);
+    });
+  }
+});
