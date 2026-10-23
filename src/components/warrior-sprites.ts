@@ -10,10 +10,12 @@
 //
 // Frames. A frame is a full sprite plus optional patches, painted in order (a later patch wins, and a space erases).
 // `FORM_FRAMES` lists them per form:
-//   idle      the loop while Rio is fired up. The first frame is what `.still`, the gallery and the header head show.
+//   idle      the loop while Rio is fired up. `.still`, the gallery and the header head show the first frame of
+//             the current pose's list (an at-risk streak shows worried[0], not idle[0]).
 //   defeated  the defeated loop, when that pose is its own drawing (the kid).
 //   worried   the worried loop.
-//   blink     one patch drawn over the idle frames. Absent when the form does not blink (the ape).
+//   blink     one patch over the idle frames, drawn through composeFrame so a space stays transparent.
+//             Absent when the form does not blink (the ape).
 // A loop may be full sprites or patches over the form's sprite. The aura is not in these rows: WarriorArt computes it
 // (`aura="none" | "flicker" | "blaze"`).
 import type { FormId } from '../progress/warrior';
