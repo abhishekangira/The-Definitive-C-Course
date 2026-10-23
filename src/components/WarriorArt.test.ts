@@ -1,11 +1,12 @@
 // The aura prop (#107, for #106) and the patch erase character. Rendered with renderToStaticMarkup: Vitest does not collect .tsx tests.
+import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { FormId, WarriorMood } from '../progress/warrior';
 import { blinkPaths, HEAD_VIEWBOX, WarriorArt, type AuraStage } from './WarriorArt';
 import { WarriorPortrait } from './StreakWarrior';
-import { composeFrame, ERASE, FORM_FRAMES, type PixelSprite } from './warrior-sprites';
+import { blinkForIdle, composeFrame, ERASE, FORM_FRAMES, type PixelSprite } from './warrior-sprites';
 
 const markup = (form: FormId, mood: WarriorMood, aura?: AuraStage, bare?: boolean) =>
   renderToStaticMarkup(createElement(WarriorArt, { form, mood, ...(aura === undefined ? {} : { aura }), ...(bare ? { bare } : {}) }));
@@ -160,11 +161,12 @@ describe('WarriorArt aura', () => {
     expect(n).toBe(4);
   });
 
-  it('a worried pose draws no blink', () => {
+  it('a worried or defeated pose draws no blink', () => {
     expect(markup('kid', 'ready')).toContain('data-blink=');
     for (const form of ['kid', 'warrior', 'golden', 'mane', 'crimson'] as const) {
       expect(markup(form, 'worried'), form).not.toContain('data-blink=');
     }
+    expect(markup('kid', 'defeated')).not.toContain('data-blink=');
   });
 });
 
@@ -243,16 +245,128 @@ describe('idle loops', () => {
     expect(markup('ape', 'ready')).not.toContain('data-blink');
   });
 
-  it('HEAD_VIEWBOX frames the first idle frame of every form, and not the feet', () => {
+  it('HEAD_VIEWBOX holds the hair, both eyes and the blink of idle and worried, and not the feet', () => {
     for (const form of FORMS) {
-      const b = bounds(composeFrame(FORM_FRAMES[form].idle[0]));
       const [x, y, w, h] = HEAD_VIEWBOX[form].split(' ').map(Number);
-      expect(b.minY).toBeGreaterThanOrEqual(y);
-      expect(b.minY).toBeLessThan(y + h);
-      expect(b.maxY).toBeGreaterThan(y + h);
-      expect(b.minX).toBeLessThan(x + w);
-      expect(b.maxX).toBeGreaterThan(x);
+      const inside = (px: number, py: number) => px >= x && py >= y && px < x + w && py < y + h;
+      for (const frame of [FORM_FRAMES[form].idle[0], FORM_FRAMES[form].worried![0]]) {
+        const sprite = composeFrame(frame);
+        const b = bounds(sprite);
+        expect(b.minY, `${form} hair`).toBeGreaterThanOrEqual(y);
+        expect(b.minY, `${form} hair`).toBeLessThan(y + h);
+        expect(b.maxY, `${form} feet`).toBeGreaterThan(y + h);
+        const band = eyeBand(sprite);
+        expect(w, `${form} eye-row width`).toBeGreaterThanOrEqual(band.width);
+        expect(band.minX, `${form} eye row`).toBeGreaterThanOrEqual(x);
+        expect(band.maxX, `${form} eye row`).toBeLessThan(x + w);
+        for (const [px, py] of eyeWhites(sprite)) expect(inside(px, py), `${form} eye ${px},${py}`).toBe(true);
+      }
+      const blink = FORM_FRAMES[form].blink;
+      if (!blink) continue;
+      const placed = blinkForIdle(blink, 0);
+      placed.rows.forEach((row, j) => {
+        for (let i = 0; i < row.length; i++) if (row[i] !== '.') {
+          expect(inside(placed.x + i, placed.y + j), `${form} blink ${placed.x + i},${placed.y + j}`).toBe(true);
+        }
+      });
     }
+  });
+
+  it('every worried form keeps its sweat drop inside the head crop', () => {
+    for (const form of FORMS) {
+      const sweat = markup(form, 'worried').split('data-sweat=""')[1]?.split('</g>')[0] ?? '';
+      expect(sweat, form).not.toBe('');
+      const [x, y, w, h] = HEAD_VIEWBOX[form].split(' ').map(Number);
+      const pixels = cellsIn(sweat);
+      expect(pixels.length, form).toBeGreaterThan(0);
+      for (const [px, py] of pixels) {
+        expect(px, `${form} ${px},${py}`).toBeGreaterThanOrEqual(x);
+        expect(px, `${form} ${px},${py}`).toBeLessThan(x + w);
+        expect(py, `${form} ${px},${py}`).toBeGreaterThanOrEqual(y);
+        expect(py, `${form} ${px},${py}`).toBeLessThan(y + h);
+      }
+    }
+  });
+});
+
+const BLINK_FORMS = ['kid', 'warrior', 'golden', 'mane', 'crimson'] as const;
+
+function cellAt(s: PixelSprite, x: number, y: number): string {
+  const row = s.rows[y - s.y];
+  if (row === undefined || x < s.x) return '.';
+  return row[x - s.x] ?? '.';
+}
+
+function eyeWhites(s: PixelSprite): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  s.rows.forEach((row, j) => {
+    for (let i = 0; i < row.length; i++) if (row[i] === 'W') out.push([s.x + i, s.y + j]);
+  });
+  return out;
+}
+
+/** Ink width of the rows that hold the eye whites. The head crop has to cover this, not just one eye. */
+function eyeBand(s: PixelSprite): { minX: number; maxX: number; width: number } {
+  const ys = new Set(eyeWhites(s).map(([, y]) => y));
+  expect(ys.size).toBeGreaterThan(0);
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const ey of ys) {
+    const row = s.rows[ey - s.y] ?? '';
+    for (let i = 0; i < row.length; i++) if (row[i] !== '.') {
+      minX = Math.min(minX, s.x + i);
+      maxX = Math.max(maxX, s.x + i);
+    }
+  }
+  return { minX, maxX, width: maxX - minX + 1 };
+}
+
+describe('blink follows the head', () => {
+  it('closes the eye on every idle frame at that frame\'s height', () => {
+    for (const form of BLINK_FORMS) {
+      const patch = FORM_FRAMES[form].blink!;
+      const open0 = composeFrame(FORM_FRAMES[form].idle[0]);
+      const restY = Math.min(...eyeWhites(open0).map(([, y]) => y));
+      const closed0 = composeFrame({ sprite: open0, patches: [blinkForIdle(patch, 0)] });
+      FORM_FRAMES[form].idle.forEach((frame, i) => {
+        const open = composeFrame(frame);
+        const whites = eyeWhites(open);
+        expect(whites.length, `${form} ${i}`).toBeGreaterThan(0);
+        const lift = Math.min(...whites.map(([, y]) => y)) - restY;
+        const placed = blinkForIdle(patch, i);
+        const closed = composeFrame({ sprite: open, patches: [placed] });
+        for (const [x, y] of whites) expect(cellAt(closed, x, y), `${form} ${i} eye ${x},${y}`).not.toBe('W');
+        const wide = placed.rows.reduce((m, r) => Math.max(m, r.length), 0);
+        for (let y = placed.y; y < placed.y + placed.rows.length; y++) {
+          for (let x = placed.x; x < placed.x + wide; x++) {
+            expect(cellAt(closed, x, y), `${form} ${i} ${x},${y}`).toBe(cellAt(closed0, x, y - lift));
+          }
+        }
+      });
+    }
+  });
+
+  it('paints the shifted blink inside each idle frame', () => {
+    for (const form of BLINK_FORMS) {
+      const patch = FORM_FRAMES[form].blink!;
+      const restY = Math.min(...eyeWhites(composeFrame(FORM_FRAMES[form].idle[0])).map(([, y]) => y));
+      const parts = markup(form, 'ready').split(/data-frame="/).slice(1);
+      expect(parts, form).toHaveLength(FORM_FRAMES[form].idle.length);
+      parts.forEach((part, i) => {
+        const lift = Math.min(...eyeWhites(composeFrame(FORM_FRAMES[form].idle[i])).map(([, y]) => y)) - restY;
+        const blink = part.split('data-blink=""')[1]?.split('</g>')[0] ?? '';
+        expect(blink, `${form} ${i}`).not.toBe('');
+        const shifted = { x: patch.x, y: patch.y + lift, rows: patch.rows };
+        for (const [, , d] of blinkPaths(shifted)) expect(blink, `${form} ${i}`).toContain(d);
+      });
+    }
+  });
+
+  it('stays hidden when animation is off', () => {
+    const css = readFileSync(new URL('./StreakWarrior.module.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.blink \{ opacity: 0;/);
+    expect(css).toContain('.still, .still * { animation: none !important; }');
+    expect(css).toContain('.art, .art * { animation: none !important; }');
   });
 });
 

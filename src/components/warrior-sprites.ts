@@ -14,8 +14,10 @@
 //             the current pose's list (an at-risk streak shows worried[0], not idle[0]).
 //   defeated  the defeated loop, when that pose is its own drawing (the kid).
 //   worried   the worried loop.
-//   blink     one patch over the idle frames, drawn through composeFrame so a space stays transparent.
-//             Absent when the form does not blink (the ape).
+//   blink     one patch for the resting head (idle frame 0), drawn through composeFrame so a space stays
+//             transparent. Idle frames that lift the head reuse these same rows, shifted by IDLE_BLINK_DY
+//             (no new drawn rows). A lifted head frame needs its blink lifted too. Absent for the ape.
+//             Worried and defeated do not blink.
 // A loop may be full sprites or patches over the form's sprite. The aura is not in these rows: WarriorArt computes it
 // (`aura="none" | "flicker" | "blaze"`).
 import type { FormId } from '../progress/warrior';
@@ -2605,8 +2607,29 @@ const frame = (sprite: PixelSprite, ...patches: PixelSprite[]): SpriteFrame =>
   patches.length ? { sprite, patches } : { sprite };
 
 /**
+ * How far the blink patch moves on each idle frame. The rows are drawn for the resting head (frame 0).
+ * Frames 1 and 2 lift the head by one pixel, so the blink lifts by the same amount. Gotcha: a lifted head
+ * frame needs its blink lifted too, or the open eye shows under the lid.
+ */
+export const IDLE_BLINK_DY = [0, -1, -1, 0] as const;
+
+const blinkShiftCache = new WeakMap<PixelSprite, Map<number, PixelSprite>>();
+
+/** The blink patch placed on idle frame `index`. Same rows; only `y` changes. */
+export function blinkForIdle(patch: PixelSprite, index: number): PixelSprite {
+  const dy = IDLE_BLINK_DY[index] ?? 0;
+  if (dy === 0) return patch;
+  let byDy = blinkShiftCache.get(patch);
+  if (!byDy) blinkShiftCache.set(patch, byDy = new Map());
+  let hit = byDy.get(dy);
+  if (!hit) byDy.set(dy, hit = { x: patch.x, y: patch.y + dy, rows: patch.rows });
+  return hit;
+}
+
+/**
  * Per-form frame lists. `idle` is four frames (a breath, then the side lock). `defeated` and `worried` are their
- * own four-frame loops. A blink is one patch drawn over the idle frames; the ape does not blink.
+ * own four-frame loops. `blink` is one patch for the resting head; `blinkForIdle` shifts it with the breath.
+ * The ape does not blink.
  */
 export const FORM_FRAMES: Record<FormId, {
   idle: readonly SpriteFrame[];

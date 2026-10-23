@@ -5,7 +5,7 @@
 // switched off by `still` and under prefers-reduced-motion.
 import type { ReactNode } from 'react';
 import type { FormId, WarriorMood } from '../progress/warrior';
-import { composeFrame, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
+import { blinkForIdle, composeFrame, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
 import styles from './StreakWarrior.module.css';
 
 /** The sprites' grid. */
@@ -348,7 +348,7 @@ function skySprite(stars: boolean): PixelSprite {
 const SKY = skySprite(false);
 const STARS = skySprite(true);
 
-const SWEAT_AT: Record<FormId, [number, number]> = { kid: [31, 50], warrior: [28, 30], golden: [28, 30], mane: [28, 30], crimson: [28, 30], ape: [25, 26] };
+const SWEAT_AT: Record<FormId, [number, number]> = { kid: [32, 50], warrior: [29, 30], golden: [29, 30], mane: [30, 32], crimson: [30, 32], ape: [25, 26] };
 const SWEAT_PALETTE = { '6': '#8fd4ff', '7': '#2f7fb8' } as const;
 const sweatAt = (form: FormId): PixelSprite => ({ x: SWEAT_AT[form][0], y: SWEAT_AT[form][1], rows: SWEAT_ROWS });
 const SWEAT_ROWS = ['.6.', '666', '667', '.7.'];
@@ -423,10 +423,10 @@ export function WarriorArt({ form, mood, bare = false, aura }: {
         {drawn.map((sprite, i) => (
           <g key={i} data-frame={i} className={drawn.length > 1 ? styles[`pose${i}`] : undefined}>
             <Pixels sprite={sprite} />
+            {blink && <g className={styles.blink} data-blink="">{blinkPaths(blinkForIdle(blink, i)).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
           </g>
         ))}
-        {blink && <g className={styles.blink} data-blink="">{blinkPaths(blink).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
-        {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
+        {mood === 'worried' && <g className={styles.sweat} data-sweat=""><Pixels sprite={SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
       </g>
       {stage !== 'none' && form === 'mane' && <Bolts />}
     </>
