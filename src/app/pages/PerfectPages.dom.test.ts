@@ -129,6 +129,28 @@ it('after importing perfect progress, a quiz answer (wrong, right or Check again
   await answer(1, 0); expect(document.querySelector('dialog')).toBeNull();
   expect(localStorage.getItem(PERFECT_SEEN_KEY)).toBeNull();
 });
+it('after importing perfect progress, Predict again and an exact reveal (or 64-bit check) never open the celebration', async () => {
+  // perfect-seen is local, so a fresh browser that imports a perfect lesson has not seen it.
+  const source = Object.values(samples.samples).find(s => s.flagged && s.meta.predict64 && s.meta.predict64 !== 'none')!;
+  const s = { ...source, lesson: stem };
+  bag.file = { ...samples, samples: { [s.id]: s } };
+  await answerQuizInStore();
+  const out64 = nativeFor(s, undefined).run!.stdout;
+  await act(async () => update(p => { p.samples[s.id] = { prediction: s.answer.stdout, correct: true, verdict: 'exact', first: 'exact', predict64: out64, predict64Correct: true, predict64Verdict: 'exact', first64: 'exact', at: new Date().toISOString() }; }));
+  await act(async () => router.navigate('/m/m01')); await act(async () => router.navigate(`/m/m01/${stem}`));
+  const box = host.querySelector(`[data-sample="${s.id}"]`)!;
+  await click(button(box, 'Predict the 64-bit output again'));
+  const input = box.querySelector('textarea')!;
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(input, out64);
+  await act(async () => input.dispatchEvent(new Event('input', { bubbles: true })));
+  await click(button(box, 'Check my 64-bit prediction'));
+  expect(document.querySelector('dialog')).toBeNull();
+  await click(button(box, 'Predict again'));
+  await exact(0); await click(button(box, 'Reveal the result'));
+  expect(getProgress().samples[s.id]).toMatchObject({ verdict: 'exact', first: 'exact', first64: 'exact' });
+  expect(document.querySelector('dialog')).toBeNull();
+  expect(localStorage.getItem(PERFECT_SEEN_KEY)).toBeNull();
+});
 it('celebrates after the last exact reveal, never lock-in or rerun, and only once after a reset', async () => {
   await answerQuizInStore();
   const last = await exact(0); expect(document.querySelector('dialog')).toBeNull();
