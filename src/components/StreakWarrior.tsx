@@ -3,7 +3,7 @@
 // plays (stand, crouch, aura ramp, flash, new form; a plain swap under prefers-reduced-motion) and the new form is
 // announced. The form last shown lives in its own localStorage key, outside the progress document, so export, import
 // and "Reset all progress" leave it alone.
-import { useEffect, useState, type AnimationEvent } from 'react';
+import { useEffect, useRef, useState, type AnimationEvent as ReactAnimationEvent } from 'react';
 import { STORAGE_PREFIX, useProgress } from '../progress/store';
 import { dayWord, MAX_BEANS, streakStatus } from '../progress/streak';
 import {
@@ -49,15 +49,17 @@ interface PortraitProps {
   /** An accessible name; without one the art is hidden from assistive technology. */
   label?: string;
   className?: string;
-  onAnimationEnd?: (e: AnimationEvent<HTMLSpanElement>) => void;
+  /** Drop the figure by whole viewBox units (`CROUCH_DY`). Not a CSS px translate. */
+  crouch?: boolean;
+  onAnimationEnd?: (e: ReactAnimationEvent<HTMLSpanElement>) => void;
 }
 
 /** The art in its own SVG, inside the element the CSS animations key on. */
-export function WarriorPortrait({ form, mood = 'ready', still = false, bare = false, aura, head = false, label, className, onAnimationEnd }: PortraitProps) {
+export function WarriorPortrait({ form, mood = 'ready', still = false, bare = false, aura, head = false, label, className, crouch = false, onAnimationEnd }: PortraitProps) {
   return (
     <span className={[styles.art, still ? styles.still : '', className ?? ''].join(' ').trim()} data-form={form} data-mood={mood} onAnimationEnd={onAnimationEnd}>
       <svg className={styles.svg} viewBox={head ? HEAD_VIEWBOX[form] : VIEWBOX} focusable="false" {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}>
-        <WarriorArt form={form} mood={mood} bare={bare} aura={aura} />
+        <WarriorArt form={form} mood={mood} bare={bare} aura={aura} crouch={crouch} />
       </svg>
     </span>
   );
@@ -77,22 +79,43 @@ export const TRANSFORM_BEATS: readonly TransformBeat[] = [
   { kind: 'pose', who: 'to', aura: 'blaze', crouch: false },
 ];
 
-/** The beats stacked in one box. CSS shows one at a time; the last beat's own animation ends the sequence. */
+/** One beat. Matches `--beat: 0.4s` in the CSS. */
+export const TRANSFORM_BEAT_MS = 400;
+/** The run, plus one beat, if the last beat's animation never ends or is cancelled without a listener. */
+export const TRANSFORM_CLEAR_MS = TRANSFORM_BEATS.length * TRANSFORM_BEAT_MS + TRANSFORM_BEAT_MS;
+
+type BeatEvent = { target: EventTarget | null; currentTarget: EventTarget | null };
+
+/** The beats stacked in one box. CSS shows one at a time. The last beat ends the sequence, on `animationend` or `animationcancel`. */
 export function TransformationSequence({ from, to, mood, onDone }: {
   from: FormId;
   to: FormId;
   mood: WarriorMood;
-  onDone?: (e: AnimationEvent<HTMLSpanElement>) => void;
+  onDone?: (e: BeatEvent) => void;
 }) {
+  const lastRef = useRef<HTMLSpanElement>(null);
+  // Native listeners. React's event map has no animationcancel, and both events share one end path.
+  useEffect(() => {
+    const el = lastRef.current;
+    if (!el || !onDone) return;
+    const onEnd = (e: Event) => { onDone(e); };
+    const onCancel = (e: Event) => { onDone(e); };
+    el.addEventListener('animationend', onEnd);
+    el.addEventListener('animationcancel', onCancel);
+    return () => {
+      el.removeEventListener('animationend', onEnd);
+      el.removeEventListener('animationcancel', onCancel);
+    };
+  }, [onDone]);
   return (
-    <span className={styles.sequence} data-transform-sequence="">
+    <span className={styles.sequence} data-transform-sequence="" data-transform-to={to}>
       {TRANSFORM_BEATS.map((beat, i) => {
         const last = i === TRANSFORM_BEATS.length - 1;
         if (beat.kind === 'flash') return <span key={i} data-transform-step={i} data-flash="" aria-hidden="true" />;
         const form = beat.who === 'to' ? to : from;
         return (
-          <span key={i} data-transform-step={i} data-form={form} data-aura={beat.aura} data-crouch={beat.crouch ? '' : undefined} onAnimationEnd={last ? onDone : undefined}>
-            <WarriorPortrait form={form} mood={mood} aura={beat.aura} label={last ? warriorLabel(to, mood) : undefined} />
+          <span key={i} ref={last ? lastRef : undefined} data-transform-step={i} data-form={form} data-aura={beat.aura} data-crouch={beat.crouch ? '' : undefined}>
+            <WarriorPortrait form={form} mood={mood} aura={beat.aura} crouch={beat.crouch} label={last ? warriorLabel(to, mood) : undefined} />
           </span>
         );
       })}
@@ -109,6 +132,11 @@ export function StreakWarrior({ size = 120, caption = true, className }: { size?
   const next = mood === 'defeated' ? null : nextForm(st.current);
   const [transform, setTransform] = useState<{ from: FormId; to: FormId } | null>(null);
   const [unlocked, setUnlocked] = useState<FormId | null>(null);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => { alive.current = false; };
+  }, []);
 
   useEffect(() => {
     const seen = readSeen();
@@ -124,14 +152,33 @@ export function StreakWarrior({ size = 120, caption = true, className }: { size?
     setTransform(prefersReducedMotion() ? null : { from, to: form.id });
   }, [form.id]);
 
-  // Child aura and idle loops also bubble animationend; only the last beat's own clip animation counts.
-  const done = (e: AnimationEvent<HTMLSpanElement>) => { if (e.target === e.currentTarget) setTransform(null); };
+  // Fallback when the last beat is cancelled or never ends. Cleared on unmount and when `transform` changes,
+  // so a sequence for the previous form cannot clear the next one.
+  useEffect(() => {
+    if (!transform) return;
+    const to = transform.to;
+    const timer = window.setTimeout(() => {
+      if (!alive.current) return;
+      setTransform(t => (t?.to === to ? null : t));
+    }, TRANSFORM_CLEAR_MS);
+    return () => window.clearTimeout(timer);
+  }, [transform]);
+
+  // Child loops bubble animationend. Only the last beat's own clip counts, and only while that sequence is still
+  // the one on screen. Removal fires animationcancel after the node is disconnected: ignore it, so unmount does not setState.
+  const done = (e: BeatEvent) => {
+    if (e.target !== e.currentTarget) return;
+    const node = e.currentTarget;
+    if (!(node instanceof Element) || !node.isConnected || !alive.current) return;
+    const ended = node.closest('[data-transform-to]')?.getAttribute('data-transform-to');
+    setTransform(t => (t?.to === ended ? null : t));
+  };
   const span = next ? next.form.at - form.at : 1;
   return (
     <figure className={`${styles.warrior} ${className ?? ''}`.trim()} data-warrior data-form={form.id} data-mood={mood} data-transforming={transform ? '' : undefined}>
       <div className={styles.stage} style={{ ['--warrior-size' as string]: `${size}px` }}>
         {transform
-          ? <TransformationSequence from={transform.from} to={transform.to} mood={mood} onDone={done} />
+          ? <TransformationSequence key={transform.to} from={transform.from} to={transform.to} mood={mood} onDone={done} />
           : <WarriorPortrait form={form.id} mood={mood} label={warriorLabel(form.id, mood)} />}
       </div>
       <figcaption className={caption ? styles.caption : 'visually-hidden'}>

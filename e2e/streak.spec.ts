@@ -15,6 +15,94 @@ const rio = (page: Page) => page.locator('main [data-warrior]').first();
 const panel = (page: Page) => page.locator('#streak');
 const gallery = (page: Page) => panel(page).getByRole('list', { name: "Rio's forms" });
 
+const BEAT_MS = 400;
+
+/**
+ * Pause the beat clips and seek each one, in a single call. A finished CSS animation drops out of
+ * `getAnimations()`, so a later call cannot find a beat that an earlier seek already ran past its end.
+ */
+async function seekBeats(page: Page) {
+  return page.evaluate((beatMs: number) => {
+    const nameOf = (anim: Animation) => (anim as unknown as { animationName?: string }).animationName ?? '';
+    const root = document.querySelector('main [data-transform-sequence]');
+    if (!root) return null;
+    const steps = [...root.querySelectorAll<HTMLElement>('[data-transform-step]')].map(el => ({
+      el,
+      n: Number(el.getAttribute('data-transform-step')),
+      anim: [...el.getAnimations()].find(a => nameOf(a).includes('stepOn')),
+    }));
+    if (steps.some(s => !s.anim?.effect)) return { missing: true as const, frames: [], timing: [] };
+    const timing = steps.map(s => {
+      const t = s.anim!.effect!.getComputedTiming();
+      return { n: s.n, delay: t.delay, fill: t.fill };
+    });
+    const frames = [];
+    for (let step = 0; step < steps.length; step++) {
+      for (const s of steps) {
+        const anim = s.anim!;
+        anim.pause();
+        // delay is n * beat. 100ms into the beat we want. Earlier beats are past their end
+        // (fill none returns them to the clipped style). Later beats stay in their delay.
+        anim.currentTime = s.n === step ? s.n * beatMs + 100 : s.n < step ? s.n * beatMs + beatMs + 50 : 0;
+      }
+      frames.push(steps.map(s => {
+        const clip = getComputedStyle(s.el).clipPath;
+        return { n: s.n, clip, unclipped: !clip.includes('100%') };
+      }));
+    }
+    return { missing: false as const, frames, timing };
+  }, BEAT_MS);
+}
+
+/**
+ * Crouch offset in CSS pixels. The pose loop only toggles visibility, so the figure box does not move,
+ * and seeking those loops would fire `animationend` on the last beat.
+ */
+async function crouchOffset(page: Page) {
+  return page.evaluate(() => {
+    const root = document.querySelector('main [data-transform-sequence]');
+    if (!root) return null;
+    const beats = [...root.querySelectorAll<HTMLElement>('[data-transform-step]')];
+    const box = (beat: Element | undefined) => beat?.querySelector('[data-pose]')?.getBoundingClientRect();
+    const stand = box(beats[0]);
+    const crouched = box(beats[1]);
+    const svg = beats[1]?.querySelector('svg');
+    const raw = beats[1]?.querySelector('g[data-crouch]')?.getAttribute('transform') ?? '';
+    const n = /^translate\(0 (-?\d+)\)$/.exec(raw)?.[1];
+    if (!stand || !crouched || !svg || n === undefined) return { dy: crouched && stand ? crouched.top - stand.top : 0, n: null, width: 0, vb: 0, raw };
+    const width = svg.getBoundingClientRect().width;
+    const vb = svg.viewBox.baseVal.width;
+    return { dy: crouched.top - stand.top, n: Number(n), width, vb, raw };
+  });
+}
+
+/** Flash fill against the page and the settings panel, in light and dark. Restores the theme attribute. */
+async function flashColours(page: Page) {
+  return page.evaluate(() => {
+    const el = document.querySelector('main [data-flash]');
+    if (!el) return null;
+    const root = document.documentElement;
+    const prev = root.getAttribute('data-theme');
+    const read = (theme: string) => {
+      root.setAttribute('data-theme', theme);
+      const cs = getComputedStyle(el);
+      const panel = el.closest('.setting-body');
+      return {
+        background: cs.backgroundColor,
+        border: cs.borderTopWidth,
+        image: cs.backgroundImage,
+        shadow: cs.boxShadow,
+        page: getComputedStyle(document.body).backgroundColor,
+        panel: panel ? getComputedStyle(panel).backgroundColor : '',
+      };
+    };
+    const out = { light: read('light'), dark: read('dark') };
+    if (prev === null) root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', prev);
+    return out;
+  });
+}
+
 async function answerOne(page: Page, n: number) {
   const item = plain[n];
   await page.goto(`#/m/${mod.id}/retrieval`);
@@ -94,8 +182,16 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
     await expect(chip(page).locator('[data-form]')).toHaveAttribute('data-form', 'warrior');
     await page.goto('#/settings');
     await expect(rio(page)).toHaveAttribute('data-form', 'warrior');
-    // The sequence is 2.4s and starts when this page mounts. Assert it while it is still on screen.
+    // The sequence is 2.4s and starts when this page mounts. Pause the beat clips before they can finish.
     await expect(rio(page)).toHaveAttribute('data-transforming', '');
+    await page.evaluate(() => {
+      const nameOf = (anim: Animation) => (anim as unknown as { animationName?: string }).animationName ?? '';
+      for (const el of document.querySelectorAll('main [data-transform-step]')) {
+        for (const anim of el.getAnimations()) {
+          if (nameOf(anim).includes('stepOn')) anim.pause();
+        }
+      }
+    });
     const beats = rio(page).locator('[data-transform-step]');
     await expect(beats).toHaveCount(6);
     await expect(beats.nth(0)).toHaveAttribute('data-form', 'kid');
@@ -106,6 +202,39 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
     await expect(beats.nth(4)).toHaveAttribute('data-flash', '');
     await expect(beats.nth(5)).toHaveAttribute('data-form', 'warrior');
     await expect(beats.nth(5)).toHaveAttribute('data-aura', 'blaze');
+    // Pause and seek. Counting the nodes does not prove one beat is on screen, and a CSS px crouch is not on the grid.
+    const crouched = await crouchOffset(page);
+    expect(crouched?.n, 'crouch translate').toBe(5);
+    expect(crouched!.dy).toBeGreaterThan(1);
+    expect(Math.abs(crouched!.dy - crouched!.n! * (crouched!.width / crouched!.vb))).toBeLessThan(0.75);
+    const sought = await seekBeats(page);
+    expect(sought?.missing, 'every beat has a step animation').toBe(false);
+    for (const [step, rows] of sought!.frames.entries()) {
+      expect(rows.filter(r => r.unclipped).map(r => r.n), `only beat ${step} is unclipped`).toEqual([step]);
+    }
+    for (const row of sought!.timing) {
+      // calc(0.4s * n) comes back a fraction of a millisecond off an integer.
+      expect(Number(row.delay), `beat ${row.n} delay`).toBeCloseTo(row.n * BEAT_MS, 0);
+      expect(row.fill, `beat ${row.n} fill`).toBe(row.n === 5 ? 'forwards' : 'none');
+    }
+    const flash = await flashColours(page);
+    for (const theme of ['light', 'dark'] as const) {
+      const colours = flash?.[theme];
+      expect(colours?.border, theme).toBe('0px');
+      expect(colours?.image, theme).toBe('none');
+      expect(colours?.shadow, theme).toBe('none');
+      expect(colours?.background, theme).not.toBe(colours?.page);
+      expect(colours?.background, theme).not.toBe(colours?.panel);
+      expect(colours?.background, theme).not.toBe('rgba(0, 0, 0, 0)');
+    }
+    await page.evaluate(() => {
+      const nameOf = (anim: Animation) => (anim as unknown as { animationName?: string }).animationName ?? '';
+      for (const el of document.querySelectorAll('main [data-transform-step]')) {
+        for (const anim of el.getAnimations()) {
+          if (nameOf(anim).includes('stepOn')) anim.finish();
+        }
+      }
+    });
     await expect(rio(page)).not.toHaveAttribute('data-transforming');
     await expect(rio(page).locator('svg')).toHaveCount(1);
     await expect(rio(page).getByText('New form unlocked: Warrior')).toBeVisible();
@@ -220,7 +349,9 @@ test('with reduced motion the new form appears without a transformation or any l
     await expect(rio(page)).toHaveAttribute('data-form', 'crimson');
     await expect(rio(page).getByText('New form unlocked: Crimson Fur')).toBeVisible();
     await expect(page.getByRole('status').filter({ hasText: 'Transformation! Rio reached a new form: Crimson Fur.' })).toBeAttached();
-    await expect(rio(page)).not.toHaveAttribute('data-transforming');
+    // No auto-wait: a sequence that mounts and then ends 2.4s later would pass `not.toHaveAttribute`.
+    expect(await rio(page).getAttribute('data-transforming')).toBeNull();
+    expect(await rio(page).locator('[data-transform-step]').count()).toBe(0);
     await expect(rio(page).locator('svg')).toHaveCount(1);
     const moving = await page.locator('main').evaluate(main => [...main.querySelectorAll('[data-warrior] *, [data-gallery-form] *')]
       .filter(el => getComputedStyle(el).animationName !== 'none').map(el => el.getAttribute('class')));

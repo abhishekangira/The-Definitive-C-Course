@@ -17,6 +17,11 @@ const W = 112;
 const H = 112;
 /** Every figure is shown in this viewBox, so a transformation never changes the scale. */
 export const VIEWBOX = `${OX} ${OY} ${W} ${H}`;
+/**
+ * How far a crouch beat drops, in viewBox units. A CSS px translate misses this grid:
+ * 8px is 5.6 units at the 160px stage and 8.6 at 104px. 5 is a whole step at every size.
+ */
+export const CROUCH_DY = 5;
 
 type Paths = Array<[key: string, colour: string, d: string]>;
 
@@ -395,27 +400,25 @@ function poseFrames(form: FormId, mood: WarriorMood): readonly SpriteFrame[] {
   return art.idle;
 }
 
-export function WarriorArt({ form, mood, bare = false, aura }: {
+export function WarriorArt({ form, mood, bare = false, aura, crouch = false }: {
   form: FormId;
   mood: WarriorMood;
   /** No aura and no night sky (silhouettes, the header head). An explicit `aura` does not override this. */
   bare?: boolean;
   /** Power-up stage. Omit it for the form's default (`defaultAura`). */
   aura?: AuraStage;
+  /** Drop the figure, its aura and its shadow by `CROUCH_DY` grid units. The night sky stays where it is. */
+  crouch?: boolean;
 }): ReactNode {
   const frames = poseFrames(form, mood);
   const drawn = frames.map(composeFrame);
   const stage: AuraStage = bare ? 'none' : aura ?? defaultAura(form);
   const blink = mood === 'ready' ? FORM_FRAMES[form].blink : undefined;
   const sky = form === 'ape' && !bare;
-  return (
+  // The wrapper carries the crouch. The animated `.figure` stays inside it: a CSS transform on the same
+  // element would replace this attribute (src/AGENTS.md, transform-origin).
+  const body = (
     <>
-      {sky && (
-        <g aria-hidden="true">
-          <Pixels sprite={SKY} palette={SKY_PALETTE} />
-          <g className={styles.stars}><Pixels sprite={STARS} palette={SKY_PALETTE} /></g>
-        </g>
-      )}
       {stage !== 'none' && <Aura stage={stage} sprite={drawn[0]} kind={auraKind(form)} />}
       {!sky && <path className={styles.shadow} d={shadowPath(form)} />}
       <g className={drawn.length > 1 ? `${styles.figure} ${styles.multi}` : styles.figure} data-pose={drawn.length > 1 ? drawn.length : undefined}>
@@ -429,6 +432,17 @@ export function WarriorArt({ form, mood, bare = false, aura }: {
         {mood === 'worried' && <g className={styles.sweat} data-sweat=""><Pixels sprite={SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
       </g>
       {stage !== 'none' && form === 'mane' && <Bolts />}
+    </>
+  );
+  return (
+    <>
+      {sky && (
+        <g aria-hidden="true">
+          <Pixels sprite={SKY} palette={SKY_PALETTE} />
+          <g className={styles.stars}><Pixels sprite={STARS} palette={SKY_PALETTE} /></g>
+        </g>
+      )}
+      {crouch ? <g data-crouch="" transform={`translate(0 ${CROUCH_DY})`}>{body}</g> : body}
     </>
   );
 }

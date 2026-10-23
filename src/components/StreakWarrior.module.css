@@ -99,9 +99,8 @@
 .sequence [data-transform-step='4'] { animation-delay: calc(var(--beat) * 4); }
 .sequence [data-transform-step='5'] { animation-delay: calc(var(--beat) * 5); animation-fill-mode: forwards; }
 .sequence .art { position: absolute; inset: 0; }
-.sequence [data-crouch] { transform: translateY(8px); }
-/* White fill reads on a dark page. The ink border reads on a light page, where the fill matches the ground. */
-.sequence [data-flash] { background: #fff; border: 4px solid #16141e; }
+/* Gold tongue from the aura palette (WarriorArt AURA_COLOURS). White matched the light panel and read as an empty frame. No border, glow, gradient or shadow. */
+.sequence [data-flash] { background: #ff9a00; }
 @keyframes stepOn { from, to { clip-path: inset(0); } }
 
 /* ---------- gallery and spirit beans (Settings) ---------- */

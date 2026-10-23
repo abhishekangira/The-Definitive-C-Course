@@ -60,11 +60,30 @@ describe('transformation sequence', () => {
     expect(stepSlice(markup, 5)).toContain('data-aura-layer="tongue"');
   });
 
-  it('crouches by whole pixels and the flash is a flat white frame, not a glow', () => {
-    expect(css).toContain('translateY(8px)');
-    expect(css).toContain('[data-flash] { background: #fff; border: 4px solid #16141e; }');
+  it('crouches by a whole number of viewBox units, and no CSS rule translates the crouch in px', () => {
+    const markup = html('kid', 'warrior');
+    const translated = (n: number) => {
+      const m = stepSlice(markup, n).match(/transform="translate\(0 (\d+)\)"/);
+      expect(m, `beat ${n}`).not.toBeNull();
+      return Number(m![1]);
+    };
+    const dy = translated(1);
+    expect(Number.isInteger(dy)).toBe(true);
+    expect(dy).toBe(5);
+    expect(translated(2)).toBe(dy);
+    expect(translated(3)).toBe(dy);
+    for (const n of [0, 5]) expect(stepSlice(markup, n), `beat ${n}`).not.toContain('transform="translate(0 ');
+    expect(stepSlice(markup, 1)).toMatch(/transform="translate\(0 5\)"[\s\S]*data-pose=/);
+    expect(css).not.toMatch(/\[data-crouch\][^{]*\{[^}]*\}/);
     expect(css).toContain('--beat: 0.4s');
     expect(css).not.toContain('radial-gradient');
     expect(css).toContain('.art, .art * { animation: none !important; }');
+  });
+
+  it('the flash is a flat aura colour with no frame, glow, gradient or shadow', () => {
+    const rule = css.match(/\.sequence \[data-flash\] \{([^}]*)\}/)?.[1] ?? '';
+    expect(rule).toContain('background: #ff9a00');
+    expect(rule).not.toMatch(/border|gradient|shadow|glow/i);
+    expect(rule).not.toMatch(/#fff\b|#ffffff|#f2f4f7|#101112/i);
   });
 });
