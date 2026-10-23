@@ -41,8 +41,15 @@ export function useCRun() {
   const [rawDiagnostics, setRawDiagnostics] = useState('');
   const [result, setResult] = useState<(RunResult & { wallMs: number }) | null>(null);
   const handle = useRef<RunHandle | null>(null);
+  // The handle is assigned only after compile resolves, so stop() during compilation has nothing to kill.
+  // run(), stop() and reset() bump this. A stale continuation must not start a program or write state:
+  // kill() resolves `done` on a microtask, after the next run has already set its phase.
+  const generation = useRef(0);
   const mounted = useRef(true);
-  useEffect(() => () => { mounted.current = false; handle.current?.kill(); }, []);
+  // True from run() until the current run's compile returns (or is cancelled). stop() uses it to tell a compile
+  // in flight from "no program".
+  const compiling = useRef(false);
+  useEffect(() => () => { mounted.current = false; generation.current += 1; handle.current?.kill(); }, []);
 
   const append = useCallback((seg: Segment) => {
     setSegments(prev => {
@@ -54,13 +61,20 @@ export function useCRun() {
 
   const run = useCallback(async (req: RunRequest): Promise<RunSummary> => {
     const rt = getRuntime();
+    const id = ++generation.current;
+    const prev = handle.current;
+    handle.current = null;
+    prev?.kill();
     setSegments([]); setResult(null); setDiagnostics([]); setRawDiagnostics('');
     setPhase('compiling');
+    compiling.current = true;
     const compile = await rt.compile({
       files: req.files, sources: req.sources ?? Object.keys(req.files).filter(f => f.endsWith('.c')),
       guardrail: req.guardrail, leakcheck: req.leakcheck, extraFlags: req.extraFlags,
     });
-    if (!mounted.current) return { compile, stdout: '', stderr: '' };
+    // Cancelled or replaced while compiling. Do not start the program and do not write state.
+    if (!mounted.current || id !== generation.current) return { compile, stdout: '', stderr: '' };
+    compiling.current = false;
     setDiagnostics(compile.diagnostics);
     setRawDiagnostics(compile.raw);
     if (!compile.ok || !compile.wasm) { setPhase('done'); return { compile, stdout: '', stderr: '' }; }
@@ -74,13 +88,15 @@ export function useCRun() {
       args: ['main', ...(req.args ?? [])],
       cpuTimeoutMs: req.cpuTimeoutMs,
       onOutput: (fd, text) => {
+        if (id !== generation.current) return;
         if (fd === 1) stdout += text; else stderr += text;
         if (mounted.current) append({ kind: fd === 1 ? 'out' : 'err', text });
       },
-      onStdinRequest: () => { if (mounted.current) setPhase('waiting-input'); },
+      onStdinRequest: () => { if (mounted.current && id === generation.current) setPhase('waiting-input'); },
     });
     handle.current = h;
     const r = await h.done;
+    if (id !== generation.current) return { compile, result: r, stdout, stderr };
     handle.current = null;
     if (mounted.current) { setResult(r); setPhase('done'); }
     return { compile, result: r, stdout, stderr };
@@ -98,9 +114,39 @@ export function useCRun() {
     handle.current?.sendEOF();
   }, [append]);
 
-  const stop = useCallback(() => handle.current?.kill(), []);
+  const stop = useCallback(() => {
+    const h = handle.current;
+    if (!h) {
+      // No program: either a compile is in flight, or there is nothing to stop (idle, done, or a stop already
+      // killed the program and its continuation below will publish the result). Only the compile case bumps:
+      // a second stop() in the same task must not cancel the first stop's continuation, or the run stays 'running'.
+      if (!compiling.current) return;
+      compiling.current = false;
+      generation.current += 1;
+      // Still compiling: nothing else will leave this phase, and Run stays disabled while it does.
+      setPhase(p => (p === 'compiling' ? 'idle' : p));
+      return;
+    }
+    handle.current = null;
+    // Kill while this run is still current, so a decoder flush still reaches the terminal. The bump is next:
+    // kill() resolves `done` on a microtask, and that continuation must not write once the run is cancelled.
+    h.kill();
+    const mine = ++generation.current;
+    void h.done.then(r => {
+      if (!mounted.current || generation.current !== mine) return;
+      setResult(r);
+      setPhase('done');
+    });
+  }, []);
 
-  const reset = useCallback(() => { setSegments([]); setResult(null); setDiagnostics([]); setRawDiagnostics(''); setPhase('idle'); }, []);
+  const reset = useCallback(() => {
+    generation.current += 1;
+    compiling.current = false;
+    const h = handle.current;
+    handle.current = null;
+    h?.kill();
+    setSegments([]); setResult(null); setDiagnostics([]); setRawDiagnostics(''); setPhase('idle');
+  }, []);
 
   return { phase, segments, diagnostics, rawDiagnostics, result, run, sendInput, sendEOF, stop, reset };
 }

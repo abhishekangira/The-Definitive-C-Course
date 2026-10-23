@@ -38,7 +38,7 @@ describe('migrate', () => {
       settings: { platform: 'wsl', storedOutputMode: true, stdinMode: 'preset' },
       cards: { 'm01-l1': [0, 1, 2] },
       lessons: { 'm01-l1': { completedAt: at } },
-      samples: { s1: { prediction: 'x', correct: true, verdict: 'close', predict64: 'y', predict64Correct: false, predict64Verdict: 'wrong', at } satisfies Required<SampleProgress> },
+      samples: { s1: { prediction: 'x', correct: true, verdict: 'close', predict64: 'y', predict64Correct: false, predict64Verdict: 'wrong', cleared: true, at } satisfies Required<SampleProgress> },
       exercises: {
         e1: {
           attempts: 3, substantive: 2, lastCodeHash: 'abc', code: 'int main(void) { return 0; }', activeMs: 5, hintsViewed: 1, passed: true,
@@ -70,6 +70,37 @@ describe('migrate', () => {
     expect(sample64Verdict(kept.samples.s)).toBe('close');
     const text = JSON.stringify(kept);
     expect(parseProgressFile(text).samples.s).toEqual(kept.samples.s);
+  });
+
+  it('drops a sample whose at is not an ISO-8601 datetime or does not parse, and clamps one more than 24 hours ahead', () => {
+    const now = Date.parse('2026-06-15T12:00:00.000Z');
+    const cap = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+    const load = (atStamp: string) => migrate({
+      version: 1, seed: SEED,
+      samples: { s: { prediction: 'p', correct: true, verdict: 'close', predict64: '8', predict64Correct: false, predict64Verdict: 'wrong', cleared: true, at: atStamp } },
+    }, now);
+    const kept = { prediction: 'p', correct: true, verdict: 'close' as const, predict64: '8', predict64Correct: false, predict64Verdict: 'wrong' as const, cleared: true as const };
+    expect(load('9999').samples).toEqual({});
+    expect(load('not a date').samples).toEqual({});
+    // Date.parse accepts a date-only string. The import does not: it is not the form toISOString writes.
+    expect(load('2026-01-02').samples).toEqual({});
+    // The shape matches, but the calendar does not. Date.parse is NaN, and NaN would never lose a merge.
+    expect(load('2026-13-01T00:00:00Z').samples).toEqual({});
+    expect(load('2026-01-01T23:59:60Z').samples).toEqual({});
+    expect(load('2026-01-10T00:00:00Z').samples.s.at).toBe('2026-01-10T00:00:00Z');
+    expect(load('2026-01-01T22:00:00-05:00').samples.s.at).toBe('2026-01-01T22:00:00-05:00');
+    const ahead23 = new Date(now + 23 * 60 * 60 * 1000).toISOString();
+    expect(load(ahead23).samples.s).toEqual({ ...kept, at: ahead23 });
+    // Exactly +24h stays as written, including a spelling that is not what toISOString writes. One millisecond past is clamped.
+    expect(load(cap).samples.s).toEqual({ ...kept, at: cap });
+    expect(load('2026-06-16T12:00:00Z').samples.s).toEqual({ ...kept, at: '2026-06-16T12:00:00Z' });
+    expect(Date.parse('2026-06-16T07:00:00-05:00')).toBe(now + 24 * 60 * 60 * 1000);
+    expect(load('2026-06-16T07:00:00-05:00').samples.s).toEqual({ ...kept, at: '2026-06-16T07:00:00-05:00' });
+    const justOver = new Date(now + 24 * 60 * 60 * 1000 + 1).toISOString();
+    expect(load(justOver).samples.s).toEqual({ ...kept, at: cap });
+    const ahead25 = new Date(now + 25 * 60 * 60 * 1000).toISOString();
+    expect(load(ahead25).samples.s).toEqual({ ...kept, at: cap });
+    expect(load('2099-01-01T00:00:00.000Z').samples.s).toEqual({ ...kept, at: cap });
   });
 
   it('lowers a source count that was the number of code strings, and does not raise one', async () => {
@@ -196,11 +227,61 @@ describe('mergeProgress', () => {
     expect(mergeProgress(doc({ samples: { onlyB: exact } }), doc({ samples: { onlyA: close } })).samples.onlyA).toEqual(close);
   });
 
-  it('keeps the first document when both have the sample', () => {
-    const first = { prediction: 'a', correct: true, verdict: 'close' as const, at: '2026-01-01T00:00:00.000Z' };
+  it('keeps the sample with the later at, and the first document on a tie', () => {
+    const earlier = { prediction: 'a', correct: true, verdict: 'close' as const, at: '2026-01-01T00:00:00.000Z' };
     const later = { prediction: 'b', correct: true, verdict: 'exact' as const, at: '2026-06-01T00:00:00.000Z' };
-    expect(mergeProgress(doc({ samples: { s: first } }), doc({ samples: { s: later } })).samples.s).toEqual(first);
-    expect(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: first } })).samples.s).toEqual(later);
+    const cleared = { prediction: '', correct: false, cleared: true as const, at: '2026-07-01T00:00:00.000Z' };
+    const tie = { prediction: 'other', correct: false, verdict: 'wrong' as const, at: earlier.at };
+    expect(mergeProgress(doc({ samples: { s: earlier } }), doc({ samples: { s: later } })).samples.s).toEqual(later);
+    expect(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: earlier } })).samples.s).toEqual(later);
+    expect(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: cleared } })).samples.s).toEqual(cleared);
+    expect(mergeProgress(doc({ samples: { s: cleared } }), doc({ samples: { s: later } })).samples.s).toEqual(cleared);
+    expect(mergeProgress(doc({ samples: { s: earlier } }), doc({ samples: { s: tie } })).samples.s).toEqual(earlier);
+    expect(mergeProgress(doc({ samples: { s: tie } }), doc({ samples: { s: earlier } })).samples.s).toEqual(tie);
+  });
+
+  it('compares sample at as an instant, so a later time wins even when its string sorts first, and a tie keeps the first', () => {
+    const now = Date.parse('2026-06-15T12:00:00.000Z');
+    const load = (prediction: string, correct: boolean, atStamp: string) =>
+      migrate({ version: 1, seed: SEED, samples: { s: { prediction, correct, at: atStamp } } }, now);
+    // 22:00 at UTC-5 is 03:00Z the next day, later than 00:00Z, but the string starts "2026-01-01" and sorts first.
+    const earlier = load('earlier', true, '2026-01-02T00:00:00.000Z');
+    const laterOffset = load('later', true, '2026-01-01T22:00:00-05:00');
+    expect(laterOffset.samples.s.at < earlier.samples.s.at).toBe(true);
+    expect(Date.parse(laterOffset.samples.s.at)).toBeGreaterThan(Date.parse(earlier.samples.s.at));
+    expect(mergeProgress(earlier, laterOffset).samples.s).toEqual(laterOffset.samples.s);
+    expect(mergeProgress(laterOffset, earlier).samples.s).toEqual(laterOffset.samples.s);
+    // The no-milliseconds form is later in time than the January 2 stamp, whichever way the strings compare.
+    const jan2 = load('jan2', true, '2026-01-02T00:00:00.000Z');
+    const jan10 = load('jan10', true, '2026-01-10T00:00:00Z');
+    expect(mergeProgress(jan2, jan10).samples.s.prediction).toBe('jan10');
+    expect(mergeProgress(jan10, jan2).samples.s.prediction).toBe('jan10');
+    // Same instant, different spelling. "….000Z" sorts before "…Z" as text; the first document still wins.
+    const millis = load('millis', true, '2026-01-10T00:00:00.000Z');
+    const plain = load('plain', false, '2026-01-10T00:00:00Z');
+    expect(Date.parse(millis.samples.s.at)).toBe(Date.parse(plain.samples.s.at));
+    expect(millis.samples.s.at < plain.samples.s.at).toBe(true);
+    expect(mergeProgress(millis, plain).samples.s).toEqual(millis.samples.s);
+    expect(mergeProgress(plain, millis).samples.s).toEqual(plain.samples.s);
+  });
+
+  it('lets a later real stamp overtake a sample whose far-future at was clamped', () => {
+    const now = Date.parse('2026-06-15T12:00:00.000Z');
+    const cap = new Date(now + 24 * 60 * 60 * 1000).toISOString();
+    const cleared = { prediction: '', correct: false, cleared: true as const, verdict: 'wrong' as const, at: '2099-01-01T00:00:00.000Z' };
+    const loaded = migrate({ version: 1, seed: SEED, samples: { s: cleared } }, now);
+    expect(loaded.samples.s).toEqual({ ...cleared, at: cap });
+    // The clamped entry is still later than an older copy, so Predict again is not undone.
+    const older = doc({ samples: { s: { prediction: 'old', correct: true, verdict: 'exact', at: '2026-06-14T00:00:00.000Z' } } });
+    expect(mergeProgress(older, loaded).samples.s).toEqual(loaded.samples.s);
+    expect(mergeProgress(loaded, older).samples.s).toEqual(loaded.samples.s);
+    const laterNow = Date.parse('2026-06-18T12:00:00.000Z');
+    const freshAt = new Date(laterNow).toISOString();
+    const fresh = migrate({ version: 1, seed: SEED, samples: { s: { prediction: 'fresh', correct: true, verdict: 'exact', at: freshAt } } }, laterNow);
+    expect(fresh.samples.s.at).toBe(freshAt);
+    expect(Date.parse(freshAt)).toBeGreaterThan(Date.parse(cap));
+    expect(mergeProgress(loaded, fresh).samples.s).toEqual(fresh.samples.s);
+    expect(mergeProgress(fresh, loaded).samples.s).toEqual(fresh.samples.s);
   });
 
   it('does not mutate either input', () => {

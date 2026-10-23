@@ -81,15 +81,17 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const sample: SampleResult | undefined = samples?.samples[id];
   const progress = useProgress();
   const saved = progress.samples[id];
+  // A cleared entry is "Predict again": it stays in the document so a merge cannot bring the old prediction back, and the card looks unanswered.
+  const kept = saved && !saved.cleared ? saved : undefined;
   const markDone = useCardDone();
   const runner = useCRun();
-  const [prediction, setPrediction] = useState(saved?.prediction ?? '');
-  const [committed, setCommitted] = useState(Boolean(saved));
-  const [revealed, setRevealed] = useState(Boolean(saved));
+  const [prediction, setPrediction] = useState(kept?.prediction ?? '');
+  const [committed, setCommitted] = useState(Boolean(kept));
+  const [revealed, setRevealed] = useState(Boolean(kept));
   const [editing, setEditing] = useState(false);
   const [source, setSource] = useState(code);
-  const [p64, setP64] = useState(saved?.predict64 ?? '');
-  const [p64Done, setP64Done] = useState(saved?.predict64 !== undefined);
+  const [p64, setP64] = useState(kept?.predict64 ?? '');
+  const [p64Done, setP64Done] = useState(kept?.predict64 !== undefined);
   const native = sample ? nativeFor(sample, progress.settings.platform) : null;
   const edited = source !== code;
   const predictKind = meta.predict ?? 'output';
@@ -127,8 +129,43 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const submitP64 = () => {
     setP64Done(true);
     const verdict = verdictFor64(p64);
-    update(p => { const s = p.samples[id]; if (s) { s.predict64 = p64; s.predict64Correct = countsAsRight(verdict); s.predict64Verdict = verdict; } });
+    update(p => {
+      const s = p.samples[id];
+      if (s) { s.predict64 = p64; s.predict64Correct = countsAsRight(verdict); s.predict64Verdict = verdict; s.at = new Date().toISOString(); }
+    });
     markDone();
+  };
+
+  const changePrediction = () => {
+    setCommitted(false);
+  };
+
+  const predictAgain = () => {
+    // stop() kills the worker; reset() only sets the phase back to idle. The terminal (the only Stop control) unmounts
+    // with `revealed`, and the next run() would replace the handle without killing a program still waiting for stdin.
+    runner.stop();
+    runner.reset();
+    setPrediction('');
+    setCommitted(false);
+    setRevealed(false);
+    setEditing(false);
+    setSource(code);
+    setP64('');
+    setP64Done(false);
+    update(p => { p.samples[id] = { prediction: '', correct: false, cleared: true, at: new Date().toISOString() }; });
+  };
+
+  const predict64Again = () => {
+    setP64('');
+    setP64Done(false);
+    update(p => {
+      const s = p.samples[id];
+      if (!s) return;
+      delete s.predict64;
+      delete s.predict64Correct;
+      delete s.predict64Verdict;
+      s.at = new Date().toISOString();
+    });
   };
 
   if (!sample) {
@@ -195,9 +232,11 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
 
       {committed && (
         <div className={styles.actions}>
+          {predictKind !== 'none' && !revealed && <button type="button" className="btn" onClick={changePrediction}>Change prediction</button>}
           <button type="button" className="btn btn-primary" onClick={run} disabled={runner.phase === 'compiling' || runner.phase === 'running'}>
             {nativeOnly || storedMode ? 'Reveal the result' : revealed ? 'Run again' : 'Run'}
           </button>
+          {predictKind !== 'none' && revealed && <button type="button" className="btn" onClick={predictAgain}>Predict again</button>}
           {revealed && !nativeOnly && !storedMode && !editing && <button type="button" className="btn" onClick={() => setEditing(true)}>Edit and experiment</button>}
           {editing && edited && <button type="button" className="btn btn-ghost" onClick={() => setSource(code)}>Reset code</button>}
         </div>
@@ -262,6 +301,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
                 </div>
               )}
               {needs64 && p64Verdict && p64Verdict !== 'exact' && <OutputCompare predicted={p64} actual={native?.run?.stdout ?? ''} />}
+              {needs64 && p64Done && <button type="button" className="btn" onClick={predict64Again}>Predict the 64-bit output again</button>}
               <div className={styles.nativeLabel}>{TARGET_LABEL[native!.target]}{native!.fallback ? ' (stored; your platform’s run isn’t available yet)' : ' (stored output from a real run)'}</div>
               <pre className={styles.stored} data-stored-output>{storedOutputText(sample, native?.run)}</pre>
               <div className={styles.muted}>{describeOutcome(native?.run, sample.results[native!.target]?.compile.ok ?? true)}</div>
