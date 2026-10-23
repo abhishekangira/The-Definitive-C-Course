@@ -37,7 +37,7 @@ A classic C bug: `=` assigns, `==` compares. `if (x = 5)` *assigns* 5 to `x`, th
   explain="`-Wparentheses` flags an assignment used as a condition. Change `=` to `==`. If you really mean to assign and test, write `if ((x = f()) != 0)` to show it's deliberate."
 >
 
-```c id=assign-in-if expect=warning
+```c id=assign-in-if predict=none expect=warning
 #include <stdio.h>
 
 int main(void) {

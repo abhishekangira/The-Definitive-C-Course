@@ -13,15 +13,16 @@ interface LessonState {
   /** The module's native sessions (<Transcript>); null when it has none. */
   sessions: SessionsFile | null;
   completed: number[];
+  onPredictionShown?: (returnFocus: HTMLElement) => void;
 }
 
 const LessonCtx = createContext<LessonState | null>(null);
 const CardCtx = createContext<{ index: number; gated: boolean } | null>(null);
 
-export function LessonProvider({ lessonId, moduleId, samples, sessions = null, children }: { lessonId: string; moduleId: string; samples: SamplesFile | null; sessions?: SessionsFile | null; children: ReactNode }) {
+export function LessonProvider({ lessonId, moduleId, samples, sessions = null, onPredictionShown, children }: { lessonId: string; moduleId: string; samples: SamplesFile | null; sessions?: SessionsFile | null; onPredictionShown?: (returnFocus: HTMLElement) => void; children: ReactNode }) {
   const progress = useProgress();
   const completed = progress.cards[lessonId] ?? [];
-  const value = useMemo(() => ({ lessonId, moduleId, samples, sessions, completed }), [lessonId, moduleId, samples, sessions, completed]);
+  const value = useMemo(() => ({ lessonId, moduleId, samples, sessions, completed, onPredictionShown }), [lessonId, moduleId, samples, sessions, completed, onPredictionShown]);
   return <LessonCtx.Provider value={value}>{children}</LessonCtx.Provider>;
 }
 
@@ -88,3 +89,6 @@ export function Card({ index, gated, total, children }: { index: string | number
     </CardCtx.Provider>
   );
 }
+
+/** Called after a newly revealed prediction verdict is in the DOM, never at lock-in. */
+export function usePredictionShown(): ((returnFocus: HTMLElement) => void) | undefined { return useContext(LessonCtx)?.onPredictionShown; }

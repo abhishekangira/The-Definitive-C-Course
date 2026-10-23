@@ -28,7 +28,7 @@ vi.mock('../../lesson/LessonContext', () => ({
     createElement('div', { 'data-samples': samples.module, 'data-sessions': sessions.module }, children),
 }));
 vi.mock('../../progress/gating', () => ({ isModuleUnlocked: () => true, moduleStatus: () => ({ retrievalDone: true }) }));
-vi.mock('../../progress/store', () => ({ useProgress: () => ({ settings: { storedOutputMode: true }, lessons: {} }) }));
+vi.mock('../../progress/store', async importOriginal => ({ ...(await importOriginal<typeof import('../../progress/store')>()), useProgress: () => ({ settings: { storedOutputMode: true }, lessons: {}, samples: {} }) }));
 vi.mock('../../components/CodeEditor', () => ({ preloadCodeEditor: () => {} }));
 vi.mock('../../runtime/CRuntime', () => ({ getRuntime: () => ({ prefetch: () => {} }) }));
 vi.mock('../../tutor/settings', () => ({ useTutorSettings: () => ({}) }));

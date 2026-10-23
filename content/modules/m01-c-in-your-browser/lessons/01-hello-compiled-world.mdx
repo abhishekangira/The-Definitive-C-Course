@@ -73,7 +73,7 @@ Compiler messages are precise, even pedantic. Here is a one-character mistake. R
   explain="C statements end with `;`. Clang even suggests the fix: the `;` under the caret is a **fix-it hint**. Notice it points at the *end* of the line where it expected the semicolon, not at the line after."
 >
 
-```c id=missing-semicolon expect=compile-error
+```c id=missing-semicolon predict=none expect=compile-error
 #include <stdio.h>
 
 int main(void) {

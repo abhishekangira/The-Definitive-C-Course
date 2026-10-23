@@ -569,11 +569,11 @@ describe('component props', () => {
   });
 
   it('needs a program in CompilerError that produces a message', () => {
-    const noMessage = lintGoodWith({ [lesson]: sub('```c id=fx-missing-semicolon expect=compile-error', '```c id=fx-missing-semicolon') }).result;
+    const noMessage = lintGoodWith({ [lesson]: sub('```c id=fx-missing-semicolon predict=none expect=compile-error', '```c id=fx-missing-semicolon') }).result;
     expect(errorsOf(noMessage, 'interaction-props')[0].message).toContain('expect=compile-error or expect=warning');
-    const warns = lintGoodWith({ [lesson]: sub('```c id=fx-missing-semicolon expect=compile-error', '```c id=fx-missing-semicolon warn=-Wformat') }).result;
+    const warns = lintGoodWith({ [lesson]: sub('```c id=fx-missing-semicolon predict=none expect=compile-error', '```c id=fx-missing-semicolon warn=-Wformat') }).result;
     expect(errorsOf(warns, 'interaction-props')).toEqual([]);
-    const none = lintGoodWith({ [lesson]: sub(/```c id=fx-missing-semicolon expect=compile-error[\s\S]*?<\/CompilerError>/, '</CompilerError>') }).result;
+    const none = lintGoodWith({ [lesson]: sub(/```c id=fx-missing-semicolon predict=none expect=compile-error[\s\S]*?<\/CompilerError>/, '</CompilerError>') }).result;
     expect(errorsOf(none, 'interaction-props')[0].message).toContain('needs a nested');
   });
 
@@ -1308,5 +1308,18 @@ describe('report', () => {
       const b: LintMessage = all[i];
       expect(a.file.localeCompare(b.file) || a.line - b.line).toBeLessThanOrEqual(0);
     }
+  });
+});
+
+describe('nested prediction inventory', () => {
+  it('requires predict=none on consumed fences, with a source location', () => {
+    const result = lintGoodWith({ [`${M1}/lessons/01-hello.mdx`]: sub('id=fx-missing-semicolon predict=none', 'id=fx-missing-semicolon predict=output') }).result;
+    const errors = errorsOf(result, 'nested-predict');
+    expect(errors).toHaveLength(1); expect(errors[0].file).toContain('01-hello.mdx'); expect(errors[0].line).toBeGreaterThan(1);
+    expect(errors[0].message).toContain('prediction widget is never rendered');
+  });
+  it('rejects an unanswerable native prediction inside a consumed fence', () => {
+    const result = lintGoodWith({ [`${M1}/lessons/01-hello.mdx`]: sub('id=fx-missing-semicolon predict=none', 'id=fx-missing-semicolon predict=none platform predict64="Native?"') }).result;
+    expect(errorsOf(result, 'nested-predict')).toHaveLength(1);
   });
 });

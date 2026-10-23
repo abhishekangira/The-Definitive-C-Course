@@ -1,12 +1,12 @@
 // PR: predict-before-run. The learner commits to a prediction, then Run unlocks.
 // Expected answers come from src/generated/samples (tools/verify ran this exact code).
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { SampleMeta, SampleResult } from '../content-model/types';
 import { CodeEditor } from '../components/CodeEditor';
 import { Terminal } from '../components/Terminal';
 import { DiagnosticsList } from '../components/DiagnosticsList';
 import { useCRun } from '../runtime/useCRun';
-import { useCardDone, useSamples } from '../lesson/LessonContext';
+import { useCardDone, usePredictionShown, useSamples } from '../lesson/LessonContext';
 import { update, useProgress } from '../progress/store';
 import { PlatformPicker } from './PlatformPicker';
 import { applyMatch, describeOutcome, nativeFor, normOutput, outputDiff, predictionVerdict, storedOutputText, TARGET_LABEL, type DiffRow, type PredictionVerdict } from './platform';
@@ -84,6 +84,14 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   // A cleared entry is "Predict again": it stays in the document so a merge cannot bring the old prediction back, and the card looks unanswered.
   const kept = saved && !saved.cleared ? saved : undefined;
   const markDone = useCardDone();
+  const predictionShown = usePredictionShown();
+  const box = useRef<HTMLDivElement>(null);
+  const runButton = useRef<HTMLButtonElement>(null);
+  const reset64Button = useRef<HTMLButtonElement>(null);
+  const pendingReveal = useRef<'run' | '64' | null>(null);
+  const generation = useRef(0);
+  const [revealTick, setRevealTick] = useState(0);
+  useEffect(() => () => { generation.current++; }, []);
   const runner = useCRun();
   const [prediction, setPrediction] = useState(kept?.prediction ?? '');
   const [committed, setCommitted] = useState(Boolean(kept));
@@ -92,6 +100,15 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const [source, setSource] = useState(code);
   const [p64, setP64] = useState(kept?.predict64 ?? '');
   const [p64Done, setP64Done] = useState(kept?.predict64 !== undefined);
+  // Wait for a DOM commit after the run settles (or an immediate stored/native reveal). The 64-bit
+  // submit button disappears, so focus goes to its newly mounted reset button instead.
+  useEffect(() => {
+    if (!pendingReveal.current) return;
+    const target = pendingReveal.current === '64' ? reset64Button.current : runButton.current;
+    pendingReveal.current = null;
+    const focus = target?.isConnected && !target.disabled ? target : box.current;
+    if (focus) predictionShown?.(focus);
+  }, [revealTick, predictionShown]);
   const native = sample ? nativeFor(sample, progress.settings.platform) : null;
   const edited = source !== code;
   const predictKind = meta.predict ?? 'output';
@@ -121,12 +138,18 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   };
 
   const run = async () => {
+    const firstReveal = !revealed && predictKind !== 'none';
+    const mine = ++generation.current;
     setRevealed(true);
     if (!nativeOnly && !storedMode) await runner.run({ files: { 'main.c': source }, stdin: meta.stdin ?? (edited ? undefined : ''), args: meta.args, guardrail: meta.guardrail });
+    if (mine !== generation.current) return; // reset, unmount or a replacement run
+    if (firstReveal) { pendingReveal.current = 'run'; setRevealTick(t => t + 1); }
     if (!sample?.flagged || !sample.meta.predict64 || sample.meta.predict64 === 'none') markDone();
   };
 
   const submitP64 = () => {
+    pendingReveal.current = '64';
+    setRevealTick(t => t + 1);
     setP64Done(true);
     const verdict = verdictFor64(p64);
     update(p => {
@@ -141,6 +164,8 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   };
 
   const predictAgain = () => {
+    generation.current++;
+    pendingReveal.current = null;
     // stop() cancels compilation or kills the running program before the terminal unmounts. reset() also cancels
     // pending work and kills any remaining handle, then clears the terminal state and returns the phase to idle.
     runner.stop();
@@ -182,7 +207,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const p64Verdict = p64Done ? verdictFor64(p64) : null;
 
   return (
-    <div className={styles.box} data-interaction="predict" data-sample={id}>
+    <div ref={box} tabIndex={-1} className={styles.box} data-interaction="predict" data-sample={id}>
       <div className={styles.kicker}>{nativeOnly ? 'Predict, then reveal' : 'Predict, then run'}</div>
       <CodeEditor value={source} onChange={setSource} readOnly={!editing} label={`Code sample ${id}`} diagnostics={runner.diagnostics} />
       {meta.stdin !== undefined && (
@@ -233,7 +258,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
       {committed && (
         <div className={styles.actions}>
           {predictKind !== 'none' && !revealed && <button type="button" className="btn" onClick={changePrediction}>Change prediction</button>}
-          <button type="button" className="btn btn-primary" onClick={run} disabled={runner.phase === 'compiling' || runner.phase === 'running'}>
+          <button ref={runButton} type="button" className="btn btn-primary" onClick={run} disabled={runner.phase === 'compiling' || runner.phase === 'running'}>
             {nativeOnly || storedMode ? 'Reveal the result' : revealed ? 'Run again' : 'Run'}
           </button>
           {predictKind !== 'none' && revealed && <button type="button" className="btn" onClick={predictAgain}>Predict again</button>}
@@ -301,7 +326,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
                 </div>
               )}
               {needs64 && p64Verdict && p64Verdict !== 'exact' && <OutputCompare predicted={p64} actual={native?.run?.stdout ?? ''} />}
-              {needs64 && p64Done && <button type="button" className="btn" onClick={predict64Again}>Predict the 64-bit output again</button>}
+              {needs64 && p64Done && <button ref={reset64Button} type="button" className="btn" onClick={predict64Again}>Predict the 64-bit output again</button>}
               <div className={styles.nativeLabel}>{TARGET_LABEL[native!.target]}{native!.fallback ? ' (stored; your platform’s run isn’t available yet)' : ' (stored output from a real run)'}</div>
               <pre className={styles.stored} data-stored-output>{storedOutputText(sample, native?.run)}</pre>
               <div className={styles.muted}>{describeOutcome(native?.run, sample.results[native!.target]?.compile.ok ?? true)}</div>

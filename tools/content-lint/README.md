@@ -77,6 +77,7 @@ is measured on the cards learners see: a fence that has an `id` ends a card, a `
 | `fence-nesting` | warning | A sample fence inside a list or blockquote is not a card interaction. |
 | `sample-id` | error | Sample ids are lower-case kebab-case (they name generated files). |
 | `duplicate-sample` | error | Sample ids are unique across the whole course (lessons and quiz code together). |
+| `nested-predict` | error | A fence consumed by `CompilerError`, `MemoryDiagram`, `Stepper` or `PipelineExplorer` must use `predict=none` and no 64-bit question: the component never renders its prediction widget. |
 | `predict-before-run` | error | A top-level `id` fence is predict-before-run: `predict=none` / `run` is only allowed for fences nested in a component (`<Stepper>`, `<CompilerError>`, `<PipelineExplorer>`, `<MemoryDiagram>`…) or in a quiz item type that has no prediction. |
 | `ub-prediction` | error | A sample with `expect=ub` (also `expect.gcc=ub`…) must not ask for its exact output: use `predict=outcome` or `choices=…` (PLAN §3.4). |
 | `platform-predict64` | error | `platform` needs `predict64="…"` or `predict64=none reason="…"`; `predict64` needs `platform` (PLAN §3.2). |

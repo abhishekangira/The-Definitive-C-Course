@@ -93,7 +93,7 @@
       "meta": {
         "expect": "warning",
         "id": "assign-in-if",
-        "predict": "output"
+        "predict": "none"
       },
       "module": "m01",
       "results": {
@@ -1383,7 +1383,7 @@
       "meta": {
         "expect": "compile-error",
         "id": "missing-paren",
-        "predict": "output"
+        "predict": "none"
       },
       "module": "m01",
       "results": {
@@ -1551,7 +1551,7 @@
       "meta": {
         "expect": "compile-error",
         "id": "missing-semicolon",
-        "predict": "output"
+        "predict": "none"
       },
       "module": "m01",
       "results": {
@@ -2247,7 +2247,7 @@
       "meta": {
         "expect": "compile-error",
         "id": "typo-identifier",
-        "predict": "output"
+        "predict": "none"
       },
       "module": "m01",
       "results": {

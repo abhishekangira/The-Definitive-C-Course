@@ -176,12 +176,20 @@ export async function completePredict(mod: ModuleInfo, box: Locator): Promise<vo
     }
   }
   if (kind !== 'none') await expect(box.getByText('Your prediction was right.', { exact: true })).toBeVisible();
+  await dismissPerfectLesson(box.page());
   if (s.flagged && s.meta.predict64 && s.meta.predict64 !== 'none') {
     const native = nativeFor(s, undefined);
     await box.locator('textarea').last().fill(normOutput(native.run?.stdout ?? ''));
     await box.getByRole('button', { name: 'Check my 64-bit prediction' }).click();
     await expect(box.getByText('Right for 64-bit too.', { exact: true })).toBeVisible();
+    await dismissPerfectLesson(box.page());
   }
+}
+
+async function dismissPerfectLesson(page: Page): Promise<void> {
+  const overlay = page.getByRole('dialog', { name: 'Perfect lesson!', exact: true });
+  const appeared = await overlay.waitFor({ state: 'visible', timeout: 500 }).then(() => true, () => false);
+  if (appeared) { await page.keyboard.press('Escape'); await expect(overlay).toBeHidden(); }
 }
 
 /** Authored multiple choice: answer, read which option the page marks correct, and answer again. */

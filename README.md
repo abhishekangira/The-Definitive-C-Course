@@ -50,6 +50,7 @@ The course has 13 modules and a capstone (about 200 hours, or 40 weeks at 5 hour
 - **Variants** let you prove you have mastered an exercise rather than memorised it.
 - **Checkpoints** run in assessment mode: no hints, no solutions, one transfer question.
 - **Spaced retrieval quizzes** bring earlier modules back.
+- **Perfect lessons** track lessons where every prediction is exact, with a short Rio power-up celebration. Predict again to improve an answer; the count follows your current predictions.
 
 ### Interactive visualizers
 Step through a program line by line with real debugger traces, explore the compiler pipeline stage by stage, draw memory diagrams, hit **compiler-error drills**, practise number-base conversion, and play with a number playground. Later modules add visualizers for lists, trees, hash tables, a tiny CPU and a cache simulator.

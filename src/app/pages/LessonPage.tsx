@@ -5,11 +5,13 @@ import { lessonLoader, moduleById, samplesFor, sessionsFor } from '../../content
 import { mdxComponents } from '../../content-runtime/mdx-components';
 import { LessonProvider } from '../../lesson/LessonContext';
 import { isModuleUnlocked, moduleStatus } from '../../progress/gating';
-import { useProgress } from '../../progress/store';
+import { getProgress, useProgress } from '../../progress/store';
 import type { SamplesFile, SessionsFile } from '../../content-model/types';
 import { preloadCodeEditor } from '../../components/CodeEditor';
 import { getRuntime } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
+import { lessonPredictionStats } from '../../progress/perfect';
+import { claimPerfectLesson, PerfectLesson } from '../../components/PerfectLesson';
 import { Cells } from '../../components/Cells';
 import { LESSON_CHAT_ID, LessonChat, type LessonChatHandle } from '../../tutor/LessonChat';
 import { lessonTextFrom } from '../../tutor/lessonText';
@@ -21,10 +23,22 @@ import styles from './Pages.module.css';
 export function LessonPage() {
   const { moduleId = '', lessonStem = '' } = useParams();
   const m = moduleById(moduleId);
+  const [celebrating, setCelebrating] = useState<{ id: string; returnFocus: HTMLElement } | null>(null);
+  const closePerfect = useCallback(() => setCelebrating(null), []);
   const progress = useProgress();
   const [Lesson, setLesson] = useState<ComponentType<{ components?: Record<string, unknown> }> | null>(null);
   const [samples, setSamples] = useState<SamplesFile | null | undefined>(undefined);
   const [sessions, setSessions] = useState<SessionsFile | null | undefined>(undefined);
+  const currentLesson = m?.lessons.find(l => l.stem === lessonStem);
+  const latest = useRef({ samples, lessonStem, id: currentLesson?.frontmatter.id });
+  latest.current = { samples, lessonStem, id: currentLesson?.frontmatter.id };
+  const predictionShown = useCallback((returnFocus: HTMLElement) => {
+    const value = latest.current;
+    if (value.id && lessonPredictionStats(value.samples ?? null, value.lessonStem, getProgress()).perfect && claimPerfectLesson(value.id)) {
+      setCelebrating({ id: value.id, returnFocus });
+    }
+  }, []);
+  useEffect(() => { setCelebrating(null); }, [moduleId, lessonStem]);
   const storedMode = Boolean(progress.settings.storedOutputMode);
   // The lesson chat and the highlight toolbar exist only for a learner who has set the tutor up.
   const tutorOn = Boolean(useTutorSettings().apiKey);
@@ -66,6 +80,8 @@ export function LessonPage() {
   const prev = m.lessons[idx - 1];
   const next = m.lessons[idx + 1];
   const done = Boolean(progress.lessons[lesson.frontmatter.id]);
+  const stats = lessonPredictionStats(samples ?? null, lessonStem, progress);
+  const perfectOpen = celebrating?.id === lesson.frontmatter.id;
 
   const label = m.meta.number === 'cap' ? 'Capstone' : `Module ${m.meta.number}`;
   const doneCount = m.lessons.filter(l => progress.lessons[l.frontmatter.id]).length;
@@ -88,7 +104,7 @@ export function LessonPage() {
           <p className={styles.meta}>Lesson {idx + 1} of {m.lessons.length} · {lesson.frontmatter.minutes} min</p>
         </div>
         {Lesson && samples !== undefined && sessions !== undefined ? (
-          <LessonProvider lessonId={lesson.frontmatter.id} moduleId={moduleId} samples={samples} sessions={sessions}>
+          <LessonProvider lessonId={lesson.frontmatter.id} moduleId={moduleId} samples={samples} sessions={sessions} onPredictionShown={predictionShown}>
             <MDXProvider components={mdxComponents}>
               <div ref={prose} className={styles.prose}><Lesson components={mdxComponents} /></div>
             </MDXProvider>
@@ -96,6 +112,7 @@ export function LessonPage() {
         ) : <p>Loading lesson…</p>}
         <footer className={styles.lessonFooter}>
           {done ? <p className={styles.okBox}>Lesson complete.</p> : <p className={styles.muted}>Finish each part to reveal the next one.</p>}
+          {done && samples && stats.total > 0 && <p data-prediction-count="">{stats.right} of {stats.total} prediction{stats.total === 1 ? '' : 's'} right</p>}
           <div className={styles.pager}>
             {prev ? <Link className="btn" to={`/m/${moduleId}/${prev.stem}`}><Icon name="arrow-left" /> {prev.frontmatter.title}</Link> : <span />}
             {next ? (
@@ -128,6 +145,7 @@ export function LessonPage() {
           <span className={styles.nextCount}>{doneCount} of {m.lessons.length} lessons</span>
         </div>
       </aside>
+      {perfectOpen && <PerfectLesson title={lesson.frontmatter.title} returnFocus={celebrating!.returnFocus} onClose={closePerfect} />}
       {tutorOn && (
         <>
           <SelectionToolbar container={prose} onAction={(action, quote) => { setChatOpen(true); chat.current?.ask(action, quote); }} />

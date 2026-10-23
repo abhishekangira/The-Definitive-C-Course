@@ -69,7 +69,7 @@ Some compilers let you write a binary literal such as `0b101`. It is not part of
   explain="`0b101` compiles and means 5, but the standard language does not have it, so a portable program must not rely on it. Write `0x5` (or `5`) instead. The compilers disagree on the flag name, but all of them report it."
 >
 
-```c id=binary-literal expect=warning warn.clang=-Wc23-extensions warn.wasm=-Wc23-extensions
+```c id=binary-literal predict=none expect=warning warn.clang=-Wc23-extensions warn.wasm=-Wc23-extensions
 #include <stdio.h>
 
 int main(void) {

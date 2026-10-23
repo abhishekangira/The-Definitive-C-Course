@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
+import type { SamplesFile } from '../../content-model/types';
+import { lessonPredictionStats } from '../../progress/perfect';
 import { Link, Navigate, useParams } from 'react-router';
-import { moduleById, quizFor, exercises } from '../../content-runtime/course';
+import { moduleById, quizFor, exercises, samplesFor } from '../../content-runtime/course';
 import { isCheckpointUnlocked, isLessonComplete, isModuleUnlocked, moduleStatus } from '../../progress/gating';
 import { useProgress } from '../../progress/store';
 import { Exercise } from '../../interactions/Exercise';
@@ -22,6 +25,14 @@ function StepMark({ state }: { state: StepState }) {
 export function ModulePage() {
   const { moduleId = '' } = useParams();
   const m = moduleById(moduleId);
+  const [loaded, setLoaded] = useState<{ id: string; samples: SamplesFile | null; failed?: boolean } | null>(null);
+  useEffect(() => {
+    let live = true;
+    void samplesFor(moduleId).then(samples => { if (live) setLoaded({ id: moduleId, samples }); })
+      .catch(() => { if (live) setLoaded({ id: moduleId, samples: null, failed: true }); });
+    return () => { live = false; };
+  }, [moduleId]);
+  const samples = loaded?.id === moduleId ? loaded.samples : null;
   const progress = useProgress();
   if (!m) return <Navigate to="/" replace />;
   if (!isModuleUnlocked(progress, moduleId)) {
@@ -77,6 +88,7 @@ export function ModulePage() {
               <StepMark state={lessonsState} />
               <div className={`${styles.stepMain} ${styles.stepWide}`}>
                 <div className={styles.stepHead}><span>Lessons</span><span className="badge">{st.lessonsDone}/{st.lessonsTotal}</span></div>
+                {loaded?.id === moduleId && loaded.failed && <p>Perfect lesson marks unavailable. Reload to try again.</p>}
                 <ol className={styles.lessonList}>
                   {m.lessons.map((l, i) => {
                     const done = isLessonComplete(progress, l.frontmatter.id);
@@ -85,12 +97,12 @@ export function ModulePage() {
                         {st.retrievalDone ? (
                           <Link to={`/m/${moduleId}/${l.stem}`} className={styles.lessonLink}>
                             <span className={styles.lessonNo}>{i + 1}</span>
-                            <span className={styles.lessonTitle}>{l.frontmatter.title}</span>
+                            <span className={styles.lessonTitle}>{l.frontmatter.title}{lessonPredictionStats(samples, l.stem, progress).perfect && <span className={styles.perfectMark}><Icon name="flame" label="Perfect lesson" /></span>}</span>
                             <span className={styles.lessonMeta}>{l.frontmatter.minutes} min {done ? <span className="badge badge-ok">done</span> : firstOpen?.stem === l.stem ? <span className="badge badge-accent">next</span> : null}</span>
                           </Link>
                         ) : (
                           <span className={`${styles.lessonLink} ${styles.lessonOff}`} aria-disabled="true">
-                            <span className={styles.lessonNo}>{i + 1}</span><span className={styles.lessonTitle}>{l.frontmatter.title}</span><span className={styles.lessonMeta}>{l.frontmatter.minutes} min</span>
+                            <span className={styles.lessonNo}>{i + 1}</span><span className={styles.lessonTitle}>{l.frontmatter.title}{lessonPredictionStats(samples, l.stem, progress).perfect && <span className={styles.perfectMark}><Icon name="flame" label="Perfect lesson" /></span>}</span><span className={styles.lessonMeta}>{l.frontmatter.minutes} min</span>
                           </span>
                         )}
                       </li>
