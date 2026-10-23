@@ -1,6 +1,6 @@
 // PR: predict-before-run. The learner commits to a prediction, then Run unlocks.
 // Expected answers come from src/generated/samples (tools/verify ran this exact code).
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import type { SampleMeta, SampleResult } from '../content-model/types';
 import { CodeEditor } from '../components/CodeEditor';
 import { Terminal } from '../components/Terminal';
@@ -11,7 +11,7 @@ import { update, useProgress } from '../progress/store';
 import { PlatformPicker } from './PlatformPicker';
 import { applyMatch, describeOutcome, nativeFor, normOutput, outputDiff, predictionVerdict, storedOutputText, TARGET_LABEL, type DiffRow, type PredictionVerdict } from './platform';
 import { Mark } from '../components/Icon';
-import { onCompareCopy } from './compareCopy';
+import { listenForCopy, onCompareCopy } from './compareCopy';
 import styles from './Interaction.module.css';
 
 const OUTCOMES = [
@@ -64,6 +64,9 @@ function CompareColumn({ label, which, rows, empty }: { label: string; which: 'p
 /** The two labelled boxes. They sit outside the role=status verdict so a screen reader announces the verdict, not the output. */
 function OutputCompare({ predicted, actual }: { predicted: string; actual: string }) {
   const diff = outputDiff(predicted, actual);
+  // A selection that crosses a box edge (label into box, box into box, Ctrl+A) is not a box's own copy event.
+  // One document listener while any compare is mounted (counted, so one unmount does not remove it for the rest).
+  useEffect(() => listenForCopy(document), []);
   return (
     <div className={styles.compare}>
       <CompareColumn label="You predicted" which="predicted" rows={diff.predicted} empty={diff.predictedEmpty} />

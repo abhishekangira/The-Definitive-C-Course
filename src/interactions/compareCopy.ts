@@ -32,3 +32,71 @@ export function onCompareCopy(e: { currentTarget: Element; clipboardData: DataTr
   e.clipboardData.setData('text/plain', text);
   e.preventDefault();
 }
+
+/** The browser's own text for `range` (layout-aware, as a copy would give), read through the selection. */
+function nativeText(sel: Selection, range: Range): string {
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return sel.toString();
+}
+
+/**
+ * Copy text for a selection that crosses a compare box's edge (from its label into it, from one box into the
+ * other, or Ctrl+A): the browser's text outside the boxes, and {@link compareCopyText} for the part of each box
+ * the selection covers, one box per line. Returns null when the selection touches no box or sits inside one box
+ * (the box's own onCopy handles that). Restores the selection, direction included.
+ */
+export function selectionCopyText(doc: Document): string | null {
+  const sel = doc.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  const range = sel.getRangeAt(0);
+  const boxes = [...doc.querySelectorAll('pre[data-compare]')].filter(b => range.intersectsNode(b));
+  if (boxes.length === 0 || (boxes.length === 1 && boxes[0].contains(range.commonAncestorContainer))) return null;
+  const { anchorNode, anchorOffset, focusNode, focusOffset } = sel;
+  const parts: string[] = [];
+  const push = (t: string) => { const s = t.replace(/^\n+|\n+$/g, ''); if (s !== '') parts.push(s); };
+  try {
+    let from = range.cloneRange();
+    from.collapse(true);
+    for (const box of boxes) {
+      const inBox = doc.createRange();
+      inBox.selectNodeContents(box);
+      if (range.compareBoundaryPoints(Range.START_TO_START, inBox) > 0) inBox.setStart(range.startContainer, range.startOffset);
+      if (range.compareBoundaryPoints(Range.END_TO_END, inBox) < 0) inBox.setEnd(range.endContainer, range.endOffset);
+      const before = from.cloneRange();
+      before.setEndBefore(box);
+      // setEndBefore collapses `before` when the selection starts inside this box.
+      if (!before.collapsed) push(nativeText(sel, before));
+      const t = compareCopyText(box, inBox);
+      if (t !== null) parts.push(t);
+      from = doc.createRange();
+      from.setStartAfter(box);
+    }
+    const after = from.cloneRange();
+    if (range.compareBoundaryPoints(Range.START_TO_END, after) > 0) { // this range's end against after's start
+      after.setEnd(range.endContainer, range.endOffset);
+      push(nativeText(sel, after));
+    }
+  } finally {
+    if (anchorNode && focusNode) sel.setBaseAndExtent(anchorNode, anchorOffset, focusNode, focusOffset);
+  }
+  return parts.join('\n');
+}
+
+/** Document copy listener for {@link selectionCopyText}. Leaves a copy already handled (a box's onCopy) alone. */
+export function onDocumentCopy(e: ClipboardEvent): void {
+  if (e.defaultPrevented || !e.clipboardData) return;
+  const doc = (e.target instanceof Node ? e.target.ownerDocument : null) ?? document;
+  const text = selectionCopyText(doc);
+  if (text === null) return;
+  e.clipboardData.setData('text/plain', text);
+  e.preventDefault();
+}
+
+let listeners = 0;
+
+/** Adds {@link onDocumentCopy} while at least one compare is mounted. Returns the matching remove. */
+export function listenForCopy(doc: Document): () => void {
+  if (listeners++ === 0) doc.addEventListener('copy', onDocumentCopy);
+  return () => { if (--listeners === 0) doc.removeEventListener('copy', onDocumentCopy); };
+}

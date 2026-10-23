@@ -217,6 +217,25 @@ describe('outputDiff', () => {
     expect(d.actual[1].chunks).toEqual([{ text: line('Q'), mark: true }]);
   });
 
+  it('does not give the rest of the budget to a later smaller pair once one pair did not fit', () => {
+    // 1,000 × 1,000 = 1,000,000 cells fits and leaves 3,000,000. 2,000 × 2,000 = 4,000,000 does not fit, so the
+    // budget goes to 0, and the 3-character pair after it is marked whole although 9 cells would fit the remainder.
+    const d = outputDiff(`${'a'.repeat(999)}X\n${'b'.repeat(1999)}P\nabc`, `${'a'.repeat(999)}Y\n${'b'.repeat(1999)}Q\nabd`);
+    expect(d.predicted[0].chunks.filter(c => c.mark).map(c => c.text)).toEqual(['X']);
+    expect(d.predicted[1].chunks).toEqual([{ text: `${'b'.repeat(1999)}P`, mark: true }]);
+    expect(d.predicted[2].chunks).toEqual([{ text: 'abc', mark: true }]);
+    expect(d.actual[2].chunks).toEqual([{ text: 'abd', mark: true }]);
+  });
+
+  it('a pair over 2,000 characters is marked whole without spending the character budget', () => {
+    // 2,001 × 2,001 would be more than the whole budget. It is marked whole by the per-pair cap, and the
+    // 2,000 × 2,000 pair after it (exactly the budget) still gets a character diff.
+    const d = outputDiff(`${'c'.repeat(2000)}X\n${'a'.repeat(1999)}P`, `${'c'.repeat(2000)}Y\n${'a'.repeat(1999)}Q`);
+    expect(d.predicted[0].chunks).toEqual([{ text: `${'c'.repeat(2000)}X`, mark: true }]);
+    expect(d.predicted[1].chunks.filter(c => c.mark).map(c => c.text)).toEqual(['P']);
+    expect(d.actual[1].chunks.filter(c => c.mark).map(c => c.text)).toEqual(['Q']);
+  });
+
   it('stays bounded across many long lines: 4N lines is not N times a character LCS', () => {
     // Every line differs and is 2,000 characters, so each pair would be a full character LCS. The shared
     // budget pays for one pair and marks the rest whole, so 4N stays in the same band as N. Best of 3.

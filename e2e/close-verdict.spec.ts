@@ -209,6 +209,48 @@ test('the empty-line note is shown, a blank row is one line tall, and copying ei
   await expectAccessible(page, 'empty-line note');
 });
 
+test('a selection that crosses a box edge, or Ctrl+A, still copies the blank line and no gap rows', async ({ page }) => {
+  page.on('pageerror', e => { throw e; });
+  const box = await openSample(page);
+  await box.locator('textarea').fill('3 -3 1\n\n3.5\nextra');
+  await box.getByRole('button', { name: 'Lock in my prediction' }).click();
+  await box.getByRole('button', { name: 'Run', exact: true }).click();
+  await expect(box.getByText(/^(Program exited with status|Program crashed|Stopped)/).first()).toBeVisible({ timeout: RUN_TIMEOUT });
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  const copy = async (how: 'label' | 'forward' | 'backward' | 'all') => {
+    await page.evaluate(() => navigator.clipboard.writeText('(clipboard not written)'));
+    if (how === 'all') {
+      await box.locator('[data-compare="predicted"]').click();
+      await page.keyboard.press('ControlOrMeta+A');
+    } else {
+      await page.evaluate(how => {
+        const p = document.querySelector('[data-compare="predicted"]')!;
+        const a = document.querySelector('[data-compare="actual"]')!;
+        const label = document.getElementById(p.getAttribute('aria-labelledby')!)!;
+        const sel = getSelection()!;
+        if (how === 'label') sel.setBaseAndExtent(label.firstChild!, 0, p, p.childNodes.length);
+        if (how === 'forward') sel.setBaseAndExtent(p.firstChild!, 0, a, a.childNodes.length);
+        if (how === 'backward') sel.setBaseAndExtent(a, a.childNodes.length, p.firstChild!, 0);
+      }, how);
+    }
+    const before = await page.evaluate(() => { const s = getSelection()!; return [s.anchorNode?.nodeName, s.anchorOffset, s.focusNode?.nodeName, s.focusOffset, s.toString()]; });
+    await page.keyboard.press('ControlOrMeta+C');
+    // The handler reads other ranges through the selection; the learner's selection (direction too) is put back.
+    expect(await page.evaluate(() => { const s = getSelection()!; return [s.anchorNode?.nodeName, s.anchorOffset, s.focusNode?.nodeName, s.focusOffset, s.toString()]; })).toEqual(before);
+    return page.evaluate(() => navigator.clipboard.readText());
+  };
+  expect(await copy('label')).toBe('You predicted\n3 -3 1\n\n3.5\nextra');
+  expect(await copy('forward')).toBe('3 -3 1\n\n3.5\nextra\nActual output\n3 -3 1\n3.5');
+  expect(await copy('backward')).toBe('3 -3 1\n\n3.5\nextra\nActual output\n3 -3 1\n3.5');
+  const all = await copy('all');
+  const block = '\nYou predicted\n3 -3 1\n\n3.5\nextra\nActual output\n3 -3 1\n3.5\n';
+  expect(all).toContain(block);
+  // The page text after the boxes (the explanation) is still copied, on the next line.
+  expect(all.slice(all.indexOf(block) + block.length)).toMatch(/^\S/);
+  expect(all).not.toContain('\u200b');
+  expect(all).not.toContain('empty line');
+});
+
 test('a long predicted line scrolls inside the box and is keyboard-focusable', async ({ page }) => {
   page.on('pageerror', e => { throw e; });
   const box = await openSample(page);
