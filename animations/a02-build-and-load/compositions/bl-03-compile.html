@@ -1,0 +1,66 @@
+<template id="bl-03-compile-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #bl03-cmd { position: absolute; left: 192px; top: 340px; }
+    #bl03-card { left: 192px; top: 430px; width: 1536px; height: 430px; overflow: hidden; border-color: var(--compiler); }
+    #bl03-bar { position: absolute; left: 0; top: 0; width: 100%; height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; background: var(--compiler-soft); border-bottom: 3px solid var(--compiler); font: 700 28px/1 var(--font-mono); color: var(--compiler); }
+    #bl03-count { font: 700 26px/1 var(--font-mono); color: var(--compiler); }
+    #bl03-body { position: absolute; left: 28px; top: 88px; width: 1480px; }
+    #bl03-lead { font: 400 28px/1.3 var(--font-sans); color: var(--text-muted); }
+    #bl03-excerpt {
+      margin-top: 20px; padding: 22px 28px; border: 3px solid var(--border-strong); border-radius: 16px;
+      background: var(--bg-sunken); font: 400 28px/40px var(--font-mono); color: var(--text); white-space: pre;
+    }
+    #bl03-call { color: var(--compiler); }
+    #bl03-foot { position: absolute; left: 192px; top: 890px; width: 1536px; font: 400 28px/1.3 var(--font-sans); color: var(--text); }
+  </style>
+  <div id="root" data-composition-id="bl-03-compile" data-width="1920" data-height="1080" data-duration="13"
+       data-steps='{"compile":{"label":"Compile","start":0,"end":12.5}}'>
+    <div class="bl-stage" id="bl03-stage">
+      <div class="bl-head" id="bl03-head">
+        <h1 class="bl-title" id="bl03-title">The same program, as assembly.</h1>
+        <p class="bl-sub" id="bl03-sub">cc -S writes hello.s. main calls printf by name. No address yet.</p>
+      </div>
+
+      <div class="bl-cmd" id="bl03-cmd">cc -S hello.i</div>
+
+      <div class="bl-card" id="bl03-card">
+        <div id="bl03-bar"><span>hello.s</span><span id="bl03-count"><span data-var-text="sLines">50</span> lines</span></div>
+        <div id="bl03-body">
+          <p id="bl03-lead">The lines that set up the call to printf, and the call:</p>
+          <div id="bl03-excerpt" data-var-text="sExcerpt">        leaq    .LC1(%rip), %rax
+        movq    %rax, %rdi
+        movl    $0, %eax
+        call    printf@PLT</div>
+        </div>
+      </div>
+
+      <p id="bl03-foot">printf is still just a name. The next command turns this text into machine code.</p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("bl-03-compile", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 13;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      tl.addLabel("compile", S.compile.start);
+      tl.fromTo("#bl03-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.55 }, 0.1);
+      tl.fromTo("#bl03-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.55 }, 0.25);
+      tl.fromTo("#bl03-cmd", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45 }, 0.5);
+      tl.fromTo("#bl03-card", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7 }, 0.85);
+      tl.fromTo("#bl03-excerpt", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.55 }, 2.4);
+      tl.fromTo("#bl03-foot", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 5.0);
+      tl.fromTo("#bl03-stage", { opacity: 1 }, { opacity: 0, duration: 0.4, ease: "power1.in" }, D - 0.5);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["bl-03-compile"] = tl;
+    })();
+  </script>
+</template>

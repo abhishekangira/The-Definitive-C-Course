@@ -1,0 +1,74 @@
+<template id="bl-01-source-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #bl01-editor { left: 192px; top: 360px; width: 860px; height: 520px; overflow: hidden; border-color: var(--page); }
+    #bl01-bar { position: absolute; left: 0; top: 0; width: 100%; height: 72px; display: flex; align-items: center; padding: 0 24px; background: var(--bg-sunken); border-bottom: 3px solid var(--border-strong); }
+    #bl01-file { font: 700 30px/1 var(--font-mono); color: var(--text); }
+    #bl01-code { position: absolute; left: 24px; top: 96px; --code-size: 38px; --code-lh: 56px; }
+    #bl01-side { left: 1092px; top: 360px; width: 636px; height: 520px; padding: 28px 32px; border-color: var(--border-strong); }
+    #bl01-side .bl-h { color: var(--page); }
+    #bl01-side .bl-p { margin-top: 16px; }
+    #bl01-steps { position: absolute; left: 32px; top: 200px; width: 572px; display: flex; flex-direction: column; gap: 12px; }
+    .bl01-row { display: flex; align-items: center; gap: 16px; font: 400 26px/1.2 var(--font-sans); color: var(--text-muted); }
+    .bl01-k { display: grid; place-items: center; width: 38px; height: 38px; flex: none; border-radius: 50%; border: 3px solid var(--compiler); background: var(--compiler-soft); font: 700 24px/1 var(--font-mono); color: var(--compiler); }
+    .bl01-loadk { border-color: var(--native); background: var(--native-soft); color: var(--native); }
+  </style>
+  <div id="root" data-composition-id="bl-01-source" data-width="1920" data-height="1080" data-duration="10"
+       data-steps='{"source":{"label":"Source","start":0,"end":9.5}}'>
+    <div class="bl-stage" id="bl01-stage">
+      <div class="bl-head" id="bl01-head">
+        <h1 class="bl-title" id="bl01-title">hello.c is only text.</h1>
+        <p class="bl-sub" id="bl01-sub">Five commands turn it into a running process.</p>
+      </div>
+
+      <div class="bl-card" id="bl01-editor">
+        <div id="bl01-bar"><span id="bl01-file">hello.c</span></div>
+        <div class="bl-code" id="bl01-code">
+          <div class="bl-line bl01-l"><span class="bl-ln">1</span><span><span class="bl-kw">#include</span> <span class="bl-str">&lt;stdio.h&gt;</span></span></div>
+          <div class="bl-line bl01-l"><span class="bl-ln">2</span><span> </span></div>
+          <div class="bl-line bl01-l"><span class="bl-ln">3</span><span><span class="bl-kw">int</span> main(<span class="bl-kw">void</span>) {</span></div>
+          <div class="bl-line bl01-l"><span class="bl-ln">4</span><span>    printf(<span class="bl-str">"Hello, %s!\n"</span>, <span class="bl-str">"C"</span>);</span></div>
+          <div class="bl-line bl01-l"><span class="bl-ln">5</span><span>    <span class="bl-kw">return</span> <span class="bl-num">0</span>;</span></div>
+          <div class="bl-line bl01-l"><span class="bl-ln">6</span><span>}</span></div>
+        </div>
+      </div>
+
+      <div class="bl-card" id="bl01-side">
+        <div class="bl-h" id="bl01-side-h">On this machine</div>
+        <p class="bl-p" id="bl01-side-p">x86-64 Linux, gcc 13. Each step is one command you type.</p>
+        <div id="bl01-steps">
+          <div class="bl01-row bl01-r"><span class="bl01-k">1</span>preprocess</div>
+          <div class="bl01-row bl01-r"><span class="bl01-k">2</span>compile</div>
+          <div class="bl01-row bl01-r"><span class="bl01-k">3</span>assemble</div>
+          <div class="bl01-row bl01-r"><span class="bl01-k">4</span>link</div>
+          <div class="bl01-row bl01-r"><span class="bl01-k bl01-loadk">5</span>load</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("bl-01-source", "data-steps");
+      var S = JSON.parse(root.getAttribute("data-steps"));
+      var D = 10;
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      tl.addLabel("source", S.source.start);
+      tl.fromTo("#bl01-title", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.6 }, 0.1);
+      tl.fromTo("#bl01-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, 0.3);
+      tl.fromTo("#bl01-editor", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.7 }, 0.4);
+      tl.fromTo(".bl01-l", { opacity: 0, x: -18 }, { opacity: 1, x: 0, duration: 0.35, stagger: 0.1 }, 1.1);
+      tl.fromTo("#bl01-side", { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.7 }, 1.6);
+      tl.fromTo(".bl01-r", { opacity: 0, x: 18 }, { opacity: 1, x: 0, duration: 0.35, stagger: 0.12 }, 2.2);
+      tl.fromTo("#bl01-stage", { opacity: 1 }, { opacity: 0, duration: 0.4, ease: "power1.in" }, D - 0.5);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["bl-01-source"] = tl;
+    })();
+  </script>
+</template>

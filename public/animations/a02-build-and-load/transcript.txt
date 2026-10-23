@@ -1,0 +1,26 @@
+Source
+hello.c is only text. Five commands turn it into a running process.
+
+Preprocess
+cc -E expands #include into the text of stdio.h.
+
+Preprocess
+hello.i is hundreds of lines. The printf declaration is now in the file.
+
+Compile
+cc -S writes hello.s: the same program as assembly.
+
+Compile
+main calls printf by name. Its address is not known yet.
+
+Assemble
+cc -c builds hello.o. nm shows T main defined and U printf still undefined.
+
+Link
+The executable is linked, but nm still shows printf undefined. The library is not copied in.
+
+Load
+readelf names the program interpreter: the dynamic loader.
+
+Load
+./hello prints Hello, C! and exits 0. The loader filled in printf.

@@ -1,0 +1,72 @@
+<template id="bl-00-rail-template">
+  <style>
+    #root { position: absolute; inset: 0; }
+    #bl00-rail { position: absolute; left: 192px; top: 108px; width: 1536px; height: 56px; display: flex; gap: 8px; }
+    .bl00-chip {
+      flex: 1; display: flex; align-items: center; gap: 8px; padding: 0 8px;
+      border: 3px solid var(--border); border-radius: 14px; background: rgba(23, 27, 33, 0);
+      font: 700 24px/1 var(--font-mono); color: var(--text-faint);
+    }
+    .bl00-n {
+      display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 50%;
+      border: 3px solid var(--border-strong); background: rgba(61, 69, 82, 0);
+      font: 700 24px/1 var(--font-mono); color: var(--text-faint);
+    }
+  </style>
+  <!-- data-rail-steps mirrors the scenes' data-steps in GLOBAL seconds; tools/anim/check.mjs fails when they drift apart. -->
+  <div id="root" data-composition-id="bl-00-rail" data-width="1920" data-height="1080" data-duration="75"
+       data-rail-steps='{"source":{"label":"Source","start":0,"end":9.5},"preprocess":{"label":"Preprocess","start":10,"end":21.5},"compile":{"label":"Compile","start":22,"end":34.5},"assemble":{"label":"Assemble","start":35,"end":46.5},"link":{"label":"Link","start":47,"end":58.5},"load":{"label":"Load","start":59,"end":74.5}}'>
+    <div id="bl00-rail">
+      <div class="bl00-chip" id="bl00-chip-source"><span class="bl00-n">1</span>source</div>
+      <div class="bl00-chip" id="bl00-chip-preprocess"><span class="bl00-n">2</span>preprocess</div>
+      <div class="bl00-chip" id="bl00-chip-compile"><span class="bl00-n">3</span>compile</div>
+      <div class="bl00-chip" id="bl00-chip-assemble"><span class="bl00-n">4</span>assemble</div>
+      <div class="bl00-chip" id="bl00-chip-link"><span class="bl00-n">5</span>link</div>
+      <div class="bl00-chip" id="bl00-chip-load"><span class="bl00-n">6</span>load</div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      var root = (function (id, attr) {
+        var hosts = document.querySelectorAll('[data-composition-id="' + id + '"]');
+        for (var i = 0; i < hosts.length; i++) {
+          var el = hosts[i].hasAttribute(attr) ? hosts[i] : hosts[i].querySelector("[" + attr + "]");
+          if (el) return el;
+        }
+        throw new Error(id + ": no element with " + attr);
+      })("bl-00-rail", "data-rail-steps");
+      var S = JSON.parse(root.getAttribute("data-rail-steps"));
+      var keys = Object.keys(S);
+      var C = {
+        source: ["#7cb2ff", "#16233a"], preprocess: ["#c4a7ff", "#241a3d"], compile: ["#c4a7ff", "#241a3d"],
+        assemble: ["#c4a7ff", "#241a3d"], link: ["#c4a7ff", "#241a3d"], load: ["#ffa657", "#33210f"],
+      };
+      function rgba(hex, a) {
+        var n = parseInt(hex.slice(1), 16);
+        return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+      }
+      var tl = gsap.timeline({ paused: true, defaults: { ease: "power2.out" } });
+      tl.fromTo("#bl00-rail", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.6 }, 0);
+      keys.forEach(function (k, i) {
+        var chip = "#bl00-chip-" + k;
+        var badge = chip + " .bl00-n";
+        var col = C[k][0], soft = C[k][1];
+        var t = S[k].start;
+        tl.addLabel(k, t);
+        tl.fromTo(chip, { borderColor: "#2a3039", backgroundColor: "rgba(23,27,33,0)", color: "#8a929e" },
+                        { borderColor: col, backgroundColor: soft, color: "#e7e9ec", duration: 0.4 }, t + (i === 0 ? 0.3 : 0));
+        tl.fromTo(badge, { backgroundColor: "rgba(61,69,82,0)", borderColor: "#3d4552", color: "#8a929e" },
+                         { backgroundColor: col, borderColor: col, color: "#0b1220", duration: 0.4 }, t + (i === 0 ? 0.3 : 0));
+        if (i < keys.length - 1) {
+          var tn = S[keys[i + 1]].start;
+          tl.fromTo(chip, { borderColor: col, backgroundColor: soft, color: "#e7e9ec" },
+                          { borderColor: "#3d4552", backgroundColor: "rgba(23,27,33,0)", color: "#a4abb6", duration: 0.4, immediateRender: false }, tn);
+          tl.fromTo(badge, { backgroundColor: col, borderColor: col, color: "#0b1220" },
+                           { backgroundColor: rgba(col, 0.28), borderColor: rgba(col, 0.7), color: "#e7e9ec", duration: 0.4, immediateRender: false }, tn);
+        }
+      });
+      window.__timelines = window.__timelines || {};
+      window.__timelines["bl-00-rail"] = tl;
+    })();
+  </script>
+</template>
