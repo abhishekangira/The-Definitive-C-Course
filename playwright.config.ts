@@ -1,5 +1,6 @@
 // E2E click-through (PLAN.md §3.5). Runs against the production build served by `vite preview`,
-// so run `npm run build` first (CI does). In the cloud container Chromium lives in /opt/pw-browsers.
+// so run `npm run build` first (CI does). Chromium: CHROMIUM_PATH, else /opt/pw-browsers when it exists, else Playwright's
+// own (in the `npm run setup` image, PLAYWRIGHT_BROWSERS_PATH=/ms-playwright; e2e/AGENTS.md).
 import { defineConfig, devices } from '@playwright/test';
 import { existsSync } from 'node:fs';
 
