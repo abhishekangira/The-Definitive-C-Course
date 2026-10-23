@@ -64,7 +64,8 @@ export function SettingsPage() {
           </p>
           <p>
             Spirit beans: you start with {START_BEANS === 1 ? 'one' : START_BEANS} and earn one on every {BEAN_EVERY}th day of a streak, up to {MAX_BEANS}.
-            A missed day uses a bean instead of ending your streak. A bean is only used up when it saves the streak, and a saved day doesn't add to it.
+            A missed day uses a bean instead of ending your streak, and a saved day doesn't add to it. Once you submit again, the beans that saved the break are spent.
+            If a break runs longer than your beans can cover, the streak ends anyway and the beans it was using come back to you, so those days stop showing as saved.
           </p>
         </div>
         <div className="setting-body">
