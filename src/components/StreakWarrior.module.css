@@ -18,11 +18,11 @@
 @media (max-width: 480px) { .warrior { flex-direction: column; align-items: flex-start; } }
 
 /* ---------- the art: pixel sprites, so everything moves in whole pixels (steps) ---------- */
-.art { display: block; line-height: 0; --warrior-rim: transparent; }
+.art { display: block; line-height: 0; --warrior-rim: transparent; --flash-core: #fff1a6; --flash-ring: #f08c00; --flash-edge: #f08c00; }
 .svg { display: block; width: 100%; height: 100%; overflow: visible; shape-rendering: crispEdges; }
 /* A light rim keeps black hair and outlines visible on a dark page; a light page doesn't need it. */
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .art { --warrior-rim: #59627d; } }
-:root[data-theme='dark'] .art { --warrior-rim: #59627d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .art { --warrior-rim: #59627d; --flash-core: #fffdf0; --flash-ring: #fffdf0; --flash-edge: #fff3a8; } }
+:root[data-theme='dark'] .art { --warrior-rim: #59627d; --flash-core: #fffdf0; --flash-ring: #fffdf0; --flash-edge: #fff3a8; }
 .rim { fill: var(--warrior-rim); }
 .shadow { fill: var(--border-strong); }
 
@@ -78,56 +78,34 @@
 
 .still, .still * { animation: none !important; }
 
-/* ---------- the transformation: the old form charges up, a flash, and the new form bursts out ---------- */
-.stage { --burst: #ffd84a; }
-.stage[data-to='warrior'] { --burst: #9ed2ff; }
-.stage[data-to='crimson'] { --burst: #ff6a3d; }
-.stage[data-to='ape'] { --burst: #b48cff; }
-.oldLayer { animation: charge 1.25s ease-in both; }
-.newLayer { animation: emerge 1.95s ease-out both; }
-.glow, .flash, .rays { position: absolute; inset: -12%; border-radius: 50%; pointer-events: none; }
-.glow { background: radial-gradient(circle, color-mix(in srgb, var(--burst) 85%, #ffffff) 0 25%, var(--burst) 45%, transparent 68%); animation: gather 1.95s ease-in both; }
-.flash { background: radial-gradient(circle, #ffffff 0 30%, color-mix(in srgb, var(--burst) 70%, #ffffff) 50%, transparent 70%); animation: flash 1.95s ease-out both; }
-.rays {
-  background: repeating-conic-gradient(from 0deg, var(--burst) 0deg 7deg, transparent 7deg 20deg);
-  -webkit-mask: radial-gradient(circle, #000 0 22%, transparent 68%);
-  mask: radial-gradient(circle, #000 0 22%, transparent 68%);
-  animation: rays 1.95s ease-out both;
+/* ---------- the transformation: one beat at a time (stand, crouch, aura ramp, the crouch white-hot, new form) ----------
+   Clip rather than visibility. A child with visibility:visible (the first pose frame, the first aura frame) paints
+   through a visibility:hidden parent, so a hidden beat would still show. clip-path clips those children.
+   Six beats of --beat (2.4s). The last beat keeps its frame (forwards) until React unmounts the sequence.
+   No fill on the earlier beats: backwards fill would show them during the delay. */
+.sequence { position: absolute; inset: 0; --beat: 0.4s; }
+.sequence [data-transform-step] {
+  position: absolute; inset: 0; overflow: hidden;
+  clip-path: inset(100%);
+  animation-name: stepOn;
+  animation-duration: var(--beat);
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: none;
 }
-
-@keyframes charge {
-  0% { transform: translate(0, 0) scale(1); }
-  15%, 35%, 55%, 75% { transform: translate(-2px, 0) scale(1.02); }
-  25%, 45%, 65%, 85% { transform: translate(2px, -1px) scale(1.05); }
-  92% { transform: scale(1.08); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0; }
-}
-@keyframes emerge {
-  0%, 58% { transform: scale(1.2); opacity: 0; }
-  60% { transform: scale(1.2); opacity: 1; }
-  78% { transform: scale(0.94); }
-  90% { transform: scale(1.03); }
-  100% { transform: scale(1); opacity: 1; }
-}
-@keyframes gather {
-  0% { transform: scale(0.3); opacity: 0; }
-  20% { transform: scale(0.55); opacity: 0.7; }
-  32% { transform: scale(0.5); }
-  44% { transform: scale(0.75); opacity: 0.9; }
-  52% { transform: scale(0.7); }
-  60% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(1.1); opacity: 0; }
-}
-@keyframes flash {
-  0%, 45% { transform: scale(0); opacity: 0; }
-  58% { transform: scale(0.9); opacity: 1; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-@keyframes rays {
-  0%, 52% { transform: scale(0.2) rotate(0deg); opacity: 0; }
-  64% { opacity: 1; }
-  100% { transform: scale(1.15) rotate(40deg); opacity: 0; }
-}
+.sequence [data-transform-step='1'] { animation-delay: calc(var(--beat) * 1); }
+.sequence [data-transform-step='2'] { animation-delay: calc(var(--beat) * 2); }
+.sequence [data-transform-step='3'] { animation-delay: calc(var(--beat) * 3); }
+.sequence [data-transform-step='4'] { animation-delay: calc(var(--beat) * 4); }
+.sequence [data-transform-step='5'] { animation-delay: calc(var(--beat) * 5); animation-fill-mode: forwards; }
+.sequence .art { position: absolute; inset: 0; }
+/* The flash paints only Rio's pixels (WarriorArt `flash`). Dark page: a white-hot core with a 1-cell pale-yellow edge.
+   Light page: a near-white core vanished into the page and read as an empty outline, so the core is a warm pale yellow
+   and the outline is 2 cells of amber (the ring takes the edge colour). The beat itself has no fill. */
+.flashCore { fill: var(--flash-core); }
+.flashRing { fill: var(--flash-ring); }
+.flashEdge { fill: var(--flash-edge); }
+@keyframes stepOn { from, to { clip-path: inset(0); } }
 
 /* ---------- gallery and spirit beans (Settings) ---------- */
 .gallery { list-style: none; margin: var(--space-3) 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-2); }
@@ -160,6 +138,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .art, .art * { animation: none !important; }
-  .oldLayer, .glow, .flash, .rays { display: none; }
-  .newLayer, .pop { animation: none; }
+  .pop { animation: none; }
 }

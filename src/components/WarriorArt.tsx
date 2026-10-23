@@ -5,7 +5,7 @@
 // switched off by `still` and under prefers-reduced-motion.
 import type { ReactNode } from 'react';
 import type { FormId, WarriorMood } from '../progress/warrior';
-import { blinkForIdle, composeFrame, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
+import { blinkForIdle, composeFrame, CROUCH, crouchSprite, FORM_FRAMES, PALETTE, type PixelSprite, type SpriteFrame } from './warrior-sprites';
 import styles from './StreakWarrior.module.css';
 
 /** The sprites' grid. */
@@ -112,6 +112,28 @@ function grow(m: Mask, r: number): Mask {
 }
 
 const minus = (a: Mask, b: Mask): Mask => a.map((v, i) => (v && !b[i] ? 1 : 0));
+
+/** The cells of a mask whose four neighbours are all in it. */
+function erode(m: Mask): Mask {
+  return m.map((v, i) => (v && m[i - 1] && m[i + 1] && m[i - W] && m[i + W] ? 1 : 0));
+}
+
+const flashCache = new Map<PixelSprite, { core: string; ring: string; edge: string }>();
+/**
+ * The flash: the sprite's own cells, white-hot, nothing outside them. `edge` is the outermost cell of the outline and
+ * `ring` the one inside it, so the CSS can make the outline 2 cells thick on a light page and 1 on a dark one.
+ */
+export function flashPaths(s: PixelSprite): { core: string; ring: string; edge: string } {
+  let hit = flashCache.get(s);
+  if (!hit) {
+    const m = maskOf(s);
+    const inner = erode(m);
+    const core = erode(inner);
+    hit = { core: maskPath(core), ring: maskPath(minus(inner, core)), edge: maskPath(minus(m, inner)) };
+    flashCache.set(s, hit);
+  }
+  return hit;
+}
 
 /** `none` draws nothing. `flicker` is a short flame. `blaze` is the full rising fire. #106 passes this through. */
 export type AuraStage = 'none' | 'flicker' | 'blaze';
@@ -395,16 +417,33 @@ function poseFrames(form: FormId, mood: WarriorMood): readonly SpriteFrame[] {
   return art.idle;
 }
 
-export function WarriorArt({ form, mood, bare = false, aura }: {
+export function WarriorArt({ form, mood, bare = false, aura, crouch = false, flash = false }: {
   form: FormId;
   mood: WarriorMood;
   /** No aura and no night sky (silhouettes, the header head). An explicit `aura` does not override this. */
   bare?: boolean;
   /** Power-up stage. Omit it for the form's default (`defaultAura`). */
   aura?: AuraStage;
+  /** Draw the crouch (`crouchSprite`): the body lowered on bent knees, the feet and the shadow where they stand. */
+  crouch?: boolean;
+  /** The transformation's flash: only Rio's silhouette, white-hot with a warm outline. No aura, sky, shadow, blink or sweat. */
+  flash?: boolean;
 }): ReactNode {
   const frames = poseFrames(form, mood);
-  const drawn = frames.map(composeFrame);
+  const standing = frames.map(composeFrame);
+  // The crouch is one drawn frame. Its head moved down by the crouch's drop, so the blink and the sweat follow it.
+  const drop = crouch ? CROUCH[form].drop : 0;
+  const drawn = crouch ? [crouchSprite(form, standing[0])] : standing;
+  if (flash) {
+    const { core, ring, edge } = flashPaths(drawn[0]);
+    return (
+      <g data-flash-figure="">
+        <path className={styles.flashCore} d={core} />
+        <path className={styles.flashRing} d={ring} />
+        <path className={styles.flashEdge} d={edge} />
+      </g>
+    );
+  }
   const stage: AuraStage = bare ? 'none' : aura ?? defaultAura(form);
   const blink = mood === 'ready' ? FORM_FRAMES[form].blink : undefined;
   const sky = form === 'ape' && !bare;
@@ -418,15 +457,15 @@ export function WarriorArt({ form, mood, bare = false, aura }: {
       )}
       {stage !== 'none' && <Aura stage={stage} sprite={drawn[0]} kind={auraKind(form)} />}
       {!sky && <path className={styles.shadow} d={shadowPath(form)} />}
-      <g className={drawn.length > 1 ? `${styles.figure} ${styles.multi}` : styles.figure} data-pose={drawn.length > 1 ? drawn.length : undefined}>
+      <g className={crouch ? undefined : drawn.length > 1 ? `${styles.figure} ${styles.multi}` : styles.figure} data-pose={drawn.length > 1 ? drawn.length : undefined} data-crouch={crouch ? '' : undefined}>
         <path className={styles.rim} d={rimPath(drawn[0])} />
         {drawn.map((sprite, i) => (
           <g key={i} data-frame={i} className={drawn.length > 1 ? styles[`pose${i}`] : undefined}>
             <Pixels sprite={sprite} />
-            {blink && <g className={styles.blink} data-blink="">{blinkPaths(blinkForIdle(blink, frames[i])).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
+            {blink && <g className={styles.blink} data-blink="">{blinkPaths(crouch ? { ...blink, y: blink.y + drop } : blinkForIdle(blink, frames[i])).map(([key, fill, d]) => <path key={key} fill={fill} d={d} />)}</g>}
           </g>
         ))}
-        {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
+        {mood === 'worried' && <g className={styles.sweat}><Pixels sprite={drop ? { ...SWEAT[form], y: SWEAT[form].y + drop } : SWEAT[form]} palette={SWEAT_PALETTE} /></g>}
       </g>
       {stage !== 'none' && form === 'mane' && <Bolts />}
     </>
