@@ -1,6 +1,6 @@
 // PR: predict-before-run. The learner commits to a prediction, then Run unlocks.
 // Expected answers come from src/generated/samples (tools/verify ran this exact code).
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import type { SampleMeta, SampleResult } from '../content-model/types';
 import { CodeEditor } from '../components/CodeEditor';
 import { Terminal } from '../components/Terminal';
@@ -26,11 +26,21 @@ const CLOSE_TEXT = 'Almost: the values are right, but the spacing, punctuation o
 function countsAsRight(v: PredictionVerdict): boolean { return v === 'exact' || v === 'close'; }
 
 function DiffLines({ row }: { row: DiffRow }) {
-  // A span, not a div: this row is a child of the compare <pre>, and a div there is invalid.
+  const chunks = row.gap ? [] : row.chunks.filter(c => c.text !== '');
+  // An empty block span copies as nothing, so a blank line in the middle is dropped. A zero-width space
+  // keeps that line in innerText. Gaps are the other side's lines, so they stay empty. The "empty line"
+  // note is ::before (not a text node) plus aria-label, so copying the box does not include the words.
+  const keepBlank = !row.gap && chunks.length === 0;
   return (
-    <span className={styles.compareLine} data-line="" data-gap={row.gap ? '' : undefined} data-blank={row.blank ? '' : undefined}>
-      {row.blank && <span className={styles.emptyNote}>empty line</span>}
-      {!row.gap && row.chunks.filter(c => c.text !== '').map((c, i) => (
+    <span
+      className={styles.compareLine}
+      data-line=""
+      data-gap={row.gap ? '' : undefined}
+      data-blank={row.blank ? '' : undefined}
+      {...(row.blank ? { role: 'img' as const, 'aria-label': 'empty line' } : {})}
+    >
+      {keepBlank ? '\u200b' : null}
+      {chunks.map((c, i) => (
         c.mark
           ? <span key={i} className={styles.diffMark} data-diff="">{c.text}</span>
           : <span key={i}>{c.text}</span>
@@ -39,22 +49,27 @@ function DiffLines({ row }: { row: DiffRow }) {
   );
 }
 
-/** The two labelled boxes. They sit outside the role=status verdict so a screen reader announces the verdict, not the output. */
-function OutputCompare({ predicted, actual }: { predicted: string; actual: string }) {
-  const diff = outputDiff(predicted, actual);
-  const column = (label: string, which: 'predicted' | 'actual', rows: DiffRow[], empty: boolean) => (
-    <div className={styles.compareCol} key={which}>
-      <div className={styles.compareLabel}>{label}</div>
+/** One labelled box. Always a tab stop: a long line scrolls sideways, and whether it overflows depends on the column width. */
+function CompareColumn({ label, which, rows, empty }: { label: string; which: 'predicted' | 'actual'; rows: DiffRow[]; empty: boolean }) {
+  const labelId = useId();
+  return (
+    <div className={styles.compareCol}>
+      <div id={labelId} className={styles.compareLabel}>{label}</div>
       {/* One expression, so the pre has no whitespace text nodes (they would show as blank lines). */}
-      <pre className={`${styles.stored} ${styles.compareBox}`} data-compare={which}>{empty
+      <pre className={`${styles.stored} ${styles.compareBox}`} data-compare={which} tabIndex={0} role="region" aria-labelledby={labelId}>{empty
         ? <span className={styles.compareLine} data-line="">(nothing)</span>
         : rows.map((row, i) => <DiffLines key={i} row={row} />)}</pre>
     </div>
   );
+}
+
+/** The two labelled boxes. They sit outside the role=status verdict so a screen reader announces the verdict, not the output. */
+function OutputCompare({ predicted, actual }: { predicted: string; actual: string }) {
+  const diff = outputDiff(predicted, actual);
   return (
     <div className={styles.compare}>
-      {column('You predicted', 'predicted', diff.predicted, diff.predictedEmpty)}
-      {column('Actual output', 'actual', diff.actual, diff.actualEmpty)}
+      <CompareColumn label="You predicted" which="predicted" rows={diff.predicted} empty={diff.predictedEmpty} />
+      <CompareColumn label="Actual output" which="actual" rows={diff.actual} empty={diff.actualEmpty} />
     </div>
   );
 }
@@ -232,7 +247,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
           <div className={styles.native}>
             <div className={styles.nativeLabel}>{TARGET_LABEL['wasm32-clang22']} (stored output: low-memory mode is on in Settings)</div>
             {wasm.compile.diagnostics.length > 0 && <DiagnosticsList diagnostics={wasm.compile.diagnostics} raw={wasm.compile.raw} />}
-            {wasm.compile.ok && <pre className={styles.stored}>{storedOutputText(sample, wasm.run)}</pre>}
+            {wasm.compile.ok && <pre className={styles.stored} data-stored-output>{storedOutputText(sample, wasm.run)}</pre>}
             <div className={styles.muted}>{describeOutcome(wasm.run, wasm.compile.ok)}</div>
           </div>
         );
@@ -287,7 +302,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
               {needs64 && p64Verdict && p64Verdict !== 'exact' && <OutputCompare predicted={p64} actual={native?.run?.stdout ?? ''} />}
               {needs64 && p64Done && <button type="button" className="btn" onClick={predict64Again}>Predict the 64-bit output again</button>}
               <div className={styles.nativeLabel}>{TARGET_LABEL[native!.target]}{native!.fallback ? ' (stored; your platform’s run isn’t available yet)' : ' (stored output from a real run)'}</div>
-              <pre className={styles.stored}>{storedOutputText(sample, native?.run)}</pre>
+              <pre className={styles.stored} data-stored-output>{storedOutputText(sample, native?.run)}</pre>
               <div className={styles.muted}>{describeOutcome(native?.run, sample.results[native!.target]?.compile.ok ?? true)}</div>
             </>
           )}
@@ -297,7 +312,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
       {revealed && nativeOnly && (
         <div className={styles.native}>
           <div className={styles.nativeLabel}>{TARGET_LABEL['linux-x86_64-gcc13']} (stored output from a real run)</div>
-          <pre className={styles.stored}>{storedOutputText(sample, sample.results['linux-x86_64-gcc13']?.run)}</pre>
+          <pre className={styles.stored} data-stored-output>{storedOutputText(sample, sample.results['linux-x86_64-gcc13']?.run)}</pre>
         </div>
       )}
     </div>

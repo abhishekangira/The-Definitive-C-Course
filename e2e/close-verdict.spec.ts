@@ -3,6 +3,7 @@
 // The spec seeds the warm-up and the two cards before int-division so it does not compile them.
 // Screenshots are written only when SHOTS is a directory.
 import { mkdirSync } from 'node:fs';
+import AxeBuilder from '@axe-core/playwright';
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { availableModules, expectAccessible } from './lib';
 
@@ -40,11 +41,13 @@ async function openSample(page: Page) {
   return box;
 }
 
-/** The program-output panel is the terminal log. Compare boxes must use its monospace font and padding. */
+/** The program-output panel is the terminal log. Compare boxes must use its monospace font, size, line height and padding. */
 async function expectMonoCompare(box: Locator) {
   const panel = box.locator('[role="log"]');
-  const panelFont = await panel.evaluate(el => getComputedStyle(el).fontFamily);
-  const panelPad = await panel.evaluate(el => getComputedStyle(el).padding);
+  const panelStyle = await panel.evaluate(el => {
+    const cs = getComputedStyle(el);
+    return { font: cs.fontFamily, pad: cs.padding, fontSize: cs.fontSize, lineHeight: cs.lineHeight };
+  });
   const mono = await box.evaluate(el => {
     const probe = document.createElement('span');
     probe.style.fontFamily = 'var(--font-mono)';
@@ -53,19 +56,21 @@ async function expectMonoCompare(box: Locator) {
     probe.remove();
     return family;
   });
-  expect(panelFont).toBe(mono);
+  expect(panelStyle.font).toBe(mono);
   for (const which of ['predicted', 'actual']) {
     const style = await box.locator(`[data-compare="${which}"]`).evaluate(el => {
       const cs = getComputedStyle(el);
       const line = el.querySelector('[data-line]');
-      return { font: cs.fontFamily, pad: cs.padding, display: line ? getComputedStyle(line).display : '' };
+      return { font: cs.fontFamily, pad: cs.padding, fontSize: cs.fontSize, lineHeight: cs.lineHeight, display: line ? getComputedStyle(line).display : '' };
     });
-    expect(style.font, which).toBe(panelFont);
+    expect(style.font, which).toBe(panelStyle.font);
     // The sans stack is "Geist Variable", Geist, ui-sans-serif. "Geist Mono" does not contain those.
     expect(style.font, which).not.toContain('Geist Variable');
     expect(style.font, which).not.toContain('ui-sans-serif');
     expect(style.pad, which).not.toBe('0px');
-    expect(style.pad, which).toBe(panelPad);
+    expect(style.pad, which).toBe(panelStyle.pad);
+    expect(style.fontSize, which).toBe(panelStyle.fontSize);
+    expect(style.lineHeight, which).toBe(panelStyle.lineHeight);
     expect(style.display, which).toBe('block');
   }
 }
@@ -162,4 +167,60 @@ test('a wrong prediction on int-division is red, with both boxes, in light and d
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
   await shots(page, box, 'red');
+});
+
+test('a blank line in the predicted box is kept in innerText', async ({ page }) => {
+  page.on('pageerror', e => { throw e; });
+  const box = await openSample(page);
+  await box.locator('textarea').fill('nope\n\nmore');
+  await box.getByRole('button', { name: 'Lock in my prediction' }).click();
+  await box.getByRole('button', { name: 'Run', exact: true }).click();
+  await expect(box.getByText(/^(Program exited with status|Program crashed|Stopped)/).first()).toBeVisible({ timeout: RUN_TIMEOUT });
+  const text = await box.locator('[data-compare="predicted"]').innerText();
+  expect(text.replaceAll('\u200b', '')).toBe('nope\n\nmore');
+});
+
+test('the empty-line note is shown and is not part of the copied text', async ({ page }) => {
+  page.on('pageerror', e => { throw e; });
+  const box = await openSample(page);
+  await box.locator('textarea').fill('3 -3 1\n\n3.5');
+  await box.getByRole('button', { name: 'Lock in my prediction' }).click();
+  await box.getByRole('button', { name: 'Run', exact: true }).click();
+  await expect(box.getByText(/^(Program exited with status|Program crashed|Stopped)/).first()).toBeVisible({ timeout: RUN_TIMEOUT });
+  const note = box.locator('[data-compare="predicted"] [data-blank]');
+  await expect(note).toHaveAttribute('aria-label', 'empty line');
+  expect(await note.evaluate(el => getComputedStyle(el, '::before').content)).toBe('"empty line"');
+  const predicted = await box.locator('[data-compare="predicted"]').innerText();
+  const actual = await box.locator('[data-compare="actual"]').innerText();
+  expect(predicted).not.toContain('empty line');
+  expect(actual).not.toContain('empty line');
+  expect(predicted.replaceAll('\u200b', '')).toBe('3 -3 1\n\n3.5');
+  expect(actual.replaceAll('\u200b', '')).toBe('3 -3 1\n3.5');
+  await expectAccessible(page, 'empty-line note');
+});
+
+test('a long predicted line scrolls inside the box and is keyboard-focusable', async ({ page }) => {
+  page.on('pageerror', e => { throw e; });
+  const box = await openSample(page);
+  await box.locator('textarea').fill(`${'x'.repeat(200)}\n`);
+  await box.getByRole('button', { name: 'Lock in my prediction' }).click();
+  await box.getByRole('button', { name: 'Run', exact: true }).click();
+  await expect(box.getByText(/^(Program exited with status|Program crashed|Stopped)/).first()).toBeVisible({ timeout: RUN_TIMEOUT });
+  const predicted = box.locator('[data-compare="predicted"]');
+  const actual = box.locator('[data-compare="actual"]');
+  expect(await predicted.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  await expect(predicted).toHaveAttribute('tabindex', '0');
+  await expect(predicted).toHaveRole('region');
+  await expect(predicted).toHaveAccessibleName('You predicted');
+  await expect(actual).toHaveAccessibleName('Actual output');
+  await predicted.focus();
+  await expect(predicted).toBeFocused();
+  expect(await predicted.evaluate(el => el.scrollLeft)).toBe(0);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => predicted.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  const results = await new AxeBuilder({ page: page as unknown as ConstructorParameters<typeof AxeBuilder>[0]['page'] }).include('[data-sample="int-division"]').withRules(['scrollable-region-focusable']).analyze();
+  expect(results.violations.map(v => v.id)).toEqual([]);
+  expect(results.passes.flatMap(v => v.nodes).length).toBeGreaterThan(0);
+  await expectAccessible(page, 'long predicted line');
 });
