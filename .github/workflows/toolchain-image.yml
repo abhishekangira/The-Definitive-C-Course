@@ -1,0 +1,42 @@
+name: Toolchain image
+
+on:
+  pull_request:
+    paths:
+      - 'tools/environment/**'
+      - package-lock.json
+      - .github/workflows/toolchain-image.yml
+  push:
+    branches: [main]
+    paths:
+      - 'tools/environment/**'
+      - package-lock.json
+      - .github/workflows/toolchain-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: toolchain-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  toolchain-image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build image and prepare toolchain
+        run: |
+          /usr/bin/time -f 'Image build and setup: %e s' node tools/environment/cli.mjs setup --container
+          cat .cache/environment/status.txt
+          image=$(sed -n 's/^image: //p' .cache/environment/status.txt)
+          docker image inspect "$image" --format 'Image size: {{.Size}} bytes'
+      - name: Unit tests inside the image
+        run: npm run env -- npm test
