@@ -72,6 +72,22 @@ describe('migrate', () => {
     expect(parseProgressFile(text).samples.s).toEqual(kept.samples.s);
   });
 
+  it('drops a sample whose at is not an ISO-8601 datetime or is more than 24 hours ahead', () => {
+    const now = Date.parse('2026-06-15T12:00:00.000Z');
+    const load = (atStamp: string) => migrate({ version: 1, seed: SEED, samples: { s: { prediction: 'p', correct: true, at: atStamp } } }, now);
+    expect(load('9999').samples).toEqual({});
+    expect(load('not a date').samples).toEqual({});
+    expect(load('2099-01-01T00:00:00.000Z').samples).toEqual({});
+    // Date.parse accepts a date-only string. The import does not: it is not the form toISOString writes.
+    expect(load('2026-01-02').samples).toEqual({});
+    const ahead23 = new Date(now + 23 * 60 * 60 * 1000).toISOString();
+    const ahead25 = new Date(now + 25 * 60 * 60 * 1000).toISOString();
+    expect(load(ahead23).samples.s).toEqual({ prediction: 'p', correct: true, at: ahead23 });
+    expect(load(ahead25).samples).toEqual({});
+    expect(load('2026-01-10T00:00:00Z').samples.s.at).toBe('2026-01-10T00:00:00Z');
+    expect(load('2026-01-01T22:00:00-05:00').samples.s.at).toBe('2026-01-01T22:00:00-05:00');
+  });
+
   it('lowers a source count that was the number of code strings, and does not raise one', async () => {
     const sameA = await encodeProgressCode({ exercise: 'lt-free-list', bits: '110', run: 1, src: 'aaaaaaaa' }, SEED);
     const sameB = await encodeProgressCode({ exercise: 'lt-free-list', bits: '111', run: 2, src: 'aaaaaaaa' }, SEED);
@@ -207,6 +223,31 @@ describe('mergeProgress', () => {
     expect(mergeProgress(doc({ samples: { s: cleared } }), doc({ samples: { s: later } })).samples.s).toEqual(cleared);
     expect(mergeProgress(doc({ samples: { s: earlier } }), doc({ samples: { s: tie } })).samples.s).toEqual(earlier);
     expect(mergeProgress(doc({ samples: { s: tie } }), doc({ samples: { s: earlier } })).samples.s).toEqual(tie);
+  });
+
+  it('compares sample at as an instant, so a later time wins even when its string sorts first, and a tie keeps the first', () => {
+    const now = Date.parse('2026-06-15T12:00:00.000Z');
+    const load = (prediction: string, correct: boolean, atStamp: string) =>
+      migrate({ version: 1, seed: SEED, samples: { s: { prediction, correct, at: atStamp } } }, now);
+    // 22:00 at UTC-5 is 03:00Z the next day, later than 00:00Z, but the string starts "2026-01-01" and sorts first.
+    const earlier = load('earlier', true, '2026-01-02T00:00:00.000Z');
+    const laterOffset = load('later', true, '2026-01-01T22:00:00-05:00');
+    expect(laterOffset.samples.s.at < earlier.samples.s.at).toBe(true);
+    expect(Date.parse(laterOffset.samples.s.at)).toBeGreaterThan(Date.parse(earlier.samples.s.at));
+    expect(mergeProgress(earlier, laterOffset).samples.s).toEqual(laterOffset.samples.s);
+    expect(mergeProgress(laterOffset, earlier).samples.s).toEqual(laterOffset.samples.s);
+    // The no-milliseconds form is later in time than the January 2 stamp, whichever way the strings compare.
+    const jan2 = load('jan2', true, '2026-01-02T00:00:00.000Z');
+    const jan10 = load('jan10', true, '2026-01-10T00:00:00Z');
+    expect(mergeProgress(jan2, jan10).samples.s.prediction).toBe('jan10');
+    expect(mergeProgress(jan10, jan2).samples.s.prediction).toBe('jan10');
+    // Same instant, different spelling. "….000Z" sorts before "…Z" as text; the first document still wins.
+    const millis = load('millis', true, '2026-01-10T00:00:00.000Z');
+    const plain = load('plain', false, '2026-01-10T00:00:00Z');
+    expect(Date.parse(millis.samples.s.at)).toBe(Date.parse(plain.samples.s.at));
+    expect(millis.samples.s.at < plain.samples.s.at).toBe(true);
+    expect(mergeProgress(millis, plain).samples.s).toEqual(millis.samples.s);
+    expect(mergeProgress(plain, millis).samples.s).toEqual(plain.samples.s);
   });
 
   it('does not mutate either input', () => {

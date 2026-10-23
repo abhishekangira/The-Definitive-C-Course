@@ -90,6 +90,15 @@ describe('progress import: migrate', () => {
     expect(junk.samples.a).toEqual({ prediction: 'p', correct: true, at });
   });
 
+  it('drops a sample at of "9999", "not a date", or a far-future ISO stamp', () => {
+    const now = Date.parse('2026-06-15T12:00:00.000Z');
+    const one = (stamp: string) => migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":true,"at":${JSON.stringify(stamp)}}}}`), now);
+    expect(one('9999').samples).toEqual({});
+    expect(one('not a date').samples).toEqual({});
+    expect(one('2099-01-01T00:00:00.000Z').samples).toEqual({});
+    expect(one('2026-01-10T00:00:00Z').samples.a).toEqual({ prediction: 'p', correct: true, at: '2026-01-10T00:00:00Z' });
+  });
+
   it('ignores unknown top-level keys and bad settings values', () => {
     const p = migrate(hostile(`{${head},"evil":"<script>","settings":{"platform":"amiga","stdinMode":{"a":1},"storedOutputMode":"yes","x":1}}`));
     expect(Object.keys(p).sort()).toEqual(['cards', 'createdAt', 'exercises', 'lessons', 'projects', 'quizzes', 'samples', 'seed', 'settings', 'streak', 'version']);

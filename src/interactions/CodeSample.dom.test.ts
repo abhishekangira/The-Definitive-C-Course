@@ -1,29 +1,49 @@
 // @vitest-environment jsdom
 // CodeSample mounted for real: the three verdicts, the two labelled boxes, and the 64-bit question.
 // Replaced: the lesson context (samples and card completion), the browser compiler and the code editor.
-// The progress store is the real one.
+// The progress store is the real one. The runner mock is the real useCRun return shape.
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SampleMeta, SampleResult, SamplesFile, TargetId } from '../content-model/types';
 import { emptyProgress, getProgress, replaceProgress, sampleVerdict } from '../progress/store';
+import type { RunPhase, RunSummary, useCRun } from '../runtime/useCRun';
 import styles from './Interaction.module.css';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+type CRun = ReturnType<typeof useCRun>;
+const idleSummary = { compile: { ok: true, diagnostics: [], raw: '', ms: 0 }, stdout: '', stderr: '' } satisfies RunSummary;
+
 const bag = vi.hoisted(() => ({ done: vi.fn(), samples: null as SamplesFile | null }));
+const runnerBag = vi.hoisted(() => ({
+  phase: 'idle' as RunPhase,
+  stop: vi.fn(),
+  reset: vi.fn(),
+}));
 vi.mock('../lesson/LessonContext', () => ({
   useSamples: () => bag.samples,
   useCardDone: () => bag.done,
   useSessions: () => null,
 }));
 vi.mock('../runtime/useCRun', () => ({
-  useCRun: () => ({ run: async () => {}, phase: 'idle', diagnostics: [], rawDiagnostics: '', segments: [], result: null, stop: () => {}, sendInput: () => {}, sendEOF: () => {} }),
+  useCRun: (): CRun => ({
+    run: async () => idleSummary,
+    phase: runnerBag.phase,
+    diagnostics: [],
+    rawDiagnostics: '',
+    segments: [],
+    result: null,
+    stop: () => { runnerBag.stop(); },
+    sendInput: () => {},
+    sendEOF: () => {},
+    reset: () => { runnerBag.reset(); },
+  } satisfies CRun),
 }));
 vi.mock('../components/CodeEditor', () => ({
   preloadCodeEditor: () => {},
   CodeEditor: ({ value, onChange, readOnly }: { value: string; onChange?: (v: string) => void; readOnly?: boolean }) => createElement('div', null,
-    createElement('pre', { 'data-editor': '' }, value),
+    createElement('pre', { 'data-editor': '', 'data-readonly': readOnly ? '' : undefined }, value),
     !readOnly && onChange ? createElement('button', { type: 'button', onClick: () => onChange(`${value}\n/* edited */\n`) }, 'Type an edit') : null,
   ),
 }));
@@ -60,6 +80,9 @@ beforeEach(() => {
   replaceProgress(emptyProgress());
   bag.done.mockClear();
   bag.samples = null;
+  runnerBag.phase = 'idle';
+  runnerBag.stop.mockClear();
+  runnerBag.reset.mockClear();
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -379,5 +402,58 @@ describe('<CodeSample> changing a prediction', () => {
     expect(host.textContent).not.toContain('Change prediction');
     expect(host.textContent).not.toContain('Predict again');
     expect(host.textContent).not.toContain('Predict the 64-bit output again');
+  });
+
+  it('stops the in-flight run when Predict again is pressed', async () => {
+    await show(result());
+    await lockAndRun('3 -3 1\n3.5');
+    expect(button('Run again').disabled).toBe(false);
+    runnerBag.phase = 'running';
+    await click(button('Edit and experiment'));
+    expect(button('Run again').disabled).toBe(true);
+    expect(runnerBag.stop).not.toHaveBeenCalled();
+    expect(runnerBag.reset).not.toHaveBeenCalled();
+    await click(button('Predict again'));
+    expect(runnerBag.stop).toHaveBeenCalledTimes(1);
+    expect(runnerBag.reset).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('textarea')!.value).toBe('');
+  });
+
+  it('shows the 64-bit question again after Predict again, not the old result', async () => {
+    await show(result({ flagged: true, predict64: 'What does the 64-bit run print?', stdout: '4\n', nativeStdout: '3 -3 1\n3.5\n' }));
+    await lockAndRun('4');
+    await fill(host.querySelector('textarea')!, '3 -3 1\n3.5');
+    await click(button('Check my 64-bit prediction'));
+    expect(host.textContent).toContain('Right for 64-bit too.');
+    await click(button('Predict again'));
+    await fill(host.querySelector('textarea')!, '4');
+    await click(button('Lock in my prediction'));
+    await click(button('Run'));
+    expect(host.textContent).toContain('What does the 64-bit run print?');
+    expect(button('Check my 64-bit prediction')).toBeTruthy();
+    expect(host.querySelector('textarea')!.value).toBe('');
+    expect(host.textContent).not.toContain('Right for 64-bit too.');
+  });
+
+  it('makes the editor read-only again after Predict again', async () => {
+    await show(result());
+    await lockAndRun('3 -3 1\n3.5');
+    await click(button('Edit and experiment'));
+    const editor = () => host.querySelector('[data-editor]')!;
+    expect(editor().getAttribute('data-readonly')).toBeNull();
+    expect(button('Type an edit')).toBeTruthy();
+    await click(button('Predict again'));
+    expect(editor().getAttribute('data-readonly')).toBe('');
+    expect([...host.querySelectorAll('button')].some(b => b.textContent === 'Type an edit')).toBe(false);
+  });
+
+  it('does not show Change prediction after Run', async () => {
+    await show(result());
+    await fill(host.querySelector('textarea')!, '3 -3 1\n3.5');
+    await click(button('Lock in my prediction'));
+    expect(host.textContent).toContain('Change prediction');
+    await click(button('Run'));
+    expect(host.textContent).not.toContain('Change prediction');
+    expect(host.textContent).toContain('Predict again');
   });
 });

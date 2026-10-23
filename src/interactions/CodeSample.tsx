@@ -125,6 +125,10 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   };
 
   const predictAgain = () => {
+    // stop() kills the worker; reset() only sets the phase back to idle. The terminal (the only Stop control) unmounts
+    // with `revealed`, and the next run() would replace the handle without killing a program still waiting for stdin.
+    runner.stop();
+    runner.reset();
     setPrediction('');
     setCommitted(false);
     setRevealed(false);
