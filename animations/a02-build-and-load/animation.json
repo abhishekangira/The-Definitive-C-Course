@@ -1,0 +1,7 @@
+{
+  "id": "a02-build-and-load",
+  "title": "hello.c from source to a loaded process",
+  "lesson": "3.2",
+  "platform": "x86-64 Linux, gcc 13. macOS, other libcs and the in-browser compiler differ: line counts, object sizes and the dynamic loader path are this platform's.",
+  "description": "On x86-64 Linux with gcc 13, hello.c is five commands away from a running process. cc -E hello.c -o hello.i expands #include <stdio.h> into the text of the C library header, so hello.i is hundreds of lines and contains the printf declaration. cc -S hello.i writes hello.s, the same program in assembly, including a call to printf by name. cc -c hello.s assembles that into hello.o; nm shows T main defined in the file and U printf still undefined. cc hello.o -o hello links an executable whose size is larger, but nm still shows printf undefined with a GLIBC version tag: the C library is not copied in. readelf names the program interpreter, the dynamic loader, which fills in printf when you run ./hello. The program prints Hello, C! and exits 0."
+}

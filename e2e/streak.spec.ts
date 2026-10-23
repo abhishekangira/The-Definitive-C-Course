@@ -361,6 +361,31 @@ test('with reduced motion the new form appears without a transformation or any l
   }
 });
 
+test('the gallery is still without reduced motion: only aura and pose frame 0 show, and nothing loops', async ({ browser }, testInfo) => {
+  const page = await (await browser.newContext({ baseURL: testInfo.project.use.baseURL })).newPage();
+  page.on('pageerror', e => { throw e; });
+  try {
+    // 30 days: golden, mane and crimson are reached, so their gallery tiles draw the four-frame aura.
+    await setStreak(page, await run(page, 30), 'Replace my progress');
+    await expect(gallery(page).locator('[data-gallery-form="crimson"]')).toHaveAttribute('data-state', 'current');
+    const frames = await gallery(page).evaluate(list => {
+      const vis = (sel: string) => [...list.querySelectorAll(sel)].map(el => getComputedStyle(el).visibility);
+      return {
+        first: vis('[data-aura-frame="0"], [data-frame="0"]'),
+        later: vis('[data-aura-frame]:not([data-aura-frame="0"]), [data-frame]:not([data-frame="0"])'),
+        moving: [...list.querySelectorAll('*')].filter(el => getComputedStyle(el).animationName !== 'none').map(el => el.getAttribute('class')),
+      };
+    });
+    // Three aura tiles with frames 1-3 each, at least.
+    expect(frames.later.length).toBeGreaterThanOrEqual(9);
+    expect(frames.later.every(v => v === 'hidden'), 'aura/pose frames 1-3 hidden under .still').toBe(true);
+    expect(frames.first.every(v => v === 'visible')).toBe(true);
+    expect(frames.moving, '.still children still animating').toEqual([]);
+  } finally {
+    await page.context().close();
+  }
+});
+
 test('a problem check counts for the streak even when it fails', async ({ browser }, testInfo) => {
   const page = await (await browser.newContext({ baseURL: testInfo.project.use.baseURL })).newPage();
   page.on('pageerror', e => { throw e; });

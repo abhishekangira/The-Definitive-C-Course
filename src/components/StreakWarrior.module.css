@@ -38,7 +38,7 @@
 .art[data-mood='defeated'] .figure { animation: slump 3s steps(1) infinite; }
 /* The blink is a child of each pose frame. A visibility:visible child would paint through a hidden frame,
    so this toggles opacity in one step and inherits the frame's visibility. Opacity 0 is the resting state:
-   .still and reduced motion set animation: none, and the blink stays hidden. */
+   .still and reduced motion set animation: none, and the blink stays shut. */
 .blink { opacity: 0; animation: blink 4.6s steps(1) infinite; }
 /* Four aura frames, 0.16s each, the same pace as the old two-frame flicker. */
 .aura0 { animation: hold4 0.64s steps(4, end) infinite; }

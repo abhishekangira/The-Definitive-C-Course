@@ -1,0 +1,28 @@
+WEBVTT
+
+00:00:00.400 --> 00:00:09.400
+hello.c is only text. Five commands turn it into a running process.
+
+00:00:10.400 --> 00:00:15.800
+cc -E expands #include into the text of stdio.h.
+
+00:00:15.800 --> 00:00:21.400
+hello.i is hundreds of lines. The printf declaration is now in the file.
+
+00:00:22.400 --> 00:00:28.200
+cc -S writes hello.s: the same program as assembly.
+
+00:00:28.200 --> 00:00:34.400
+main calls printf by name. Its address is not known yet.
+
+00:00:35.400 --> 00:00:46.400
+cc -c builds hello.o. nm shows T main defined and U printf still undefined.
+
+00:00:47.400 --> 00:00:58.400
+The executable is linked, but nm still shows printf undefined. The library is not copied in.
+
+00:00:59.400 --> 00:01:06.600
+readelf names the program interpreter: the dynamic loader.
+
+00:01:06.600 --> 00:01:14.400
+./hello prints Hello, C! and exits 0. The loader filled in printf.
