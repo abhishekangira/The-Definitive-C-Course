@@ -203,7 +203,8 @@ test('low-memory mode shows stored output without downloading the compiler', asy
   await box.getByRole('button', { name: 'Lock in my prediction' }).click();
   await box.getByRole('button', { name: 'Reveal the result' }).click();
   await expect(box.getByText(/stored output: low-memory mode is on/)).toBeVisible();
-  await expect(box.locator('pre').filter({ hasText: mod.samples.samples[id].answer.stdout.split('\n')[0] })).toBeVisible();
+  // The two compare boxes after a wrong prediction are <pre data-compare> too, and also contain the actual output.
+  await expect(box.locator('pre:not([data-compare])').filter({ hasText: mod.samples.samples[id].answer.stdout.split('\n')[0] })).toBeVisible();
   // A fixed sleep proved nothing; wait for the network to settle after the stored output shows, then count compiler requests.
   await page.waitForLoadState('networkidle');
   expect(toolchainRequests).toEqual([]);
