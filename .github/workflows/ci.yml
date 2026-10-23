@@ -67,6 +67,8 @@ jobs:
 
       - name: Install the native toolchain
         if: needs.changes.outputs.code == 'true'
+        # Usually under 1 min. A crawling Ubuntu mirror once took 22 min (144 kB/s); fail fast and re-run instead.
+        timeout-minutes: 10
         run: sudo bash tools/environment/install-native.sh
 
       - name: Log the reference environment
@@ -178,6 +180,7 @@ jobs:
           cache: npm
 
       - name: Install FFmpeg
+        timeout-minutes: 10
         run: sudo bash tools/environment/install-native.sh --ffmpeg-only
 
       - run: npm ci
