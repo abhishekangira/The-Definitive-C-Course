@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shared by CI and the portable development image. Run as root on Ubuntu 24.04.
 # --ffmpeg-only installs just FFmpeg (CI's e2e jobs need no compilers).
-# TDCC_APT_ARCHIVES=<dir> keeps the downloaded .deb files there (CI caches that folder between runs).
+# TDCC_APT_ARCHIVES=<dir> keeps the downloaded .deb files there, also for later apt runs (CI caches that folder).
 set -euo pipefail
 . /etc/os-release
 if [[ "$ID" != ubuntu || "$VERSION_ID" != 24.04 || "$EUID" != 0 ]]; then
@@ -13,16 +13,15 @@ apt_install=(apt-get install -y --no-install-recommends)
 key=
 cleanup() {
   if [[ -n "$key" ]]; then rm -f "$key"; fi
-  # Leave only readable .deb files, so the unprivileged cache step can archive the folder.
-  if [[ -n "${TDCC_APT_ARCHIVES:-}" ]]; then
-    rm -rf "$TDCC_APT_ARCHIVES/partial" "$TDCC_APT_ARCHIVES/lock"
-    chmod -R a+rX "$TDCC_APT_ARCHIVES"
-  fi
+  # Make everything readable (apt's lock and partial/ are root-only), so the unprivileged cache step can archive the folder.
+  if [[ -n "${TDCC_APT_ARCHIVES:-}" ]]; then chmod -R a+rX "$TDCC_APT_ARCHIVES"; fi
 }
 trap cleanup EXIT
 if [[ -n "${TDCC_APT_ARCHIVES:-}" ]]; then
   mkdir -p "$TDCC_APT_ARCHIVES/partial"
   apt_install+=(-o "Dir::Cache::archives=$TDCC_APT_ARCHIVES")
+  # Later apt runs on this machine use the folder too (CI: Playwright's --with-deps install).
+  echo "Dir::Cache::archives \"$TDCC_APT_ARCHIVES/\";" > /etc/apt/apt.conf.d/99tdcc-archives
 fi
 apt-get update
 if [[ "${1:-}" == --ffmpeg-only ]]; then

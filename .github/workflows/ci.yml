@@ -196,7 +196,7 @@ jobs:
         with:
           node-version: 22
 
-      # Same as the apt cache in `check`, for FFmpeg only.
+      # Same as the apt cache in `check`, for FFmpeg and the libraries Playwright's Chromium needs.
       - name: Week for the apt cache key
         id: week
         run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
@@ -219,18 +219,13 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
         run: npm run build
 
-      # Playwright's own Chromium download, keyed on the installed Playwright version. The install step still runs:
-      # on a hit it downloads nothing and only checks the system libraries.
-      - name: Playwright version
-        id: playwright
-        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright's Chromium
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - name: Install Playwright's Chromium
-        run: npx playwright install --with-deps chromium
+        # Its system libraries also come through ~/.cache/tdcc-apt (install-native.sh set that up); then make the folder
+        # readable again for the cache step.
+        timeout-minutes: 10
+        run: |
+          npx playwright install --with-deps chromium
+          sudo chmod -R a+rX "$HOME/.cache/tdcc-apt"
       - name: End-to-end click-through
         run: npm run e2e -- --shard=${{ matrix.shard }}/2 --reporter=list,blob
       # Every shard uploads its blob report (small when green: traces are kept only on failure); `e2e-report` merges them.

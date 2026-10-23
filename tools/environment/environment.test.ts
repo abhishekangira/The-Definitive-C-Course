@@ -216,5 +216,8 @@ describe('portable environment setup', () => {
     // Every install goes through the array that adds the archive folder; a bare apt-get install would bypass the cache.
     expect(script).toContain('apt_install+=(-o "Dir::Cache::archives=$TDCC_APT_ARCHIVES")');
     expect(script.match(/^[^#\n]*apt-get install/gm)).toEqual(['apt_install=(apt-get install']);
+    // Playwright's own apt install (--with-deps, after install-native.sh) lands in the cached folder too.
+    expect(script).toContain('echo "Dir::Cache::archives \\"$TDCC_APT_ARCHIVES/\\";" > /etc/apt/apt.conf.d/99tdcc-archives');
+    expect(workflow).toMatch(/npx playwright install --with-deps chromium\n\s+sudo chmod -R a\+rX "\$HOME\/\.cache\/tdcc-apt"/);
   });
 });
