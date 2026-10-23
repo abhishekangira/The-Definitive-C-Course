@@ -51,7 +51,9 @@ function keyOf(ord: number): string {
 
 /** Spirit beans save a streak over missed days, one bean per day. A learner starts with START_BEANS, earns one on every
  * BEAN_EVERY-th day of a streak and holds at most MAX_BEANS. A bean is used up only when it saves a streak: a gap with
- * more missed days than beans ends the streak and the beans are kept. A saved day keeps the streak but doesn't add to it. */
+ * more missed days than beans ends the streak and the beans are kept, so the beans that were covering its first days
+ * come back and those days stop showing as saved (a deliberate refund; the Settings page and Rio's message say so).
+ * A saved day keeps the streak but doesn't add to it. */
 export const START_BEANS = 1;
 export const BEAN_EVERY = 7;
 export const MAX_BEANS = 3;
