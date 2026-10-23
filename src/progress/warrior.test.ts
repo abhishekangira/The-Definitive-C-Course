@@ -69,6 +69,20 @@ describe('warriorMood and warriorMessage', () => {
     expect(warriorMessage(status({ longest: 3 }))).toMatch(/^Your streak ended/);
   });
 
+  it('a streak that ended with beans on hand says the break outran them and the beans are kept', () => {
+    const ended = (beans: number) => warriorMessage(status({ longest: 3, lastDay: '2026-03-09', beans }));
+    const tail = ' Submit a problem solution or a quiz answer today to start again.';
+    expect(ended(1)).toBe(`Your streak ended and Rio is back to square one. The break was longer than your spirit bean could cover, so you keep it.${tail}`);
+    expect(ended(2)).toBe(`Your streak ended and Rio is back to square one. The break was longer than your spirit beans could cover, so you keep them.${tail}`);
+    expect(ended(0)).toBe(`Your streak ended and Rio is back to square one.${tail}`);
+    // Only future days (a clock set wrong once): no break happened, so nothing is said about beans.
+    expect(warriorMessage(status({ longest: 3, lastDay: null, beans: 1 }))).toBe(`Your streak ended and Rio is back to square one.${tail}`);
+    // The reported case, through streakStatus: Tuesday submitted with one bean, Wednesday and Thursday missed, seen on Friday.
+    const friday = streakStatus({ days: ['2026-10-20'], longest: 1 }, new Date(2026, 9, 23, 12));
+    expect(friday).toMatchObject({ state: 'none', beans: 1, saved: [] });
+    expect(warriorMessage(friday)).toContain('so you keep it.');
+  });
+
   it('says whether a bean will save a missed day, or is saving one now', () => {
     expect(warriorMessage(status({ state: 'at-risk', current: 5, beans: 1 }))).toBe('Your 5-day streak needs a submission today. If you miss it, a spirit bean will save it.');
     expect(warriorMessage(status({ state: 'at-risk', current: 5, beans: 0 }))).toBe("Your 5-day streak needs a submission today. No spirit beans left, so don't miss it!");

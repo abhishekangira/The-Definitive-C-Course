@@ -63,9 +63,11 @@ export function warriorMood(st: StreakStatus): WarriorMood {
 export function warriorMessage(st: StreakStatus): string {
   switch (warriorMood(st)) {
     case 'defeated':
-      return st.longest > 0
-        ? 'Your streak ended and Rio is back to square one. Submit a problem solution or a quiz answer today to start again.'
-        : 'No streak yet. Submit a problem solution or a quiz answer and Rio starts training.';
+      if (st.longest === 0) return 'No streak yet. Submit a problem solution or a quiz answer and Rio starts training.';
+      // A streak that ended with beans on hand ran past them: the beans that covered the first missed days came back.
+      return `Your streak ended and Rio is back to square one.${st.lastDay !== null && st.beans > 0
+        ? ` The break was longer than your ${st.beans === 1 ? 'spirit bean could cover, so you keep it' : 'spirit beans could cover, so you keep them'}.`
+        : ''} Submit a problem solution or a quiz answer today to start again.`;
     case 'worried':
       if (st.gapSaved > 0) return `A spirit bean saved your ${st.current}-day streak. Submit something today to keep it going.`;
       return `Your ${st.current}-day streak needs a submission today.${st.beans > 0 ? ' If you miss it, a spirit bean will save it.' : ' No spirit beans left, so don\'t miss it!'}`;

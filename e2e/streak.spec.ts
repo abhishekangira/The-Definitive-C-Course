@@ -358,6 +358,35 @@ test('an imported streak is merged, and Rio takes the form of its length', async
   }
 });
 
+test('a break longer than the beans ends the streak and hands the bean back; Settings and Rio say why', async ({ browser }, testInfo) => {
+  const page = await (await browser.newContext({ baseURL: testInfo.project.use.baseURL })).newPage();
+  page.on('pageerror', e => { throw e; });
+  try {
+    const days = panel(page).getByRole('list', { name: 'The last 14 days' }).getByRole('listitem');
+    // The reported case. One submission two days ago with the starting bean: yesterday is saved and no bean is left.
+    await page.goto('#/settings');
+    const [twoAgo, threeAgo, yesterday] = await Promise.all([daysAgo(page, 2), daysAgo(page, 3), daysAgo(page, 1)]);
+    await setStreak(page, [twoAgo], 'Replace my progress');
+    await expect(panel(page).getByTestId('spirit-beans')).toHaveText('0 of 3 spirit beans · one is saving your streak right now');
+    await expect(days.nth(12)).toContainText(`${yesterday}: missed, saved by a spirit bean`);
+    // A day later (the same history one day older): two missed days, one bean. The streak ends and the bean comes back.
+    await setStreak(page, [threeAgo], 'Replace my progress');
+    await expect(panel(page).getByTestId('spirit-beans')).toHaveText('1 of 3 spirit beans');
+    await expect(days.nth(11)).toContainText(`${twoAgo}: nothing submitted`);
+    await expect(rio(page)).toHaveAttribute('data-mood', 'defeated');
+    await expect(rio(page)).toContainText('The break was longer than your spirit bean could cover, so you keep it.');
+    await expect(panel(page).locator('.setting-head')).toContainText(
+      'If a break runs longer than your beans can cover, the streak ends anyway and the beans it was using come back to you, so those days stop showing as saved.');
+    await expect(panel(page).locator('.setting-head')).toContainText('Once you submit again, the beans that saved the break are spent.');
+    for (const scheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await expectAccessible(page, `settings after a streak ended with a bean handed back (${scheme})`);
+    }
+  } finally {
+    await page.context().close();
+  }
+});
+
 test('with reduced motion the new form appears without a transformation or any looping motion, and is still announced', async ({ browser }, testInfo) => {
   const page = await (await browser.newContext({ baseURL: testInfo.project.use.baseURL, reducedMotion: 'reduce' })).newPage();
   page.on('pageerror', e => { throw e; });
