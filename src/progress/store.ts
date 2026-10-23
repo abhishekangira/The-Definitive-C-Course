@@ -23,7 +23,38 @@ const KEY = previewing ? PREVIEW_KEY : REAL_KEY;
 
 export type Platform = 'mac-arm' | 'mac-intel' | 'wsl' | 'linux-x86' | 'linux-arm';
 
-export interface SampleProgress { prediction: string; correct: boolean; predict64?: string; predict64Correct?: boolean; at: string }
+export type SampleVerdict = 'exact' | 'close' | 'wrong';
+
+export interface SampleProgress {
+  prediction: string;
+  /** True for an exact match and for a close one (same values; spacing or punctuation differs). */
+  correct: boolean;
+  /**
+   * Absent on progress saved before verdicts existed. `correct` then meant an exact match, so read a missing
+   * verdict with `sampleVerdict` (`correct ? 'exact' : 'wrong'`), not as close.
+   */
+  verdict?: SampleVerdict;
+  predict64?: string;
+  predict64Correct?: boolean;
+  predict64Verdict?: SampleVerdict;
+  at: string;
+}
+
+const VERDICTS: readonly SampleVerdict[] = ['exact', 'close', 'wrong'];
+const asVerdict = (v: unknown): SampleVerdict | undefined => (typeof v === 'string' && (VERDICTS as readonly string[]).includes(v) ? v as SampleVerdict : undefined);
+
+/** The stored verdict, or exact/wrong from `correct` when the document was saved before verdicts existed. */
+export function sampleVerdict(s: { correct: boolean; verdict?: string }): SampleVerdict {
+  return asVerdict(s.verdict) ?? (s.correct ? 'exact' : 'wrong');
+}
+
+/** The stored 64-bit verdict. Undefined when that question was never answered. A missing verdict reads `predict64Correct` the same way as `sampleVerdict`. */
+export function sample64Verdict(s: { predict64Correct?: boolean; predict64Verdict?: string }): SampleVerdict | undefined {
+  const stored = asVerdict(s.predict64Verdict);
+  if (stored) return stored;
+  if (typeof s.predict64Correct !== 'boolean') return undefined;
+  return s.predict64Correct ? 'exact' : 'wrong';
+}
 export interface ExerciseProgress {
   attempts: number;
   /** Compiled-and-tested runs whose code differed from the previous run. */
@@ -180,7 +211,7 @@ export function migrate(raw: unknown): ProgressV1 {
     cards,
     lessons: section(o.lessons, x => (typeof x.completedAt === 'string' ? { completedAt: x.completedAt } : undefined)),
     samples: section(o.samples, x => (typeof x.prediction === 'string' && typeof x.correct === 'boolean' && typeof x.at === 'string'
-      ? drop({ prediction: x.prediction, correct: x.correct, predict64: str(x.predict64), predict64Correct: bool(x.predict64Correct), at: x.at }) : undefined)),
+      ? drop({ prediction: x.prediction, correct: x.correct, verdict: asVerdict(x.verdict), predict64: str(x.predict64), predict64Correct: bool(x.predict64Correct), predict64Verdict: asVerdict(x.predict64Verdict), at: x.at }) : undefined)),
     exercises: section(o.exercises, cleanExercise),
     quizzes: section(o.quizzes, x => (num(x.score) !== undefined && num(x.total) !== undefined && typeof x.passed === 'boolean' && typeof x.at === 'string'
       ? { score: x.score as number, total: x.total as number, passed: x.passed, at: x.at, answers: isRecord(x.answers) ? Object.fromEntries(Object.entries(x.answers).filter(([k]) => k !== '__proto__')) : {} } : undefined)),

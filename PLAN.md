@@ -272,6 +272,7 @@ Short explanation of the wheel (≤ 250 words)…
 | `guardrail` | Also store the browser guardrail-mode output |
 | `platform` | Acknowledges an expected cross-target difference |
 | `predict64="…"` / `predict64=none reason="…"` | **Required on every flagged sample** (§3.2) |
+| `match=exact` or `match=close` | `exact` turns a close output prediction red. `close` is the default, written out where a flag, width or precision is on screen: the values match and only spacing, punctuation or line breaks differ |
 | `target=native` | Native-only (fork, pipes, dlopen, files on disk). No browser Run button: predict, then reveal stored output |
 | `stdout=tty\|pipe\|both` | How the native run's stdout is attached; default `tty`, matching the browser |
 | `posix` | Required when POSIX APIs are used; checks the feature-test macro convention (§4.4) |

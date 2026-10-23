@@ -80,6 +80,7 @@ is measured on the cards learners see: a fence that has an `id` ends a card, a `
 | `predict-before-run` | error | A top-level `id` fence is predict-before-run: `predict=none` / `run` is only allowed for fences nested in a component (`<Stepper>`, `<CompilerError>`, `<PipelineExplorer>`, `<MemoryDiagram>`…) or in a quiz item type that has no prediction. |
 | `ub-prediction` | error | A sample with `expect=ub` (also `expect.gcc=ub`…) must not ask for its exact output: use `predict=outcome` or `choices=…` (PLAN §3.4). |
 | `platform-predict64` | error | `platform` needs `predict64="…"` or `predict64=none reason="…"`; `predict64` needs `platform` (PLAN §3.2). |
+| `match-format` | warning / error | A lesson output prediction, or a flagged sample with a `predict64` question, whose code has a printf-family conversion with a flag, width or precision (`%5d`, `%.1f`, `%08x`, `%*d`) and no `match=exact` or `match=close`. `%d`, `%zu` and `%u` alone do not warn. Error: `match=` on a sample that is not an output prediction and has no 64-bit question. The warning is lessons only; the error also applies to quiz code. |
 | `posix-scope`, `posix-flag` | error | `posix` only in M11, M13 and the capstone; a `#define _POSIX_C_SOURCE` requires the `posix` flag (PLAN §4.4). |
 | `analogy` | error / warning | `<Analogy>` has non-empty `js`, `c` and `breaksDown` (string or literal expression); a very short breakdown warns. |
 | `analogy-review` | warning | `breaksDown` contains "exactly" or "same": check it names a real difference (PLAN §2.5). |
@@ -139,9 +140,9 @@ A quiz file is a YAML list of items (or an object with `items`, `pool` or `quest
 | `retrieval-composition` | error / warning | 6 to 10 items; for modules 2 and up, a warning when no item comes from the previous module, or (module 3 and up) all items come from one module. |
 | `retrieval-from` | error | Every item has `from`: `js` in Module 1 (and only there), an earlier module that is in `course.yaml` elsewhere. `module.yaml` `retrieval.sources` must list exactly the modules the items come from (`module-yaml`). |
 
-The sample rules of the lesson section (`ub-prediction`, `platform-predict64`, `posix-*`, `sample-id`, `duplicate-sample`)
+The sample rules of the lesson section (`ub-prediction`, `platform-predict64`, `posix-*`, `sample-id`, `duplicate-sample`, `match-format`)
 also apply to the code of quiz items; `predict` items are predicted by output, `outcome` by outcome, `choice` by choices,
-and `ce`, `md`, `sp` have no prediction.
+and `ce`, `md`, `sp` have no prediction. The `match-format` warning is lessons only; its error applies to quiz code too.
 
 ## Code map
 

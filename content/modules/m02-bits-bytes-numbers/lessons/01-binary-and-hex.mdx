@@ -29,7 +29,7 @@ So `1100 1010` is `C` then `A`: `0xCA`. In C a leading `0x` marks a hex literal,
 
 `printf` can print in hex. `%x` uses lower case, `%X` upper case, and `%02x` pads to at least two digits with zeros, which is what you want for a byte. A `#` flag (`%#x`) adds the `0x` prefix. Predict the output.
 
-```c id=hex-print
+```c id=hex-print match=exact
 #include <stdio.h>
 
 int main(void) {
@@ -43,7 +43,7 @@ int main(void) {
 
 Web colours are the most familiar place hex shows up. `#RRGGBB` is three bytes written as six hex digits: red, then green, then blue, each from `00` to `FF`. `#FF8000` is an orange: red 255, green 128, blue 0. This program has blue 9 instead, so the padding matters. What does it print?
 
-```c id=rgb-hex
+```c id=rgb-hex match=exact
 #include <stdio.h>
 
 int main(void) {

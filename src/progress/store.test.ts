@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  daysSinceExport, emptyProgress, exerciseProgress, getProgress, mergeProgress, markCard, migrate, summarise, update,
+  daysSinceExport, emptyProgress, exerciseProgress, getProgress, mergeProgress, markCard, migrate, parseProgressFile, sample64Verdict, sampleVerdict, summarise, update,
   type ExerciseProgress, type ProgressV1, type ProjectProgress, type QuizProgress, type SampleProgress,
 } from './store';
 import type { StreakData } from './streak';
@@ -38,7 +38,7 @@ describe('migrate', () => {
       settings: { platform: 'wsl', storedOutputMode: true, stdinMode: 'preset' },
       cards: { 'm01-l1': [0, 1, 2] },
       lessons: { 'm01-l1': { completedAt: at } },
-      samples: { s1: { prediction: 'x', correct: true, predict64: 'y', predict64Correct: false, at } satisfies Required<SampleProgress> },
+      samples: { s1: { prediction: 'x', correct: true, verdict: 'close', predict64: 'y', predict64Correct: false, predict64Verdict: 'wrong', at } satisfies Required<SampleProgress> },
       exercises: {
         e1: {
           attempts: 3, substantive: 2, lastCodeHash: 'abc', code: 'int main(void) { return 0; }', activeMs: 5, hintsViewed: 1, passed: true,
@@ -50,6 +50,26 @@ describe('migrate', () => {
       streak: { days: ['2026-01-01', '2026-01-02', '2026-01-04'], longest: 5 } satisfies StreakData,
     } satisfies ProgressV1;
     expect(migrate(structuredClone(full))).toEqual(full);
+  });
+
+  it('reads a sample saved before verdicts as exact or wrong, and drops any other verdict', () => {
+    const right = migrate({ version: 1, seed: SEED, samples: { s: { prediction: 'p', correct: true, at } } });
+    expect(right.samples.s).toEqual({ prediction: 'p', correct: true, at });
+    expect(sampleVerdict(right.samples.s)).toBe('exact');
+    expect(sample64Verdict(right.samples.s)).toBeUndefined();
+    const wrong = migrate({ version: 1, seed: SEED, samples: { s: { prediction: 'p', correct: false, predict64: 'q', predict64Correct: true, at } } });
+    expect(sampleVerdict(wrong.samples.s)).toBe('wrong');
+    expect(sample64Verdict(wrong.samples.s)).toBe('exact');
+    expect(sample64Verdict({ predict64Correct: false })).toBe('wrong');
+    const junk = migrate({ version: 1, seed: SEED, samples: { s: { prediction: 'p', correct: true, verdict: 'near', predict64: 'q', predict64Correct: false, predict64Verdict: 'nope', at } } });
+    expect(junk.samples.s).toEqual({ prediction: 'p', correct: true, predict64: 'q', predict64Correct: false, at });
+    expect(sampleVerdict(junk.samples.s)).toBe('exact');
+    expect(sample64Verdict(junk.samples.s)).toBe('wrong');
+    const kept = migrate({ version: 1, seed: SEED, samples: { s: { prediction: '3, -3', correct: true, verdict: 'close', predict64: '8', predict64Correct: true, predict64Verdict: 'close', at } } });
+    expect(sampleVerdict(kept.samples.s)).toBe('close');
+    expect(sample64Verdict(kept.samples.s)).toBe('close');
+    const text = JSON.stringify(kept);
+    expect(parseProgressFile(text).samples.s).toEqual(kept.samples.s);
   });
 
   it('lowers a source count that was the number of code strings, and does not raise one', async () => {
@@ -165,6 +185,22 @@ describe('mergeProgress', () => {
   it('keeps a passed project', () => {
     const merged = mergeProgress(doc({ projects: { 'mario-more': { passed: true, at } } }), doc({ projects: { 'mario-more': { passed: false, at } } }));
     expect(merged.projects['mario-more'].passed).toBe(true);
+  });
+
+  it('keeps a sample that only one side has, verdict included', () => {
+    const close = { prediction: '3, -3, 1', correct: true, verdict: 'close' as const, at };
+    const exact = { prediction: '8', correct: true, verdict: 'exact' as const, predict64: '8', predict64Correct: true, predict64Verdict: 'exact' as const, at };
+    const merged = mergeProgress(doc({ samples: { onlyA: close } }), doc({ samples: { onlyB: exact } }));
+    expect(merged.samples.onlyA).toEqual(close);
+    expect(merged.samples.onlyB).toEqual(exact);
+    expect(mergeProgress(doc({ samples: { onlyB: exact } }), doc({ samples: { onlyA: close } })).samples.onlyA).toEqual(close);
+  });
+
+  it('keeps the first document when both have the sample', () => {
+    const first = { prediction: 'a', correct: true, verdict: 'close' as const, at: '2026-01-01T00:00:00.000Z' };
+    const later = { prediction: 'b', correct: true, verdict: 'exact' as const, at: '2026-06-01T00:00:00.000Z' };
+    expect(mergeProgress(doc({ samples: { s: first } }), doc({ samples: { s: later } })).samples.s).toEqual(first);
+    expect(mergeProgress(doc({ samples: { s: later } }), doc({ samples: { s: first } })).samples.s).toEqual(later);
   });
 
   it('does not mutate either input', () => {

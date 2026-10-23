@@ -20,6 +20,7 @@ import { readdirSync } from 'node:fs';
 import { exitCode, parseArgs, renderReport } from './cli';
 import { lintContent, type LintResult } from './lint';
 import type { LintMessage } from './messages';
+import { FenceMetaError, parseRawMeta, toSampleMeta } from '../../src/content-model/fence-meta';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const GOOD = path.join(HERE, 'fixtures', 'good');
@@ -237,6 +238,75 @@ describe('fences', () => {
     expect(errorsOf(withOutput('text', '== 3 =='), 'hand-typed-output')).toEqual([]);
     // A file:line:col reference without a diagnostic kind is prose about code, not tool output.
     expect(errorsOf(withOutput('text', 'see main.c:5:12 for the loop'), 'hand-typed-output')).toEqual([]);
+  });
+
+  it('parses match=exact and match=close, and rejects match=loose', () => {
+    expect(toSampleMeta(parseRawMeta('id=s match=exact'))).toMatchObject({ id: 's', match: 'exact' });
+    expect(toSampleMeta(parseRawMeta('id=s match=close'))).toMatchObject({ id: 's', match: 'close' });
+    const plain = toSampleMeta(parseRawMeta('id=s'));
+    expect(plain).not.toHaveProperty('match');
+    expect(() => toSampleMeta(parseRawMeta('id=s match=loose'))).toThrow(FenceMetaError);
+    expect(() => toSampleMeta(parseRawMeta('id=s match=loose'))).toThrow(/bad match=loose/);
+  });
+
+  const formatted = (conv: string, meta = 'id=fx-hello') => ({
+    [lesson]: (old: string) => sub(`printf("Hello`, `printf("${conv}`)(sub('```c id=fx-hello', `\`\`\`c ${meta}`)(old)),
+  });
+
+  it('warns when a width, flag or precision has no match=, and stays quiet on %d, %zu and %u', () => {
+    for (const conv of ['%.1f', '%5d', '%-5s', '%08x', '%*d']) {
+      const r = lintGoodWith(formatted(conv)).result;
+      const w = warningsOf(r, 'match-format', '01-hello.mdx');
+      expect(w, conv).toHaveLength(1);
+      expect(w[0].message).toContain(conv);
+      expect(errorsOf(r, 'match-format')).toEqual([]);
+    }
+    for (const conv of ['%d', '%zu', '%u', '%ld']) expect(warningsOf(lintGoodWith(formatted(conv)).result, 'match-format'), conv).toEqual([]);
+    // A plain %d earlier in the same sample must not hide a later %.1f.
+    const later = lintGoodWith(formatted('%d\\n");\n    printf("%.1f')).result;
+    expect(warningsOf(later, 'match-format')[0].message).toContain('%.1f');
+  });
+
+  it('accepts match=close or match=exact on a formatted sample, and errors when match= cannot apply', () => {
+    for (const meta of ['id=fx-hello match=close', 'id=fx-hello match=exact']) {
+      expect(warningsOf(lintGoodWith(formatted('%.1f', meta)).result, 'match-format'), meta).toEqual([]);
+    }
+    const outcome = lintGoodWith(withFence('id=fx-hello predict=outcome match=close')).result;
+    expect(errorsOf(outcome, 'match-format')).toHaveLength(1);
+    expect(errorsOf(outcome, 'match-format')[0].message).toContain('match=close');
+    expect(errorsOf(outcome, 'match-format')[0].message).toContain('does nothing');
+    const sixtyFour = lintGoodWith(formatted('%.1f', 'id=fx-hello platform predict64="what does it print?" match=exact')).result;
+    expect(errorsOf(sixtyFour, 'match-format')).toEqual([]);
+    expect(warningsOf(sixtyFour, 'match-format')).toEqual([]);
+    // The warning is lessons only. The error still applies to quiz code.
+    const quiz = `${M1}/quizzes/checkpoint.yaml`;
+    const quiet = lintGoodWith({ [quiz]: sub('printf("%d\\n", 2 + 3);', 'printf("%.1f\\n", 2 + 3);') }).result;
+    expect(warningsOf(quiet, 'match-format')).toEqual([]);
+    const quizMatch = lintGoodWith({ [quiz]: sub('meta: expect=compile-error', 'meta: expect=compile-error match=close') }).result;
+    expect(errorsOf(quizMatch, 'match-format', 'checkpoint.yaml')).toHaveLength(1);
+    expect(warningsOf(quizMatch, 'match-format')).toEqual([]);
+  });
+
+  it('does not treat match= as useless when the only prediction is a 64-bit question', () => {
+    // predict is outcome, so this is not an output prediction. match= still applies because of predict64.
+    // Forcing sixtyFour false reports the "does nothing" error.
+    const meta = 'id=fx-hello predict=outcome platform predict64="what does the 64-bit run print?" match=exact';
+    const kept = lintGoodWith(formatted('%.1f', meta)).result;
+    expect(errorsOf(kept, 'fence-meta')).toEqual([]);
+    expect(errorsOf(kept, 'match-format')).toEqual([]);
+    expect(warningsOf(kept, 'match-format')).toEqual([]);
+  });
+
+  it('warns when a formatted sample whose only prediction is a 64-bit question has no match=', () => {
+    // Same shape, no match=. The warning depends on sixtyFour: predict is not output.
+    const meta = 'id=fx-hello predict=outcome platform predict64="what does the 64-bit run print?"';
+    const warn = lintGoodWith(formatted('%.1f', meta)).result;
+    expect(errorsOf(warn, 'fence-meta')).toEqual([]);
+    const w = warningsOf(warn, 'match-format');
+    expect(w).toHaveLength(1);
+    expect(w[0].message).toContain('%.1f');
+    expect(w[0].message).toContain('match=');
+    expect(errorsOf(warn, 'match-format')).toEqual([]);
   });
 
   it('keeps cards the same as the renderer: a fragment fence is not an interaction', () => {

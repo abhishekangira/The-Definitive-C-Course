@@ -25,7 +25,7 @@ Now try one more by hand.
 
 The bit pattern of a float can be read by copying it into an integer of the same size. `memcpy` does that copy (you will meet it again in Module 5). Predict the three patterns. Notice that `0.1f` does not look "round" in hex.
 
-```c id=float-bits
+```c id=float-bits match=close
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -46,7 +46,7 @@ int main(void) {
 
 Why `0.1f` is not round: 0.1 is a repeating fraction in binary, just as 1/3 is in decimal, so only a close neighbour can be stored. That is why `0.1 + 0.2` is not exactly 0.3. `%.17g` prints enough digits to show the stored value. Compare with what JavaScript's `0.1 + 0.2` shows: the same number.
 
-```c id=point-one-plus
+```c id=point-one-plus match=close
 #include <stdio.h>
 
 int main(void) {
@@ -61,7 +61,7 @@ int main(void) {
 
 A `float` has only 23 fraction bits, so past 2 to the power of 24 it cannot store every whole number. Predict what happens to 16777217.
 
-```c id=float-16777217
+```c id=float-16777217 match=close
 #include <stdio.h>
 
 int main(void) {
@@ -108,7 +108,7 @@ int main(void) {
 
 Rounding differs from JavaScript too. C's `round` rounds halves **away from zero**. JavaScript's `Math.round` rounds halves toward positive infinity, so `Math.round(-2.5)` is -2 while C gives -3. Predict the output.
 
-```c id=round-halves
+```c id=round-halves match=close
 #include <math.h>
 #include <stdio.h>
 

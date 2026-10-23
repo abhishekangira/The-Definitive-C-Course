@@ -30,6 +30,8 @@ export interface SampleCheckContext {
    * that component, and quiz items by their type, so they may be `predict=none`.
    */
   standalone: boolean;
+  /** Lesson fence, not a quiz item. The match-format warning is for lessons; the error applies to both. */
+  lesson?: boolean;
 }
 
 export function checkSampleMeta(meta: SampleMeta, code: string, line: number, r: FileReporter, ctx: SampleCheckContext): void {
@@ -61,5 +63,22 @@ export function checkSampleMeta(meta: SampleMeta, code: string, line: number, r:
   }
   if (!meta.posix && /^\s*#\s*define\s+_POSIX_C_SOURCE\b/m.test(code)) {
     r.error(line, 'posix-flag', `sample "${meta.id}" defines _POSIX_C_SOURCE: mark the fence posix (and keep POSIX to M11, M13 and the capstone)`);
+  }
+  // A flag, a width or a precision. `%d`, `%zu` and `%u` match the shape but have none of those, so they do not count.
+  // Every conversion is checked: a plain `%d` earlier in the sample must not hide a later `%.1f`.
+  let formatted: string | undefined;
+  for (const m of code.matchAll(/%([-+ #0]*)(\d+|\*)?(\.(?:\d+|\*))?(?:hh|h|ll|l|j|z|t|L)?[diouxXeEfFgGcsp]/g)) {
+    if (m[1] || m[2] || m[3]) { formatted = m[0]; break; }
+  }
+  const outputPrediction = meta.predict === 'output';
+  const sixtyFour = Boolean(meta.platform && meta.predict64 && meta.predict64 !== 'none');
+  if (meta.match && !outputPrediction && !sixtyFour) {
+    r.error(line, 'match-format',
+      `sample "${meta.id}" sets match=${meta.match}, which does nothing here: match= applies to an output prediction or a 64-bit question (predict64="…")`);
+  }
+  if (ctx.lesson && !meta.match && (outputPrediction || sixtyFour) && formatted) {
+    r.warn(line, 'match-format',
+      `sample "${meta.id}" prints with a flag, width or precision (${formatted}) but has no match=exact or match=close. ` +
+      'Add match=close where the values are the lesson, or match=exact where the formatting is the point');
   }
 }
