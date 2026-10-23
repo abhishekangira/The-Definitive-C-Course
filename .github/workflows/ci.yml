@@ -194,8 +194,6 @@ jobs:
       - name: Install Playwright's Chromium
         run: npx playwright install --with-deps chromium
       - name: End-to-end click-through
-        env:
-          E2E_DELIBERATE_FAIL: 1  # TEMPORARY probe for e2e-report; reverted in the next commit
         run: npm run e2e -- --shard=${{ matrix.shard }}/2 --reporter=list,blob
       # Every shard uploads its blob report (small when green: traces are kept only on failure); `e2e-report` merges them.
       - uses: actions/upload-artifact@v4
