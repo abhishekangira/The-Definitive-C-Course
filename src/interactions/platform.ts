@@ -229,7 +229,7 @@ function alignLines(a: string[], b: string[]): AlignedLine[] {
 }
 
 function side(line: string | undefined, otherBlank: boolean, chunks?: DiffChunk[]): DiffRow {
-  if (line === undefined) return { gap: true, blank: otherBlank, chunks: [] };
+  if (line === undefined) return { gap: true, blank: false, chunks: [] };
   return { gap: false, blank: line === '' && otherBlank, chunks: chunks ?? [{ text: line, mark: line !== '' }] };
 }
 

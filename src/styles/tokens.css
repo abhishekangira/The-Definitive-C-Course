@@ -48,6 +48,8 @@
   --terminal-muted: #a1a7ae;
   --terminal-err: #ff9b8f;
   --terminal-in: #8fd3ff;
+  --terminal-diff-text: #ffb5ad;
+  --terminal-diff-bg: #572923;
 
   /* tight radii, chosen once: cards 8, controls 6, chips 4 */
   --radius: 8px;

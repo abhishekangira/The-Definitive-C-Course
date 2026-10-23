@@ -75,6 +75,16 @@ async function expectMonoCompare(box: Locator) {
   }
 }
 
+/** Check the painted colour, since a missing fill computes as transparent rather than the box colour. */
+async function expectTintedDiff(box: Locator) {
+  const colours = await box.locator('[data-diff]').first().evaluate(el => ({
+    mark: getComputedStyle(el).backgroundColor,
+    box: getComputedStyle(el.closest('[data-compare]')!).backgroundColor,
+  }));
+  expect(colours.mark).not.toBe('rgba(0, 0, 0, 0)');
+  expect(colours.mark).not.toBe(colours.box);
+}
+
 async function shots(page: Page, box: ReturnType<Page['locator']>, name: string) {
   const dir = process.env.SHOTS;
   if (!dir) return;
@@ -118,10 +128,12 @@ test('a close prediction on int-division is yellow, with both boxes and the comm
   await expect(status).toHaveCSS('background-color', 'rgb(253, 241, 220)');
   const underline = await box.locator('[data-diff]').first().evaluate(el => getComputedStyle(el).textDecorationLine);
   expect(underline).toContain('underline');
+  await expectTintedDiff(box);
   await expectMonoCompare(box);
   await expectAccessible(page, 'yellow close box, light');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(status).toHaveCSS('background-color', 'rgb(43, 35, 18)');
+  await expectTintedDiff(box);
   await expectAccessible(page, 'yellow close box, dark');
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
@@ -208,7 +220,8 @@ test('the empty-line note is shown, a blank row is one line tall, and copying ei
   const note = predictedBox.locator('[data-blank]');
   await expect(note).toHaveAttribute('aria-label', 'empty line');
   expect(await note.evaluate(el => getComputedStyle(el, '::before').content)).toBe('"empty line"');
-  // The actual box has a plain gap row for "extra" (no note). Every row, blank, gap or text, is exactly one line tall, so the two boxes stay aligned.
+  await expect(actualBox.locator('[data-blank], [aria-label="empty line"], [role="img"]')).toHaveCount(0);
+  // Both actual-side gaps (the blank line and "extra") have no note. Every row is one line tall, so the boxes stay aligned.
   for (const b of [predictedBox, actualBox]) {
     expect(await b.locator('[data-line]').count()).toBe(4);
     const heights = await b.locator('[data-line]').evaluateAll(els => els.map(el => el.getBoundingClientRect().height));

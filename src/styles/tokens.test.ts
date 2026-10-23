@@ -55,6 +55,9 @@ for (const [name, t] of [['light', light], ['dark', dark]] as const) {
         expect(ratio(t['--focus'], t[surface]), `focus on ${surface}`).toBeGreaterThanOrEqual(3);
       }
     });
+    it('diff mark text reaches 4.5:1 on its tinted terminal background', () => {
+      expect(ratio(t['--terminal-diff-text'], t['--terminal-diff-bg']), 'terminal-diff-text on terminal-diff-bg').toBeGreaterThanOrEqual(4.5);
+    });
   });
 }
 
