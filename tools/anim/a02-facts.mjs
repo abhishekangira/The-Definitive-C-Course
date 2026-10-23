@@ -21,6 +21,16 @@ export function plain(html) {
   return html.replace(/<svg[\s\S]*?<\/svg>/g, '').replace(/<[^>]+>/g, '').replace(/&(lt|gt|amp|quot);/g, m => ENT[m]);
 }
 
+/** Visible scene text with bound values removed. Style, script and svg are not on screen. */
+export function unboundText(html) {
+  const cut = html
+    .replace(/<([a-zA-Z][\w:-]*)\b[^>]*\bdata-var-text="[^"]*"[^>]*>[\s\S]*?<\/\1>/g, '')
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, '')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, '')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  return plain(cut);
+}
+
 /** The C source shown in the editor: text of each `.bl-line`'s code span. */
 export function listing(html) {
   const lines = [...html.matchAll(/<div class="bl-line[^"]*"[^>]*><span class="bl-ln"[^>]*>\d+<\/span><span>([\s\S]*?)<\/span><\/div>/g)]
@@ -120,13 +130,14 @@ export function collectFacts({ source, commands }) {
     let stdout = '';
     const outputs = {};
     for (const cmd of commands) {
+      // `stdout: "0"` is equivalent while ./hello exits 0. A non-zero ./hello is reported, not thrown, so `return 1` fails the assertions.
       if (cmd === 'echo $?') { outputs[cmd] = { status: 0, stdout: String(lastStatus), stderr: '' }; continue; }
       const argv = toGcc(cmd).split(/\s+/);
       const r = run(argv, dir);
       outputs[cmd] = r;
       lastStatus = r.status;
       if (argv[0] === './hello') stdout = r.stdout;
-      if (r.status !== 0) throw new Error(`${cmd} failed (${r.status}): ${r.stderr || r.stdout || r.error}`);
+      else if (r.status !== 0) throw new Error(`${cmd} failed (${r.status}): ${r.stderr || r.stdout || r.error}`);
     }
     const iText = readFileSync(path.join(dir, 'hello.i'), 'utf8');
     const sText = readFileSync(path.join(dir, 'hello.s'), 'utf8');

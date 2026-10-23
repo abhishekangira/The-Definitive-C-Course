@@ -225,6 +225,9 @@ Found later (A3, A4, A2):
   `--variables-file` showed the file's value in a scene's `data-var-text` element, but `getVariables()` in that scene's
   script returned no value for a variable declared on the root `<html>`. `check` and `snapshot` get no
   `--variables-file`, so `a02-facts.test.ts` checks that each default and each bound element's text equal `variables.json`.
+* **Vitest runs a `describe.skipIf` callback during collection even when the suite is skipped.** `collectFromProject()`
+  there ran gcc, and a machine without gcc-13 failed collection (`spawnSync gcc-13 ENOENT`) instead of skipping.
+  Put gcc work in `beforeAll`.
 * **gcc 13 on another distro gives other numbers.** Debian 13's gcc 13.3 (glibc 2.41) printed 816 `.i` lines, 33 `.s`
   lines, a 1408-byte `hello.o` and a 15952-byte `hello`; an Ubuntu 24.04 userland gave 819, 50, 1544 and 15960. Run
   `node tools/anim/a02-facts.mjs --write` on Ubuntu 24.04 (CI, or the official `ubuntu-base` 24.04 tarball in a chroot
