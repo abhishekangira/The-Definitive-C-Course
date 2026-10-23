@@ -3,9 +3,9 @@
 One way to get CI's native toolchain (Ubuntu 24.04, gcc 13, clang/lldb 22, gdb 15,
 valgrind 3.22, Node 22) on any Linux machine or WSL: use the host when it already
 matches, otherwise a Docker image built from the same installer CI runs. The entry
-point, `cli.mjs`, needs only some Node 22 and no npm dependencies; the toolchain's Node
-(package.json `engines`, >=22.22.2) is the backend's: the image ships 22.22.2, so an
-older host Node does not rule the container out.
+point, `cli.mjs`, needs only some Node 22 and no npm dependencies. `doctor` needs the
+backend's Node to be 22 or newer and only warns when it is below package.json `engines` (>=22.22.2),
+as `npm ci` does; CI runs the latest 22 and the image ships 22.22.2.
 
 ```sh
 npm run setup                 # once per machine, or after a change here or to the Playwright version
@@ -50,7 +50,7 @@ reason). `doctor` and `env` use the saved backend without probing again, and sto
 saved image is missing or no longer matches the Dockerfile.
 
 `doctor` checks the commands the tools call (`GCC`, default `gcc`, and plain `gcc` too;
-`CLANG22`; `LLDB22`) and Node against `engines`, then with a timeout on each probe compiles
+`CLANG22`; `LLDB22`) and Node (at least 22, with a warning below `engines`), then with a timeout on each probe compiles
 with gcc and clang under ASan+UBSan, needs ASan to catch a heap overflow and valgrind to
 find a leak, stops GDB (failing on `Error disabling address space randomization`) and LLDB
 at a breakpoint, and runs GDB's Python. It prints `Ready` only when all of that passed.

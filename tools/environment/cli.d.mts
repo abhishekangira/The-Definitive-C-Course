@@ -1,5 +1,7 @@
 export function selectBackend(capabilities: {
   hostReady: boolean;
+  /** Why the host probe (doctor.sh --versions) failed; named in the error when nothing is usable. */
+  hostError?: string;
   dockerReady: boolean;
   dockerCli?: 'missing' | 'found';
   dockerError?: string;

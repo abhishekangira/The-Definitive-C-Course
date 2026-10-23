@@ -40,6 +40,12 @@ function run(command, args, options = {}) {
   return spawnSync(command, args, { cwd: root, env, stdio: 'inherit', ...options });
 }
 function works(command, args) { return run(command, args, { stdio: 'ignore', timeout: 20_000 }).status === 0; }
+/** '' when doctor.sh --versions passes on the host, otherwise the last line it printed (why the host was ruled out). */
+function hostProblem() {
+  const r = run('/bin/bash', [path.join(here, 'doctor.sh'), '--versions'], { stdio: ['ignore', 'ignore', 'pipe'], encoding: 'utf8', timeout: 20_000 });
+  if (r.status === 0) return '';
+  return (r.stderr ?? '').trim().split('\n').filter(Boolean).pop() ?? r.error?.message ?? `doctor.sh exited with ${r.status ?? r.signal}`;
+}
 function must(command, args, options) {
   const result = run(command, args, options);
   if (result.error) throw new Error(`${command}: ${result.error.message}`);
@@ -50,15 +56,16 @@ function must(command, args, options) {
 }
 const firstLines = text => text.trim().split('\n').filter(Boolean).slice(-3).join(' / ');
 
-/** dockerCli: 'missing', or the error `docker info` printed ('' when the daemon answered). */
-export function selectBackend({ hostReady, dockerReady, dockerCli = 'missing', dockerError = '', canInstall, forceContainer, forceHost }) {
+/** dockerCli: 'missing', or the error `docker info` printed ('' when the daemon answered). hostError: why the host probe failed. */
+export function selectBackend({ hostReady, hostError = '', dockerReady, dockerCli = 'missing', dockerError = '', canInstall, forceContainer, forceHost }) {
   if (forceHost) return 'host';
   if (!forceContainer && hostReady) return 'host';
   if (dockerReady) return 'container';
   if (!forceContainer && canInstall) return 'host';
   const docker = dockerCli === 'missing' ? 'No docker executable on PATH'
     : `Docker CLI found, but no daemon is reachable from this account (docker info: ${dockerError || 'failed'})`;
-  throw new Error(`No compatible host toolchain and no usable Docker. ${docker}. Otherwise provide root or passwordless sudo on Ubuntu 24.04 (npm run setup -- --host).`);
+  const host = !forceContainer && hostError ? ` Host toolchain: ${hostError}` : '';
+  throw new Error(`No compatible host toolchain and no usable Docker.${host} ${docker}. Otherwise provide root or passwordless sudo on Ubuntu 24.04 (npm run setup -- --host).`);
 }
 
 /** The proxies ~/.docker/config.json gives every container and build; Docker applies them itself. */
@@ -173,12 +180,13 @@ function main() {
       throw new Error(`setup prepared ${saved.image}, but the Dockerfile, installer or Playwright version now give ${image}. Run npm run setup.`);
     }
   } else {
-    const hostReady = !forceContainer && works('/bin/bash', [path.join(here, 'doctor.sh'), '--versions']);
+    const hostError = forceContainer ? 'not probed' : hostProblem();
+    const hostReady = !hostError;
     const docker = !forceHost && (!hostReady || forceContainer) ? probeDocker() : { dockerCli: 'missing', dockerReady: false };
     const osRelease = existsSync('/etc/os-release') ? readFileSync('/etc/os-release', 'utf8') : '';
     const ubuntu = /^ID=ubuntu$/m.test(osRelease) && /^VERSION_ID="24\.04"$/m.test(osRelease);
     const canInstall = action === 'setup' && ubuntu && (process.getuid() === 0 || works('sudo', ['-n', 'true']));
-    backend = selectBackend({ hostReady, ...docker, canInstall, forceContainer, forceHost });
+    backend = selectBackend({ hostReady, hostError, ...docker, canInstall, forceContainer, forceHost });
   }
   selected = backend;
   console.log(`Toolchain: ${backend}${backend === 'container' ? ` (${image})` : ''}`);

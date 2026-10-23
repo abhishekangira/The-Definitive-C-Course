@@ -52,6 +52,22 @@ describe('portable environment setup', () => {
       .toThrow(/Docker CLI found, but no daemon is reachable from this account \(docker info: permission denied while trying/);
     expect(() => selectBackend({ ...absent, hostReady: true, forceContainer: true })).toThrow(/no usable Docker/);
   });
+  it('names why the host toolchain was ruled out', () => {
+    expect(() => selectBackend({ ...absent, hostError: 'Node v20.19.0 is older than 22, which CI runs.' }))
+      .toThrow(/No compatible host toolchain and no usable Docker\. Host toolchain: Node v20\.19\.0 is older than 22, which CI runs\. No docker/);
+    expect(() => selectBackend({ ...absent, hostError: 'x', forceContainer: true })).not.toThrow(/Host toolchain/);
+  });
+  it('doctor without a saved backend, a matching host or Docker reports the host check that failed', () => {
+    const bin = mkdtempSync(path.join(scratch, 'nodocker-'));
+    tool(bin, 'docker', '[ "$1" = --version ] && { echo "Docker version 29.0.0"; exit 0; }; echo "Cannot connect to the Docker daemon" >&2; exit 1');
+    const r = spawnSync(process.execPath, [path.join(here, 'cli.mjs'), 'doctor'], {
+      encoding: 'utf8', env: { ...process.env, GCC: '', CLANG22: '', LLDB22: '', FAKE_GCC_VERSION: 'gcc (Debian 14.2.0-19) 14.2.0',
+        PATH: `${bin}:${fakes}:${process.env.PATH}`, TDCC_ENVIRONMENT_CACHE: path.join(bin, 'environment') },
+    });
+    expect(r.stderr).toContain('Host toolchain: Missing or incompatible gcc (expected ^gcc.* 13');
+    expect(r.stderr).toContain('Docker CLI found, but no daemon is reachable');
+    expect(r.status).toBe(1);
+  });
   it('honours an explicit host/container choice', () => {
     expect(selectBackend({ ...absent, hostReady: true, dockerReady: true, forceContainer: true })).toBe('container');
     expect(selectBackend({ ...absent, dockerReady: true, forceHost: true })).toBe('host');
@@ -134,12 +150,18 @@ describe('portable environment setup', () => {
     ['gdb without Python', { FAKE_GDB_NO_PYTHON: '1' }, /GDB Python failed/],
     ['a plain gcc that is not gcc 13 (the verifier and tools/trace call gcc)', { FAKE_GCC_VERSION: 'gcc (Debian 14.2.0-19) 14.2.0' }, /Missing or incompatible gcc \(/],
     ['a GCC override that is not gcc 13', { GCC: 'gcc-14' }, /Missing or incompatible gcc-14/],
-    ['a Node older than package.json engines', { FAKE_NODE: 'v22.22.0' }, /Node v22\.22\.0 does not satisfy package\.json engines \(>=22\.22\.2\), which the host toolchain needs\. The container backend ships 22\.22\.2/],
+    ['a Node older than 22', { FAKE_NODE: 'v20.19.0' }, /Node v20\.19\.0 is older than 22, which CI runs\. The container backend ships 22\.22\.2/],
   ])('doctor fails for %s', (_name, env, message) => {
     const r = doctor(env);
     expect(r.stderr).toMatch(message);
     expect(r.stdout).not.toContain('Ready');
     expect(r.status).toBe(1);
+  });
+  it('doctor accepts a Node 22 below package.json engines with a warning, as npm ci does', () => {
+    const r = doctor({ FAKE_NODE: 'v22.22.0' });
+    expect(r.stderr).toBe('warning: node v22.22.0 is below package.json engines (>=22.22.2); CI runs the latest 22.\n');
+    expect(r.stdout).toMatch(/^Ready: /m);
+    expect(r.status).toBe(0);
   });
   it('doctor accepts a newer Node that satisfies engines, with a warning that CI runs 22', () => {
     const r = doctor({ FAKE_NODE: 'v24.11.0' });
