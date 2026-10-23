@@ -152,33 +152,60 @@ test('a wrong prediction on int-division is red, with both boxes, in light and d
   await shots(page, box, 'red');
 });
 
-test('a blank line in the predicted box is kept in innerText', async ({ page }) => {
+/** Selects the whole box, copies it with the keyboard and returns the clipboard text. */
+async function copyBox(page: Page, box: Locator): Promise<string> {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(() => navigator.clipboard.writeText('(clipboard not written)'));
+  await box.evaluate(el => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = getSelection()!;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+  await page.keyboard.press('ControlOrMeta+C');
+  return page.evaluate(() => navigator.clipboard.readText());
+}
+
+test('copying the predicted box gives the prediction exactly, blank line included', async ({ page }) => {
   page.on('pageerror', e => { throw e; });
   const box = await openSample(page);
   await box.locator('textarea').fill('nope\n\nmore');
   await box.getByRole('button', { name: 'Lock in my prediction' }).click();
   await box.getByRole('button', { name: 'Run', exact: true }).click();
   await expect(box.getByText(/^(Program exited with status|Program crashed|Stopped)/).first()).toBeVisible({ timeout: RUN_TIMEOUT });
-  const text = await box.locator('[data-compare="predicted"]').innerText();
-  expect(text.replaceAll('\u200b', '')).toBe('nope\n\nmore');
+  const text = await copyBox(page, box.locator('[data-compare="predicted"]'));
+  expect(text).toBe('nope\n\nmore');
+  expect(text).not.toContain('\u200b');
 });
 
-test('the empty-line note is shown and is not part of the copied text', async ({ page }) => {
+test('the empty-line note is shown, a blank row is one line tall, and copying either box gives its text exactly', async ({ page }) => {
   page.on('pageerror', e => { throw e; });
   const box = await openSample(page);
-  await box.locator('textarea').fill('3 -3 1\n\n3.5');
+  await box.locator('textarea').fill('3 -3 1\n\n3.5\nextra');
   await box.getByRole('button', { name: 'Lock in my prediction' }).click();
   await box.getByRole('button', { name: 'Run', exact: true }).click();
   await expect(box.getByText(/^(Program exited with status|Program crashed|Stopped)/).first()).toBeVisible({ timeout: RUN_TIMEOUT });
-  const note = box.locator('[data-compare="predicted"] [data-blank]');
+  const predictedBox = box.locator('[data-compare="predicted"]');
+  const actualBox = box.locator('[data-compare="actual"]');
+  const note = predictedBox.locator('[data-blank]');
   await expect(note).toHaveAttribute('aria-label', 'empty line');
   expect(await note.evaluate(el => getComputedStyle(el, '::before').content)).toBe('"empty line"');
-  const predicted = await box.locator('[data-compare="predicted"]').innerText();
-  const actual = await box.locator('[data-compare="actual"]').innerText();
-  expect(predicted).not.toContain('empty line');
-  expect(actual).not.toContain('empty line');
-  expect(predicted.replaceAll('\u200b', '')).toBe('3 -3 1\n\n3.5');
-  expect(actual.replaceAll('\u200b', '')).toBe('3 -3 1\n3.5');
+  // The actual box has a plain gap row for "extra" (no note). Every row, blank, gap or text, is exactly one line tall, so the two boxes stay aligned.
+  for (const b of [predictedBox, actualBox]) {
+    expect(await b.locator('[data-line]').count()).toBe(4);
+    const heights = await b.locator('[data-line]').evaluateAll(els => els.map(el => el.getBoundingClientRect().height));
+    const lineHeight = await b.evaluate(el => parseFloat(getComputedStyle(el).lineHeight));
+    for (const h of heights) expect(h).toBeCloseTo(lineHeight, 1);
+  }
+  const predicted = await copyBox(page, predictedBox);
+  const actual = await copyBox(page, actualBox);
+  expect(predicted).toBe('3 -3 1\n\n3.5\nextra');
+  expect(actual).toBe('3 -3 1\n3.5');
+  for (const t of [predicted, actual]) {
+    expect(t).not.toContain('\u200b');
+    expect(t).not.toContain('empty line');
+  }
   await expectAccessible(page, 'empty-line note');
 });
 

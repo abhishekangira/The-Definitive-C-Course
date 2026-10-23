@@ -177,7 +177,7 @@ describe('<CodeSample> verdicts', () => {
     const blankPred = predicted.find(el => el.getAttribute('data-blank') !== null && el.getAttribute('data-gap') === null)!;
     const blankAct = actual.find(el => el.getAttribute('data-gap') !== null && el.getAttribute('data-blank') !== null)!;
     expect(blankPred.getAttribute('aria-label')).toBe('empty line');
-    expect(blankPred.textContent).toBe('\u200b');
+    expect(blankPred.textContent).toBe('');
     expect(blankAct.getAttribute('aria-label')).toBe('empty line');
     expect(blankAct.textContent).toBe('');
     expect(predicted.some(el => el.textContent === '3.5')).toBe(true);

@@ -52,10 +52,10 @@
 /* 14px / 1.5 matches Terminal .screen. The pre rule is 0.9em, which is larger inside the lesson card. */
 .compareBox { overflow-x: auto; font-size: 14px; line-height: 1.5; }
 /* Block span: the compare box is a <pre> (base.css gives pre the monospace font and padding; a div does not), and a div inside it is invalid. An inline span would run the lines together. */
-.compareLine { display: block; white-space: pre; min-height: 1.3em; }
+.compareLine { display: block; white-space: pre; min-height: 1lh; }
 /* Colour plus an underline: the mark is not colour alone. The pair is --terminal-err on --terminal-bg. */
 .diffMark { color: var(--terminal-err); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
-/* ::before, not a text node: innerText and a selection would otherwise copy the words "empty line". */
+/* ::before, not a text node, so the note is never copied. min-height: 1lh keeps a blank or gap row as tall as a text row. */
 .compareLine[data-blank]::before { content: "empty line"; color: var(--terminal-muted); font-size: 0.85em; user-select: none; }
 @media (max-width: 600px) {
   .compare { grid-template-columns: 1fr; }
