@@ -32,6 +32,23 @@
         "transcript.txt": "d82a38bed78b86274ba8d725e5e0b87f730da3b604cb5b662b2712ad890b69ee"
       }
     },
+    "a02-build-and-load": {
+      "sourceHash": "5556fcdd3907c7a0b3c152f715e8e001e40f90982eb59e5f4f380e396a48a0b3",
+      "browser": "Google Chrome 155.0.8059.84",
+      "outputs": {
+        "a02-build-and-load.mp4": "d818d23b8b3b2bab987d070d71c3c6418d51ac2e168c75620856bb1b239deaab",
+        "a02-build-and-load.vtt": "01e363d8f5856fd899167dd15036f91708033e97158b09fbee9c4ea918e8cee3",
+        "poster.webp": "dbabcb8122d670436f21aef93567029e8440ea62d3dc8397afa5764da9fea9e1",
+        "steps.json": "121058b6977619b6ea4c4e2b40227e22096e43b8e98f6dbfc3988a9cd8baf4b3",
+        "stills/assemble.webp": "82b8ec23693a2c50fec3d9a910f9e39ae3da0ec74b98e3be346ca4348ff659b2",
+        "stills/compile.webp": "6582f33e17028fc41f4eb40268091825aa981d72f8584859a7626415bdf0aea1",
+        "stills/link.webp": "18da15d6368a54ab4cf7fa81e59f0c4fc1fecdba517d5b634749e11b40b04f25",
+        "stills/load.webp": "25bb489ad0e907a2990ad402af957da00d5a3ab4a60855e380eefe99f2107c15",
+        "stills/preprocess.webp": "e0d30eadc52b9533f4080082f0c840dc314648beb6bf0d677dd0b7f8d1b93c05",
+        "stills/source.webp": "8c53b874049b983cbc66418e8a71a90848a1d4540ba4a4a2ea355d0f2da7c96f",
+        "transcript.txt": "ff306bc165a85fc518ad1a6b473db87347253093e589e12bf50614ad1a5cb36e"
+      }
+    },
     "a03-twos-complement-wheel": {
       "sourceHash": "fed1d5350395ee7e15865ff462994e422d341bbf4dfc66b85088e3cb74cf38ea",
       "browser": "Google Chrome 155.0.8059.84",

@@ -1,0 +1,22 @@
+{
+  "duration": 75,
+  "assertions": [
+    { "kind": "appearsBy", "selector": "#bl01-editor", "bySec": 1.2 },
+    { "kind": "appearsBy", "selector": "#bl02-icard", "bySec": 12.8 },
+    { "kind": "appearsBy", "selector": "#bl03-card", "bySec": 24.2 },
+    { "kind": "appearsBy", "selector": "#bl04-nm", "bySec": 38.0 },
+    { "kind": "appearsBy", "selector": "#bl05-nm", "bySec": 50.0 },
+    { "kind": "appearsBy", "selector": "#bl06-term", "bySec": 66.0 },
+    { "kind": "before", "a": "#bl01-editor", "b": "#bl02-icard" },
+    { "kind": "before", "a": "#bl02-icard", "b": "#bl03-card" },
+    { "kind": "before", "a": "#bl03-card", "b": "#bl04-nm" },
+    { "kind": "before", "a": "#bl04-nm", "b": "#bl05-nm" },
+    { "kind": "before", "a": "#bl05-nm", "b": "#bl06-term" },
+    { "kind": "staysInFrame", "selector": "#bl01-editor" },
+    { "kind": "staysInFrame", "selector": "#bl02-icard" },
+    { "kind": "staysInFrame", "selector": "#bl03-card" },
+    { "kind": "staysInFrame", "selector": "#bl04-nm" },
+    { "kind": "staysInFrame", "selector": "#bl05-exe" },
+    { "kind": "staysInFrame", "selector": "#bl06-term" }
+  ]
+}
