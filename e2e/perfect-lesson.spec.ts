@@ -10,16 +10,17 @@ const sample = mod.samples.samples['hello-two-lines'];
 async function shot(page: Page, name: string) {
   if (!process.env.SHOTS) return;
   mkdirSync(process.env.SHOTS, { recursive: true });
-  await page.screenshot({ path: path.join(process.env.SHOTS, `${name}.png`), fullPage: true });
+  await page.screenshot({ path: path.join(process.env.SHOTS, `${name}.png`), fullPage: false });
 }
 
 for (const theme of ['light', 'dark'] as const) for (const width of [1400, 390]) {
   test(`perfect reveal, reset and accessible overlay: ${theme}, ${width}px`, async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width, height: 900 });
-    await page.clock.install();
-    await page.clock.pauseAt(new Date(Date.now() + 1000));
     await page.addInitScript(({ theme }) => {
+      // Keep the dialog open for axe/screenshots without freezing axe's own timers. Normal dismissal is tested below and in DOM tests.
+      const schedule = window.setTimeout.bind(window);
+      window.setTimeout = ((fn: TimerHandler, delay?: number, ...args: unknown[]) => schedule(fn, delay === 2500 ? 60_000 : delay, ...args)) as typeof window.setTimeout;
       localStorage.setItem('tdcc:v1:theme', theme);
       if (localStorage.getItem('tdcc:v1:progress')) return;
       const at = new Date().toISOString();
@@ -38,7 +39,6 @@ for (const theme of ['light', 'dark'] as const) for (const width of [1400, 390])
     const reveal = box.getByRole('button', { name: 'Reveal the result' });
     await reveal.click();
     await expect(overlay).toBeVisible();
-    await page.clock.runFor(1000);
     await expect(overlay.locator('[data-aura="blaze"]')).toBeVisible();
     await expectAccessible(page, `perfect overlay ${theme}`);
     await shot(page, `perfect-overlay-${theme}-${width}`);
@@ -48,8 +48,9 @@ for (const theme of ['light', 'dark'] as const) for (const width of [1400, 390])
     await page.locator('[data-prediction-count]').scrollIntoViewIfNeeded(); await shot(page, `perfect-count-${theme}-${width}`);
     await page.goto(`#/m/${mod.id}`);
     const mark = page.getByRole('img', { name: 'Perfect lesson', exact: true });
-    await expect(mark).toHaveCount(1); await shot(page, `perfect-mark-${theme}-${width}`);
+    await expect(mark).toHaveCount(1); await mark.scrollIntoViewIfNeeded(); await shot(page, `perfect-mark-${theme}-${width}`);
     await page.goto('#/'); await expect(page.locator('[data-perfect-total]')).toContainText('Perfect lessons: 1 of');
+    await page.locator('[data-perfect-total]').scrollIntoViewIfNeeded();
     await shot(page, `perfect-course-${theme}-${width}`);
     await page.goto(`#/m/${mod.id}/${lesson.stem}`);
     await box.getByRole('button', { name: 'Predict again', exact: true }).click();
