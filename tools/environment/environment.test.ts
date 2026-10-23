@@ -128,6 +128,21 @@ describe('portable environment setup', () => {
     expect(none.stderr).toContain('this environment was never set up');
     expect(none.status).toBe(1);
   });
+  it('cloud-setup.sh and cloud-maintain.sh give npm the repo cache, never $HOME/.npm', () => {
+    const dir = mkdtempSync(path.join(scratch, 'npm-cache-'));
+    // `npm run setup` fails (no toolchain), every other npm call logs the cache it was given.
+    tool(dir, 'npm', 'if [ "$1 $2" = "run setup" ]; then exit 1; fi; echo "$1 $npm_config_cache" >> "${0%/*}/npm.log"');
+    const run = (script: string) => spawnSync('/bin/bash', [path.join(here, script)], {
+      encoding: 'utf8', env: { ...process.env, npm_config_cache: '', HOME: path.join(dir, 'no-home'), PATH: `${dir}:${process.env.PATH}`, TDCC_ENVIRONMENT_CACHE: dir },
+    });
+    const expected = `ci ${path.resolve(here, '../..')}/.cache/npm`;
+    expect(run('cloud-setup.sh').status).toBe(0); // state: limited
+    expect(readFileSync(path.join(dir, 'npm.log'), 'utf8').split('\n')).toContain(expected);
+    rmSync(path.join(dir, 'npm.log'));
+    writeFileSync(path.join(dir, 'status.txt'), 'backend: none\nnpm: ready 0000000000000000\nstate: limited\n'); // lockfile "changed"
+    expect(run('cloud-maintain.sh').status).toBe(0);
+    expect(readFileSync(path.join(dir, 'npm.log'), 'utf8').split('\n')).toContain(expected);
+  });
   it('doctor fails for a missing compiler and does not print Ready', () => {
     const r = spawnSync('/bin/bash', [path.join(here, 'doctor.sh'), '--versions'], {
       encoding: 'utf8', env: { ...process.env, GCC: '', PATH: '/nonexistent-tdcc-tools' },

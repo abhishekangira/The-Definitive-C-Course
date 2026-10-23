@@ -5,6 +5,8 @@
 # runs the doctor. A failure means: rerun the setup script (republish the environment).
 set -uo pipefail
 cd "$(dirname "$0")/../.."
+# The npm cache cli.mjs uses: the provider's $HOME may be missing or read-only at setup time (Codex: ENOENT on ~/.npm).
+export npm_config_cache=$PWD/.cache/npm
 cache=${TDCC_ENVIRONMENT_CACHE:-.cache/environment}
 status=$cache/status.txt
 fail() { echo "cloud-maintain: $1 Rerun the environment's setup script (cloud-setup.sh)." >&2; exit 1; }

@@ -22,7 +22,8 @@ npm run build && CI=1 npm run env -- npm run e2e   # the image has its own Chrom
 - **Setup script:** `bash tools/environment/cloud-setup.sh`. The only script that builds or
   installs. It logs what the machine can do (OS, uid, Node, Docker, `vm.mmap_rnd_bits`, free
   disk), runs `npm run setup`, and if the native toolchain can't be had still runs `npm ci`
-  and `toolchain:prepare`. It exits non-zero when the npm dependencies failed.
+  and `toolchain:prepare`. It exits non-zero when the npm dependencies failed. Both scripts, like
+  `cli.mjs`, keep the npm cache in `.cache/npm`, so a missing or read-only `$HOME` (Codex) is fine.
 - **Maintenance script:** `bash tools/environment/cloud-maintain.sh`. Check-only, never builds:
   the saved backend and image must still exist (it restores `.cache/environment/image.tar` if
   `image.tar.sha256` verifies it; make one with `docker save` and `sha256sum`), it reruns
