@@ -1,6 +1,6 @@
 // PR: predict-before-run. The learner commits to a prediction, then Run unlocks.
 // Expected answers come from src/generated/samples (tools/verify ran this exact code).
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import type { SampleMeta, SampleResult } from '../content-model/types';
 import { CodeEditor } from '../components/CodeEditor';
 import { Terminal } from '../components/Terminal';
@@ -9,8 +9,9 @@ import { useCRun } from '../runtime/useCRun';
 import { useCardDone, useSamples } from '../lesson/LessonContext';
 import { update, useProgress } from '../progress/store';
 import { PlatformPicker } from './PlatformPicker';
-import { describeOutcome, nativeFor, normOutput, storedOutputText, TARGET_LABEL } from './platform';
+import { applyMatch, describeOutcome, nativeFor, normOutput, outputDiff, predictionVerdict, storedOutputText, TARGET_LABEL, type DiffRow, type PredictionVerdict } from './platform';
 import { Mark } from '../components/Icon';
+import { listenForCopy, onCompareCopy } from './compareCopy';
 import styles from './Interaction.module.css';
 
 const OUTCOMES = [
@@ -20,6 +21,59 @@ const OUTCOMES = [
 ] as const;
 
 function outcomeKey(o: string): string { return o.startsWith('exit:') ? (o === 'exit:0' ? 'runs' : 'runtime-error') : o; }
+
+const CLOSE_TEXT = 'Almost: the values are right, but the spacing, punctuation or line breaks differ.';
+
+function countsAsRight(v: PredictionVerdict): boolean { return v === 'exact' || v === 'close'; }
+
+function DiffLines({ row }: { row: DiffRow }) {
+  const chunks = row.gap ? [] : row.chunks.filter(c => c.text !== '');
+  // A blank row is an empty span: min-height keeps it one line tall, and the "empty line" note is ::before plus
+  // aria-label. No zero-width space: the box's onCopy (compareCopy.ts) writes the exact lines to the clipboard.
+  return (
+    <span
+      className={styles.compareLine}
+      data-line=""
+      data-gap={row.gap ? '' : undefined}
+      data-blank={row.blank ? '' : undefined}
+      {...(row.blank ? { role: 'img' as const, 'aria-label': 'empty line' } : {})}
+    >
+      {chunks.map((c, i) => (
+        c.mark
+          ? <span key={i} className={styles.diffMark} data-diff="">{c.text}</span>
+          : <span key={i}>{c.text}</span>
+      ))}
+    </span>
+  );
+}
+
+/** One labelled box. Always a tab stop: a long line scrolls sideways, and whether it overflows depends on the column width. */
+function CompareColumn({ label, which, rows, empty }: { label: string; which: 'predicted' | 'actual'; rows: DiffRow[]; empty: boolean }) {
+  const labelId = useId();
+  return (
+    <div className={styles.compareCol}>
+      <div id={labelId} className={styles.compareLabel}>{label}</div>
+      {/* One expression, so the pre has no whitespace text nodes (they would show as blank lines). */}
+      <pre className={`${styles.stored} ${styles.compareBox}`} data-compare={which} tabIndex={0} role="region" aria-labelledby={labelId} onCopy={empty ? undefined : onCompareCopy}>{empty
+        ? <span className={styles.compareLine} data-line="">(nothing)</span>
+        : rows.map((row, i) => <DiffLines key={i} row={row} />)}</pre>
+    </div>
+  );
+}
+
+/** The two labelled boxes. They sit outside the role=status verdict so a screen reader announces the verdict, not the output. */
+function OutputCompare({ predicted, actual }: { predicted: string; actual: string }) {
+  const diff = outputDiff(predicted, actual);
+  // A selection that crosses a box edge (label into box, box into box, Ctrl+A) is not a box's own copy event.
+  // One document listener while any compare is mounted (counted, so one unmount does not remove it for the rest).
+  useEffect(() => listenForCopy(document), []);
+  return (
+    <div className={styles.compare}>
+      <CompareColumn label="You predicted" which="predicted" rows={diff.predicted} empty={diff.predictedEmpty} />
+      <CompareColumn label="Actual output" which="actual" rows={diff.actual} empty={diff.actualEmpty} />
+    </div>
+  );
+}
 
 export function CodeSample({ id, code, meta: metaJson }: { id: string; code: string; meta: string }) {
   const meta = useMemo(() => JSON.parse(metaJson) as SampleMeta, [metaJson]);
@@ -45,16 +99,23 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const storedMode = Boolean(progress.settings.storedOutputMode) && !nativeOnly;
 
   const answerText = sample ? normOutput(sample.answer.stdout) : '';
-  const isCorrect = (pred: string): boolean => {
-    if (!sample) return false;
-    if (predictKind === 'outcome') return pred === outcomeKey(sample.answer.outcome);
-    if (predictKind === 'choice') return pred.trim() === answerText.trim();
-    return normOutput(pred) === answerText;
+  const verdictFor = (pred: string, actual: string): PredictionVerdict => {
+    if (!sample) return 'wrong';
+    if (predictKind === 'outcome') return pred === outcomeKey(sample.answer.outcome) ? 'exact' : 'wrong';
+    if (predictKind === 'choice') return pred.trim() === answerText.trim() ? 'exact' : 'wrong';
+    return applyMatch(predictionVerdict(pred, actual), meta.match);
+  };
+
+  // A missing native run is not empty output. Whitespace normalises to '' and would otherwise be exact.
+  const verdictFor64 = (pred: string): PredictionVerdict => {
+    if (!native?.run) return 'wrong';
+    return applyMatch(predictionVerdict(pred, native.run.stdout), meta.match);
   };
 
   const commit = () => {
     setCommitted(true);
-    update(p => { p.samples[id] = { prediction, correct: isCorrect(prediction), at: new Date().toISOString() }; });
+    const verdict = verdictFor(prediction, sample?.answer.stdout ?? '');
+    update(p => { p.samples[id] = { prediction, correct: countsAsRight(verdict), verdict, at: new Date().toISOString() }; });
   };
 
   const run = async () => {
@@ -65,8 +126,8 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
 
   const submitP64 = () => {
     setP64Done(true);
-    const correct = native?.run ? normOutput(p64) === normOutput(native.run.stdout) : false;
-    update(p => { const s = p.samples[id]; if (s) { s.predict64 = p64; s.predict64Correct = correct; } });
+    const verdict = verdictFor64(p64);
+    update(p => { const s = p.samples[id]; if (s) { s.predict64 = p64; s.predict64Correct = countsAsRight(verdict); s.predict64Verdict = verdict; } });
     markDone();
   };
 
@@ -79,9 +140,9 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
     );
   }
 
-  const correct = committed ? isCorrect(prediction) : null;
+  const verdict = committed ? verdictFor(prediction, sample.answer.stdout) : null;
   const needs64 = sample.flagged && sample.meta.predict64 && sample.meta.predict64 !== 'none';
-  const right64 = Boolean(native?.run) && normOutput(p64) === normOutput(native?.run?.stdout ?? '');
+  const p64Verdict = p64Done ? verdictFor64(p64) : null;
 
   return (
     <div className={styles.box} data-interaction="predict" data-sample={id}>
@@ -148,7 +209,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
           <div className={styles.native}>
             <div className={styles.nativeLabel}>{TARGET_LABEL['wasm32-clang22']} (stored output: low-memory mode is on in Settings)</div>
             {wasm.compile.diagnostics.length > 0 && <DiagnosticsList diagnostics={wasm.compile.diagnostics} raw={wasm.compile.raw} />}
-            {wasm.compile.ok && <pre className={styles.stored}>{storedOutputText(sample, wasm.run)}</pre>}
+            {wasm.compile.ok && <pre className={styles.stored} data-stored-output>{storedOutputText(sample, wasm.run)}</pre>}
             <div className={styles.muted}>{describeOutcome(wasm.run, wasm.compile.ok)}</div>
           </div>
         );
@@ -161,16 +222,18 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
         </>
       )}
 
-      {revealed && predictKind !== 'none' && correct !== null && (
-        <div className={correct ? styles.good : styles.bad} role="status">
-          {correct ? <strong><Mark ok /> Your prediction was right.</strong> : <strong><Mark ok={false} /> Not quite.</strong>}{' '}
-          {!correct && predictKind === 'output' && (
-            <span>Expected <code className={styles.pre}>{answerText || '(nothing)'}</code>; you predicted <code className={styles.pre}>{normOutput(prediction) || '(nothing)'}</code>.</span>
-          )}
-          {!correct && predictKind === 'outcome' && <span>{describeOutcome(sample.results['wasm32-clang22']?.run, sample.results['wasm32-clang22']?.compile.ok ?? true)}</span>}
-          {!correct && predictKind === 'choice' && <span>It prints <code>{answerText}</code>.</span>}
-          <span className={styles.muted}> The explanation follows below.</span>
-        </div>
+      {revealed && predictKind !== 'none' && verdict !== null && (
+        <>
+          <div className={verdict === 'exact' ? styles.good : verdict === 'close' ? styles.close : styles.bad} role="status">
+            {verdict === 'exact' && <strong><Mark ok /> Your prediction was right.</strong>}
+            {verdict === 'close' && <strong><Mark ok="close" /> {CLOSE_TEXT}</strong>}
+            {verdict === 'wrong' && <strong><Mark ok={false} /> Not quite.</strong>}{' '}
+            {verdict !== 'exact' && predictKind === 'outcome' && <span>{describeOutcome(sample.results['wasm32-clang22']?.run, sample.results['wasm32-clang22']?.compile.ok ?? true)}</span>}
+            {verdict !== 'exact' && predictKind === 'choice' && <span>It prints <code>{answerText}</code>.</span>}
+            <span className={styles.muted}> The explanation follows below.</span>
+          </div>
+          {verdict !== 'exact' && predictKind === 'output' && <OutputCompare predicted={prediction} actual={sample.answer.stdout} />}
+        </>
       )}
 
       {revealed && sample.flagged && (
@@ -191,10 +254,16 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
             <p className={styles.warn}>Your edit changes this program, so the stored 64-bit output no longer applies. Run it on your own machine (Module 3 shows how) to see the native result.</p>
           ) : (
             <>
-              {needs64 && <p className={right64 ? styles.goodText : styles.badText}>
-                <Mark ok={right64} /> {right64 ? 'Right for 64-bit too.' : 'The 64-bit answer differs from your prediction:'}</p>}
+              {needs64 && p64Verdict && (
+                <div className={p64Verdict === 'exact' ? styles.good : p64Verdict === 'close' ? styles.close : styles.bad} role="status">
+                  {p64Verdict === 'exact' && <strong><Mark ok /> Right for 64-bit too.</strong>}
+                  {p64Verdict === 'close' && <strong><Mark ok="close" /> {CLOSE_TEXT}</strong>}
+                  {p64Verdict === 'wrong' && <strong><Mark ok={false} /> Not quite.</strong>}
+                </div>
+              )}
+              {needs64 && p64Verdict && p64Verdict !== 'exact' && <OutputCompare predicted={p64} actual={native?.run?.stdout ?? ''} />}
               <div className={styles.nativeLabel}>{TARGET_LABEL[native!.target]}{native!.fallback ? ' (stored; your platform’s run isn’t available yet)' : ' (stored output from a real run)'}</div>
-              <pre className={styles.stored}>{storedOutputText(sample, native?.run)}</pre>
+              <pre className={styles.stored} data-stored-output>{storedOutputText(sample, native?.run)}</pre>
               <div className={styles.muted}>{describeOutcome(native?.run, sample.results[native!.target]?.compile.ok ?? true)}</div>
             </>
           )}
@@ -204,7 +273,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
       {revealed && nativeOnly && (
         <div className={styles.native}>
           <div className={styles.nativeLabel}>{TARGET_LABEL['linux-x86_64-gcc13']} (stored output from a real run)</div>
-          <pre className={styles.stored}>{storedOutputText(sample, sample.results['linux-x86_64-gcc13']?.run)}</pre>
+          <pre className={styles.stored} data-stored-output>{storedOutputText(sample, sample.results['linux-x86_64-gcc13']?.run)}</pre>
         </div>
       )}
     </div>

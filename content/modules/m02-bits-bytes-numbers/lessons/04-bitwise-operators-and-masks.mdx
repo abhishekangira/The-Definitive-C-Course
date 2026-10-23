@@ -99,7 +99,7 @@ int main(void) {
 
 Now **packing**. Four colour channels of one byte each fit in one `uint32_t`. This course uses the order `0xRRGGBBAA`: red in the top byte, alpha in the lowest. To pack, shift each channel to its place and `|` them together. To unpack, shift the channel down and mask with `0xFF`. Predict the packed value.
 
-```c id=pack-orange
+```c id=pack-orange match=close
 #include <stdint.h>
 #include <stdio.h>
 
