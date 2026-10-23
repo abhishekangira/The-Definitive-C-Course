@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Shared by CI and the portable development image. Run as root on Ubuntu 24.04.
+# --ffmpeg-only installs just FFmpeg (CI's e2e jobs need no compilers).
 set -euo pipefail
 . /etc/os-release
 if [[ "$ID" != ubuntu || "$VERSION_ID" != 24.04 || "$EUID" != 0 ]]; then
@@ -8,6 +9,10 @@ if [[ "$ID" != ubuntu || "$VERSION_ID" != 24.04 || "$EUID" != 0 ]]; then
 fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
+if [[ "${1:-}" == --ffmpeg-only ]]; then
+  apt-get install -y --no-install-recommends ffmpeg
+  exit 0
+fi
 apt-get install -y --no-install-recommends ca-certificates curl gnupg
 install -d -m 0755 /etc/apt/keyrings
 key=$(mktemp)
