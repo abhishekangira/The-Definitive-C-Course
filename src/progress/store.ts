@@ -146,7 +146,9 @@ const drop = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o)
 
 /**
  * How far ahead of this clock an imported sample `at` may be. Two devices, or a file saved just before a clock
- * step, can disagree by minutes and still be the same learner. Past that, a future stamp is treated as hand-edited.
+ * step, can disagree by minutes and still be the same learner. Further ahead, the stamp is clamped to this
+ * instant so it cannot win every merge. The sample is kept: dropping it on load would delete a cleared
+ * prediction and let an older copy come back.
  */
 const SAMPLE_AT_SKEW_MS = 24 * 60 * 60 * 1000;
 
@@ -157,8 +159,10 @@ function cleanSample(x: Record<string, unknown>, now: number): SampleProgress | 
   if (typeof x.prediction !== 'string' || typeof x.correct !== 'boolean') return undefined;
   if (typeof x.at !== 'string' || !SAMPLE_AT.test(x.at)) return undefined;
   const at = Date.parse(x.at);
-  // A non-ISO string such as "9999" sorts after every real timestamp and would win every merge. A far-future ISO stamp would too.
-  if (!Number.isFinite(at) || at > now + SAMPLE_AT_SKEW_MS) return undefined;
+  // Month 13 and second 60 match the shape above and parse as NaN. NaN is not greater than any stamp, so a merge would keep the sample forever.
+  if (!Number.isFinite(at)) return undefined;
+  const limit = now + SAMPLE_AT_SKEW_MS;
+  // Exactly `limit` stays as written (an offset form must not be rewritten). One millisecond past is clamped.
   return drop({
     prediction: x.prediction,
     correct: x.correct,
@@ -167,7 +171,7 @@ function cleanSample(x: Record<string, unknown>, now: number): SampleProgress | 
     predict64Correct: bool(x.predict64Correct),
     predict64Verdict: asVerdict(x.predict64Verdict),
     cleared: (x.cleared === true ? true : undefined) as true | undefined,
-    at: x.at,
+    at: at > limit ? new Date(limit).toISOString() : x.at,
   });
 }
 
@@ -215,7 +219,7 @@ function cleanExercise(x: Record<string, unknown>): ExerciseProgress {
   });
 }
 
-/** Accepts unknown JSON, returns a valid ProgressV1 (unknown keys dropped, wrong-typed parts replaced by defaults) or throws with a readable message. `now` is the clock for the sample `at` check; tests pass a fixed instant. */
+/** Accepts unknown JSON, returns a valid ProgressV1 (unknown keys dropped, wrong-typed parts replaced by defaults) or throws with a readable message. `now` is the clock for the sample `at` check and the 24-hour clamp; tests pass a fixed instant. */
 export function migrate(raw: unknown, now = Date.now()): ProgressV1 {
   if (!isRecord(raw)) throw new Error('Not a progress file.');
   const o = raw;
