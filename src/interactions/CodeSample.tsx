@@ -26,15 +26,16 @@ const CLOSE_TEXT = 'Almost: the values are right, but the spacing, punctuation o
 function countsAsRight(v: PredictionVerdict): boolean { return v === 'exact' || v === 'close'; }
 
 function DiffLines({ row }: { row: DiffRow }) {
+  // A span, not a div: this row is a child of the compare <pre>, and a div there is invalid.
   return (
-    <div className={styles.compareLine} data-line="" data-gap={row.gap ? '' : undefined} data-blank={row.blank ? '' : undefined}>
+    <span className={styles.compareLine} data-line="" data-gap={row.gap ? '' : undefined} data-blank={row.blank ? '' : undefined}>
       {row.blank && <span className={styles.emptyNote}>empty line</span>}
       {!row.gap && row.chunks.filter(c => c.text !== '').map((c, i) => (
         c.mark
           ? <span key={i} className={styles.diffMark} data-diff="">{c.text}</span>
           : <span key={i}>{c.text}</span>
       ))}
-    </div>
+    </span>
   );
 }
 
@@ -44,11 +45,10 @@ function OutputCompare({ predicted, actual }: { predicted: string; actual: strin
   const column = (label: string, which: 'predicted' | 'actual', rows: DiffRow[], empty: boolean) => (
     <div className={styles.compareCol} key={which}>
       <div className={styles.compareLabel}>{label}</div>
-      <div className={`${styles.stored} ${styles.compareBox}`} data-compare={which}>
-        {empty
-          ? <div className={styles.compareLine} data-line="">(nothing)</div>
-          : rows.map((row, i) => <DiffLines key={i} row={row} />)}
-      </div>
+      {/* One expression, so the pre has no whitespace text nodes (they would show as blank lines). */}
+      <pre className={`${styles.stored} ${styles.compareBox}`} data-compare={which}>{empty
+        ? <span className={styles.compareLine} data-line="">(nothing)</span>
+        : rows.map((row, i) => <DiffLines key={i} row={row} />)}</pre>
     </div>
   );
   return (
@@ -90,6 +90,12 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
     return applyMatch(predictionVerdict(pred, actual), meta.match);
   };
 
+  // A missing native run is not empty output. Whitespace normalises to '' and would otherwise be exact.
+  const verdictFor64 = (pred: string): PredictionVerdict => {
+    if (!native?.run) return 'wrong';
+    return applyMatch(predictionVerdict(pred, native.run.stdout), meta.match);
+  };
+
   const commit = () => {
     setCommitted(true);
     const verdict = verdictFor(prediction, sample?.answer.stdout ?? '');
@@ -104,7 +110,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
 
   const submitP64 = () => {
     setP64Done(true);
-    const verdict = applyMatch(predictionVerdict(p64, native?.run?.stdout ?? ''), meta.match);
+    const verdict = verdictFor64(p64);
     update(p => { const s = p.samples[id]; if (s) { s.predict64 = p64; s.predict64Correct = countsAsRight(verdict); s.predict64Verdict = verdict; } });
     markDone();
   };
@@ -120,7 +126,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
 
   const verdict = committed ? verdictFor(prediction, sample.answer.stdout) : null;
   const needs64 = sample.flagged && sample.meta.predict64 && sample.meta.predict64 !== 'none';
-  const p64Verdict = p64Done ? applyMatch(predictionVerdict(p64, native?.run?.stdout ?? ''), meta.match) : null;
+  const p64Verdict = p64Done ? verdictFor64(p64) : null;
 
   return (
     <div className={styles.box} data-interaction="predict" data-sample={id}>

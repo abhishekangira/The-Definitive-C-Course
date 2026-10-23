@@ -128,4 +128,44 @@ describe('outputDiff', () => {
     expect(big).toBeLessThan(Math.max(small, 5) * 9);
     expect(big).toBeLessThan(10_000);
   });
+
+  it('pairs lines by index above 2,000 lines, and still aligns a one-line shift at 2,000', () => {
+    // A leading extra line. The line LCS pulls it out as a gap; index pairing (the fallback) marks line 0 on both sides.
+    const shift = (n: number) => outputDiff(
+      ['x', ...Array.from({ length: n - 1 }, () => 'a')].join('\n'),
+      Array.from({ length: n - 1 }, () => 'a').join('\n'),
+    );
+    const atCap = shift(2000);
+    expect(atCap.predicted).toHaveLength(2000);
+    expect(atCap.actual[0]).toMatchObject({ gap: true, blank: false });
+    expect(atCap.predicted[0].chunks).toEqual([{ text: 'x', mark: true }]);
+    expect(atCap.predicted[1].chunks).toEqual([{ text: 'a', mark: false }]);
+    expect(atCap.actual[1].chunks).toEqual([{ text: 'a', mark: false }]);
+
+    const over = shift(2001);
+    expect(over.predicted).toHaveLength(2001);
+    expect(over.actual[0].gap).toBe(false);
+    expect(over.predicted[0].chunks).toEqual([{ text: 'x', mark: true }]);
+    expect(over.actual[0].chunks).toEqual([{ text: 'a', mark: true }]);
+    expect(over.predicted[1].chunks).toEqual([{ text: 'a', mark: false }]);
+    expect(over.actual[1].chunks).toEqual([{ text: 'a', mark: false }]);
+    expect(over.predicted[2000].chunks).toEqual([{ text: 'a', mark: true }]);
+    expect(over.actual[2000]).toMatchObject({ gap: true });
+  });
+
+  it('stays linear past the line cap: 4N lines is not a quadratic line LCS', () => {
+    // Every line differs and is one character, so the cost is the line alignment. Past 2,000 lines that
+    // alignment is index pairing. Removing the line cap makes 4N about 16× N. Best of 3, same floor as above.
+    const best = (n: number) => Math.min(...[0, 1, 2].map(() => {
+      const pred = `${'a\n'.repeat(n - 1)}a`;
+      const got = `${'b\n'.repeat(n - 1)}b`;
+      const t0 = performance.now();
+      outputDiff(pred, got);
+      return performance.now() - t0;
+    }));
+    const small = best(3_000);
+    const big = best(12_000);
+    expect(big).toBeLessThan(Math.max(small, 5) * 9);
+    expect(big).toBeLessThan(10_000);
+  });
 });

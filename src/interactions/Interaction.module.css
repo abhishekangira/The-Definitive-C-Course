@@ -50,7 +50,8 @@
 .compareCol { min-width: 0; }
 .compareLabel { font-size: 0.875rem; font-weight: 500; color: var(--text-muted); }
 .compareBox { overflow-x: auto; }
-.compareLine { white-space: pre; min-height: 1.3em; }
+/* Block span: the compare box is a <pre> (base.css gives pre the monospace font and padding; a div does not), and a div inside it is invalid. An inline span would run the lines together. */
+.compareLine { display: block; white-space: pre; min-height: 1.3em; }
 /* Colour plus an underline: the mark is not colour alone. The pair is --terminal-err on --terminal-bg. */
 .diffMark { color: var(--terminal-err); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
 .emptyNote { color: var(--terminal-muted); font-size: 0.85em; }
