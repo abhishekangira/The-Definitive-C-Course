@@ -113,6 +113,24 @@ function grow(m: Mask, r: number): Mask {
 
 const minus = (a: Mask, b: Mask): Mask => a.map((v, i) => (v && !b[i] ? 1 : 0));
 
+/** The cells of a mask whose four neighbours are all in it. */
+function erode(m: Mask): Mask {
+  return m.map((v, i) => (v && m[i - 1] && m[i + 1] && m[i - W] && m[i + W] ? 1 : 0));
+}
+
+const flashCache = new Map<PixelSprite, { core: string; edge: string }>();
+/** The flash: the sprite's own cells, white-hot, with its outermost cells as a warm edge. Nothing outside the sprite. */
+export function flashPaths(s: PixelSprite): { core: string; edge: string } {
+  let hit = flashCache.get(s);
+  if (!hit) {
+    const m = maskOf(s);
+    const inner = erode(m);
+    hit = { core: maskPath(inner), edge: maskPath(minus(m, inner)) };
+    flashCache.set(s, hit);
+  }
+  return hit;
+}
+
 /** `none` draws nothing. `flicker` is a short flame. `blaze` is the full rising fire. #106 passes this through. */
 export type AuraStage = 'none' | 'flicker' | 'blaze';
 
@@ -395,7 +413,7 @@ function poseFrames(form: FormId, mood: WarriorMood): readonly SpriteFrame[] {
   return art.idle;
 }
 
-export function WarriorArt({ form, mood, bare = false, aura, crouch = false }: {
+export function WarriorArt({ form, mood, bare = false, aura, crouch = false, flash = false }: {
   form: FormId;
   mood: WarriorMood;
   /** No aura and no night sky (silhouettes, the header head). An explicit `aura` does not override this. */
@@ -404,12 +422,23 @@ export function WarriorArt({ form, mood, bare = false, aura, crouch = false }: {
   aura?: AuraStage;
   /** Draw the crouch (`crouchSprite`): the body lowered on bent knees, the feet and the shadow where they stand. */
   crouch?: boolean;
+  /** The transformation's flash: only Rio's silhouette, white-hot with a warm edge. No aura, sky, shadow, blink or sweat. */
+  flash?: boolean;
 }): ReactNode {
   const frames = poseFrames(form, mood);
   const standing = frames.map(composeFrame);
   // The crouch is one drawn frame. Its head moved down by the crouch's drop, so the blink and the sweat follow it.
   const drop = crouch ? CROUCH[form].drop : 0;
   const drawn = crouch ? [crouchSprite(form, standing[0])] : standing;
+  if (flash) {
+    const { core, edge } = flashPaths(drawn[0]);
+    return (
+      <g data-flash-figure="">
+        <path className={styles.flashCore} d={core} />
+        <path className={styles.flashEdge} d={edge} />
+      </g>
+    );
+  }
   const stage: AuraStage = bare ? 'none' : aura ?? defaultAura(form);
   const blink = mood === 'ready' ? FORM_FRAMES[form].blink : undefined;
   const sky = form === 'ape' && !bare;

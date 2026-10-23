@@ -18,11 +18,11 @@
 @media (max-width: 480px) { .warrior { flex-direction: column; align-items: flex-start; } }
 
 /* ---------- the art: pixel sprites, so everything moves in whole pixels (steps) ---------- */
-.art { display: block; line-height: 0; --warrior-rim: transparent; }
+.art { display: block; line-height: 0; --warrior-rim: transparent; --flash-edge: #ff9a00; }
 .svg { display: block; width: 100%; height: 100%; overflow: visible; shape-rendering: crispEdges; }
 /* A light rim keeps black hair and outlines visible on a dark page; a light page doesn't need it. */
-@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .art { --warrior-rim: #59627d; } }
-:root[data-theme='dark'] .art { --warrior-rim: #59627d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .art { --warrior-rim: #59627d; --flash-edge: #fff3a8; } }
+:root[data-theme='dark'] .art { --warrior-rim: #59627d; --flash-edge: #fff3a8; }
 .rim { fill: var(--warrior-rim); }
 .shadow { fill: var(--border-strong); }
 
@@ -78,7 +78,7 @@
 
 .still, .still * { animation: none !important; }
 
-/* ---------- the transformation: one beat at a time (stand, crouch, aura ramp, solid flash, new form) ----------
+/* ---------- the transformation: one beat at a time (stand, crouch, aura ramp, the crouch white-hot, new form) ----------
    Clip rather than visibility. A child with visibility:visible (the first pose frame, the first aura frame) paints
    through a visibility:hidden parent, so a hidden beat would still show. clip-path clips those children.
    Six beats of --beat (2.4s). The last beat keeps its frame (forwards) until React unmounts the sequence.
@@ -99,8 +99,10 @@
 .sequence [data-transform-step='4'] { animation-delay: calc(var(--beat) * 4); }
 .sequence [data-transform-step='5'] { animation-delay: calc(var(--beat) * 5); animation-fill-mode: forwards; }
 .sequence .art { position: absolute; inset: 0; }
-/* Gold tongue from the aura palette (WarriorArt AURA_COLOURS). White matched the light panel and read as an empty frame. No border, glow, gradient or shadow. */
-.sequence [data-flash] { background: #ff9a00; }
+/* The flash paints only Rio's pixels (WarriorArt `flash`): a white-hot core and its outermost cells as a warm edge,
+   orange on a light page so the white doesn't vanish, pale yellow on a dark page. The beat itself has no fill. */
+.flashCore { fill: #fffdf0; }
+.flashEdge { fill: var(--flash-edge); }
 @keyframes stepOn { from, to { clip-path: inset(0); } }
 
 /* ---------- gallery and spirit beans (Settings) ---------- */

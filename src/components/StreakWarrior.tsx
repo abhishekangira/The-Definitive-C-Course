@@ -51,21 +51,23 @@ interface PortraitProps {
   className?: string;
   /** Draw the crouch pose (`crouchSprite`): head and torso lowered on bent knees, feet planted. */
   crouch?: boolean;
+  /** The transformation's flash: the silhouette only (WarriorArt `flash`). */
+  flash?: boolean;
   onAnimationEnd?: (e: ReactAnimationEvent<HTMLSpanElement>) => void;
 }
 
 /** The art in its own SVG, inside the element the CSS animations key on. */
-export function WarriorPortrait({ form, mood = 'ready', still = false, bare = false, aura, head = false, label, className, crouch = false, onAnimationEnd }: PortraitProps) {
+export function WarriorPortrait({ form, mood = 'ready', still = false, bare = false, aura, head = false, label, className, crouch = false, flash = false, onAnimationEnd }: PortraitProps) {
   return (
     <span className={[styles.art, still ? styles.still : '', className ?? ''].join(' ').trim()} data-form={form} data-mood={mood} onAnimationEnd={onAnimationEnd}>
       <svg className={styles.svg} viewBox={head ? HEAD_VIEWBOX[form] : VIEWBOX} focusable="false" {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}>
-        <WarriorArt form={form} mood={mood} bare={bare} aura={aura} crouch={crouch} />
+        <WarriorArt form={form} mood={mood} bare={bare} aura={aura} crouch={crouch} flash={flash} />
       </svg>
     </span>
   );
 }
 
-/** One-shot transformation. Stand, the crouch drawn from the standing frame (`crouchSprite`), the charge as the aura ramps, a flash, the new form. */
+/** One-shot transformation. Stand, the crouch drawn from the standing frame (`crouchSprite`), the charge as the aura ramps, the crouch white-hot (a flash in Rio's shape), the new form. */
 export type TransformBeat =
   | { kind: 'pose'; who: 'from' | 'to'; aura: AuraStage; crouch: boolean }
   | { kind: 'flash' };
@@ -111,7 +113,14 @@ export function TransformationSequence({ from, to, mood, onDone }: {
     <span className={styles.sequence} data-transform-sequence="" data-transform-to={to}>
       {TRANSFORM_BEATS.map((beat, i) => {
         const last = i === TRANSFORM_BEATS.length - 1;
-        if (beat.kind === 'flash') return <span key={i} data-transform-step={i} data-flash="" aria-hidden="true" />;
+        // The crouched figure goes white-hot: its own pixels, nothing around them.
+        if (beat.kind === 'flash') {
+          return (
+            <span key={i} data-transform-step={i} data-flash="" data-form={from} aria-hidden="true">
+              <WarriorPortrait form={from} mood={mood} crouch flash />
+            </span>
+          );
+        }
         const form = beat.who === 'to' ? to : from;
         return (
           <span key={i} ref={last ? lastRef : undefined} data-transform-step={i} data-form={form} data-aura={beat.aura} data-crouch={beat.crouch ? '' : undefined}>

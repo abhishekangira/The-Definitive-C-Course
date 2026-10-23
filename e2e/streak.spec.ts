@@ -81,7 +81,7 @@ async function crouchBoxes(page: Page) {
   });
 }
 
-/** Flash fill against the page and the settings panel, in light and dark. Restores the theme attribute. */
+/** The flash beat in light and dark: its own fill and the fills of the silhouette's paths. Restores the theme attribute. */
 async function flashColours(page: Page) {
   return page.evaluate(() => {
     const el = document.querySelector('main [data-flash]');
@@ -91,14 +91,12 @@ async function flashColours(page: Page) {
     const read = (theme: string) => {
       root.setAttribute('data-theme', theme);
       const cs = getComputedStyle(el);
-      const panel = el.closest('.setting-body');
       return {
         background: cs.backgroundColor,
-        border: cs.borderTopWidth,
         image: cs.backgroundImage,
         shadow: cs.boxShadow,
+        fills: [...el.querySelectorAll('path')].map(p => getComputedStyle(p).fill),
         page: getComputedStyle(document.body).backgroundColor,
-        panel: panel ? getComputedStyle(panel).backgroundColor : '',
       };
     };
     const out = { light: read('light'), dark: read('dark') };
@@ -226,14 +224,15 @@ test.describe.serial('streak on a fake clock in Asia/Kolkata', () => {
       expect(row.fill, `beat ${row.n} fill`).toBe(row.n === 5 ? 'forwards' : 'none');
     }
     const flash = await flashColours(page);
+    // Rio's shape goes white-hot: no fill on the beat, two paths (core, edge), and the edge is warm on a light page.
     for (const theme of ['light', 'dark'] as const) {
       const colours = flash?.[theme];
-      expect(colours?.border, theme).toBe('0px');
+      expect(colours?.background, theme).toBe('rgba(0, 0, 0, 0)');
       expect(colours?.image, theme).toBe('none');
       expect(colours?.shadow, theme).toBe('none');
-      expect(colours?.background, theme).not.toBe(colours?.page);
-      expect(colours?.background, theme).not.toBe(colours?.panel);
-      expect(colours?.background, theme).not.toBe('rgba(0, 0, 0, 0)');
+      expect(colours?.fills[0], theme).toBe('rgb(255, 253, 240)');
+      expect(colours?.fills[1], theme).toBe(theme === 'light' ? 'rgb(255, 154, 0)' : 'rgb(255, 243, 168)');
+      expect(colours?.fills[1], theme).not.toBe(colours?.page);
     }
     await page.evaluate(() => {
       const nameOf = (anim: Animation) => (anim as unknown as { animationName?: string }).animationName ?? '';
