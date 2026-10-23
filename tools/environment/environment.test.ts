@@ -201,8 +201,19 @@ describe('portable environment setup', () => {
   it('uses the same native installer in CI and Docker', () => {
     const workflow = readFileSync(path.resolve(here, '../../.github/workflows/ci.yml'), 'utf8');
     const dockerfile = readFileSync(path.join(here, 'Dockerfile'), 'utf8');
-    expect(workflow).toContain('sudo bash tools/environment/install-native.sh');
+    expect(workflow).toContain('bash tools/environment/install-native.sh');
     expect(workflow).not.toContain('apt-get install');
     expect(dockerfile).toContain('bash /tmp/install-native.sh');
+  });
+  it('lets CI cache the .deb files of every apt install', () => {
+    const workflow = readFileSync(path.resolve(here, '../../.github/workflows/ci.yml'), 'utf8');
+    const script = readFileSync(path.join(here, 'install-native.sh'), 'utf8');
+    const installs = workflow.match(/^\s*run: .*install-native\.sh.*$/gm) ?? [];
+    expect(installs.length).toBe(2);
+    for (const run of installs) expect(run).toContain('TDCC_APT_ARCHIVES="$HOME/.cache/tdcc-apt"');
+    expect(workflow.match(/path: ~\/\.cache\/tdcc-apt$/gm)?.length).toBe(2);
+    // Every install goes through the array that adds the archive folder; a bare apt-get install would bypass the cache.
+    expect(script).toContain('apt_install+=(-o "Dir::Cache::archives=$TDCC_APT_ARCHIVES")');
+    expect(script.match(/^[^#\n]*apt-get install/gm)).toEqual(['apt_install=(apt-get install']);
   });
 });

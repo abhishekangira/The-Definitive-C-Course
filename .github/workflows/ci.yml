@@ -11,6 +11,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # A cache restore that stalls (GitHub's cache storage once throttled one for the default 10 min) gives up after
+  # about 2 min and the job carries on uncached.
+  SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -63,13 +68,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
+      # The .deb files install-native.sh downloads, so a run installs from the cache instead of the Ubuntu mirror.
+      # The key changes with the script and every ISO week; a new week starts from last week's files (restore-keys).
+      - name: Week for the apt cache key
+        id: week
+        if: needs.changes.outputs.code == 'true'
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - name: Cache apt packages
+        if: needs.changes.outputs.code == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/tdcc-apt
+          key: apt-native-${{ runner.os }}-${{ hashFiles('tools/environment/install-native.sh') }}-${{ steps.week.outputs.week }}
+          restore-keys: apt-native-${{ runner.os }}-${{ hashFiles('tools/environment/install-native.sh') }}-
       - name: Install the native toolchain
         if: needs.changes.outputs.code == 'true'
         # Usually under 1 min. A crawling Ubuntu mirror once took 22 min (144 kB/s); fail fast and re-run instead.
         timeout-minutes: 10
-        run: sudo bash tools/environment/install-native.sh
+        run: sudo TDCC_APT_ARCHIVES="$HOME/.cache/tdcc-apt" bash tools/environment/install-native.sh
 
       - name: Log the reference environment
         if: needs.changes.outputs.code == 'true'
@@ -177,11 +194,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
 
+      # Same as the apt cache in `check`, for FFmpeg only.
+      - name: Week for the apt cache key
+        id: week
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      - name: Cache apt packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/tdcc-apt
+          key: apt-ffmpeg-${{ runner.os }}-${{ hashFiles('tools/environment/install-native.sh') }}-${{ steps.week.outputs.week }}
+          restore-keys: apt-ffmpeg-${{ runner.os }}-${{ hashFiles('tools/environment/install-native.sh') }}-
       - name: Install FFmpeg
         timeout-minutes: 10
-        run: sudo bash tools/environment/install-native.sh --ffmpeg-only
+        run: sudo TDCC_APT_ARCHIVES="$HOME/.cache/tdcc-apt" bash tools/environment/install-native.sh --ffmpeg-only
 
       - run: npm ci
 
@@ -191,6 +217,16 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
         run: npm run build
 
+      # Playwright's own Chromium download, keyed on the installed Playwright version. The install step still runs:
+      # on a hit it downloads nothing and only checks the system libraries.
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(npx playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright's Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
       - name: Install Playwright's Chromium
         run: npx playwright install --with-deps chromium
       - name: End-to-end click-through
@@ -226,7 +262,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
       - run: npm ci
       - uses: actions/download-artifact@v4
         with:

@@ -71,7 +71,8 @@ and runs `npm run env -- npm test` inside it on changes to `tools/environment/**
 It logs build/setup time, image size and the doctor's status, and never publishes the image.
 
 `.github/workflows/ci.yml` and the Dockerfile both call `install-native.sh` (CI's e2e jobs
-with `--ffmpeg-only`); change the package list there only. It fails with `apt.llvm.org's signing key changed` if the key's
+with `--ffmpeg-only`, and with `TDCC_APT_ARCHIVES=<dir>` so the downloaded `.deb` files land in a
+folder CI caches); change the package list there only. It fails with `apt.llvm.org's signing key changed` if the key's
 fingerprint differs. The base is `docker.io/library/ubuntu:24.04` at a recorded digest,
 pulled by default through `mirror.gcr.io` (no Docker Hub anonymous pull limits);
 `TDCC_BASE_IMAGE` names another approved mirror, which must carry the same digest. There is
