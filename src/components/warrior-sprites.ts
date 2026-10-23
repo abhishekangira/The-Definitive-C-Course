@@ -11,9 +11,8 @@
 // Frames. A frame is a full sprite plus optional patches, painted in order (a later patch wins, and a space erases).
 // `FORM_FRAMES` lists them per form. Frame 0 of every list is the original drawing. Extra rows come from
 // tools/rio/derive-frames.mjs and stay hand-editable.
-//   idle      four frames. 1 lifts the head and upper torso 1px. 2 stacks that lift and a hair or fur tip. 3 is the
-//             tip on the resting body. Under `.still`, the header head draws the first frame of the streak mood's
-//             list (`worried[0]` when at risk); the gallery always draws `idle[0]`.
+//   idle      four frames. 1 lifts the head and upper torso 1px. 2 stacks that lift and a hair or fur tip. 3 is the tip on the resting body.
+//             Under `.still`, the header head draws the first frame of the streak mood's list (`worried[0]` when at risk); the gallery always draws `idle[0]`.
 //   defeated  the kid's loop: kidDown, a 1px head droop, then that droop with a hair tip poked sideways.
 //   worried   three frames. 0 is the sprite plus its worried patch. 1 and 2 shiver the hair or fur tips.
 //   blink     the resting eyes, through composeFrame so a space stays transparent. `blinkForIdle` shifts it by
