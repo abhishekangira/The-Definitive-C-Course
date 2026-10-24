@@ -43,14 +43,14 @@ The course has 13 modules and a capstone (about 200 hours, or 40 weeks at 5 hour
 - **A free Playground** at `#/playground`: an ungated editor on the same compiler, with your draft saved in your own browser.
 
 ### You are never a passive reader
-- **Predict before you run.** Every code sample asks what it will print (or whether it will compile, crash or misbehave) before it lets you press Run.
+- **Predict before you run.** Every code sample asks what it will print (or whether it will compile, crash or misbehave) before it lets you press Run. Lock in with the button, or press Ctrl+Enter (Cmd+Enter on a Mac) in the box to lock in and run.
 - **At most about 250 words, or one animation, between interactions.** Lessons are cards, and each card ends in something you do.
 - **Four kinds of exercise:** write it from scratch, fix a bug from a symptom, arrange the lines (Parsons problems), or run a task on your own machine.
 - **Three graduated hints** per exercise (a nudge, the concept, partial code), and the reference solution only unlocks after real effort.
 - **Variants** let you prove you have mastered an exercise rather than memorised it.
 - **Checkpoints** run in assessment mode: no hints, no solutions, one transfer question.
 - **Spaced retrieval quizzes** bring earlier modules back.
-- **Perfect lessons** track lessons where every prediction and every "Check your understanding" quiz question was right on the first try, with a Rio celebration that stays until you close it. Only first tries count: Predict again and Check again let you practise, but they never change the count.
+- **Perfect lessons** track lessons where every prediction, every "Check your understanding" quiz question and every compiler-error question (which line, what is wrong, which stage) was right on the first try, with a Rio celebration that stays until you close it. Only first tries count: Predict again, Check again and a retried line or option let you practise, but they never change the count.
 
 ### Interactive visualizers
 Step through a program line by line with real debugger traces, explore the compiler pipeline stage by stage, draw memory diagrams, hit **compiler-error drills**, practise number-base conversion, and play with a number playground. Later modules add visualizers for lists, trees, hash tables, a tiny CPU and a cache simulator.
@@ -82,7 +82,7 @@ Submit something each day to build a streak. Spirit beans save a missed day, and
 - Everything lives in `localStorage`; there are no course accounts and no tracking.
 - **Export and import** your progress as a file, with safe merge and validation of untrusted input.
 - **Optional Google Drive sync** (Settings): connect once and your progress saves to a hidden app folder in your own Drive and merges into every browser you sign in on. Nothing loads from Google until you click to connect.
-- Playground drafts and tutor settings sit outside the progress document, so a reset never wipes them.
+- Playground drafts and tutor settings sit outside the progress document, so a reset never wipes them. Reset all progress does clear the perfect-lesson celebrations you have earned in this browser, so a lesson can celebrate again.
 
 ### Designed to be used by everyone
 - **WCAG AA contrast** in light *and* dark, checked by tests on the design tokens.

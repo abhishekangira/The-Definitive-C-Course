@@ -60,6 +60,11 @@ export interface LessonFrontmatter {
   summary: string;
   /** Added by the `?frontmatter` loader, not written by authors: each <Choice> question's `qid` (a hash of its text; absent when none). */
   choices?: string[];
+  /**
+   * Added by the `?frontmatter` loader: each <CompilerError> question's id (`<instance>:<kind>`, from
+   * content-model/compiler-error.ts; absent when the lesson has none). Perfect lessons count them.
+   */
+  compilerErrors?: string[];
 }
 
 // ---------- exercises (content/modules/*/exercises/<id>/exercise.yaml) ----------

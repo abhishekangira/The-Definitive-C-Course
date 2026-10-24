@@ -472,6 +472,74 @@ describe('<CodeSample> changing a prediction', () => {
 });
 
 
+describe('<CodeSample> Ctrl/Cmd+Enter', () => {
+  const key = async (el: HTMLElement, init: KeyboardEventInit) => {
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init });
+    await act(async () => { el.dispatchEvent(event); });
+    return event;
+  };
+  it('locks in and runs in one step; the hint is linked to the box and shows both shortcuts', async () => {
+    await show(result());
+    const area = host.querySelector('textarea')!;
+    const id = area.getAttribute('aria-describedby');
+    expect(id).toBeTruthy();
+    const hint = host.querySelector(`[id="${id}"]`)!;
+    expect(hint.textContent).toContain('Ctrl+Enter');
+    expect(hint.textContent).toContain('Cmd+Enter');
+    expect(hint.querySelectorAll('kbd')).toHaveLength(4);
+    await fill(area, '3 -3 1\n3.5');
+    await key(area, { ctrlKey: true });
+    // Locked in and revealed: no second click.
+    expect(getProgress().samples.s).toMatchObject({ prediction: '3 -3 1\n3.5', verdict: 'exact', correct: true });
+    expect(host.textContent).toContain('Your prediction was right.');
+    expect(host.textContent).toContain('Predict again');
+    expect(bag.done).toHaveBeenCalledTimes(1);
+  });
+
+  it('Cmd+Enter does the same on a Mac', async () => {
+    await show(result());
+    await fill(host.querySelector('textarea')!, '3 -3 1\n3.5');
+    await key(host.querySelector('textarea')!, { metaKey: true });
+    expect(getProgress().samples.s).toMatchObject({ verdict: 'exact', correct: true });
+    expect(host.textContent).toContain('Your prediction was right.');
+  });
+
+  it('does nothing on an empty prediction, and plain Enter still adds a newline', async () => {
+    await show(result());
+    const area = host.querySelector('textarea')!;
+    // Empty: no commit, no run, and no newline either.
+    const empty = await key(area, { ctrlKey: true });
+    expect(empty.defaultPrevented).toBe(true);
+    expect(host.textContent).toContain('Lock in my prediction');
+    expect(host.textContent).not.toContain('Predict again');
+    expect(getProgress().samples.s).toBeUndefined();
+    // Plain Enter is left to the textarea.
+    const plain = await key(area, {});
+    expect(plain.defaultPrevented).toBe(false);
+    expect(host.textContent).toContain('Lock in my prediction');
+    expect(getProgress().samples.s).toBeUndefined();
+  });
+
+  it('leaves focus where clicking Lock in leaves it, never on the removed box', async () => {
+    // The click path: the button unmounts when the prediction is committed.
+    await show(result());
+    await fill(host.querySelector('textarea')!, '3 -3 1\n3.5');
+    const lock = button('Lock in my prediction'); lock.focus();
+    await click(lock);
+    const afterClick = document.activeElement;
+    expect(afterClick).not.toBe(lock);
+    await remount();
+    // The shortcut path: the textarea unmounts at the same commit.
+    await show(result());
+    const area = host.querySelector('textarea')!;
+    await fill(area, '3 -3 1\n3.5');
+    area.focus();
+    await key(area, { ctrlKey: true });
+    expect(area.isConnected).toBe(false);
+    expect(document.activeElement).toBe(afterClick);
+  });
+});
+
 it.each([false, true])('notifies only after new verdicts render, including 64-bit, native-only=%s', async nativeOnly => {
   const s = result({ flagged: true, predict64: 'Native output?', stdout: '4\n', nativeStdout: '8\n' });
   if (nativeOnly) s.meta.target = 'native';

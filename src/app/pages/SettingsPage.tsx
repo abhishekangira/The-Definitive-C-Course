@@ -8,6 +8,7 @@ import { PlatformPicker } from '../../interactions/PlatformPicker';
 import { downloadBlob } from '../../interactions/zip';
 import { detectStdinMode } from '../../runtime/CRuntime';
 import { Icon } from '../../components/Icon';
+import { resetPerfectSeen } from '../../components/PerfectLesson';
 import { SpiritBeans, StreakWarrior, WarriorGallery } from '../../components/StreakWarrior';
 import { TutorSettingsPanel } from '../../tutor/TutorSettingsPanel';
 import { DriveSyncPanel } from '../../components/DriveSyncPanel';
@@ -175,10 +176,10 @@ export function SettingsPage() {
       <section className="setting" aria-labelledby="reset-title">
         <div className="setting-head">
           <h2 id="reset-title">Start over</h2>
-          <p>Deletes all progress in this browser{driveOn ? ', in Google Drive and in every browser that syncs with it' : ''}. Export first if you might want it back.</p>
+          <p>Deletes all progress in this browser{driveOn ? ', in Google Drive and in every browser that syncs with it' : ''}, and the perfect-lesson celebrations you have earned here, so you can earn them again. Export first if you might want it back.</p>
         </div>
         <div className="setting-body">
-          <div><button type="button" className={`btn ${styles.danger}`} disabled={previewing} aria-describedby={previewing ? 'preview-off' : undefined} onClick={() => { if (window.confirm(`Delete all progress in this browser${driveOn ? ' and in Google Drive' : ''}? This cannot be undone.`)) { replaceProgress(emptyProgress()); replaceDriveOnNextSync(); setMessage({ ok: true, text: 'Progress reset.' }); } }}>Reset all progress</button></div>
+          <div><button type="button" className={`btn ${styles.danger}`} disabled={previewing} aria-describedby={previewing ? 'preview-off' : undefined} onClick={() => { if (window.confirm(`Delete all progress in this browser${driveOn ? ' and in Google Drive' : ''}, including the perfect-lesson celebrations you have earned? This cannot be undone.`)) { replaceProgress(emptyProgress()); resetPerfectSeen(); replaceDriveOnNextSync(); setMessage({ ok: true, text: 'Progress reset.' }); } }}>Reset all progress</button></div>
         </div>
       </section>
     </div>

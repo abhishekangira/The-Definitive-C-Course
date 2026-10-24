@@ -15,7 +15,10 @@ export const CONFETTI_EVERY_MS = 300;
 const CONFETTI_PER_TICK = 3;
 const CONFETTI_COLOURS = 6;
 
-/** This key deliberately survives progress replacement, imports and reset. */
+/**
+ * This key survives progress replacement and imports (an imported lesson already celebrated in this browser must not
+ * celebrate again), but "Reset all progress" clears it with the document, so starting over can earn it again.
+ */
 export function claimPerfectLesson(id: string): boolean {
   let seen: string[] = [];
   try {
@@ -25,6 +28,11 @@ export function claimPerfectLesson(id: string): boolean {
   if (seen.includes(id)) return false;
   try { localStorage.setItem(PERFECT_SEEN_KEY, JSON.stringify([...seen, id])); } catch { /* may celebrate again next visit */ }
   return true;
+}
+
+/** "Reset all progress" removes the celebration marks too, so a lesson can be perfect (and celebrate) again. */
+export function resetPerfectSeen(): void {
+  try { localStorage.removeItem(PERFECT_SEEN_KEY); } catch { /* blocked storage has nothing to clear */ }
 }
 
 function spawnPiece(layer: HTMLElement) {

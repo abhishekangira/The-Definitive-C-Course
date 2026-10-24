@@ -57,6 +57,11 @@ export interface ChoiceProgress { picked: number; correct: boolean; at: string }
 /** `progress.choices` key: the lesson id and the question's `qid` (a hash of its question text, from remark-course `choiceIds`). */
 export const choiceKey = (lessonId: string, qid: string) => `${lessonId}#${qid}`;
 
+/** One <CompilerError> question's first answer (the line clicked, the option submitted, or the stage chosen). */
+export interface CompilerErrorProgress { correct: boolean; at: string }
+/** `progress.compilerErrors` key: the lesson id and `<instance>:<kind>` (remark-course `compilerErrorIds`). */
+export const compilerErrorKey = (lessonId: string, qid: string) => `${lessonId}#${qid}`;
+
 const VERDICTS: readonly SampleVerdict[] = ['exact', 'close', 'wrong'];
 const asVerdict = (v: unknown): SampleVerdict | undefined => (typeof v === 'string' && (VERDICTS as readonly string[]).includes(v) ? v as SampleVerdict : undefined);
 
@@ -119,6 +124,8 @@ export interface ProgressV1 {
   samples: Record<string, SampleProgress>;
   /** `choiceKey(lessonId, qid)` → the first submission of that quiz question. */
   choices: Record<string, ChoiceProgress>;
+  /** `compilerErrorKey(lessonId, '<instance>:<kind>')` → the first answer of that compiler-error question. */
+  compilerErrors: Record<string, CompilerErrorProgress>;
   exercises: Record<string, ExerciseProgress>;
   quizzes: Record<string, QuizProgress>;
   projects: Record<string, ProjectProgress>;
@@ -133,7 +140,7 @@ function randomSeed(): string {
 }
 
 export function emptyProgress(): ProgressV1 {
-  return { version: 1, seed: randomSeed(), createdAt: new Date().toISOString(), settings: {}, cards: {}, lessons: {}, samples: {}, choices: {}, exercises: {}, quizzes: {}, projects: {}, streak: emptyStreak() };
+  return { version: 1, seed: randomSeed(), createdAt: new Date().toISOString(), settings: {}, cards: {}, lessons: {}, samples: {}, choices: {}, compilerErrors: {}, exercises: {}, quizzes: {}, projects: {}, streak: emptyStreak() };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -277,6 +284,8 @@ export function migrate(raw: unknown, now = Date.now()): ProgressV1 {
     samples: section(o.samples, x => cleanSample(x, now)),
     choices: section(o.choices, x => (Number.isInteger(x.picked) && (x.picked as number) >= 0 && typeof x.correct === 'boolean' && typeof x.at === 'string' && Number.isFinite(Date.parse(x.at))
       ? { picked: x.picked as number, correct: x.correct, at: x.at } : undefined)),
+    compilerErrors: section(o.compilerErrors, x => (typeof x.correct === 'boolean' && typeof x.at === 'string' && Number.isFinite(Date.parse(x.at))
+      ? { correct: x.correct, at: x.at } : undefined)),
     exercises: section(o.exercises, cleanExercise),
     quizzes: section(o.quizzes, x => (num(x.score) !== undefined && num(x.total) !== undefined && typeof x.passed === 'boolean' && typeof x.at === 'string'
       ? { score: x.score as number, total: x.total as number, passed: x.passed, at: x.at, answers: isRecord(x.answers) ? Object.fromEntries(Object.entries(x.answers).filter(([k]) => k !== '__proto__')) : {} } : undefined)),
@@ -435,10 +444,14 @@ export function mergeProgress(a: ProgressV1, b: ProgressV1): ProgressV1 {
       });
     }
   }
-  // A quiz question keeps its earliest first submission.
+  // A quiz question keeps its earliest first submission; so does a compiler-error question's first answer.
   for (const [k, v] of Object.entries(b.choices)) {
     const cur = own(out.choices, k);
     if (!cur || Date.parse(v.at) < Date.parse(cur.at)) out.choices[k] = v;
+  }
+  for (const [k, v] of Object.entries(b.compilerErrors)) {
+    const cur = own(out.compilerErrors, k);
+    if (!cur || Date.parse(v.at) < Date.parse(cur.at)) out.compilerErrors[k] = v;
   }
   for (const [k, v] of Object.entries(b.exercises)) {
     const cur = own(out.exercises, k);

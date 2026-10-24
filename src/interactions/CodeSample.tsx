@@ -85,6 +85,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const kept = saved && !saved.cleared ? saved : undefined;
   const markDone = useCardDone();
   const predictionShown = usePredictionShown();
+  const hintId = useId();
   const box = useRef<HTMLDivElement>(null);
   const runButton = useRef<HTMLButtonElement>(null);
   const reset64Button = useRef<HTMLButtonElement>(null);
@@ -242,7 +243,18 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
           {predictKind === 'output' && (
             <label className={styles.field}>
               <span>What exactly will it print? {usesPointers ? '' : 'One line per line of output.'}</span>
-              <textarea value={prediction} onChange={e => setPrediction(e.target.value)} rows={Math.max(2, answerText.split('\n').length)} spellCheck={false} className={styles.mono} />
+              {/* Ctrl/Cmd+Enter does what Lock in and Run do, in one step. Plain Enter still inserts a newline. */}
+              <textarea
+                value={prediction} onChange={e => setPrediction(e.target.value)} rows={Math.max(2, answerText.split('\n').length)}
+                spellCheck={false} className={styles.mono} aria-describedby={hintId}
+                onKeyDown={e => {
+                  if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey)) return;
+                  e.preventDefault();
+                  if (prediction === '') return;
+                  commit();
+                  void run();
+                }}
+              />
             </label>
           )}
           {predictKind === 'choice' && (
@@ -272,7 +284,13 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
           ) : (
             <div className={styles.actions}>
               <button type="submit" className="btn btn-primary" disabled={prediction === ''}>Lock in my prediction</button>
-              <span className={styles.muted}>Run unlocks after you commit.</span>
+              {predictKind === 'output' ? (
+                <span className={styles.muted} id={hintId}>
+                  or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on a Mac) to lock in and run.
+                </span>
+              ) : (
+                <span className={styles.muted}>Run unlocks after you commit.</span>
+              )}
             </div>
           )}
         </form>

@@ -8,7 +8,7 @@ import { parse as parseYaml } from 'yaml';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { SessionsFile } from '../src/content-model/types';
-import { answerQuiz, completeLesson, expectAccessible, fixtureModule, progressJson, ROOT, setEditor } from './lib';
+import { answerQuiz, completeLesson, dismissPerfectLesson, expectAccessible, fixtureModule, progressJson, ROOT, setEditor } from './lib';
 
 import { FIXTURE, startSessionsFixture } from './sessions-fixture';
 
@@ -125,6 +125,8 @@ test.describe('<CompilerError session> over stored native reports', () => {
       await stage(box, st).check();
       await box.getByRole('button', { name: 'Check' }).click();
       await expect(box.getByRole('status')).toContainText('Correct.');
+      // The first answers are scored now, so a right Check can open the perfect-lesson dialog (modal).
+      await dismissPerfectLesson(page);
     }
     for (const [id, file, still, fixed, done] of [
       ['ubsan', 'main.c', 'It still stops with an error', (s: string) => s.replace('big + 1', 'big - 1'), 'and runs with no undefined behaviour'],
@@ -135,6 +137,7 @@ test.describe('<CompilerError session> over stored native reports', () => {
       await kind(box, 0).check();
       await stage(box, 'Run').check();
       await box.getByRole('button', { name: 'Check' }).click();
+      await dismissPerfectLesson(page);
       const check = box.getByRole('button', { name: 'Compile and check' });
       await check.click(); // the stored program, unchanged
       await expect(box.getByText(still)).toBeVisible({ timeout: RUN_TIMEOUT });

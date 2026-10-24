@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SampleResult, SamplesFile } from '../content-model/types';
 import { emptyProgress, type SampleProgress } from './store';
-import { coursePredictionStats, lessonPredictionStats, perfectHint, scoredItemsLabel } from './perfect';
+import { coursePredictionStats, lessonPredictionStats, lessonQuiz, perfectHint, scoredItemsLabel } from './perfect';
 
 const sample = (id: string, extra: Partial<SampleResult> = {}): SampleResult => ({
   id, module: 'm', lesson: 'lesson', code: '', meta: { id, predict: 'output' }, hash: '', flagged: false, results: {},
@@ -91,14 +91,77 @@ describe('quiz questions count toward a perfect lesson', () => {
     expect(coursePredictionStats(modules, p)).toEqual({ perfect: 1, total: 1 });
   });
   it('the celebration hint names only the kinds the lesson scored', () => {
-    expect(perfectHint({ predictions: 2, questions: 3 })).toBe('Every prediction and quiz question right on the first try.');
-    expect(perfectHint({ predictions: 1, questions: 0 })).toBe('Every prediction right on the first try.');
-    expect(perfectHint({ predictions: 0, questions: 2 })).toBe('Every quiz question right on the first try.');
+    expect(perfectHint({ predictions: 2, questions: 3, compilerErrors: 0 })).toBe('Every prediction and quiz question right on the first try.');
+    expect(perfectHint({ predictions: 1, questions: 0, compilerErrors: 0 })).toBe('Every prediction right on the first try.');
+    expect(perfectHint({ predictions: 0, questions: 2, compilerErrors: 0 })).toBe('Every quiz question right on the first try.');
+    expect(perfectHint({ predictions: 0, questions: 0, compilerErrors: 3 })).toBe('Every compiler-error question right on the first try.');
+    expect(perfectHint({ predictions: 0, questions: 2, compilerErrors: 1 })).toBe('Every quiz question and compiler-error question right on the first try.');
+    expect(perfectHint({ predictions: 1, questions: 0, compilerErrors: 2 })).toBe('Every prediction and compiler-error question right on the first try.');
+    // Three kinds: listing them gets clumsy, so the hint is neutral.
+    expect(perfectHint({ predictions: 1, questions: 1, compilerErrors: 1 })).toBe('Every question right on the first try.');
   });
   it('names what was scored', () => {
-    expect(scoredItemsLabel({ predictions: 2, questions: 3, total: 5 })).toBe('predictions and quiz questions');
-    expect(scoredItemsLabel({ predictions: 1, questions: 0, total: 1 })).toBe('prediction');
-    expect(scoredItemsLabel({ predictions: 0, questions: 2, total: 2 })).toBe('quiz questions');
+    expect(scoredItemsLabel({ predictions: 2, questions: 3, compilerErrors: 0, total: 5 })).toBe('predictions and quiz questions');
+    expect(scoredItemsLabel({ predictions: 1, questions: 0, compilerErrors: 0, total: 1 })).toBe('prediction');
+    expect(scoredItemsLabel({ predictions: 0, questions: 2, compilerErrors: 0, total: 2 })).toBe('quiz questions');
+    expect(scoredItemsLabel({ predictions: 0, questions: 0, compilerErrors: 1, total: 1 })).toBe('compiler-error question');
+    expect(scoredItemsLabel({ predictions: 1, questions: 0, compilerErrors: 2, total: 3 })).toBe('predictions and compiler-error questions');
+    expect(scoredItemsLabel({ predictions: 1, questions: 1, compilerErrors: 1, total: 3 })).toBe('questions');
+  });
+});
+
+describe('compiler-error questions count toward a perfect lesson', () => {
+  // The ids the `?frontmatter` loader emits for M1 L1's one exercise: the line and what-is-wrong question.
+  const ce = { lessonId: 'm-l1', qids: [] as string[], compilerErrors: ['missing-semicolon:line', 'missing-semicolon:kind'] };
+  const right = (at = new Date().toISOString()) => ({ correct: true, at });
+  const wrong = (at = new Date().toISOString()) => ({ correct: false, at });
+
+  it('an unanswered question is not right, and legacy progress without the field counts as unanswered', () => {
+    const p = emptyProgress();
+    // A document saved before the field existed: migrate fills it in, but a reader that has only samples/choices counts
+    // the questions as unanswered.
+    const legacy = { samples: p.samples, choices: p.choices };
+    expect(lessonPredictionStats(null, 'lesson', legacy, ce))
+      .toMatchObject({ right: 0, total: 2, compilerErrors: 2, answered: 0, perfect: false });
+    p.compilerErrors['m-l1#missing-semicolon:line'] = right();
+    expect(lessonPredictionStats(null, 'lesson', p, ce)).toMatchObject({ right: 1, answered: 1, perfect: false });
+  });
+
+  it('is perfect only when every question was right on the first try', () => {
+    const p = emptyProgress();
+    p.compilerErrors['m-l1#missing-semicolon:line'] = right();
+    p.compilerErrors['m-l1#missing-semicolon:kind'] = right();
+    expect(lessonPredictionStats(null, 'lesson', p, ce)).toMatchObject({ right: 2, total: 2, perfect: true });
+    // The store records the first answer only, so a wrong first answer stays wrong. (A retry does not rewrite it.)
+    p.compilerErrors['m-l1#missing-semicolon:kind'] = wrong();
+    expect(lessonPredictionStats(null, 'lesson', p, ce)).toMatchObject({ right: 1, perfect: false });
+    // A key for a question the lesson does not ask (or another lesson's) does not count.
+    p.compilerErrors['m-l1#gone:line'] = right();
+    p.compilerErrors['m-l2#missing-semicolon:line'] = right();
+    expect(lessonPredictionStats(null, 'lesson', p, ce)).toMatchObject({ right: 1, total: 2, perfect: false });
+  });
+
+  it('stage="link" asks no line, so it contributes only the kind and stage questions', () => {
+    const link = { lessonId: 'm-l1', qids: [], compilerErrors: ['session:ld:kind', 'session:ld:stage'] };
+    const p = emptyProgress();
+    p.compilerErrors['m-l1#session:ld:kind'] = right();
+    p.compilerErrors['m-l1#session:ld:stage'] = right();
+    expect(lessonPredictionStats(null, 'lesson', p, link)).toMatchObject({ total: 2, compilerErrors: 2, perfect: true });
+  });
+
+  it('mixes with predictions and quiz questions', () => {
+    const p = emptyProgress(); p.samples.a = entry();
+    p.choices['m-l1#qaaaa0001'] = { picked: 0, correct: true, at: new Date().toISOString() };
+    p.compilerErrors['m-l1#missing-semicolon:line'] = right();
+    const quiz = { lessonId: 'm-l1', qids: ['qaaaa0001'], compilerErrors: ['missing-semicolon:line', 'missing-semicolon:kind'] };
+    expect(lessonPredictionStats(file(sample('a')), 'lesson', p, quiz)).toMatchObject({ right: 3, total: 4, perfect: false });
+    p.compilerErrors['m-l1#missing-semicolon:kind'] = right();
+    expect(lessonPredictionStats(file(sample('a')), 'lesson', p, quiz)).toMatchObject({ right: 4, total: 4, perfect: true });
+  });
+
+  it('the loader passes compiler-error ids on the lesson\'s questions', () => {
+    expect(lessonQuiz({ id: 'm-l1', compilerErrors: ['missing-semicolon:line', 'missing-semicolon:kind'] }))
+      .toEqual({ lessonId: 'm-l1', qids: [], compilerErrors: ['missing-semicolon:line', 'missing-semicolon:kind'] });
   });
 });
 

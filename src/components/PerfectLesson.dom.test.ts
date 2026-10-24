@@ -2,7 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { claimPerfectLesson, CONFETTI_CAP, CONFETTI_EVERY_MS, PERFECT_SEEN_KEY, PerfectLesson } from './PerfectLesson';
+import { claimPerfectLesson, CONFETTI_CAP, CONFETTI_EVERY_MS, PERFECT_SEEN_KEY, PerfectLesson, resetPerfectSeen } from './PerfectLesson';
 import { dayKey } from '../progress/streak';
 import { emptyProgress, replaceProgress } from '../progress/store';
 
@@ -144,10 +144,18 @@ it('claims each lesson once and reads seen storage defensively', () => {
   localStorage.setItem(PERFECT_SEEN_KEY, '[1,"old",null]');
   expect(claimPerfectLesson('old')).toBe(false); expect(claimPerfectLesson('new')).toBe(true);
   expect(JSON.parse(localStorage.getItem(PERFECT_SEEN_KEY)!)).toEqual(['old', 'new']);
+  // Import and "Replace my progress" replace the document only: a lesson already celebrated in this browser stays seen.
   replaceProgress(emptyProgress()); expect(claimPerfectLesson('new')).toBe(false);
+  // "Reset all progress" clears the marks too, so starting over can earn the celebration again.
+  resetPerfectSeen();
+  expect(localStorage.getItem(PERFECT_SEEN_KEY)).toBeNull();
+  expect(claimPerfectLesson('new')).toBe(true);
   vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
   expect(claimPerfectLesson('blocked')).toBe(true); vi.restoreAllMocks();
+  // A blocked storage throws on removeItem too: reset never fails the Settings action.
+  vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('blocked'); });
+  expect(() => resetPerfectSeen()).not.toThrow(); vi.restoreAllMocks();
 });
 
 it('uses the current streak form even when the learner is worried', async () => {

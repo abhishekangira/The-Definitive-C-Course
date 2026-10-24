@@ -11,24 +11,36 @@ import { parse as parseYaml } from 'yaml';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionsFile } from '../content-model/types';
 import type { RunRequest, RunSummary } from '../runtime/useCRun';
+import { emptyProgress, getProgress, replaceProgress } from '../progress/store';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const m97 = JSON.parse(readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/generated/sessions/m97.json'), 'utf8')) as SessionsFile;
 const done = vi.fn();
+/** The perfect-lesson report: fired only when an answer newly saves a right first try. */
+const scored = vi.fn();
 let nextRun: RunSummary;
 const run = vi.fn(async (_req: RunRequest) => nextRun);
-vi.mock('../lesson/LessonContext', () => ({ useSessions: () => m97, useSamples: () => null, useCardDone: () => done }));
+vi.mock('../lesson/LessonContext', () => ({
+  useSessions: () => m97, useSamples: () => null, useCardDone: () => done,
+  useLesson: () => ({ lessonId: 'm97-l1' }), usePredictionShown: () => scored,
+}));
 vi.mock('../runtime/useCRun', () => ({ useCRun: () => ({ run, phase: 'idle', diagnostics: [], rawDiagnostics: '', segments: [], result: null, stop: () => {} }) }));
 vi.mock('../components/CodeEditor', () => ({ CodeEditor: ({ value }: { value: string }) => createElement('pre', { 'data-editor': '' }, value) }));
 const { CompilerError } = await import('./CompilerError');
 
 let host: HTMLDivElement;
 let root: Root;
-beforeEach(() => { host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host); done.mockReset(); run.mockClear(); });
+beforeEach(() => {
+  host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host);
+  done.mockReset(); scored.mockReset(); run.mockClear();
+  localStorage.clear(); replaceProgress(emptyProgress());
+});
 afterEach(() => { act(() => root.unmount()); host.remove(); });
 type Props = Parameters<typeof CompilerError>[0];
 const base = { question: 'What is wrong?', options: ['A write past the end of an array', 'A leak'], answer: 0 };
-const render = (props: Partial<Props> & { session: string }) => act(() => root.render(createElement(CompilerError, { ...base, ...props } as Props)));
+// `ceid` is what remark-course assigns (the session id here); pass one explicitly to test a duplicate's `-2` id.
+const render = (props: Partial<Props> & { session: string }) =>
+  act(() => root.render(createElement(CompilerError, { ...base, ...props, ceid: props.ceid ?? props.session } as Props)));
 const click = (el: Element | null) => act(() => { (el as HTMLElement).click(); });
 // The oracle: the `bug: <file>:<line>` key in the fixture session's session.yaml, never a comment in the C file.
 const bug = (id: string) => {
@@ -149,5 +161,85 @@ describe('<CompilerError session>', () => {
   it('says on screen when a fix cannot be checked in the browser (more than one .c file)', () => {
     render({ session: 'link-multiple', stage: 'link', fix: 'compile' });
     expect(host.querySelector('[role="alert"]')!.textContent).toContain('give link-multiple fix={false}');
+  });
+});
+
+// The scored first answers (perfect lessons). The ids are the lesson id and `<instance>:<kind>`, as remark-course and
+// the `?frontmatter` loader assign them. `scored` stands in for LessonPage's perfect check.
+const answer = (qid: string) => getProgress().compilerErrors[`m97-l1#${qid}`];
+const seedAnswer = (...qids: string[]) => {
+  const p = emptyProgress();
+  for (const qid of qids) p.compilerErrors[`m97-l1#${qid}`] = { correct: true, at: new Date().toISOString() };
+  replaceProgress(p);
+};
+describe('<CompilerError> scored questions', () => {
+  it('line: a wrong first click is the saved first answer and a right retry never rewrites it or celebrates', () => {
+    render({ session: 'asan', fix: false });
+    const right = bug('asan').line;
+    click(host.querySelector(`label[data-line="${right === 1 ? 2 : 1}"] input`));
+    expect(answer('asan:line')).toMatchObject({ correct: false });
+    click(host.querySelector(`label[data-line="${right}"] input`));
+    expect(answer('asan:line')).toMatchObject({ correct: false });
+    expect(scored).not.toHaveBeenCalled();
+  });
+
+  it('line: a right first click is saved once and reports to the perfect check', () => {
+    render({ session: 'asan', fix: false });
+    click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));
+    expect(answer('asan:line')).toMatchObject({ correct: true });
+    expect(scored).toHaveBeenCalledTimes(1);
+    click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));
+    expect(scored).toHaveBeenCalledTimes(1);
+  });
+
+  it('kind: a wrong first option stays wrong after a right retry; the retry never celebrates', () => {
+    seedAnswer('asan:line'); // the line is already answered, so only the kind answer can report here
+    render({ session: 'asan', fix: false });
+    click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));
+    expect(scored).not.toHaveBeenCalled();
+    click(host.querySelectorAll('[data-question="kind"] input')[1]);
+    check();
+    expect(answer('asan:kind')).toMatchObject({ correct: false });
+    click(host.querySelectorAll('[data-question="kind"] input')[0]);
+    check();
+    expect(answer('asan:kind')).toMatchObject({ correct: false });
+    expect(scored).not.toHaveBeenCalled();
+  });
+
+  it('kind: a right first option saves on Check and reports once', () => {
+    seedAnswer('asan:line');
+    render({ session: 'asan', fix: false });
+    click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));
+    click(host.querySelectorAll('[data-question="kind"] input')[0]);
+    check();
+    expect(answer('asan:kind')).toMatchObject({ correct: true });
+    expect(scored).toHaveBeenCalledTimes(1);
+  });
+
+  it('stage: stage="link" asks no line; the first stage answer is kept and a right kind still reports', () => {
+    render({ session: 'link-undefined', step: 2, stage: 'link', fix: false, options: ['`area` is never defined', 'A typo'] });
+    expect(host.querySelector('[data-line]')).toBeNull();
+    const stage = (s: string) => [...host.querySelectorAll('[data-question="stage"] label')].find(l => l.textContent === s)!.querySelector('input');
+    click(host.querySelectorAll('[data-question="kind"] input')[0]);
+    click(stage('Compile'));
+    check();
+    expect(answer('link-undefined:kind')).toMatchObject({ correct: true });
+    expect(answer('link-undefined:stage')).toMatchObject({ correct: false });
+    expect(answer('link-undefined:line')).toBeUndefined();
+    expect(scored).toHaveBeenCalledTimes(1);
+    scored.mockClear();
+    click(stage('Link'));
+    check();
+    expect(answer('link-undefined:stage')).toMatchObject({ correct: false });
+    expect(scored).not.toHaveBeenCalled();
+  });
+
+  it('a Check over answers already in imported progress never reports', () => {
+    seedAnswer('asan:line', 'asan:kind');
+    render({ session: 'asan', fix: false });
+    click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));
+    click(host.querySelectorAll('[data-question="kind"] input')[0]);
+    check();
+    expect(scored).not.toHaveBeenCalled();
   });
 });
