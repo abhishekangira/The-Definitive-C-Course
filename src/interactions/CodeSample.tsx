@@ -103,6 +103,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const [p64Done, setP64Done] = useState(kept?.predict64 !== undefined);
   // Ctrl/Cmd+Enter commits and runs in one step, and the form unmounts under the textarea. Put focus on the run/reveal
   // button, where clicking Lock in and then Run leaves it; a browser run disables the button, so wait for it to re-enable.
+  // Only from the body: a learner who moved focus elsewhere during a run keeps it there.
   const focusRun = useRef(false);
   const [focusTick, setFocusTick] = useState(0);
   useEffect(() => {
@@ -111,6 +112,8 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
     if (!target?.isConnected) { focusRun.current = false; return; }
     if (target.disabled) return;
     focusRun.current = false;
+    const active = document.activeElement;
+    if (active !== null && active !== document.body) return;
     target.focus();
   }, [focusTick, runner.phase]);
   // Wait for a DOM commit after the run settles (or an immediate stored/native reveal). The 64-bit
@@ -299,7 +302,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
             <div className={styles.actions}>
               <button type="submit" className="btn btn-primary" disabled={prediction === ''}>Lock in my prediction</button>
               {predictKind === 'output' ? (
-                <span className={styles.muted} id={hintId}>
+                <span className={`${styles.muted} ${styles.shortcutHint}`} id={hintId}>
                   or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on a Mac) to lock in and {nativeOnly || storedMode ? 'reveal the result' : 'run'}.
                 </span>
               ) : (

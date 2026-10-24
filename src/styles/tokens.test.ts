@@ -5,13 +5,18 @@ import { describe, expect, it } from 'vitest';
 // control and for focus), so the pairs are read from the real stylesheet. The dark theme is written twice (for the
 // system preference and for the explicit choice); a third test keeps the copies the same.
 const css = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
+const interactionCss = readFileSync(new URL('../interactions/Interaction.module.css', import.meta.url), 'utf8');
 
-function declarations(selector: string): Record<string, string> {
-  const open = css.indexOf(`${selector} {`);
+function declarationsIn(sheet: string, selector: string): Record<string, string> {
+  // Strip comments first: prose like "surfaces: ground < surface ..." would otherwise parse as a declaration and
+  // swallow the property after it.
+  const clean = sheet.replace(/\/\*[\s\S]*?\*\//g, '');
+  const open = clean.indexOf(`${selector} {`);
   if (open < 0) throw new Error(`no block for ${selector}`);
-  const body = css.slice(css.indexOf('{', open) + 1, css.indexOf('}', open));
-  return Object.fromEntries([...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map(m => [m[1], m[2].trim()]));
+  const body = clean.slice(clean.indexOf('{', open) + 1, clean.indexOf('}', open));
+  return Object.fromEntries([...body.matchAll(/([\w-]+):\s*([^;]+);/g)].map(m => [m[1], m[2].trim()]));
 }
+const declarations = (selector: string) => declarationsIn(css, selector);
 
 const light = declarations(':root');
 // The dark blocks only restate what changes; everything else (the terminal text colours, for one) is inherited from the light block.
@@ -49,6 +54,16 @@ for (const [name, t] of [['light', light], ['dark', dark]] as const) {
       for (const bg of ['--accent', '--accent-hover']) expect(ratio(t['--accent-text'], t[bg]), `accent-text on ${bg}`).toBeGreaterThanOrEqual(4.5);
       for (const fg of ON_TERMINAL) expect(ratio(t[fg], t['--terminal-bg']), `${fg} on terminal`).toBeGreaterThanOrEqual(4.5);
     });
+    it('the picked compiler-error line marks its state at 3:1', () => {
+      // Read the tokens `.linePicked` actually uses, from the component stylesheet, not a copy.
+      const picked = declarationsIn(interactionCss, '.linePicked');
+      expect(picked['border-left-color']).toBe('var(--data)');
+      expect(picked.background).toBe('var(--data-soft)');
+      // WCAG 1.4.11: the border is the state indicator, on the picked line and on the unpicked code surface.
+      for (const bg of ['--data-soft', '--bg-code']) {
+        expect(ratio(t['--data'], t[bg]), `--data on ${bg}`).toBeGreaterThanOrEqual(3);
+      }
+    });
     it('form control edges and the focus ring reach 3:1 against the surface and the ground', () => {
       for (const surface of ['--bg', '--bg-elev']) {
         expect(ratio(t['--control'], t[surface]), `control on ${surface}`).toBeGreaterThanOrEqual(3);
@@ -60,6 +75,18 @@ for (const [name, t] of [['light', light], ['dark', dark]] as const) {
     });
   });
 }
+
+describe('the picked compiler-error line', () => {
+  it('hover never overrides its background', () => {
+    // `.codeLine:hover` must exclude the picked line: the border marks the pick, and a hover tint on top would hide
+    // the line's own background. Any hover rule that paints a background has to carry `:not(.linePicked)`.
+    const hoverBackgrounds = [...interactionCss.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selectors, body]) => selectors.includes(':hover') && /(?:^|;)\s*background:/.test(body))
+      .map(([, selectors]) => selectors.trim());
+    expect(hoverBackgrounds.filter(sel => !sel.includes(':not(.linePicked)'))).toEqual([]);
+    expect(hoverBackgrounds.length).toBeGreaterThan(0);
+  });
+});
 
 describe('dark theme copies', () => {
   it('the system-preference block and the explicit data-theme block declare the same values', () => {

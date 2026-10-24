@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import { lessonChoiceIds, lessonCompilerErrorIds } from '../../../tools/mdx/remark-course';
 import type { SamplesFile } from '../../content-model/types';
 import samplesJson from '../../generated/samples/m01.json';
+import { coursePredictionStats } from '../../progress/perfect';
 import { emptyProgress, getProgress, replaceProgress, update } from '../../progress/store';
 import { PERFECT_SEEN_KEY, resetPerfectSeen } from '../../components/PerfectLesson';
 import { usePredictionShown } from '../../lesson/LessonContext';
@@ -69,6 +70,14 @@ const { CodeSample } = await import('../../interactions/CodeSample');
 const { Choice } = await import('../../interactions/Choice');
 const { CompilerError } = await import('../../interactions/CompilerError');
 const { modules } = await import('../../content-runtime/course');
+/**
+ * The course map's perfect total, derived from the same course data and samples the page loads (m01 has generated
+ * samples; the mock above returns null for the other modules), so adding a lesson does not break the count test.
+ */
+const PERFECT_TOTAL = coursePredictionStats(
+  Object.entries(modules).map(([id, m]) => ({ samples: id === 'm01' ? samples : null, lessons: m.lessons })),
+  emptyProgress(),
+).total;
 const { LessonPage } = await import('./LessonPage');
 const { ModulePage } = await import('./ModulePage');
 const { CourseMap } = await import('./CourseMap');
@@ -97,6 +106,14 @@ async function exact(index: number) {
   await act(async () => input.dispatchEvent(new Event('input', { bubbles: true })));
   await click(button(box, 'Lock in my prediction'));
   return box;
+}
+/** Ctrl+Enter in a sample's prediction box: commit and run in one step (CodeSample's shortcut path). */
+async function shortcut(box: Element, text: string) {
+  const area = box.querySelector<HTMLTextAreaElement>('textarea')!;
+  Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(area, text);
+  await act(async () => area.dispatchEvent(new Event('input', { bubbles: true })));
+  area.focus();
+  await act(async () => area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true })));
 }
 async function answer(q: number, option = 0) {
   const box = host.querySelector(`[data-qid="${QIDS[q]}"]`)!;
@@ -236,8 +253,8 @@ it('shows the count of predictions, quiz and compiler-error questions after comp
   expect(host.querySelectorAll('[aria-label="Perfect lesson"]')).toHaveLength(1);
   expect(host.querySelector('[aria-label="Perfect lesson"]')?.closest('a')?.getAttribute('href')).toContain(stem);
   await act(async () => router.navigate('/'));
-  // 11 lessons have a scored question once compiler-error questions count.
-  expect(host.querySelector('[data-perfect-total]')?.textContent).toBe('Perfect lessons: 1 of 11');
+  // Every lesson with a scored question, from the course data (not a hard-coded number).
+  expect(host.querySelector('[data-perfect-total]')?.textContent).toBe(`Perfect lessons: 1 of ${PERFECT_TOTAL}`);
   await act(async () => router.navigate(`/m/m01/${stem}`));
   expect(host.querySelector('[data-prediction-count]')?.textContent).toBe(`${scored} of ${scored} questions right`);
   // Predict again keeps the first try: the lesson stays perfect.
@@ -260,6 +277,36 @@ it('browser mode waits for the deferred run and then restores focus to the enabl
   await act(async () => finish({ compile: { ok: true, diagnostics: [], raw: '', ms: 1 }, stdout: predictions()[0].answer.stdout, stderr: '' }));
   expect(document.querySelector('dialog')).not.toBeNull(); expect(run.disabled).toBe(false);
   await escapeDialog(); expect(document.activeElement).toBe(run);
+});
+it('Ctrl+Enter does not take focus back from a control the learner moved to during the run', async () => {
+  let finish!: (summary: RunSummary) => void;
+  bag.pending = new Promise(resolve => { finish = resolve; });
+  await act(async () => update(p => { p.settings.storedOutputMode = false; }));
+  const sample = predictions()[0];
+  const box = host.querySelector(`[data-sample="${sample.id}"]`)!;
+  await shortcut(box, sample.answer.stdout);
+  const run = button(box, 'Run again');
+  expect(run.disabled).toBe(true); // still compiling in the browser
+  // The learner moves on while the compiler runs; when Run re-enables, focus must stay where they put it.
+  const away = button(box, 'Predict again');
+  away.focus();
+  await act(async () => finish({ compile: { ok: true, diagnostics: [], raw: '', ms: 1 }, stdout: sample.answer.stdout, stderr: '' }));
+  expect(run.disabled).toBe(false);
+  expect(document.activeElement).toBe(away);
+});
+it('Ctrl+Enter still focuses the run button when focus was on the body during the run', async () => {
+  let finish!: (summary: RunSummary) => void;
+  bag.pending = new Promise(resolve => { finish = resolve; });
+  await act(async () => update(p => { p.settings.storedOutputMode = false; }));
+  const sample = predictions()[0];
+  const box = host.querySelector(`[data-sample="${sample.id}"]`)!;
+  await shortcut(box, sample.answer.stdout);
+  // The textarea unmounted; nothing else took focus, so the run button should once it re-enables.
+  expect(document.activeElement).toBe(document.body);
+  const run = button(box, 'Run again');
+  await act(async () => finish({ compile: { ok: true, diagnostics: [], raw: '', ms: 1 }, stdout: sample.answer.stdout, stderr: '' }));
+  expect(run.disabled).toBe(false);
+  expect(document.activeElement).toBe(run);
 });
 it('a reset cancels a pending browser celebration', async () => {
   let finish!: (summary: RunSummary) => void;

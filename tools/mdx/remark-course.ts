@@ -17,7 +17,9 @@ import { compilerErrorQid, compilerErrorQuestions } from '../../src/content-mode
 import { groupCards } from '../../src/content-model/cards.ts';
 import type { SampleMeta } from '../../src/content-model/types.ts';
 
-type JsxAttr = { type: 'mdxJsxAttribute'; name: string; value: string | null };
+type EstreeExpression = { type: string; value?: unknown; expressions?: unknown[]; quasis?: Array<{ value: { cooked?: string | null } }> };
+type AttrValue = string | null | { type: string; value: string; data?: { estree?: { body?: Array<{ type: string; expression?: EstreeExpression }> } } };
+type JsxAttr = { type: 'mdxJsxAttribute'; name: string; value: AttrValue };
 const attr = (name: string, value: string): JsxAttr => ({ type: 'mdxJsxAttribute', name, value });
 
 function jsx(name: string, attributes: JsxAttr[], children: RootContent[] = []): RootContent {
@@ -79,17 +81,22 @@ export function choiceNodes(tree: Root): Array<{ attributes: JsxAttr[] }> {
   return out;
 }
 
-type AttrValue = string | null | { type: string; value: string; data?: { estree?: { body?: Array<{ type: string; expression?: { type: string; value?: unknown; expressions?: unknown[]; quasis?: Array<{ value: { cooked?: string | null } }> } }> } } };
-/** A `question` attribute's text: the string, or a string literal or plain template in braces; any other expression is its source. */
-function questionText(node: { attributes: JsxAttr[] }): string {
-  const a = node.attributes.find(x => x.name === 'question') as { value: AttrValue } | undefined;
-  const v = a?.value ?? '';
-  if (typeof v === 'string') return v;
-  if (v === null) return '';
-  const e = v.data?.estree?.body?.[0]?.expression;
+/** A string attribute value: the string itself, or a simple braced literal (`{"link"}`, `{'link'}`, `{`link`}`). */
+function literalText(value: AttrValue | undefined): string | undefined {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return undefined;
+  const e = value.data?.estree?.body?.[0]?.expression;
   if (e?.type === 'Literal' && typeof e.value === 'string') return e.value;
   if (e?.type === 'TemplateLiteral' && e.expressions?.length === 0 && e.quasis?.length === 1 && typeof e.quasis[0].value.cooked === 'string') return e.quasis[0].value.cooked;
-  return v.value;
+  return undefined;
+}
+
+/** A `question` attribute's text: the string, or a string literal or plain template in braces; any other expression is its source. */
+function questionText(node: { attributes: JsxAttr[] }): string {
+  const value = node.attributes.find(x => x.name === 'question')?.value ?? null;
+  const literal = literalText(value);
+  if (literal !== undefined) return literal;
+  return value !== null && typeof value !== 'string' ? value.value : '';
 }
 
 /** FNV-1a (32-bit) of the question with whitespace collapsed, as 8 hex digits. */
@@ -131,10 +138,12 @@ export function compilerErrorNodes(tree: Root): JsxNode[] {
   return out;
 }
 
-/** A string prop of a JSX node; an expression, null or a missing prop has no static text. */
+/**
+ * A string prop of a JSX node. A simple braced literal counts too: `stage={"link"}` is the same `stage` to the compiled
+ * component, so the loader must read it (a mismatch would count questions the component never asks).
+ */
 function attrText(node: JsxNode, name: string): string | undefined {
-  const a = node.attributes?.find(x => x.name === name);
-  return typeof a?.value === 'string' ? a.value : undefined;
+  return literalText(node.attributes?.find(x => x.name === name)?.value);
 }
 
 /**

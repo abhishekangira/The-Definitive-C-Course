@@ -12,7 +12,7 @@ import { TranscriptPane } from '../components/Transcript';
 import { transcriptTabs } from '../components/transcript-tabs';
 import { useCRun } from '../runtime/useCRun';
 import { useCardDone, useLesson, usePredictionShown, useSamples, useSessions } from '../lesson/LessonContext';
-import { compilerErrorKey, update } from '../progress/store';
+import { compilerErrorKey, getProgress, update } from '../progress/store';
 import { nestedSamples } from './nested';
 import { TARGET_LABEL } from './platform';
 import { Question } from './Question';
@@ -64,6 +64,10 @@ export function CompilerError(props: Props) {
   const lesson = useLesson();
   const markDone = useCardDone();
   const scored = usePredictionShown();
+  // The callback is stable in LessonPage (`useCallback([])`), but a progress update can give it a new identity. Keep
+  // the latest in a ref so only a new tick reports: a stale tick must not report a second time on a re-render.
+  const scoredRef = useRef(scored);
+  scoredRef.current = scored;
   const box = useRef<HTMLDivElement>(null);
   const checkButton = useRef<HTMLButtonElement>(null);
   const shownFocus = useRef<HTMLElement | null>(null);
@@ -76,18 +80,25 @@ export function CompilerError(props: Props) {
   useEffect(() => {
     if (shownTick === 0) return;
     const focus = shownFocus.current?.isConnected ? shownFocus.current : box.current;
-    if (focus) scored?.(focus);
-  }, [shownTick, scored]);
-  /** Saves a question's first answer. True only when this write newly saved a right one (the celebration's guard). */
-  const saveFirst = (kind: CompilerErrorQuestion, correct: boolean): boolean => {
-    if (!lesson || !instance) return false;
-    const key = compilerErrorKey(lesson.lessonId, compilerErrorQid(instance, kind));
-    let newlyRight = false;
+    if (focus) scoredRef.current?.(focus);
+  }, [shownTick]);
+  /**
+   * Saves the first answer to every question this Check answered in one atomic update. Returns true only when this
+   * write newly saved a right answer (the celebration's guard). The document is read before the update, so the result
+   * does not depend on when the updater runs; the updater re-checks because another tab may have written first.
+   */
+  const saveFirst = (lessonId: string, instanceId: string, answers: Array<[CompilerErrorQuestion, boolean]>): boolean => {
+    const keyOf = (kind: CompilerErrorQuestion) => compilerErrorKey(lessonId, compilerErrorQid(instanceId, kind));
+    const saved = getProgress().compilerErrors;
+    const newlyRight = answers.some(([kind, correct]) => correct && !Object.hasOwn(saved, keyOf(kind)));
+    const at = new Date().toISOString();
     update(p => {
-      // Only the first answer counts: a retried line, option or stage never rewrites it.
-      if (Object.hasOwn(p.compilerErrors, key)) return;
-      p.compilerErrors[key] = { correct, at: new Date().toISOString() };
-      newlyRight = correct;
+      for (const [kind, correct] of answers) {
+        const key = keyOf(kind);
+        // Only the first answer counts: a retried line, option or stage never rewrites it.
+        if (Object.hasOwn(p.compilerErrors, key)) continue;
+        p.compilerErrors[key] = { correct, at };
+      }
     });
     return newlyRight;
   };
@@ -190,10 +201,12 @@ export function CompilerError(props: Props) {
     if (!ready) return;
     setSubmitted(true);
     if (!fixCheck) markDone();
-    let newlyRight = false;
-    if (asksLine && lineGuess !== null && saveFirst('line', src.lines.includes(lineGuess))) newlyRight = true;
-    if (saveFirst('kind', picked === answer)) newlyRight = true;
-    if (asksStage && saveFirst('stage', stagePicked === stage)) newlyRight = true;
+    // Every question this Check answers is saved together, so the perfect-lesson check sees all of them at once.
+    const answers: Array<[CompilerErrorQuestion, boolean]> = [];
+    if (asksLine && lineGuess !== null) answers.push(['line', src.lines.includes(lineGuess)]);
+    if (picked !== null) answers.push(['kind', picked === answer]);
+    if (asksStage && stagePicked !== null) answers.push(['stage', stagePicked === stage]);
+    const newlyRight = lesson && instance ? saveFirst(lesson.lessonId, instance, answers) : false;
     if (newlyRight) showPerfectCheck(checkButton.current);
   };
 

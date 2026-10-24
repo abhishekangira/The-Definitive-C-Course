@@ -183,6 +183,25 @@ test('Ctrl+Enter and Cmd+Enter lock in and run in one step; an empty box does no
   await expect(box.getByRole('button', { name: 'Reveal the result' })).toBeFocused();
 });
 
+test.describe('a touch screen', () => {
+  // A coarse pointer is what a phone reports; the shortcut hint is keyboard-only noise there.
+  test.use({ hasTouch: true });
+  test('hides the Ctrl/Cmd+Enter hint but keeps it as the box description', async ({ page }) => {
+    test.setTimeout(60_000);
+    await seedLesson(page);
+    const area = page.locator('[data-sample="hello-two-lines"] textarea').first();
+    await expect(area).toBeVisible();
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches), 'the context has a coarse pointer').toBe(true);
+    const describedBy = await area.getAttribute('aria-describedby');
+    expect(describedBy, 'the hint still describes the box').toBeTruthy();
+    const hint = page.locator(`[id="${describedBy}"]`);
+    await expect(hint).toContainText('Ctrl+Enter');
+    await expect(hint).toBeHidden();
+    // The text stays the accessible description; a screen-reader user with a keyboard still benefits from it.
+    await expect(area).toHaveAccessibleDescription(/Ctrl\+Enter/);
+  });
+});
+
 test('arrow keys through wrong report lines save no first answer; Check saves the line right and the lesson stays perfect', async ({ page }) => {
   test.setTimeout(60_000);
   await page.addInitScript(({ choices, prediction, at }) => {

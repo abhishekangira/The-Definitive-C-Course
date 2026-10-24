@@ -11,7 +11,7 @@ import { parse as parseYaml } from 'yaml';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionsFile } from '../content-model/types';
 import type { RunRequest, RunSummary } from '../runtime/useCRun';
-import { emptyProgress, getProgress, replaceProgress } from '../progress/store';
+import { emptyProgress, getProgress, replaceProgress, subscribeProgress } from '../progress/store';
 import styles from './Interaction.module.css';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -23,7 +23,9 @@ let nextRun: RunSummary;
 const run = vi.fn(async (_req: RunRequest) => nextRun);
 vi.mock('../lesson/LessonContext', () => ({
   useSessions: () => m97, useSamples: () => null, useCardDone: () => done,
-  useLesson: () => ({ lessonId: 'm97-l1' }), usePredictionShown: () => scored,
+  useLesson: () => ({ lessonId: 'm97-l1' }),
+  // A new identity on every render, as a progress update could hand the component: only a new tick may report.
+  usePredictionShown: () => () => { scored(); },
 }));
 vi.mock('../runtime/useCRun', () => ({ useCRun: () => ({ run, phase: 'idle', diagnostics: [], rawDiagnostics: '', segments: [], result: null, stop: () => {} }) }));
 vi.mock('../components/CodeEditor', () => ({ CodeEditor: ({ value }: { value: string }) => createElement('pre', { 'data-editor': '' }, value) }));
@@ -261,6 +263,42 @@ describe('<CompilerError> scored questions', () => {
     check();
     expect(answer('link-undefined:stage')).toMatchObject({ correct: false });
     expect(scored).not.toHaveBeenCalled();
+  });
+
+  it('one Check saves the line, kind and stage first answers in a single update and reports once', () => {
+    render({ session: 'ubsan', stage: 'run', fix: false });
+    const changes = vi.fn();
+    const stop = subscribeProgress(changes);
+    try {
+      click(host.querySelector(`label[data-line="${bug('ubsan').line}"] input`));
+      click(host.querySelectorAll('[data-question="kind"] input')[0]);
+      click([...host.querySelectorAll('[data-question="stage"] input')][4]); // run
+      expect(host.querySelectorAll('legend')).toHaveLength(3);
+      check();
+      // One update for the three answers, not one per question: the perfect-lesson check sees them together.
+      expect(changes).toHaveBeenCalledTimes(1);
+      expect(answer('ubsan:line')).toMatchObject({ correct: true });
+      expect(answer('ubsan:kind')).toMatchObject({ correct: true });
+      expect(answer('ubsan:stage')).toMatchObject({ correct: true });
+      expect(scored).toHaveBeenCalledTimes(1);
+      // A retried Check rewrites nothing, so it is a no-op update (and never reports again).
+      changes.mockClear();
+      check();
+      expect(changes).not.toHaveBeenCalled();
+      expect(scored).toHaveBeenCalledTimes(1);
+    } finally { stop(); }
+  });
+
+  it('a new report callback identity on a later render does not report the old tick again', () => {
+    seedAnswer('asan:line'); // only the kind can report
+    render({ session: 'asan', fix: false });
+    click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));
+    click(host.querySelectorAll('[data-question="kind"] input')[0]);
+    check();
+    expect(scored).toHaveBeenCalledTimes(1);
+    // A later render (the learner changes the line) with a fresh callback must not replay the old tick.
+    click(host.querySelector(`label[data-line="${bug('asan').line === 1 ? 2 : 1}"] input`));
+    expect(scored).toHaveBeenCalledTimes(1);
   });
 
   it('a Check over answers already in imported progress never reports', () => {
