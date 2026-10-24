@@ -13,6 +13,7 @@ interface LessonState {
   /** The module's native sessions (<Transcript>); null when it has none. */
   sessions: SessionsFile | null;
   completed: number[];
+  /** A scored item's verdict is on screen: a prediction (CodeSample) or a quiz question (Choice). */
   onPredictionShown?: (returnFocus: HTMLElement) => void;
 }
 
@@ -90,5 +91,5 @@ export function Card({ index, gated, total, children }: { index: string | number
   );
 }
 
-/** Called after a newly revealed prediction verdict is in the DOM, never at lock-in. */
+/** Called after a newly revealed prediction verdict, or a quiz question's verdict, is in the DOM; never at lock-in. */
 export function usePredictionShown(): ((returnFocus: HTMLElement) => void) | undefined { return useContext(LessonCtx)?.onPredictionShown; }

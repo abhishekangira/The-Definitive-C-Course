@@ -7,7 +7,7 @@ import { Terminal } from '../components/Terminal';
 import { DiagnosticsList } from '../components/DiagnosticsList';
 import { useCRun } from '../runtime/useCRun';
 import { useCardDone, usePredictionShown, useSamples } from '../lesson/LessonContext';
-import { update, useProgress } from '../progress/store';
+import { firstSample64Verdict, firstSampleVerdict, sample64Verdict, sampleVerdict, update, useProgress } from '../progress/store';
 import { PlatformPicker } from './PlatformPicker';
 import { applyMatch, describeOutcome, nativeFor, normOutput, outputDiff, predictionVerdict, storedOutputText, TARGET_LABEL, type DiffRow, type PredictionVerdict } from './platform';
 import { Mark } from '../components/Icon';
@@ -134,28 +134,43 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const commit = () => {
     setCommitted(true);
     const verdict = verdictFor(prediction, sample?.answer.stdout ?? '');
-    update(p => { p.samples[id] = { prediction, correct: countsAsRight(verdict), verdict, at: new Date().toISOString() }; });
+    update(p => {
+      // A first try survives "Predict again" (perfect lessons count first tries); `first` itself is set at the reveal.
+      const prev = Object.hasOwn(p.samples, id) ? p.samples[id] : undefined;
+      p.samples[id] = { prediction, correct: countsAsRight(verdict), verdict, at: new Date().toISOString() };
+      if (prev?.first) p.samples[id].first = prev.first;
+      if (prev?.first64) p.samples[id].first64 = prev.first64;
+    });
   };
 
   const run = async () => {
     const firstReveal = !revealed && predictKind !== 'none';
     const mine = ++generation.current;
     setRevealed(true);
+    // Report to the perfect-lesson check only when this reveal newly records an exact first try. A reveal after
+    // "Predict again" keeps the earlier first try, so (like Check again on a quiz question) it never celebrates,
+    // even over imported perfect progress whose perfect-seen mark stayed in the other browser.
+    let newlyExact = false;
+    if (firstReveal) update(p => { const s = p.samples[id]; if (s && !s.cleared && !s.first) { s.first = sampleVerdict(s); newlyExact = s.first === 'exact'; } });
     if (!nativeOnly && !storedMode) await runner.run({ files: { 'main.c': source }, stdin: meta.stdin ?? (edited ? undefined : ''), args: meta.args, guardrail: meta.guardrail });
     if (mine !== generation.current) return; // reset, unmount or a replacement run
-    if (firstReveal) { pendingReveal.current = 'run'; setRevealTick(t => t + 1); }
+    if (newlyExact) { pendingReveal.current = 'run'; setRevealTick(t => t + 1); }
     if (!sample?.flagged || !sample.meta.predict64 || sample.meta.predict64 === 'none') markDone();
   };
 
   const submitP64 = () => {
-    pendingReveal.current = '64';
-    setRevealTick(t => t + 1);
     setP64Done(true);
     const verdict = verdictFor64(p64);
+    // As for the reveal: only a newly recorded exact first 64-bit try reports to the perfect-lesson check.
+    let newlyExact = false;
     update(p => {
       const s = p.samples[id];
-      if (s) { s.predict64 = p64; s.predict64Correct = countsAsRight(verdict); s.predict64Verdict = verdict; s.at = new Date().toISOString(); }
+      if (s) {
+        newlyExact = s.first64 === undefined && verdict === 'exact';
+        s.predict64 = p64; s.predict64Correct = countsAsRight(verdict); s.predict64Verdict = verdict; s.first64 ??= verdict; s.at = new Date().toISOString();
+      }
     });
+    if (newlyExact) { pendingReveal.current = '64'; setRevealTick(t => t + 1); }
     markDone();
   };
 
@@ -177,7 +192,14 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
     setSource(code);
     setP64('');
     setP64Done(false);
-    update(p => { p.samples[id] = { prediction: '', correct: false, cleared: true, at: new Date().toISOString() }; });
+    update(p => {
+      const prev = Object.hasOwn(p.samples, id) ? p.samples[id] : undefined;
+      const first = prev && firstSampleVerdict(prev);
+      const first64 = prev && firstSample64Verdict(prev);
+      p.samples[id] = { prediction: '', correct: false, cleared: true, at: new Date().toISOString() };
+      if (first) p.samples[id].first = first;
+      if (first64) p.samples[id].first64 = first64;
+    });
   };
 
   const predict64Again = () => {
@@ -186,6 +208,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
     update(p => {
       const s = p.samples[id];
       if (!s) return;
+      s.first64 ??= sample64Verdict(s);
       delete s.predict64;
       delete s.predict64Correct;
       delete s.predict64Verdict;

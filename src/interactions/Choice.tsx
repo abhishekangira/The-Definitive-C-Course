@@ -1,11 +1,12 @@
 // Conceptual multiple-choice check (no code to run, so the answer is authored).
-import { useId, useState } from 'react';
-import { useCardDone } from '../lesson/LessonContext';
+import { useEffect, useId, useRef, useState } from 'react';
+import { useCardDone, useLesson, usePredictionShown } from '../lesson/LessonContext';
+import { choiceKey, update } from '../progress/store';
 import { MiniMarkdown } from '../components/MiniMarkdown';
 import { Mark } from '../components/Icon';
 import styles from './Interaction.module.css';
 
-export function Choice({ question, options, answer, explain, why }: {
+export function Choice({ question, options, answer, explain, why, qid }: {
   question: string;
   options: string[];
   answer: number;
@@ -13,16 +14,46 @@ export function Choice({ question, options, answer, explain, why }: {
   explain?: string;
   /** Optional per-option feedback, same order as options. */
   why?: string[];
+  /** A hash of the question text, added by remark-course (`choiceIds`). The first submission is saved under it (perfect lessons). */
+  qid?: string;
 }) {
   const name = useId();
   const [picked, setPicked] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState<number | null>(null);
   const markDone = useCardDone();
+  const lesson = useLesson();
+  const scored = usePredictionShown();
+  const box = useRef<HTMLDivElement>(null);
+  const submitButton = useRef<HTMLButtonElement>(null);
+  const [shownTick, setShownTick] = useState(0);
+  // After the verdict is in the DOM (like a prediction's reveal), so a perfect-lesson check sees this answer saved.
+  useEffect(() => {
+    if (shownTick === 0) return;
+    const focus = submitButton.current?.isConnected ? submitButton.current : box.current;
+    if (focus) scored?.(focus);
+  }, [shownTick, scored]);
+  const submit = (choice: number) => {
+    setSubmitted(choice);
+    // Report to the perfect-lesson check only when this submission newly saved a right first answer. "Check again",
+    // a wrong answer, and an answer already in imported progress cannot complete the lesson, so they never celebrate.
+    let newlyRight = false;
+    if (lesson && qid !== undefined) {
+      const key = choiceKey(lesson.lessonId, qid);
+      // Only the first submission counts; "Check again" never rewrites it.
+      update(p => {
+        if (Object.hasOwn(p.choices, key)) return;
+        p.choices[key] = { picked: choice, correct: choice === answer, at: new Date().toISOString() };
+        newlyRight = choice === answer;
+      });
+    }
+    markDone();
+    if (newlyRight) setShownTick(t => t + 1);
+  };
   const correct = submitted === answer;
   return (
-    <div className={styles.box} data-interaction="choice">
+    <div ref={box} className={styles.box} data-interaction="choice" data-qid={qid}>
       <div className={styles.kicker}>Check your understanding</div>
-      <form onSubmit={e => { e.preventDefault(); if (picked !== null) { setSubmitted(picked); markDone(); } }} className={styles.predict}>
+      <form onSubmit={e => { e.preventDefault(); if (picked !== null) submit(picked); }} className={styles.predict}>
         <fieldset className={styles.choices}>
           <legend><MiniMarkdown text={question} /></legend>
           {options.map((o, i) => {
@@ -36,7 +67,7 @@ export function Choice({ question, options, answer, explain, why }: {
           })}
         </fieldset>
         <div className={styles.actions}>
-          <button type="submit" className="btn btn-primary" disabled={picked === null}>{submitted === null ? 'Check' : 'Check again'}</button>
+          <button ref={submitButton} type="submit" className="btn btn-primary" disabled={picked === null}>{submitted === null ? 'Check' : 'Check again'}</button>
         </div>
       </form>
       {submitted !== null && (

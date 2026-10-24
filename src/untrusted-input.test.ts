@@ -31,7 +31,7 @@ describe('progress import: migrate', () => {
       "cards":{"__proto__":[1,2]},"lessons":{"__proto__":{"completedAt":"x"}},
       "settings":{"__proto__":{"polluted":1}}}`));
     protoClean();
-    for (const sec of [p.cards, p.lessons, p.exercises, p.samples, p.quizzes, p.projects, p.settings]) expect(Object.getPrototypeOf(sec)).toBe(Object.prototype);
+    for (const sec of [p.cards, p.lessons, p.exercises, p.samples, p.choices, p.quizzes, p.projects, p.settings]) expect(Object.getPrototypeOf(sec)).toBe(Object.prototype);
     expect(Object.keys(p.exercises)).toEqual(['constructor']);
     expect(Object.keys(p)).not.toContain('__proto__');
     expect(Object.keys(p.cards)).toEqual([]);
@@ -39,9 +39,10 @@ describe('progress import: migrate', () => {
 
   it('replaces known fields that are not objects with empty ones', () => {
     for (const bad of ['"abc"', '5', 'null', 'true', '[1,2]', '[]']) {
-      const p = migrate(hostile(`{${head},"cards":${bad},"lessons":${bad},"samples":${bad},"exercises":${bad},"quizzes":${bad},"projects":${bad},"settings":${bad}}`));
+      const p = migrate(hostile(`{${head},"cards":${bad},"lessons":${bad},"samples":${bad},"choices":${bad},"exercises":${bad},"quizzes":${bad},"projects":${bad},"settings":${bad}}`));
       expect(p.cards).toEqual({});
       expect(p.lessons).toEqual({});
+      expect(p.choices).toEqual({});
       expect(p.exercises).toEqual({});
       expect(p.settings).toEqual({});
       expect(() => summarise(p)).not.toThrow();
@@ -55,7 +56,9 @@ describe('progress import: migrate', () => {
       "exercises":{"a":null,"b":"s","c":{"attempts":"many","passed":"yes","codes":"TDCC1","hintsViewed":null},"d":{"attempts":3,"passed":true}},
       "quizzes":{"a":7,"b:checkpoint":{"score":"1","total":2,"passed":true,"at":"${at}"}},
       "projects":{"a":[],"b":{"passed":"true"}},
-      "samples":{"a":{"prediction":1}}}`));
+      "samples":{"a":{"prediction":1}},
+      "choices":{"a":null,"b":{"picked":1.5,"correct":true,"at":"${at}"},"c":{"picked":0,"correct":"yes","at":"${at}"},"d":{"picked":0,"correct":true,"at":"never"}}}`));
+    expect(p.choices).toEqual({});
     expect(p.cards).toEqual({ ok: [3, 1] });
     expect(Object.keys(p.lessons)).toEqual(['ok']);
     expect(Object.keys(p.exercises).sort()).toEqual(['c', 'd']);
@@ -72,9 +75,9 @@ describe('progress import: migrate', () => {
   });
 
   it('keeps verdict and predict64Verdict, and drops a value outside the three', () => {
-    const kept = migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":true,"verdict":"close","predict64":"q","predict64Correct":false,"predict64Verdict":"wrong","extra":true,"at":"${at}"}}}`));
-    expect(Object.keys(kept.samples.a).sort()).toEqual(['at', 'correct', 'predict64', 'predict64Correct', 'predict64Verdict', 'prediction', 'verdict']);
-    expect(kept.samples.a).toEqual({ prediction: 'p', correct: true, verdict: 'close', predict64: 'q', predict64Correct: false, predict64Verdict: 'wrong', at });
+    const kept = migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":true,"verdict":"close","predict64":"q","predict64Correct":false,"predict64Verdict":"wrong","first":"close","first64":"bogus","extra":true,"at":"${at}"}}}`));
+    expect(Object.keys(kept.samples.a).sort()).toEqual(['at', 'correct', 'first', 'predict64', 'predict64Correct', 'predict64Verdict', 'prediction', 'verdict']);
+    expect(kept.samples.a).toEqual({ prediction: 'p', correct: true, verdict: 'close', predict64: 'q', predict64Correct: false, predict64Verdict: 'wrong', first: 'close', at });
     const dropped = migrate(hostile(`{${head},"samples":{"a":{"prediction":"p","correct":false,"verdict":"near","predict64Verdict":"nope","at":"${at}"}}}`));
     expect(dropped.samples.a).toEqual({ prediction: 'p', correct: false, at });
     expect(JSON.parse(JSON.stringify(dropped))).toEqual(dropped);
@@ -108,7 +111,7 @@ describe('progress import: migrate', () => {
 
   it('ignores unknown top-level keys and bad settings values', () => {
     const p = migrate(hostile(`{${head},"evil":"<script>","settings":{"platform":"amiga","stdinMode":{"a":1},"storedOutputMode":"yes","x":1}}`));
-    expect(Object.keys(p).sort()).toEqual(['cards', 'createdAt', 'exercises', 'lessons', 'projects', 'quizzes', 'samples', 'seed', 'settings', 'streak', 'version']);
+    expect(Object.keys(p).sort()).toEqual(['cards', 'choices', 'createdAt', 'exercises', 'lessons', 'projects', 'quizzes', 'samples', 'seed', 'settings', 'streak', 'version']);
     expect(p.settings).toEqual({});
   });
 
@@ -116,7 +119,7 @@ describe('progress import: migrate', () => {
     const secret = 'sk-hostile-tutor-secret';
     const p = migrate(hostile(`{${head},"tutor":{"apiKey":"${secret}"},"apiKey":"${secret}",
       "exercises":{"huge":{"tutorAsks":1000000000000},"neg":{"tutorAsks":-4},"bad":{"tutorAsks":"lots"},"frac":{"tutorAsks":3.9}}}`));
-    expect(Object.keys(p).sort()).toEqual(['cards', 'createdAt', 'exercises', 'lessons', 'projects', 'quizzes', 'samples', 'seed', 'settings', 'streak', 'version']);
+    expect(Object.keys(p).sort()).toEqual(['cards', 'choices', 'createdAt', 'exercises', 'lessons', 'projects', 'quizzes', 'samples', 'seed', 'settings', 'streak', 'version']);
     expect(JSON.stringify(p)).not.toContain(secret);
     expect(p.exercises.huge.tutorAsks).toBe(1_000_000);
     expect(p.exercises.neg.tutorAsks).toBe(0);

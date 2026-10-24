@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { STORAGE_PREFIX, useProgress } from '../progress/store';
 import { streakStatus } from '../progress/streak';
@@ -7,6 +7,13 @@ import { WarriorPortrait, warriorLabel } from './StreakWarrior';
 import styles from './PerfectLesson.module.css';
 
 export const PERFECT_SEEN_KEY = `${STORAGE_PREFIX}perfect-seen`;
+export const PERFECT_TITLE = 'Perfect lesson!';
+/** Live confetti pieces at most. A piece removes itself when its fall ends. */
+export const CONFETTI_CAP = 40;
+/** One spawn tick. Each tick adds up to CONFETTI_PER_TICK pieces below the cap. */
+export const CONFETTI_EVERY_MS = 300;
+const CONFETTI_PER_TICK = 3;
+const CONFETTI_COLOURS = 6;
 
 /** This key deliberately survives progress replacement, imports and reset. */
 export function claimPerfectLesson(id: string): boolean {
@@ -20,8 +27,38 @@ export function claimPerfectLesson(id: string): boolean {
   return true;
 }
 
-export function PerfectLesson({ title, onClose, returnFocus, still = false }: { title: string; onClose: () => void; returnFocus?: HTMLElement; still?: boolean }) {
+function spawnPiece(layer: HTMLElement) {
+  const piece = document.createElement('i');
+  const r = Math.random();
+  piece.dataset.c = String(Math.floor(Math.random() * CONFETTI_COLOURS));
+  piece.style.setProperty('--x', `${(r * 100).toFixed(1)}vw`);
+  piece.style.setProperty('--drift', `${Math.round((Math.random() - 0.5) * 160)}px`);
+  piece.style.setProperty('--spin', `${Math.round(180 + Math.random() * 540)}deg`);
+  piece.style.setProperty('--fall', `${Math.round(2600 + Math.random() * 2200)}ms`);
+  piece.addEventListener('animationend', () => piece.remove(), { once: true });
+  piece.addEventListener('animationcancel', () => piece.remove(), { once: true });
+  layer.append(piece);
+}
+
+/**
+ * The celebration. A full-viewport modal: confetti falls over the whole page behind the panel, Rio dabs in a loop,
+ * and it stays until the learner closes it (the Close button or Esc). No auto-close, no click-anywhere.
+ * Reduced motion (or `still`): no confetti, the dab hold only, the title in its colours without the pop.
+ */
+export function PerfectLesson({ title, hint, onClose, returnFocus, fallbackFocus, still = false }: {
+  title: string;
+  /** What was right, for the kinds the lesson scores (`perfectHint`). */
+  hint: string;
+  onClose: () => void;
+  /** Where focus goes back on close. If it is gone by then: its interaction box, then `fallbackFocus`. */
+  returnFocus?: HTMLElement;
+  /** The lesson container: the last resort, so focus never drops to <body>. */
+  fallbackFocus?: RefObject<HTMLElement | null>;
+  still?: boolean;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const confetti = useRef<HTMLDivElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
   const progress = useProgress();
   const form = formFor(streakStatus(progress.streak, new Date()).current);
   const [reduced, setReduced] = useState(() => still || window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -34,36 +71,62 @@ export function PerfectLesson({ title, onClose, returnFocus, still = false }: { 
     return () => query.removeEventListener('change', change);
   }, [still]);
   useEffect(() => {
-    const previous = returnFocus ?? document.activeElement;
+    const active = document.activeElement;
+    const previous = returnFocus ?? (active instanceof HTMLElement && active !== document.body ? active : undefined);
+    const box = previous?.closest<HTMLElement>('[data-interaction]') ?? undefined;
     const el = dialog.current!;
-    el.showModal(); el.focus();
+    el.showModal(); closeButton.current?.focus();
     const announce = setTimeout(() => setAnnouncement(`Perfect lesson: ${title}.`), 0);
-    return () => { clearTimeout(announce); el.close(); if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
-  }, [returnFocus, title]);
+    return () => {
+      clearTimeout(announce); el.close();
+      const target = [previous, box, fallbackFocus?.current ?? undefined].find(t => t?.isConnected);
+      if (!target) return;
+      if (target.tabIndex < 0 && !target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+      target.focus();
+    };
+  }, [returnFocus, fallbackFocus, title]);
   useEffect(() => {
-    const timers = reduced ? [] : [setTimeout(() => setStage('flicker'), 350), setTimeout(() => setStage('blaze'), 850)];
-    // Explicit browser-test hold: keep just this dialog open for axe/screenshots, without changing global timers.
-    timers.push(setTimeout(() => { if (!dialog.current?.hasAttribute('data-hold')) onClose(); }, reduced ? 4000 : 2500));
+    if (reduced) return;
+    const timers = [setTimeout(() => setStage('flicker'), 350), setTimeout(() => setStage('blaze'), 850)];
     return () => timers.forEach(clearTimeout);
-  }, [reduced, onClose]);
+  }, [reduced]);
+  // Confetti keeps falling while the dialog is open: a spawn tick below the cap, paused while the tab is hidden.
+  useEffect(() => {
+    const layer = confetti.current;
+    if (reduced || !layer) return;
+    let tick: ReturnType<typeof setInterval> | undefined;
+    const spawn = () => {
+      for (let k = 0; k < CONFETTI_PER_TICK && layer.childElementCount < CONFETTI_CAP; k++) spawnPiece(layer);
+    };
+    const start = () => { if (tick === undefined && !document.hidden) { spawn(); tick = setInterval(spawn, CONFETTI_EVERY_MS); } };
+    const stop = () => { if (tick !== undefined) { clearInterval(tick); tick = undefined; } };
+    const visibility = () => (document.hidden ? stop() : start());
+    start();
+    document.addEventListener('visibilitychange', visibility);
+    return () => { stop(); document.removeEventListener('visibilitychange', visibility); layer.replaceChildren(); };
+  }, [reduced]);
   return createPortal(
     <dialog ref={dialog} aria-modal="true" aria-labelledby="perfect-title" aria-describedby="perfect-lesson-title"
-      tabIndex={-1} className={`${styles.dialog} ${reduced ? styles.still : ''}`} data-perfect-lesson=""
-      onClick={onClose} onCancel={e => { e.preventDefault(); onClose(); }}
-      onKeyDown={e => {
-        if (e.ctrlKey || e.metaKey || e.altKey || ['Shift', 'Control', 'Meta', 'Alt'].includes(e.key)) return;
-        e.preventDefault(); e.stopPropagation(); onClose();
-      }}>
-      <div className={styles.power} data-power="">
-        <WarriorPortrait form={form.id} mood="ready" aura={reduced ? 'blaze' : stage} still={reduced} label={warriorLabel(form.id, 'ready')} />
+      className={`${styles.dialog} ${reduced ? styles.still : ''}`} data-perfect-lesson=""
+      onCancel={e => { e.preventDefault(); onClose(); }}>
+      {!reduced && <div ref={confetti} className={styles.confetti} aria-hidden="true" data-confetti="" />}
+      <div className={styles.panel}>
+        <div className={styles.power} data-power="">
+          <WarriorPortrait form={form.id} mood="ready" aura={reduced ? 'blaze' : stage} still={reduced} dab label={`${warriorLabel(form.id, 'ready')}, dabbing`} />
+        </div>
+        <span className="visually-hidden" role="status">{announcement}</span>
+        <h2 id="perfect-title" className={styles.title}>
+          <span className="visually-hidden">{PERFECT_TITLE}</span>
+          <span aria-hidden="true" data-title-letters="">
+            {[...PERFECT_TITLE].map((ch, i) => ch === ' '
+              ? <span key={i} className={styles.space}> </span>
+              : <span key={i} className={styles.letter} data-c={i % CONFETTI_COLOURS} style={{ '--i': i } as CSSProperties}>{ch}</span>)}
+          </span>
+        </h2>
+        <p id="perfect-lesson-title">{title}</p>
+        <p className={styles.hint} data-perfect-hint="">{hint} Press Esc or Close to continue.</p>
+        <button ref={closeButton} type="button" className="btn btn-primary" data-perfect-close="" onClick={onClose}>Close</button>
       </div>
-      {!reduced && <div className={styles.confetti} aria-hidden="true" data-confetti="">
-        {Array.from({ length: 24 }, (_, i) => <i key={i} style={{ '--i': i, '--x': `${(i % 8) * 13}%`, '--drift': `${((i % 5) - 2) * 36}px` } as CSSProperties} />)}
-      </div>}
-      <span className="visually-hidden" role="status">{announcement}</span>
-      <h2 id="perfect-title">Perfect lesson!</h2>
-      <p id="perfect-lesson-title">{title}</p>
-      <p className={styles.hint}>Every prediction exact. Click or press any key to continue.</p>
     </dialog>, document.body,
   );
 }

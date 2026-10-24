@@ -78,6 +78,19 @@
 
 .still, .still * { animation: none !important; }
 
+/* The perfect-lesson dab (WarriorArt `dab`): stand 0.8s, wind up 0.3s, the dab hold 1s, back 0.3s, repeat.
+   Opacity, not visibility: the aura frames inside each beat set visibility:visible and would paint through.
+   With the animation off (.still, reduced motion) the resting opacities leave only the dab hold. */
+.dab0, .dab1, .dab3 { opacity: 0; }
+.dab0 { animation: dab0 2.4s steps(1) infinite; }
+.dab1 { animation: dab1 2.4s steps(1) infinite; }
+.dab2 { animation: dab2 2.4s steps(1) infinite; }
+.dab3 { animation: dab3 2.4s steps(1) infinite; }
+@keyframes dab0 { 0% { opacity: 1; } 33.333%, 100% { opacity: 0; } }
+@keyframes dab1 { 0% { opacity: 0; } 33.333% { opacity: 1; } 45.833%, 100% { opacity: 0; } }
+@keyframes dab2 { 0%, 45.832% { opacity: 0; } 45.833% { opacity: 1; } 87.5%, 100% { opacity: 0; } }
+@keyframes dab3 { 0%, 87.499% { opacity: 0; } 87.5%, 100% { opacity: 1; } }
+
 /* ---------- the transformation: one beat at a time (stand, crouch, aura ramp, the crouch white-hot, new form) ----------
    Clip rather than visibility. A child with visibility:visible (the first pose frame, the first aura frame) paints
    through a visibility:hidden parent, so a hidden beat would still show. clip-path clips those children.

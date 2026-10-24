@@ -135,14 +135,15 @@ describe('syncOnce', () => {
     const old = { prediction: '3, -3, 1', correct: true, verdict: 'close' as const, at };
     const local = { doc: doc('aaaaaaaaaaaaaaaa', { samples: { 'int-division': old } }) };
     const first = await syncOnce(deps(drive, local));
-    const cleared = { prediction: '', correct: false, cleared: true as const, at: later };
+    // As CodeSample writes them: Predict again and the next lock-in carry the first try (the old close answer).
+    const cleared = { prediction: '', correct: false, cleared: true as const, first: 'close' as const, at: later };
     local.doc = doc('aaaaaaaaaaaaaaaa', { samples: { 'int-division': cleared } });
     const second = await syncOnce(deps(drive, local, { fileId: first.fileId, epoch: first.epoch }));
     expect(second).toMatchObject({ applied: false, uploaded: true });
     expect(local.doc.samples['int-division']).toEqual(cleared);
     expect(migrate(JSON.parse(drive.files.get(first.fileId!)!)).samples['int-division']).toEqual(cleared);
 
-    const fresh = { prediction: '3 -3 1\n3.5', correct: true, verdict: 'exact' as const, at: '2026-03-01T00:00:00.000Z' };
+    const fresh = { prediction: '3 -3 1\n3.5', correct: true, verdict: 'exact' as const, first: 'close' as const, at: '2026-03-01T00:00:00.000Z' };
     local.doc = doc('aaaaaaaaaaaaaaaa', { samples: { 'int-division': fresh } });
     const third = await syncOnce(deps(drive, local, { fileId: first.fileId, epoch: second.epoch }));
     expect(third.uploaded).toBe(true);

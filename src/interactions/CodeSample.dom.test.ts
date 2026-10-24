@@ -365,7 +365,9 @@ describe('<CodeSample> changing a prediction', () => {
     expect(host.querySelector('[data-editor]')!.textContent).not.toContain('/* edited */');
     expect(host.querySelector('textarea')!.value).toBe('');
     const cleared = getProgress().samples.s;
-    expect(cleared).toEqual({ prediction: '', correct: false, cleared: true, at: cleared.at });
+    // The first try is kept for perfect lessons; the prediction itself is gone.
+    expect(cleared).toEqual({ prediction: '', correct: false, cleared: true, first: cleared.first, at: cleared.at });
+    expect(cleared.first).toBeDefined();
     expect(cleared.at).not.toBe('');
     await remount(true);
     await show(result());

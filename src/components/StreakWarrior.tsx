@@ -53,15 +53,17 @@ interface PortraitProps {
   crouch?: boolean;
   /** The transformation's flash: the silhouette only (WarriorArt `flash`). */
   flash?: boolean;
+  /** The perfect-lesson dab loop (WarriorArt `dab`). Still or reduced motion: the dab hold only. */
+  dab?: boolean;
   onAnimationEnd?: (e: ReactAnimationEvent<HTMLSpanElement>) => void;
 }
 
 /** The art in its own SVG, inside the element the CSS animations key on. */
-export function WarriorPortrait({ form, mood = 'ready', still = false, bare = false, aura, head = false, label, className, crouch = false, flash = false, onAnimationEnd }: PortraitProps) {
+export function WarriorPortrait({ form, mood = 'ready', still = false, bare = false, aura, head = false, label, className, crouch = false, flash = false, dab = false, onAnimationEnd }: PortraitProps) {
   return (
     <span className={[styles.art, still ? styles.still : '', className ?? ''].join(' ').trim()} data-form={form} data-mood={mood} onAnimationEnd={onAnimationEnd}>
       <svg className={styles.svg} viewBox={head ? HEAD_VIEWBOX[form] : VIEWBOX} focusable="false" {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}>
-        <WarriorArt form={form} mood={mood} bare={bare} aura={aura} crouch={crouch} flash={flash} />
+        <WarriorArt form={form} mood={mood} bare={bare} aura={aura} crouch={crouch} flash={flash} dab={dab} />
       </svg>
     </span>
   );

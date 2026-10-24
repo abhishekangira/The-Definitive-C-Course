@@ -39,7 +39,7 @@ const ON_TERMINAL = ['--terminal-text', '--terminal-muted', '--terminal-err', '-
 for (const [name, t] of [['light', light], ['dark', dark]] as const) {
   describe(`${name} theme`, () => {
     it('every colour token is a plain hex value', () => {
-      for (const [k, v] of Object.entries(t)) if (/^--(bg|border|control|text|accent|data|focus|ok|warn|err|info|terminal)/.test(k) && k !== '--control-height') expect(v, k).toMatch(/^#[0-9a-f]{6}$/);
+      for (const [k, v] of Object.entries(t)) if (/^--(bg|border|control|text|accent|data|focus|ok|warn|err|info|terminal|celebrate)/.test(k) && k !== '--control-height') expect(v, k).toMatch(/^#[0-9a-f]{6}$/);
     });
     it('text and the data hue reach 4.5:1 on every surface they sit on', () => {
       for (const surface of SURFACES) for (const fg of TEXT) expect(ratio(t[fg], t[surface]), `${fg} on ${surface}`).toBeGreaterThanOrEqual(4.5);

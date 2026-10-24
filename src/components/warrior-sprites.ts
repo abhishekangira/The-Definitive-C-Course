@@ -1152,3 +1152,140 @@ export function composeFrame(frame: SpriteFrame): PixelSprite {
   composedCache.set(frame, out);
   return out;
 }
+
+/**
+ * The perfect-lesson dab, re-posed from the standing frame's own pixels (no new art). Each part lifts the cells inside
+ * its boxes (minus `skip` colours) out of the figure, applies `op` (a flip or a quarter turn), then a shear that moves
+ * row j left by `shear` px per row above the part's last row (so a vertical arm leans up and out), and is pasted with
+ * its top-left at `at`. Parts paint in order over the rest, so the bent arm crosses the face. The head band
+ * [top, bottom) between x0 and x1 moves by dx, dy and leans `lean` px per row into the elbow. `prune` drops leftover
+ * pieces smaller than that (hair that only hung beside an arm); any piece under 3 cells is dropped as a shear speck.
+ * Keep every cell inside WarriorArt's mask grid (x -8..103, y -14..97).
+ */
+type Box = readonly [x0: number, y0: number, x1: number, y1: number];
+export interface DabPart { boxes: readonly Box[]; skip?: string; op?: 'flipY' | 'flipX' | 'rotR'; shear?: number; at: readonly [number, number] }
+export interface DabCut { head: { top: number; bottom: number; x0?: number; x1?: number; dx: number; dy: number; lean: number }; prune?: number; parts: readonly DabPart[] }
+const SUIT_DAB: DabCut = {
+  head: { top: 0, bottom: 30, dx: -2, dy: 3, lean: 0.1 },
+  parts: [
+    { boxes: [[25, 30, 36, 44], [25, 44, 35, 69]], op: 'flipY', shear: 0.5, at: [28, -3] },
+    { boxes: [[61, 30, 73, 44]], op: 'rotR', at: [48, 28] },
+    { boxes: [[62, 44, 73, 69]], op: 'flipY', shear: 0.5, at: [50, 7] },
+  ],
+};
+export const DAB: Record<FormId, DabCut> = {
+  kid: {
+    head: { top: 27, bottom: 58, dx: -1, dy: 2, lean: 0.08 },
+    parts: [
+      { boxes: [[33, 59, 42, 80]], skip: 'xXOoqQ', op: 'flipY', shear: 0.75, at: [36, 40] },
+      { boxes: [[56, 52, 67, 72]], shear: 0.5, at: [52, 42] },
+    ],
+  },
+  warrior: SUIT_DAB,
+  golden: SUIT_DAB,
+  mane: {
+    head: { top: 0, bottom: 30, x0: 30, x1: 66, dx: -2, dy: 3, lean: 0.1 },
+    prune: 60,
+    parts: [
+      { boxes: [[25, 30, 37, 44], [25, 44, 36, 69]], skip: 'Aab', op: 'flipY', shear: 0.5, at: [29, -3] },
+      { boxes: [[59, 30, 72, 44]], skip: 'Aab', op: 'rotR', at: [49, 28] },
+      { boxes: [[60, 44, 72, 69]], skip: 'Aab', op: 'flipY', shear: 0.5, at: [51, 7] },
+    ],
+  },
+  crimson: {
+    head: { top: 0, bottom: 30, dx: -2, dy: 3, lean: 0.1 },
+    prune: 40,
+    parts: [
+      { boxes: [[24, 30, 39, 45], [24, 45, 37, 51], [24, 51, 34, 70]], op: 'flipY', shear: 0.5, at: [27, -4] },
+      { boxes: [[72, 54, 90, 76]], at: [63, 54] },
+      { boxes: [[57, 30, 71, 45]], op: 'rotR', at: [46, 28] },
+      { boxes: [[59, 45, 71, 51], [61, 51, 72, 70]], op: 'flipY', shear: 0.5, at: [50, 8] },
+    ],
+  },
+  // The ape's raised left arm already reaches up and out; its right forearm leans across the face.
+  ape: {
+    head: { top: 0, bottom: 37, x0: 30, x1: 70, dx: -2, dy: 2, lean: 0.06 },
+    parts: [{ boxes: [[77, 22, 93, 60]], shear: 0.9, at: [77, 22] }],
+  },
+};
+
+const cellKey = (x: number, y: number) => `${x},${y}`;
+
+/** Drop 4-connected pieces of fewer than `min` cells. */
+function prunePieces(cells: Map<string, string>, min: number) {
+  const seen = new Set<string>();
+  for (const start of [...cells.keys()]) {
+    if (seen.has(start)) continue;
+    const piece = [start];
+    seen.add(start);
+    for (let i = 0; i < piece.length; i++) {
+      const [x, y] = piece[i].split(',').map(Number);
+      for (const k of [cellKey(x + 1, y), cellKey(x - 1, y), cellKey(x, y + 1), cellKey(x, y - 1)]) {
+        if (cells.has(k) && !seen.has(k)) { seen.add(k); piece.push(k); }
+      }
+    }
+    if (piece.length < min) for (const k of piece) cells.delete(k);
+  }
+}
+
+function toSprite(cells: Map<string, string>): PixelSprite {
+  let x0 = Infinity; let x1 = -Infinity; let y0 = Infinity; let y1 = -Infinity;
+  for (const k of cells.keys()) {
+    const [x, y] = k.split(',').map(Number);
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x + 1); y0 = Math.min(y0, y); y1 = Math.max(y1, y + 1);
+  }
+  return { x: x0, y: y0, rows: Array.from({ length: y1 - y0 }, (_, j) => Array.from({ length: x1 - x0 }, (_, i) => cells.get(cellKey(x0 + i, y0 + j)) ?? '.').join('')) };
+}
+
+const dabCache = new WeakMap<PixelSprite, PixelSprite>();
+
+/** The dab hold of `standing` (a composed frame of `form`): only moved, flipped and turned cells of that frame. */
+export function dabSprite(form: FormId, standing: PixelSprite): PixelSprite {
+  const hit = dabCache.get(standing);
+  if (hit) return hit;
+  const cut = DAB[form];
+  const rest = new Map<string, string>();
+  standing.rows.forEach((row, j) => { for (let i = 0; i < row.length; i++) if (row[i] !== '.') rest.set(cellKey(standing.x + i, standing.y + j), row[i]); });
+  const layers = cut.parts.map(part => {
+    const x0 = Math.min(...part.boxes.map(b => b[0])); const y0 = Math.min(...part.boxes.map(b => b[1]));
+    const x1 = Math.max(...part.boxes.map(b => b[2])); const y1 = Math.max(...part.boxes.map(b => b[3]));
+    let grid = Array.from({ length: y1 - y0 }, () => Array<string>(x1 - x0).fill('.'));
+    for (const [bx0, by0, bx1, by1] of part.boxes) {
+      for (let y = by0; y < by1; y++) for (let x = bx0; x < bx1; x++) {
+        const ch = rest.get(cellKey(x, y));
+        if (ch && !part.skip?.includes(ch)) { grid[y - y0][x - x0] = ch; rest.delete(cellKey(x, y)); }
+      }
+    }
+    if (part.op === 'flipY') grid.reverse();
+    if (part.op === 'flipX') grid.forEach(r => r.reverse());
+    if (part.op === 'rotR') grid = grid[0].map((_, i) => grid.map(r => r[i]).reverse());
+    const out = new Map<string, string>();
+    grid.forEach((row, j) => {
+      const dx = -Math.round((grid.length - 1 - j) * (part.shear ?? 0));
+      row.forEach((ch, i) => { if (ch !== '.') out.set(cellKey(part.at[0] + i + dx, part.at[1] + j), ch); });
+    });
+    return out;
+  });
+  if (cut.prune) prunePieces(rest, cut.prune);
+  const { top, bottom, x0 = -Infinity, x1 = Infinity, dx, dy, lean } = cut.head;
+  const all = new Map<string, string>();
+  const head: Array<[string, string]> = [];
+  for (const [k, ch] of rest) {
+    const [x, y] = k.split(',').map(Number);
+    if (y >= top && y < bottom && x >= x0 && x < x1) head.push([cellKey(x + dx - Math.round((bottom - 1 - y) * lean), y + dy), ch]);
+    else all.set(k, ch);
+  }
+  for (const [k, ch] of head) all.set(k, ch);
+  for (const layer of layers) for (const [k, ch] of layer) all.set(k, ch);
+  prunePieces(all, 3);
+  const out = toSprite(all);
+  dabCache.set(standing, out);
+  return out;
+}
+
+/** The celebration's loop: stand, wind up (the crouch), the dab hold, then back (the dab, crouched). */
+export function dabFrames(form: FormId): readonly PixelSprite[] {
+  const standing = composeFrame(FORM_FRAMES[form].idle[0]);
+  const dab = dabSprite(form, standing);
+  return [standing, crouchSprite(form, standing), dab, crouchSprite(form, dab)];
+}

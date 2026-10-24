@@ -1,9 +1,15 @@
 // remark plugin for lesson MDX:
 //  1. ```c fences with id=… become <CodeSample id code meta/> (predict-before-run widgets);
 //     ```c fragment fences become <CodeBlock/> (static); other fences stay as code.
-//  2. Top-level content is wrapped into <Card index gated> groups (see src/content-model/cards.ts).
+//  2. Each <Choice> gets qid="q<hash>", a hash of its question text (choiceIds), the key of its saved answer.
+//  3. Top-level content is wrapped into <Card index gated> groups (see src/content-model/cards.ts).
 import type { Root, RootContent, Code } from 'mdast';
 import { visit } from 'unist-util-visit';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkMdx from 'remark-mdx';
+import remarkFrontmatter from 'remark-frontmatter';
+import remarkGfm from 'remark-gfm';
 import { parseRawMeta, toSampleMeta } from '../../src/content-model/fence-meta.ts';
 import { groupCards } from '../../src/content-model/cards.ts';
 import type { SampleMeta } from '../../src/content-model/types.ts';
@@ -60,6 +66,56 @@ export function lowerCodeFence<P extends ParsedFenceMeta = { meta: SampleMeta | 
   return { ok: true, node: replacement, meta, parsed };
 }
 
+/** The lesson's <Choice> questions in document order. */
+export function choiceNodes(tree: Root): Array<{ attributes: JsxAttr[] }> {
+  const out: Array<{ attributes: JsxAttr[] }> = [];
+  visit(tree, node => {
+    const n = node as unknown as { type: string; name?: string; attributes?: JsxAttr[] };
+    if ((n.type === 'mdxJsxFlowElement' || n.type === 'mdxJsxTextElement') && n.name === 'Choice') out.push(n as { attributes: JsxAttr[] });
+  });
+  return out;
+}
+
+type AttrValue = string | null | { type: string; value: string; data?: { estree?: { body?: Array<{ type: string; expression?: { type: string; value?: unknown; expressions?: unknown[]; quasis?: Array<{ value: { cooked?: string | null } }> } }> } } };
+/** A `question` attribute's text: the string, or a string literal or plain template in braces; any other expression is its source. */
+function questionText(node: { attributes: JsxAttr[] }): string {
+  const a = node.attributes.find(x => x.name === 'question') as { value: AttrValue } | undefined;
+  const v = a?.value ?? '';
+  if (typeof v === 'string') return v;
+  if (v === null) return '';
+  const e = v.data?.estree?.body?.[0]?.expression;
+  if (e?.type === 'Literal' && typeof e.value === 'string') return e.value;
+  if (e?.type === 'TemplateLiteral' && e.expressions?.length === 0 && e.quasis?.length === 1 && typeof e.quasis[0].value.cooked === 'string') return e.quasis[0].value.cooked;
+  return v.value;
+}
+
+/** FNV-1a (32-bit) of the question with whitespace collapsed, as 8 hex digits. */
+export function choiceId(question: string): string {
+  let h = 0x811c9dc5;
+  const text = question.trim().replace(/\s+/g, ' ');
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return `q${h.toString(16).padStart(8, '0')}`;
+}
+
+/**
+ * Each <Choice>'s `qid`, in document order: a hash of its question text, so adding, removing or reordering
+ * questions does not move a saved answer onto another question (rewording a question makes it a new one).
+ * The same question twice in one lesson gets `-2`, `-3`, … after its hash.
+ */
+export function choiceIds(tree: Root): string[] {
+  const seen = new Map<string, number>();
+  return choiceNodes(tree).map(n => {
+    const id = choiceId(questionText(n));
+    const k = (seen.get(id) ?? 0) + 1; seen.set(id, k);
+    return k === 1 ? id : `${id}-${k}`;
+  });
+}
+
+/** `choiceIds` of a lesson's MDX source, parsed (not compiled) the way the MDX plugin parses it. The `?frontmatter` loader and the e2e use it. */
+export function lessonChoiceIds(mdx: string): string[] {
+  return choiceIds(unified().use(remarkParse).use(remarkMdx).use(remarkFrontmatter).use(remarkGfm).parse(mdx.replace(/\r\n/g, '\n')) as Root);
+}
+
 export default function remarkCourse() {
   return (tree: Root, file: { path?: string; message?: (m: string) => void }) => {
     visit(tree, 'code', (node: Code, index, parent) => {
@@ -72,6 +128,9 @@ export default function remarkCourse() {
       }
       (parent.children as RootContent[])[index] = lowered.node;
     });
+
+    const qids = choiceIds(tree);
+    choiceNodes(tree).forEach((n, i) => { n.attributes = [...n.attributes.filter(a => a.name !== 'qid'), attr('qid', qids[i])]; });
 
     const { hoisted, cards } = groupCards(tree);
     tree.children = [
