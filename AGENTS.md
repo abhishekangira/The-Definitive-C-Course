@@ -133,7 +133,7 @@ CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub P
 ## Pitfalls for every change
 - **Judge a failure on a clean `main` under the same load before blaming a PR.** The e2e suite and the verifier fixture tests are timing-sensitive on a busy 4-CPU machine; we saw one-off failures at load 5 to 7 that passed on rerun. Run gates one at a time and don't run e2e while other heavy jobs run.
 - Never commit machine-dependent output (stack garbage, ASLR addresses). `verify --check` and `trace --check` must be stable across runs.
-- **Scored items:** a new interaction that a learner answers (a prediction or a quiz question) must count toward perfect lessons on its first try; rules in `src/progress/AGENTS.md` (Perfect lessons).
+- **Scored items:** a new interaction that a learner answers (a prediction, a quiz question or a compiler-error question) must count toward perfect lessons on its first try; rules in `src/progress/AGENTS.md` (Perfect lessons).
 - **Compiler diagnostics depend on the locale.** gcc and clang print Unicode quotes in UTF-8 locales, while the generated files and tests assume ASCII. Run `verify`, `trace` and the tests with `LC_ALL=C`.
 - **GitHub closes issues on negated keywords.** "Do not close #1" in a PR description closed #1 when the PR merged. For partial work write "Partial progress on #N" and never use close, closes, fix, fixes, resolve or resolves next to an issue number; the maintainer also re-checks the issue state after every merge.
 

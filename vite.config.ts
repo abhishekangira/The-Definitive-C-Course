@@ -8,7 +8,7 @@ import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { parse as parseYaml } from 'yaml';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import remarkCourse, { lessonChoiceIds } from './tools/mdx/remark-course.ts';
+import remarkCourse, { lessonChoiceIds, lessonCompilerErrorIds } from './tools/mdx/remark-course.ts';
 
 /** `import x from './file.yaml'` → parsed object. */
 function yamlPlugin(): Plugin {
@@ -24,9 +24,10 @@ function yamlPlugin(): Plugin {
 /**
  * `import fm from './lesson.mdx?frontmatter'` → just the YAML frontmatter, without compiling the lesson, plus
  * `choices`: the `qid` of each "Check your understanding" question in the lesson (perfect lessons count them;
- * `lessonChoiceIds` hashes each question's text the same way remark-course does). The lesson is parsed, not compiled.
- * The module gets a virtual id ("\0" prefix) so the MDX plugin, which also matches *.mdx files by their
- * path, never sees it and cannot replace the data with the compiled lesson component.
+ * `lessonChoiceIds` hashes each question's text the same way remark-course does), and `compilerErrors`: each
+ * <CompilerError> question's `<instance>:<kind>` id (`lessonCompilerErrorIds`, the same ones remark-course assigns).
+ * The lesson is parsed, not compiled. The module gets a virtual id ("\0" prefix) so the MDX plugin, which also
+ * matches *.mdx files by their path, never sees it and cannot replace the data with the compiled lesson component.
  */
 function frontmatterPlugin(): Plugin {
   const PREFIX = '\0course-frontmatter:';
@@ -50,7 +51,8 @@ function frontmatterPlugin(): Plugin {
       const text = (await readFile(file, 'utf8')).replace(/\r\n/g, '\n');
       const m = /^---\n([\s\S]*?)\n---/.exec(text);
       const choices = lessonChoiceIds(text);
-      return `export default ${JSON.stringify({ ...(m ? parseYaml(m[1]) : {}), ...(choices.length ? { choices } : {}) })};`;
+      const compilerErrors = lessonCompilerErrorIds(text);
+      return `export default ${JSON.stringify({ ...(m ? parseYaml(m[1]) : {}), ...(choices.length ? { choices } : {}), ...(compilerErrors.length ? { compilerErrors } : {}) })};`;
     },
   };
 }

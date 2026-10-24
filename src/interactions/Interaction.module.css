@@ -60,6 +60,11 @@
 @media (max-width: 600px) {
   .compare { grid-template-columns: 1fr; }
 }
+/* A keyboard shortcut is noise on a touch screen. It stays in the DOM, so aria-describedby still names it for a
+   screen-reader user with a keyboard. */
+@media (pointer: coarse) {
+  .shortcutHint { display: none; }
+}
 .platform { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: 0.9rem; max-width: 100%; }
 .platform select { max-width: 100%; }
 
@@ -82,7 +87,11 @@
 
 .codeLines { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-code); overflow-x: auto; }
 .codeLine { display: flex; gap: var(--space-3); padding: 1px var(--space-3); cursor: pointer; border-left: 3px solid transparent; font-family: var(--font-mono); font-size: 14px; white-space: pre; }
-.codeLine:hover { background: var(--data-soft); }
+/* `:not(.linePicked)`: the hover tint must not override the picked line's own tint (the border is its state cue). */
+.codeLine:hover:not(.linePicked) { background: var(--data-soft); }
+/* Picked but not yet checked: the border shows the choice, while right/wrong styling waits for Check. The --data
+   border reaches 3:1 against both --data-soft and the --bg-code surface (tokens.test.ts checks the pair). */
+.linePicked { border-left-color: var(--data); background: var(--data-soft); }
 .codeLine:focus-within { outline: 2px solid var(--focus); outline-offset: -2px; }
 .codeLine code { background: none; border: 0; padding: 0; }
 .lineNo { color: var(--text-faint); min-width: 2ch; text-align: right; user-select: none; }

@@ -187,7 +187,7 @@ export async function completePredict(mod: ModuleInfo, box: Locator): Promise<vo
 }
 
 /** The celebration stays open until closed (Close or Esc), and it is modal, so close it before touching the lesson again. */
-async function dismissPerfectLesson(page: Page, timeout = 500): Promise<void> {
+export async function dismissPerfectLesson(page: Page, timeout = 500): Promise<void> {
   const overlay = page.getByRole('dialog', { name: 'Perfect lesson!', exact: true });
   const appeared = await overlay.waitFor({ state: 'visible', timeout }).then(() => true, () => false);
   if (appeared) { await page.keyboard.press('Escape'); await expect(overlay).toBeHidden(); }
@@ -234,15 +234,20 @@ async function completeSessionCompilerError(page: Page, mod: ModuleInfo, box: Lo
     expect(frame, `${id}: the report names a line of the session's files`).toBeTruthy();
     await expect(box.locator('fieldset legend code').first()).toHaveText(frame!.file);
     await box.locator(`label[data-line="${frame!.line}"]`).click();
-    await expect(box.locator('[data-line-right="true"]')).toBeVisible();
   }
   // The kind and stage answers are authored: pick any option, Check, then pick the ones it marks right.
   const form = box.locator('form');
   for (const group of await form.locator('fieldset').all()) await group.locator('input[type=radio]').first().check();
   await form.getByRole('button', { name: 'Check', exact: true }).click();
+  // The first Check saves the line, kind and stage first answers together (perfect lessons), so the verdict shows now.
+  if (await box.locator('label[data-line]').count()) await expect(box.locator('[data-line-right="true"]')).toBeVisible();
+  // A right first answer can open the celebration.
+  await dismissPerfectLesson(page, 300);
   for (const group of await form.locator('fieldset').all()) await group.locator('[data-correct="true"] input[type=radio]').check();
   await form.getByRole('button', { name: 'Check', exact: true }).click();
   await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
+  // A right first answer to the lesson's last scored item opens the celebration; the fix step needs the page back.
+  await dismissPerfectLesson(page, 300);
   const fixButton = box.getByRole('button', { name: 'Compile and check' });
   if (await fixButton.count()) {
     const fixed = await box.getAttribute('data-fixed');
@@ -262,8 +267,10 @@ export async function completeCompilerError(page: Page, mod: ModuleInfo, box: Lo
   const first = s.results['wasm32-clang22']?.compile.diagnostics.find(d => d.severity !== 'note');
   expect(first, `${id}: needs a browser diagnostic`).toBeTruthy();
   await box.locator(`label[data-line="${first!.line}"]`).click();
+  // The questions are scored on their first answer now, so the first Check can open the perfect-lesson dialog.
+  await answerAuthoredChoice(box, 'Check', box.locator('form'), true);
+  // The line verdict is shown (and its first answer saved) with the kind on that first Check, never on selection.
   await expect(box.getByText('Yes: the file:line:col prefix says so.', { exact: true })).toBeVisible();
-  await answerAuthoredChoice(box, 'Check', box.locator('form'));
   const fixButton = box.getByRole('button', { name: 'Compile and check' });
   if (await fixButton.count()) {
     const fixed = sample(mod, `${id}-fixed`);

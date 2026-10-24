@@ -1,8 +1,9 @@
 // CE: interpret a real compiler message or tool report. Which line? What does it mean? Which stage failed? Fix it.
 // With a nested ```c fence the message is the compiler's, per target. With `session="id"` it is a stored native report
 // (src/generated/sessions, docs/adr/0005-native-sessions.md) in platform tabs, and the line is its first user frame.
-import { useId, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Diagnostic, TargetId } from '../content-model/types';
+import { compilerErrorQid, compilerErrorQuestions, type CompilerErrorQuestion } from '../content-model/compiler-error';
 import { CodeEditor } from '../components/CodeEditor';
 import { DiagnosticsList } from '../components/DiagnosticsList';
 import { Terminal } from '../components/Terminal';
@@ -10,7 +11,8 @@ import { InlineMarkdown, MiniMarkdown } from '../components/MiniMarkdown';
 import { TranscriptPane } from '../components/Transcript';
 import { transcriptTabs } from '../components/transcript-tabs';
 import { useCRun } from '../runtime/useCRun';
-import { useCardDone, useSamples, useSessions } from '../lesson/LessonContext';
+import { useCardDone, useLesson, usePredictionShown, useSamples, useSessions } from '../lesson/LessonContext';
+import { compilerErrorKey, getProgress, update } from '../progress/store';
 import { nestedSamples } from './nested';
 import { TARGET_LABEL } from './platform';
 import { Question } from './Question';
@@ -34,6 +36,8 @@ interface Props {
   step?: number | string;
   /** Asks "which stage failed?"; `link` also turns the line question off (a link error has no source line). */
   stage?: Stage;
+  /** Added by remark-course: the exercise's stable id, the prefix of its questions' saved first answers. */
+  ceid?: string;
 }
 
 /** The program and the line a message points at, from a nested fence (wasm32's first diagnostic) or a session report. */
@@ -50,15 +54,58 @@ interface Source {
  * exactly what the verified reference prints.
  */
 export function CompilerError(props: Props) {
-  const { children, question, options, answer, explain, session, stage } = props;
+  const { children, question, options, answer, explain, session, stage, ceid } = props;
   // Sample mode: the broken program, then the fixed one. Session mode: the program is the session's, so the only fence
   // is the fixed version (for "Show a fixed version", its verified output, and e2e).
   const nested = nestedSamples(children);
   const [sampleRef, fixedRef] = session ? [undefined, nested[0]] : nested;
   const samples = useSamples();
   const sessions = useSessions();
+  const lesson = useLesson();
   const markDone = useCardDone();
+  const scored = usePredictionShown();
+  // The callback is stable in LessonPage (`useCallback([])`), but a progress update can give it a new identity. Keep
+  // the latest in a ref so only a new tick reports: a stale tick must not report a second time on a re-render.
+  const scoredRef = useRef(scored);
+  scoredRef.current = scored;
+  const box = useRef<HTMLDivElement>(null);
+  const checkButton = useRef<HTMLButtonElement>(null);
+  const shownFocus = useRef<HTMLElement | null>(null);
+  const [shownTick, setShownTick] = useState(0);
   const name = useId();
+  // The `ceid` remark-course assigns is the stable id; a hand-built instance (a test) falls back to the program's id.
+  const instance = ceid ?? (session ? `session:${session}` : sampleRef?.id);
+  // After the answer feedback is in the DOM (like Choice and CodeSample), report a newly saved right first answer to
+  // the perfect-lesson check. A stored answer, a retry or a fix never reaches here, so it never celebrates.
+  useEffect(() => {
+    if (shownTick === 0) return;
+    const focus = shownFocus.current?.isConnected ? shownFocus.current : box.current;
+    if (focus) scoredRef.current?.(focus);
+  }, [shownTick]);
+  /**
+   * Saves the first answer to every question this Check answered in one atomic update. Returns true only when this
+   * write newly saved a right answer (the celebration's guard). The document is read before the update, so the result
+   * does not depend on when the updater runs; the updater re-checks because another tab may have written first.
+   */
+  const saveFirst = (lessonId: string, instanceId: string, answers: Array<[CompilerErrorQuestion, boolean]>): boolean => {
+    const keyOf = (kind: CompilerErrorQuestion) => compilerErrorKey(lessonId, compilerErrorQid(instanceId, kind));
+    const saved = getProgress().compilerErrors;
+    const newlyRight = answers.some(([kind, correct]) => correct && !Object.hasOwn(saved, keyOf(kind)));
+    const at = new Date().toISOString();
+    update(p => {
+      for (const [kind, correct] of answers) {
+        const key = keyOf(kind);
+        // Only the first answer counts: a retried line, option or stage never rewrites it.
+        if (Object.hasOwn(p.compilerErrors, key)) continue;
+        p.compilerErrors[key] = { correct, at };
+      }
+    });
+    return newlyRight;
+  };
+  const showPerfectCheck = (focus: HTMLElement | null) => {
+    shownFocus.current = focus;
+    setShownTick(t => t + 1);
+  };
   const [tab, setTab] = useState<TargetId>('wasm32-clang22');
   const [platform, setPlatform] = useState(0);
   const [lineGuess, setLineGuess] = useState<number | null>(null);
@@ -120,11 +167,22 @@ export function CompilerError(props: Props) {
   // The fixed program's output is only comparable when it is defined: undefined-behaviour output is never stored or checked.
   const fixedSample = fixedRef ? samples?.samples[fixedRef.id] : undefined;
   const fixedOutput = fixedSample && fixedSample.meta.expect !== 'ub' ? fixedSample.answer.stdout : undefined;
-  const asksLine = stage !== 'link';
+  // The same helper the `?frontmatter` loader counts with: the line (not for a link error), what is wrong, and the stage
+  // only when the author asks for it.
+  const asked = compilerErrorQuestions(stage);
+  const asksLine = asked.includes('line');
+  const asksStage = asked.includes('stage');
   const lines = src.code.split('\n');
   const lineRight = lineGuess !== null && src.lines.includes(lineGuess);
-  const stageRight = stage === undefined || stagePicked === stage;
-  const allRight = picked === answer && stageRight;
+  const kindRight = picked === answer;
+  const stageRight = !asksStage || stagePicked === stage;
+  // The line is graded with the other questions, on Check: a radio's onChange also fires as arrow keys move through the
+  // group, so saving it there would record a line a keyboard learner only passed through.
+  const allRight = (!asksLine || lineRight) && kindRight && stageRight;
+  const verdict = allRight ? 'Correct.'
+    : !kindRight ? 'Not quite.'
+    : !stageRight ? 'Not quite: look again at which stage stopped.'
+    : 'Not quite: look again at which line the report points at.';
   const code = source ?? src.code;
   let n = 0;
 
@@ -136,10 +194,24 @@ export function CompilerError(props: Props) {
     setFixWhy(problem ?? '');
     if (problem) setFixAttempts(k => k + 1);
   };
-  const ready = picked !== null && (!asksLine || lineGuess !== null) && (stage === undefined || stagePicked !== null);
+  const ready = picked !== null && (!asksLine || lineGuess !== null) && (!asksStage || stagePicked !== null);
+  // Each Check submission saves the line, kind and stage first answers once, together. A retried Check cannot change
+  // them, and the verdict stays hidden until the first Check.
+  const submit = () => {
+    if (!ready) return;
+    setSubmitted(true);
+    if (!fixCheck) markDone();
+    // Every question this Check answers is saved together, so the perfect-lesson check sees all of them at once.
+    const answers: Array<[CompilerErrorQuestion, boolean]> = [];
+    if (asksLine && lineGuess !== null) answers.push(['line', src.lines.includes(lineGuess)]);
+    if (picked !== null) answers.push(['kind', picked === answer]);
+    if (asksStage && stagePicked !== null) answers.push(['stage', stagePicked === stage]);
+    const newlyRight = lesson && instance ? saveFirst(lesson.lessonId, instance, answers) : false;
+    if (newlyRight) showPerfectCheck(checkButton.current);
+  };
 
   return (
-    <div className={styles.box} data-interaction="compiler-error" data-sample={session ? undefined : sampleRef?.id} data-session={session} data-step={session ? String(step) : undefined} data-fixed={fixCheck && fixedRef ? fixedRef.id : undefined}>
+    <div ref={box} className={styles.box} data-interaction="compiler-error" data-sample={session ? undefined : sampleRef?.id} data-session={session} data-step={session ? String(step) : undefined} data-fixed={fixCheck && fixedRef ? fixedRef.id : undefined}>
       <div className={styles.kicker}>{session ? 'Read the report' : 'Read the compiler'}</div>
       {src.report}
 
@@ -148,7 +220,7 @@ export function CompilerError(props: Props) {
           <ol className={styles.codeLines}>
             {lines.map((l, i) => (
               <li key={i}>
-                <label className={`${styles.codeLine} ${lineGuess === i + 1 ? (lineRight ? styles.choiceRight : styles.choiceWrong) : ''}`} data-line={i + 1}>
+                <label className={`${styles.codeLine} ${lineGuess === i + 1 ? (submitted ? (lineRight ? styles.choiceRight : styles.choiceWrong) : styles.linePicked) : ''}`} data-line={i + 1}>
                   <input type="radio" name={`${name}-line`} className="visually-hidden" aria-label={`Line ${i + 1}: ${l.trim() || 'blank'}`} checked={lineGuess === i + 1} onChange={() => setLineGuess(i + 1)} />
                   <span className={styles.lineNo} aria-hidden="true">{i + 1}</span>
                   <code>{l || ' '}</code>
@@ -156,12 +228,12 @@ export function CompilerError(props: Props) {
               </li>
             ))}
           </ol>
-          {lineGuess !== null && <p className={lineRight ? styles.goodText : styles.badText} data-line-right={String(lineRight)}><Mark ok={lineRight} /> {lineRight ? `Yes: ${session ? 'its first frame in your code' : 'the file:line:col prefix'} says so.` : src.lineHelp}</p>}
+          {submitted && lineGuess !== null && <p className={lineRight ? styles.goodText : styles.badText} data-line-right={String(lineRight)}><Mark ok={lineRight} /> {lineRight ? `Yes: ${session ? 'its first frame in your code' : 'the file:line:col prefix'} says so.` : src.lineHelp}</p>}
         </Question>
       )}
 
-      <form className={styles.predict} onSubmit={e => { e.preventDefault(); if (ready) { setSubmitted(true); if (!fixCheck) markDone(); } }}>
-        <Question n={++n} legend={<InlineMarkdown text={question} />}>
+      <form className={styles.predict} onSubmit={e => { e.preventDefault(); submit(); }}>
+        <Question n={++n} legend={<InlineMarkdown text={question} />} data-question="kind">
           {options.map((o, i) => (
             <label key={i} className={`${styles.choice} ${submitted ? (i === answer ? styles.choiceRight : i === picked ? styles.choiceWrong : '') : ''}`} data-correct={submitted ? String(i === answer) : undefined}>
               <input type="radio" name={`${name}-q`} checked={picked === i} onChange={() => setPicked(i)} />
@@ -169,7 +241,7 @@ export function CompilerError(props: Props) {
             </label>
           ))}
         </Question>
-        {stage !== undefined && (
+        {asksStage && (
           <Question n={++n} legend="Which stage failed?" data-question="stage">
             {STAGES.map(s => (
               <label key={s} className={`${styles.choice} ${submitted ? (s === stage ? styles.choiceRight : s === stagePicked ? styles.choiceWrong : '') : ''}`} data-correct={submitted ? String(s === stage) : undefined}>
@@ -179,11 +251,11 @@ export function CompilerError(props: Props) {
             ))}
           </Question>
         )}
-        <div className={styles.actions}><button type="submit" className="btn btn-primary" disabled={!ready}>Check</button></div>
+        <div className={styles.actions}><button ref={checkButton} type="submit" className="btn btn-primary" disabled={!ready}>Check</button></div>
       </form>
       {submitted && (
         <div className={allRight ? styles.good : styles.bad} role="status">
-          <strong><Mark ok={allRight} /> {allRight ? 'Correct.' : picked === answer ? 'Not quite: look again at which stage stopped.' : 'Not quite.'}</strong>
+          <strong><Mark ok={allRight} /> {verdict}</strong>
           {explain && <MiniMarkdown text={explain} />}
         </div>
       )}
