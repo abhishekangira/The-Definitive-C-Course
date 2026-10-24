@@ -12,6 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionsFile } from '../content-model/types';
 import type { RunRequest, RunSummary } from '../runtime/useCRun';
 import { emptyProgress, getProgress, replaceProgress } from '../progress/store';
+import styles from './Interaction.module.css';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const m97 = JSON.parse(readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/generated/sessions/m97.json'), 'utf8')) as SessionsFile;
@@ -65,12 +66,22 @@ describe('<CompilerError session>', () => {
     render({ session: 'asan', fix: false });
     const right = bug('asan').line;
     const pick = (n: number) => click(host.querySelector(`label[data-line="${n}"] input`));
+    // The lines wearing each highlight: picked (before Check), right or wrong (after it).
+    const marked = (cls: string) => [...host.querySelectorAll('label[data-line]')].filter(l => l.classList.contains(cls)).map(l => Number(l.getAttribute('data-line')));
+    pick(right);
+    expect(marked(styles.linePicked)).toEqual([right]);
     pick(right - 1);
     // Choosing a line does not grade it: arrow keys check a radio as they move through the group.
     expect(lineFeedback()).toBeNull();
+    // The picked highlight moves with the choice, and no right/wrong colour shows before Check.
+    expect(marked(styles.linePicked)).toEqual([right - 1]);
+    expect([...marked(styles.choiceRight), ...marked(styles.choiceWrong)]).toEqual([]);
     click(host.querySelectorAll('[data-question="kind"] input')[0]);
     check();
     expect(lineFeedback()!.getAttribute('data-line-right')).toBe('false');
+    // After Check the verdict colour replaces the picked highlight.
+    expect(marked(styles.choiceWrong)).toEqual([right - 1]);
+    expect(marked(styles.linePicked)).toEqual([]);
     expect(lineFeedback()!.textContent).toContain('Look for the first line of the report that names your file, main.c');
     // The line counts in the verdict too: a right option alone is not "Correct.".
     expect(status()).toContain('Not quite: look again at which line the report points at.');
