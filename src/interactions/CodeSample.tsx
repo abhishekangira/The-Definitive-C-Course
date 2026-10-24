@@ -101,6 +101,18 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
   const [source, setSource] = useState(code);
   const [p64, setP64] = useState(kept?.predict64 ?? '');
   const [p64Done, setP64Done] = useState(kept?.predict64 !== undefined);
+  // Ctrl/Cmd+Enter commits and runs in one step, and the form unmounts under the textarea. Put focus on the run/reveal
+  // button, where clicking Lock in and then Run leaves it; a browser run disables the button, so wait for it to re-enable.
+  const focusRun = useRef(false);
+  const [focusTick, setFocusTick] = useState(0);
+  useEffect(() => {
+    if (!focusRun.current) return;
+    const target = runButton.current;
+    if (!target?.isConnected) { focusRun.current = false; return; }
+    if (target.disabled) return;
+    focusRun.current = false;
+    target.focus();
+  }, [focusTick, runner.phase]);
   // Wait for a DOM commit after the run settles (or an immediate stored/native reveal). The 64-bit
   // submit button disappears, so focus goes to its newly mounted reset button instead.
   useEffect(() => {
@@ -252,6 +264,8 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
                   e.preventDefault();
                   if (prediction === '') return;
                   commit();
+                  focusRun.current = true;
+                  setFocusTick(t => t + 1);
                   void run();
                 }}
               />
@@ -286,7 +300,7 @@ export function CodeSample({ id, code, meta: metaJson }: { id: string; code: str
               <button type="submit" className="btn btn-primary" disabled={prediction === ''}>Lock in my prediction</button>
               {predictKind === 'output' ? (
                 <span className={styles.muted} id={hintId}>
-                  or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on a Mac) to lock in and run.
+                  or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> (<kbd>Cmd</kbd>+<kbd>Enter</kbd> on a Mac) to lock in and {nativeOnly || storedMode ? 'reveal the result' : 'run'}.
                 </span>
               ) : (
                 <span className={styles.muted}>Run unlocks after you commit.</span>

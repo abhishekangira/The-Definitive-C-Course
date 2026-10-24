@@ -355,21 +355,39 @@ it('a wrong first compiler-error line or option blocks perfect, even after a rig
   await answerQuizInStore();
   const box = await exact(0); await click(button(box, 'Reveal the result'));
   expect(document.querySelector('dialog')).toBeNull();
-  // A wrong line first, then the right one; then a wrong option, then the right one. Both first answers stay wrong.
+  // The first Check commits a wrong line and option; the retry commits the right ones. Both first answers stay wrong.
   const wrongLine = REPORT_LINE === 1 ? 2 : 1;
   const report = reportBox();
-  await act(async () => report.querySelector<HTMLInputElement>(`label[data-line="${wrongLine}"] input`)!.click());
-  await act(async () => report.querySelector<HTMLInputElement>(`label[data-line="${REPORT_LINE}"] input`)!.click());
-  await act(async () => report.querySelectorAll<HTMLInputElement>('[data-question="kind"] input')[REPORT_ANSWER === 0 ? 1 : 0].click());
+  const pickLine = (n: number) => act(async () => report.querySelector<HTMLInputElement>(`label[data-line="${n}"] input`)!.click());
+  const pickKind = (n: number) => act(async () => report.querySelectorAll<HTMLInputElement>('[data-question="kind"] input')[n].click());
   const submit = report.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  await pickLine(wrongLine);
+  await pickKind(REPORT_ANSWER === 0 ? 1 : 0);
   await act(async () => submit.click());
-  await act(async () => report.querySelectorAll<HTMLInputElement>('[data-question="kind"] input')[REPORT_ANSWER].click());
+  await pickLine(REPORT_LINE);
+  await pickKind(REPORT_ANSWER);
   await act(async () => submit.click());
   expect(getProgress().compilerErrors[`m01-l1#${REPORT_SAMPLE}:line`]).toMatchObject({ correct: false });
   expect(getProgress().compilerErrors[`m01-l1#${REPORT_SAMPLE}:kind`]).toMatchObject({ correct: false });
   expect(document.querySelector('dialog')).toBeNull();
   expect(localStorage.getItem(PERFECT_SEEN_KEY)).toBeNull();
 });
+it('a right option on the same Check as a wrong line does not celebrate: every first answer is saved before the check', async () => {
+  await answerQuizInStore();
+  const box = await exact(0); await click(button(box, 'Reveal the result'));
+  const report = reportBox();
+  const wrongLine = REPORT_LINE === 1 ? 2 : 1;
+  await act(async () => report.querySelector<HTMLInputElement>(`label[data-line="${wrongLine}"] input`)!.click());
+  await act(async () => report.querySelectorAll<HTMLInputElement>('[data-question="kind"] input')[REPORT_ANSWER].click());
+  await act(async () => report.querySelector<HTMLButtonElement>('button[type="submit"]')!.click());
+  // The right kind was saved by this Check and reports to the perfect check, but the wrong line landed in the same
+  // batch, so the lesson is not perfect and nothing opens.
+  expect(getProgress().compilerErrors[`m01-l1#${REPORT_SAMPLE}:line`]).toMatchObject({ correct: false });
+  expect(getProgress().compilerErrors[`m01-l1#${REPORT_SAMPLE}:kind`]).toMatchObject({ correct: true });
+  expect(document.querySelector('dialog')).toBeNull();
+  expect(localStorage.getItem(PERFECT_SEEN_KEY)).toBeNull();
+});
+
 it('a compiler-error Check with every answer already imported never opens the celebration', async () => {
   // perfect-seen is local, so a fresh browser that imports a perfect lesson has not seen it.
   await answerQuizInStore(); await answerReportsInStore();

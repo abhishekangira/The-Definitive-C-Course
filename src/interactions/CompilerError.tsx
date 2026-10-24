@@ -163,8 +163,15 @@ export function CompilerError(props: Props) {
   const asksStage = asked.includes('stage');
   const lines = src.code.split('\n');
   const lineRight = lineGuess !== null && src.lines.includes(lineGuess);
+  const kindRight = picked === answer;
   const stageRight = !asksStage || stagePicked === stage;
-  const allRight = picked === answer && stageRight;
+  // The line is graded with the other questions, on Check: a radio's onChange also fires as arrow keys move through the
+  // group, so saving it there would record a line a keyboard learner only passed through.
+  const allRight = (!asksLine || lineRight) && kindRight && stageRight;
+  const verdict = allRight ? 'Correct.'
+    : !kindRight ? 'Not quite.'
+    : !stageRight ? 'Not quite: look again at which stage stopped.'
+    : 'Not quite: look again at which line the report points at.';
   const code = source ?? src.code;
   let n = 0;
 
@@ -177,13 +184,16 @@ export function CompilerError(props: Props) {
     if (problem) setFixAttempts(k => k + 1);
   };
   const ready = picked !== null && (!asksLine || lineGuess !== null) && (!asksStage || stagePicked !== null);
-  // Each Check submission saves the kind and stage first answers once. A retried Check cannot change them.
+  // Each Check submission saves the line, kind and stage first answers once, together. A retried Check cannot change
+  // them, and the verdict stays hidden until the first Check.
   const submit = () => {
     if (!ready) return;
     setSubmitted(true);
     if (!fixCheck) markDone();
-    let newlyRight = saveFirst('kind', picked === answer);
-    if (asksStage) newlyRight = saveFirst('stage', stagePicked === stage) || newlyRight;
+    let newlyRight = false;
+    if (asksLine && lineGuess !== null && saveFirst('line', src.lines.includes(lineGuess))) newlyRight = true;
+    if (saveFirst('kind', picked === answer)) newlyRight = true;
+    if (asksStage && saveFirst('stage', stagePicked === stage)) newlyRight = true;
     if (newlyRight) showPerfectCheck(checkButton.current);
   };
 
@@ -197,15 +207,15 @@ export function CompilerError(props: Props) {
           <ol className={styles.codeLines}>
             {lines.map((l, i) => (
               <li key={i}>
-                <label className={`${styles.codeLine} ${lineGuess === i + 1 ? (lineRight ? styles.choiceRight : styles.choiceWrong) : ''}`} data-line={i + 1}>
-                  <input type="radio" name={`${name}-line`} className="visually-hidden" aria-label={`Line ${i + 1}: ${l.trim() || 'blank'}`} checked={lineGuess === i + 1} onChange={e => { setLineGuess(i + 1); if (saveFirst('line', src.lines.includes(i + 1))) showPerfectCheck(e.currentTarget.closest('label')); }} />
+                <label className={`${styles.codeLine} ${lineGuess === i + 1 ? (submitted ? (lineRight ? styles.choiceRight : styles.choiceWrong) : styles.linePicked) : ''}`} data-line={i + 1}>
+                  <input type="radio" name={`${name}-line`} className="visually-hidden" aria-label={`Line ${i + 1}: ${l.trim() || 'blank'}`} checked={lineGuess === i + 1} onChange={() => setLineGuess(i + 1)} />
                   <span className={styles.lineNo} aria-hidden="true">{i + 1}</span>
                   <code>{l || ' '}</code>
                 </label>
               </li>
             ))}
           </ol>
-          {lineGuess !== null && <p className={lineRight ? styles.goodText : styles.badText} data-line-right={String(lineRight)}><Mark ok={lineRight} /> {lineRight ? `Yes: ${session ? 'its first frame in your code' : 'the file:line:col prefix'} says so.` : src.lineHelp}</p>}
+          {submitted && lineGuess !== null && <p className={lineRight ? styles.goodText : styles.badText} data-line-right={String(lineRight)}><Mark ok={lineRight} /> {lineRight ? `Yes: ${session ? 'its first frame in your code' : 'the file:line:col prefix'} says so.` : src.lineHelp}</p>}
         </Question>
       )}
 
@@ -232,7 +242,7 @@ export function CompilerError(props: Props) {
       </form>
       {submitted && (
         <div className={allRight ? styles.good : styles.bad} role="status">
-          <strong><Mark ok={allRight} /> {allRight ? 'Correct.' : picked === answer ? 'Not quite: look again at which stage stopped.' : 'Not quite.'}</strong>
+          <strong><Mark ok={allRight} /> {verdict}</strong>
           {explain && <MiniMarkdown text={explain} />}
         </div>
       )}

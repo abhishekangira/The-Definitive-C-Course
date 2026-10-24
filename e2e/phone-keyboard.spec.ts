@@ -177,9 +177,10 @@ test.describe.serial('lesson 1 with the keyboard only', () => {
           const lines = box.locator('input[type=radio][aria-label^="Line "]');
           await focusByTab(lines.first(), `${id}: line list`);
           for (let n = 1; n < diag.line; n++) await key('ArrowDown');
-          await expect(box.getByText('Yes: the file:line:col prefix says so.', { exact: true })).toBeVisible();
           const questionOptions = box.locator('form input[type=radio]');
           await answerChoiceByKeyboard(box.locator('form'), box.getByRole('button', { name: /^Check$/ }), `${id}: question`);
+          // The line is graded with the first Check, so its verdict appears once that has been pressed.
+          await expect(box.getByText('Yes: the file:line:col prefix says so.', { exact: true })).toBeVisible();
           await expect(questionOptions.first()).toBeAttached();
           // Fix the program in the editor, leave it with Esc then Tab, compile, continue.
           const fixed = mod.samples.samples[`${id}-fixed`].code;

@@ -32,9 +32,10 @@ const REPORT_QIDS2 = lessonCompilerErrorIds(readFileSync(path.join(mod.base, mod
 async function answerReport(page: Page) {
   const box = page.locator('[data-interaction="compiler-error"][data-sample="missing-semicolon"]');
   await box.locator(`label[data-line="${REPORT_LINE}"]`).click();
-  await expect(box.locator('[data-line-right="true"]')).toBeVisible();
   await box.locator('[data-question="kind"] input').nth(REPORT_ANSWER).check();
+  // The line is scored with the kind on Check; its verdict is hidden until then.
   await box.getByRole('button', { name: 'Check', exact: true }).click();
+  await expect(box.locator('[data-line-right="true"]')).toBeVisible();
   await expect(box.getByText('Correct.', { exact: true })).toBeVisible();
   return box;
 }
@@ -164,12 +165,62 @@ test('Ctrl+Enter and Cmd+Enter lock in and run in one step; an empty box does no
   await area.press('Control+Enter');
   await expect(box.getByText('Your prediction was right.', { exact: true })).toBeVisible();
   await expect(box.getByRole('button', { name: 'Predict again' })).toBeVisible();
+  // The form unmounted under the textarea; focus lands on the reveal button, as it does after clicking Run.
+  await expect(box.getByRole('button', { name: 'Reveal the result' })).toBeFocused();
   // Cmd+Enter is the Mac spelling of the same shortcut.
   await box.getByRole('button', { name: 'Predict again' }).click();
   const again = box.locator('textarea').first();
   await again.fill(sample.answer.stdout);
   await again.press('Meta+Enter');
   await expect(box.getByText('Your prediction was right.', { exact: true })).toBeVisible();
+  await expect(box.getByRole('button', { name: 'Reveal the result' })).toBeFocused();
+  // Even a wrong prediction (no celebration) keeps focus on the button rather than dropping it to <body>.
+  await box.getByRole('button', { name: 'Predict again' }).click();
+  const wrong = box.locator('textarea').first();
+  await wrong.fill('not the output');
+  await wrong.press('Control+Enter');
+  await expect(box.getByText('Not quite.', { exact: true })).toBeVisible();
+  await expect(box.getByRole('button', { name: 'Reveal the result' })).toBeFocused();
+});
+
+test('arrow keys through wrong report lines save no first answer; Check saves the line right and the lesson stays perfect', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.addInitScript(({ choices, prediction, at }) => {
+    localStorage.setItem('tdcc:v1:progress', JSON.stringify({ version: 1, seed: '00e2e00e2e00e2e0', createdAt: at,
+      settings: { storedOutputMode: true }, cards: { 'm01-l1': Array.from({ length: 30 }, (_, i) => i) }, lessons: {},
+      samples: { 'hello-two-lines': { prediction, correct: true, verdict: 'exact', first: 'exact', at } },
+      choices, compilerErrors: {}, exercises: {},
+      quizzes: { 'm01:retrieval': { score: 1, total: 1, passed: true, at, answers: {} } }, projects: {}, streak: { days: [], longest: 0 } }));
+  }, { choices: quizRight(new Date().toISOString()), prediction: sample.answer.stdout, at: new Date().toISOString() });
+  await page.goto(`#/m/${mod.id}/${lesson.stem}`);
+  const box = page.locator('[data-interaction="compiler-error"][data-sample="missing-semicolon"]');
+  const line = (n: number) => box.getByRole('radio', { name: new RegExp(`^Line ${n}:`) });
+  // A keyboard learner picks line 1, then arrows down through wrong lines, past the right one and back.
+  await line(1).focus();
+  await page.keyboard.press('Space');
+  for (let i = 1; i < REPORT_LINE; i++) await page.keyboard.press('ArrowDown');
+  await expect(line(REPORT_LINE)).toBeChecked();
+  await page.keyboard.press('ArrowDown'); // the next line is wrong
+  await page.keyboard.press('ArrowUp');
+  await expect(line(REPORT_LINE)).toBeChecked();
+  // Arrow keys check a radio, so onChange fires, but nothing is scored or shown until Check.
+  await expect(box.locator('[data-line-right]')).toHaveCount(0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tdcc:v1:progress')!).compilerErrors)).toEqual({});
+  // Answer "what is wrong" with the keyboard too, then Check.
+  const kinds = box.locator('[data-question="kind"] input');
+  await kinds.first().focus();
+  await page.keyboard.press('Space');
+  for (let i = 0; i < REPORT_ANSWER; i++) await page.keyboard.press('ArrowDown');
+  await expect(kinds.nth(REPORT_ANSWER)).toBeChecked();
+  await page.keyboard.press('Tab');
+  await expect(box.getByRole('button', { name: 'Check', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(box.locator('[data-line-right="true"]')).toBeVisible();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('tdcc:v1:progress')!).compilerErrors);
+  expect(saved[`${lesson.id}#missing-semicolon:line`]).toMatchObject({ correct: true });
+  expect(saved[`${lesson.id}#missing-semicolon:kind`]).toMatchObject({ correct: true });
+  // The line was the last missing first try: the lesson is still perfect and celebrates.
+  await expect(page.getByRole('dialog', { name: 'Perfect lesson!', exact: true })).toBeVisible();
 });
 
 for (const theme of ['light', 'dark'] as const) for (const width of [1400, 390]) {

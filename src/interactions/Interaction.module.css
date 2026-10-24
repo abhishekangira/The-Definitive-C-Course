@@ -83,6 +83,8 @@
 .codeLines { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-code); overflow-x: auto; }
 .codeLine { display: flex; gap: var(--space-3); padding: 1px var(--space-3); cursor: pointer; border-left: 3px solid transparent; font-family: var(--font-mono); font-size: 14px; white-space: pre; }
 .codeLine:hover { background: var(--data-soft); }
+/* Picked but not yet checked: the border shows the choice, while right/wrong styling waits for Check. */
+.linePicked { border-left-color: var(--data); background: var(--data-soft); }
 .codeLine:focus-within { outline: 2px solid var(--focus); outline-offset: -2px; }
 .codeLine code { background: none; border: 0; padding: 0; }
 .lineNo { color: var(--text-faint); min-width: 2ch; text-align: right; user-select: none; }

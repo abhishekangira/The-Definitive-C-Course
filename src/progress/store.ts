@@ -57,7 +57,7 @@ export interface ChoiceProgress { picked: number; correct: boolean; at: string }
 /** `progress.choices` key: the lesson id and the question's `qid` (a hash of its question text, from remark-course `choiceIds`). */
 export const choiceKey = (lessonId: string, qid: string) => `${lessonId}#${qid}`;
 
-/** One <CompilerError> question's first answer (the line clicked, the option submitted, or the stage chosen). */
+/** One <CompilerError> question's first answer (the line picked, the option submitted, or the stage chosen, saved on the first Check). */
 export interface CompilerErrorProgress { correct: boolean; at: string }
 /** `progress.compilerErrors` key: the lesson id and `<instance>:<kind>` (remark-course `compilerErrorIds`). */
 export const compilerErrorKey = (lessonId: string, qid: string) => `${lessonId}#${qid}`;

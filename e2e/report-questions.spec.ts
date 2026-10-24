@@ -48,13 +48,14 @@ test.describe('<CompilerError session> over stored native reports', () => {
     await expect(asan.locator('[data-pending]')).toHaveText('No stored run for macOS · Apple clang.');
     const right = bug('asan').line;
     await asan.locator(`label[data-line="${right + 1}"]`).click();
-    await expect(asan.locator('[data-line-right]')).toHaveAttribute('data-line-right', 'false');
-    await asan.locator(`label[data-line="${right}"]`).click();
-    await expect(asan.getByText('Yes: its first frame in your code says so.')).toBeVisible();
+    // The line is graded with the other answers on Check, never on selection.
     await kind(asan, 1).check();
     await stage(asan, 'Run').check();
     await asan.getByRole('button', { name: 'Check' }).click();
+    await expect(asan.locator('[data-line-right]')).toHaveAttribute('data-line-right', 'false');
     await expect(asan.getByRole('status')).toContainText('Not quite.');
+    await asan.locator(`label[data-line="${right}"]`).click();
+    await expect(asan.getByText('Yes: its first frame in your code says so.')).toBeVisible();
     await kind(asan, 0).check();
     await expect(asan.getByRole('status')).toContainText('Correct.');
 
@@ -84,7 +85,7 @@ test.describe('<CompilerError session> over stored native reports', () => {
     await page.keyboard.press('Tab'); // the first line of the source (a radio group: arrows move and select)
     await expect(asan.getByRole('radio', { name: /^Line 1:/ })).toBeFocused();
     for (let i = 1; i < bug('asan').line; i++) await page.keyboard.press('ArrowDown');
-    await expect(asan.getByText('Yes: its first frame in your code says so.')).toBeVisible();
+    await expect(asan.locator('[data-line-right]')).toHaveCount(0); // arrows check radios, but nothing is graded yet
     await page.keyboard.press('Tab');
     await expect(kind(asan, 0)).toBeFocused();
     await page.keyboard.press('Space');
@@ -95,6 +96,7 @@ test.describe('<CompilerError session> over stored native reports', () => {
     await page.keyboard.press('Tab');
     await expect(asan.getByRole('button', { name: 'Check' })).toBeFocused();
     await page.keyboard.press('Enter');
+    await expect(asan.locator('[data-line-right="true"]')).toBeVisible();
     await expect(asan.getByRole('status')).toBeVisible();
   });
 

@@ -504,6 +504,21 @@ describe('<CodeSample> Ctrl/Cmd+Enter', () => {
     expect(host.textContent).toContain('Your prediction was right.');
   });
 
+  it('names the reveal button in stored-output and native-only modes, where there is no Run', async () => {
+    const hint = () => host.querySelector(`[id="${host.querySelector('textarea')!.getAttribute('aria-describedby')}"]`)!;
+    await show(result());
+    expect(hint().textContent).toContain('to lock in and run.');
+    await remount();
+    const p = emptyProgress(); p.settings.storedOutputMode = true; replaceProgress(p);
+    await show(result());
+    expect(hint().textContent).toContain('to lock in and reveal the result.');
+    expect(hint().textContent).not.toContain('to lock in and run.');
+    await remount();
+    const native = result(); native.meta.target = 'native';
+    await show(native);
+    expect(hint().textContent).toContain('to lock in and reveal the result.');
+  });
+
   it('does nothing on an empty prediction, and plain Enter still adds a newline', async () => {
     await show(result());
     const area = host.querySelector('textarea')!;
@@ -520,23 +535,25 @@ describe('<CodeSample> Ctrl/Cmd+Enter', () => {
     expect(getProgress().samples.s).toBeUndefined();
   });
 
-  it('leaves focus where clicking Lock in leaves it, never on the removed box', async () => {
-    // The click path: the button unmounts when the prediction is committed.
+  it('the shortcut leaves focus on the run button, as clicking Lock in then Run does', async () => {
+    // The click path: Lock in unmounts the form, then the learner clicks Run.
     await show(result());
     await fill(host.querySelector('textarea')!, '3 -3 1\n3.5');
     const lock = button('Lock in my prediction'); lock.focus();
     await click(lock);
-    const afterClick = document.activeElement;
-    expect(afterClick).not.toBe(lock);
+    expect(document.activeElement).not.toBe(lock);
+    const runButton = button('Run'); runButton.focus();
+    await click(runButton);
+    expect(document.activeElement).toBe(runButton);
     await remount();
-    // The shortcut path: the textarea unmounts at the same commit.
+    // The shortcut path: the textarea unmounts at the same commit, and focus lands on the same control.
     await show(result());
     const area = host.querySelector('textarea')!;
     await fill(area, '3 -3 1\n3.5');
     area.focus();
     await key(area, { ctrlKey: true });
     expect(area.isConnected).toBe(false);
-    expect(document.activeElement).toBe(afterClick);
+    expect(document.activeElement).toBe(button('Run again'));
   });
 });
 

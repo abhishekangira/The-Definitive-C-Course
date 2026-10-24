@@ -61,13 +61,20 @@ describe('<CompilerError session>', () => {
     expect(host.querySelector('legend')!.textContent).toBe('1. Which line of l.c is the report pointing at? Click it.');
   });
 
-  it('line: the first user frame of the stored report is right, any other line is wrong', () => {
+  it('line: the verdict waits for Check, then the first user frame is right and any other line is wrong', () => {
     render({ session: 'asan', fix: false });
     const right = bug('asan').line;
-    click(host.querySelector(`label[data-line="${right - 1}"] input`));
+    const pick = (n: number) => click(host.querySelector(`label[data-line="${n}"] input`));
+    pick(right - 1);
+    // Choosing a line does not grade it: arrow keys check a radio as they move through the group.
+    expect(lineFeedback()).toBeNull();
+    click(host.querySelectorAll('[data-question="kind"] input')[0]);
+    check();
     expect(lineFeedback()!.getAttribute('data-line-right')).toBe('false');
     expect(lineFeedback()!.textContent).toContain('Look for the first line of the report that names your file, main.c');
-    click(host.querySelector(`label[data-line="${right}"] input`));
+    // The line counts in the verdict too: a right option alone is not "Correct.".
+    expect(status()).toContain('Not quite: look again at which line the report points at.');
+    pick(right);
     expect(lineFeedback()!.getAttribute('data-line-right')).toBe('true');
     // Same answer on the other compiler's tab: the frame comes from the report shown.
     click(host.querySelectorAll('[role="tab"]')[1]);
@@ -82,6 +89,8 @@ describe('<CompilerError session>', () => {
       render({ session: 'asan-ubsan', fix: false });
       const pick = (n: number) => click(host.querySelector(`label[data-line="${n}"] input`));
       pick(bug('ubsan').line); // clang's frame, while the gcc tab is on screen
+      click(host.querySelectorAll('[data-question="kind"] input')[0]);
+      check();
       expect(lineFeedback()!.getAttribute('data-line-right')).toBe('true');
       click(host.querySelectorAll('[role="tab"]')[1]);
       expect(lineFeedback()!.getAttribute('data-line-right')).toBe('true');
@@ -173,22 +182,31 @@ const seedAnswer = (...qids: string[]) => {
   replaceProgress(p);
 };
 describe('<CompilerError> scored questions', () => {
-  it('line: a wrong first click is the saved first answer and a right retry never rewrites it or celebrates', () => {
+  it('line: selecting a line saves nothing; a wrong line on Check stays the first answer and a retry never celebrates', () => {
+    seedAnswer('asan:kind'); // the kind is already answered, so only the line can report here
     render({ session: 'asan', fix: false });
     const right = bug('asan').line;
     click(host.querySelector(`label[data-line="${right === 1 ? 2 : 1}"] input`));
+    expect(answer('asan:line')).toBeUndefined(); // not saved on selection (arrow keys fire onChange too)
+    click(host.querySelectorAll('[data-question="kind"] input')[0]);
+    check();
     expect(answer('asan:line')).toMatchObject({ correct: false });
     click(host.querySelector(`label[data-line="${right}"] input`));
+    check();
     expect(answer('asan:line')).toMatchObject({ correct: false });
     expect(scored).not.toHaveBeenCalled();
   });
 
-  it('line: a right first click is saved once and reports to the perfect check', () => {
+  it('line: a right line on the first Check is saved once and reports to the perfect check', () => {
+    seedAnswer('asan:kind');
     render({ session: 'asan', fix: false });
     click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));
+    expect(answer('asan:line')).toBeUndefined();
+    click(host.querySelectorAll('[data-question="kind"] input')[0]);
+    check();
     expect(answer('asan:line')).toMatchObject({ correct: true });
     expect(scored).toHaveBeenCalledTimes(1);
-    click(host.querySelector(`label[data-line="${bug('asan').line}"] input`));
+    check();
     expect(scored).toHaveBeenCalledTimes(1);
   });
 
