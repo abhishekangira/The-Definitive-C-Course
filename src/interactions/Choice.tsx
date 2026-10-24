@@ -51,7 +51,7 @@ export function Choice({ question, options, answer, explain, why, qid }: {
   };
   const correct = submitted === answer;
   return (
-    <div ref={box} tabIndex={-1} className={styles.box} data-interaction="choice" data-qid={qid}>
+    <div ref={box} className={styles.box} data-interaction="choice" data-qid={qid}>
       <div className={styles.kicker}>Check your understanding</div>
       <form onSubmit={e => { e.preventDefault(); if (picked !== null) submit(picked); }} className={styles.predict}>
         <fieldset className={styles.choices}>

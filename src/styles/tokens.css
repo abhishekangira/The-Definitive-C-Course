@@ -50,6 +50,13 @@
   --terminal-in: #8fd3ff;
   --terminal-diff-text: #ffb5ad;
   --terminal-diff-bg: #572923;
+  /* the perfect-lesson celebration only: the title's letters and the confetti; each reads at 4.5:1 on --bg-elev */
+  --celebrate-0: #b4235a;
+  --celebrate-1: #a14a00;
+  --celebrate-2: #1a7245;
+  --celebrate-3: #1d5fbf;
+  --celebrate-4: #6d3fc0;
+  --celebrate-5: #7a5d00;
 
   /* tight radii, chosen once: cards 8, controls 6, chips 4 */
   --radius: 8px;
@@ -107,6 +114,12 @@
     --err-ink: #ffb5ad;
     --info-soft: #202224;
     --terminal-bg: #0a0b0c;
+    --celebrate-0: #ff8fb8;
+    --celebrate-1: #ffb366;
+    --celebrate-2: #5cc98c;
+    --celebrate-3: #7cb0ff;
+    --celebrate-4: #c4a3ff;
+    --celebrate-5: #ffd75e;
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
   }
 }
@@ -142,5 +155,11 @@
   --err-ink: #ffb5ad;
   --info-soft: #202224;
   --terminal-bg: #0a0b0c;
+  --celebrate-0: #ff8fb8;
+  --celebrate-1: #ffb366;
+  --celebrate-2: #5cc98c;
+  --celebrate-3: #7cb0ff;
+  --celebrate-4: #c4a3ff;
+  --celebrate-5: #ffd75e;
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55);
 }

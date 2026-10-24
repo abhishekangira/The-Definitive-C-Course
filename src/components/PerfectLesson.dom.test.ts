@@ -51,12 +51,12 @@ it.each([{ key: 'a' }, { key: 'Enter' }, { key: ' ' }, { key: 'Shift' }, { key: 
   expect(document.querySelector('[data-perfect-lesson] p:not([id])')!.textContent).toBe('Every prediction right on the first try. Press Esc or Close to continue.');
 });
 it('falls back to the interaction box, then the lesson container, never <body>, when the return target is gone', async () => {
-  const lesson = document.createElement('div'); const box = document.createElement('div'); box.dataset.interaction = 'choice'; box.tabIndex = -1;
+  const lesson = document.createElement('div'); const box = document.createElement('div'); box.dataset.interaction = 'choice'; // no tabindex, like Choice's box
   const button = document.createElement('button'); box.appendChild(button); lesson.appendChild(box); document.body.appendChild(lesson);
   await mount(false, { returnFocus: button, fallbackFocus: { current: lesson } });
   button.remove();
   await act(async () => closeButton().click());
-  expect(document.activeElement).toBe(box);
+  expect(document.activeElement).toBe(box); expect(box.getAttribute('tabindex')).toBe('-1');
   await mount(false, { returnFocus: button, fallbackFocus: { current: lesson } });
   box.remove();
   await act(async () => closeButton().click());

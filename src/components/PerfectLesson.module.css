@@ -6,14 +6,9 @@
   margin: 0; padding: 16px; border: 0;
   background: transparent; color: var(--text);
   display: grid; place-items: center; overflow: auto;
-  /* Title letter colours: each meets 4.5:1 on --bg-elev (PerfectLesson.test.ts reads these). */
-  --title-0: #b4235a; --title-1: #a14a00; --title-2: #1a7245; --title-3: #1d5fbf; --title-4: #6d3fc0; --title-5: #7a5d00;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .dialog { --title-0: #ff8fb8; --title-1: #ffb366; --title-2: #5cc98c; --title-3: #7cb0ff; --title-4: #c4a3ff; --title-5: #ffd75e; }
-}
-:root[data-theme='dark'] .dialog { --title-0: #ff8fb8; --title-1: #ffb366; --title-2: #5cc98c; --title-3: #7cb0ff; --title-4: #c4a3ff; --title-5: #ffd75e; }
 .dialog:not([open]) { display: none; }
+/* The one see-through surface (src/AGENTS.md, Look and feel): the lesson shows faintly behind the confetti. */
 .dialog::backdrop { background: color-mix(in srgb, var(--bg) 82%, transparent); }
 .panel {
   position: relative; z-index: 1;
@@ -26,12 +21,12 @@
 .title { margin: 0 0 8px; font-size: 2rem; line-height: 1.15; }
 .letter { display: inline-block; animation: letterPop 420ms cubic-bezier(0.3, 1.6, 0.5, 1) calc(200ms + var(--i) * 70ms) both; }
 .space { display: inline-block; width: 0.3em; }
-.letter[data-c='0'] { color: var(--title-0); }
-.letter[data-c='1'] { color: var(--title-1); }
-.letter[data-c='2'] { color: var(--title-2); }
-.letter[data-c='3'] { color: var(--title-3); }
-.letter[data-c='4'] { color: var(--title-4); }
-.letter[data-c='5'] { color: var(--title-5); }
+.letter[data-c='0'] { color: var(--celebrate-0); }
+.letter[data-c='1'] { color: var(--celebrate-1); }
+.letter[data-c='2'] { color: var(--celebrate-2); }
+.letter[data-c='3'] { color: var(--celebrate-3); }
+.letter[data-c='4'] { color: var(--celebrate-4); }
+.letter[data-c='5'] { color: var(--celebrate-5); }
 .power { width: 240px; max-width: 100%; margin: auto; animation: shake 180ms steps(3) 850ms 4; }
 .power > span { width: 100%; }
 .hint { font-size: 14px; color: var(--text-muted); }
@@ -39,14 +34,14 @@
 .confetti i {
   position: absolute; top: -16px; left: var(--x);
   width: 7px; height: 11px;
-  background: var(--title-1);
+  background: var(--celebrate-1);
   animation: fall var(--fall, 3600ms) linear forwards;
 }
-.confetti i[data-c='0'] { background: var(--title-0); }
-.confetti i[data-c='2'] { background: var(--title-2); }
-.confetti i[data-c='3'] { background: var(--title-3); }
-.confetti i[data-c='4'] { background: var(--title-4); }
-.confetti i[data-c='5'] { background: var(--title-5); }
+.confetti i[data-c='0'] { background: var(--celebrate-0); }
+.confetti i[data-c='2'] { background: var(--celebrate-2); }
+.confetti i[data-c='3'] { background: var(--celebrate-3); }
+.confetti i[data-c='4'] { background: var(--celebrate-4); }
+.confetti i[data-c='5'] { background: var(--celebrate-5); }
 @keyframes fall { from { transform: translate(0, 0) rotate(0); } to { transform: translate(var(--drift), calc(100vh + 32px)) rotate(var(--spin)); } }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 33% { transform: translateX(-2px); } 66% { transform: translateX(2px); } }
 @keyframes letterPop { from { opacity: 0; transform: translateY(0.45em) scale(0.2); } to { opacity: 1; transform: none; } }
