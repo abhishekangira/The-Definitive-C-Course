@@ -1,6 +1,7 @@
 // The line mapping behind V7's native panes, on tools/verify's committed output for the m97 `pipeline` session:
 // gcc and clang `-S -g` (.loc) and `objdump -d -l` (file:line markers). The expected values are source line numbers
-// of the session's own main.c, checked against the instruction the tool emitted for them.
+// of the session's own main.c, checked against the instruction the tool emitted for them. Only instructions map:
+// labels, directives, function headers and marker lines are null.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -49,6 +50,25 @@ describe('mapAsmLines (-S -g)', () => {
     expect(nine.some(l => l.includes('$5,'))).toBe(false);
   });
 
+  it('leaves labels and directives unmapped, so a function’s } cannot claim the next function', () => {
+    for (const needle of ['.LC0:', '.string', '.globl\tmain', '.section\t.rodata', '.cfi_endproc', '.size\tmain']) {
+      expect(lineAt(asmGcc, at(gccAsmText, needle)), needle).toBeNull();
+    }
+    expect(lineAt(asmGcc, at(gccAsmText, 'main:'))).toBeNull();
+    const five = linesFor(asmGcc, 5).map(n => textAt(gccAsmText, n));
+    expect(five.some(l => l.includes('.LC0:'))).toBe(false);
+    expect(five.some(l => l.includes('.string'))).toBe(false);
+    expect(five.some(l => l.includes('.globl'))).toBe(false);
+    expect(five.some(l => l === 'main:')).toBe(false);
+    expect(five.some(l => /\b(popq|ret)\b/.test(l))).toBe(true);
+    // clang: the next function's label and the format string are not line 4/11 instructions either.
+    expect(lineAt(asmClang, at(clangAsmText, 'main:'))).toBeNull();
+    expect(lineAt(asmClang, at(clangAsmText, '.asciz'))).toBeNull();
+    const eleven = linesFor(asmClang, 11).map(n => textAt(clangAsmText, n));
+    expect(eleven.some(l => l.includes('.asciz'))).toBe(false);
+    expect(eleven.some(l => l.includes('xorl'))).toBe(true);
+  });
+
   it('leaves code-free source lines (the #include) without instructions', () => {
     expect(linesFor(asmGcc, 1)).toEqual([]);
     expect(linesFor(asmGcc, 1)).toEqual(linesFor(asmClang, 1));
@@ -64,12 +84,28 @@ describe('mapObjdumpLines (objdump -d -l)', () => {
   it('maps gcc instructions after a file:line marker', () => {
     expect(lineAt(objGcc, at(gccObjdumpText, '$0x5,'))).toBe(8);
     expect(lineAt(objGcc, at(gccObjdumpText, '\tcall'))).toBe(9);
-    expect(lineAt(objGcc, at(gccObjdumpText, '<dir>/main.c:3'))).toBe(3);
   });
 
   it('maps clang instructions after a file:line marker', () => {
     expect(lineAt(objClang, at(clangObjdumpText, '$0x5,'))).toBe(8);
     expect(lineAt(objClang, at(clangObjdumpText, '\tcall'))).toBe(9);
+  });
+
+  it('leaves marker lines, function headers and main(): unmapped', () => {
+    expect(lineAt(objGcc, at(gccObjdumpText, '<dir>/main.c:3'))).toBeNull();
+    expect(lineAt(objGcc, at(gccObjdumpText, '<main>:'))).toBeNull();
+    expect(lineAt(objGcc, at(gccObjdumpText, 'main():'))).toBeNull();
+    expect(lineAt(objClang, at(clangObjdumpText, '<main>:'))).toBeNull();
+    const five = linesFor(objGcc, 5).map(n => textAt(gccObjdumpText, n));
+    expect(five.some(l => l.includes('<main>:'))).toBe(false);
+    expect(five.some(l => l.includes('main():'))).toBe(false);
+    expect(five.some(l => /\b(pop|ret)\b/.test(l))).toBe(true);
+  });
+
+  it('accepts a discriminator suffix on a source marker', () => {
+    const map = mapObjdumpLines('main.c:9 (discriminator 1)\n  29:\te8 00 00 00 00\tcall foo\n');
+    expect(map[0]).toBeNull();
+    expect(map[1]).toBe(9);
   });
 
   it('returns the instructions of a source line, and null before the first marker', () => {

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { SessionsFile, SessionResult } from '../content-model/types';
-import { nativeTabs, preferredSessionPlatform } from './native-panes';
+import { nativeTabs, preferredSessionPlatform, viewCommand } from './native-panes';
 
 const m97 = JSON.parse(readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/generated/sessions/m97.json'), 'utf8')) as SessionsFile;
 
@@ -31,6 +31,18 @@ describe('nativeTabs', () => {
     expect(nm.tabs).toEqual([]);
     expect(nm.missingView).toEqual(['linux-gcc']);
     expect(nm.pending).toEqual([]);
+  });
+});
+
+describe('viewCommand', () => {
+  it('shows the -S compile for the asm view, not the cleanup step that printed it', () => {
+    const session = m97.sessions.pipeline;
+    const run = session.runs['linux-gcc']!;
+    expect(run[2].cmd).toContain('sed'); // the asm step itself is the cleanup
+    expect(viewCommand(session, 'linux-gcc', 'asm')).toBe(run[1].cmd);
+    expect(viewCommand(session, 'linux-gcc', 'asm')).toContain('-S main.c');
+    expect(viewCommand(session, 'linux-gcc', 'nm')).toBe(run[3].cmd);
+    expect(viewCommand(session, 'linux-gcc', 'objdump')).toBe(run[4].cmd);
   });
 });
 

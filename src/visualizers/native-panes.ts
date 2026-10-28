@@ -44,6 +44,22 @@ export function nativeTabs(session: SessionResult, view: NativeView): NativeTabs
   return { tabs, pending, missingView };
 }
 
+/**
+ * The command to show above a native view. The `asm` step only prints the assembly (`sed '/…/,$d' main.s`), so show
+ * the compile that wrote main.s instead; nm and objdump show their own stored command. Display only.
+ */
+export function viewCommand(session: SessionResult, platform: SessionPlatform, view: NativeView): string | undefined {
+  const run = session.runs[platform];
+  if (!run) return undefined;
+  let i = -1;
+  for (let j = run.length - 1; j >= 0; j--) if (run[j].as === view) { i = j; break; }
+  if (i < 0) return undefined;
+  if (view === 'asm') {
+    for (let j = i - 1; j >= 0; j--) if (/(^|\s)-S(\s|$)/.test(run[j].cmd)) return run[j].cmd;
+  }
+  return run[i].cmd;
+}
+
 /** The stored session platform the "my machine" setting refers to, when the course stores one. */
 export function preferredSessionPlatform(platform: Platform | undefined): SessionPlatform | null {
   switch (platform) {

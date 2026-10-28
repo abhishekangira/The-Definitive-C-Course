@@ -8,7 +8,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SessionsFile } from '../content-model/types';
+import type { SessionsFile, SessionResult } from '../content-model/types';
+import { update } from '../progress/store';
 
 const { stageMock } = vi.hoisted(() => ({ stageMock: vi.fn() }));
 vi.mock('../runtime/CRuntime', () => ({
@@ -17,7 +18,8 @@ vi.mock('../runtime/CRuntime', () => ({
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const m97 = JSON.parse(readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/generated/sessions/m97.json'), 'utf8')) as SessionsFile;
-vi.mock('../lesson/LessonContext', () => ({ useSessions: () => m97 }));
+let sessionsFile: SessionsFile = m97;
+vi.mock('../lesson/LessonContext', () => ({ useSessions: () => sessionsFile }));
 const { PipelineExplorer } = await import('./PipelineExplorer');
 
 const SOURCE = m97.sessions.pipeline.sources['main.c'];
@@ -27,6 +29,8 @@ let host: HTMLDivElement;
 let root: Root;
 beforeEach(() => {
   host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host);
+  sessionsFile = m97;
+  act(() => update(p => { delete p.settings.platform; }));
   stageMock.mockReset();
   stageMock.mockResolvedValue({ ok: true, text: 'expanded by the preprocessor', diagnostics: [], raw: '', ms: 1 });
 });
@@ -157,5 +161,111 @@ describe('<PipelineExplorer session> native panes', () => {
   it('names a session it does not have instead of rendering nothing', () => {
     render({ code: SOURCE, session: 'no-such-session' });
     expect(host.querySelector('[role="alert"]')!.textContent).toMatch(/session no-such-session hasn't been generated/);
+  });
+
+  it('shows the compile command above the assembly, not the cleanup step', () => {
+    render({ code: SOURCE, session: 'pipeline' });
+    const pane = host.querySelector('[data-native="pipeline"]')!;
+    expect(pane.textContent).toContain('-S main.c');
+    expect(pane.textContent).not.toContain('sed');
+  });
+
+  it('shows stderr once when stdout is empty, with the exit status', () => {
+    const stderrOnly = {
+      id: 'stderr-only', dir: 'sessions/stderr-only', hash: '0', platforms: ['linux-gcc'],
+      sources: { 'main.c': SOURCE },
+      runs: { 'linux-gcc': [{ cmd: 'cc x.c', as: 'asm', stdout: '', stderr: 'warning: only stderr here\n', exit: 1 }] },
+    } satisfies SessionResult;
+    sessionsFile = { ...m97, sessions: { ...m97.sessions, 'stderr-only': stderrOnly } };
+    render({ code: SOURCE, session: 'stderr-only' });
+    expect((host.textContent!.match(/warning: only stderr here/g) ?? []).length).toBe(1);
+    expect(host.textContent).toContain('Exit status 1.');
+  });
+
+  it('gives both native tablists the tab pattern (one tab stop, arrow keys move selection and focus)', async () => {
+    render({ code: SOURCE, session: 'pipeline' });
+    const views = [...tablist('Native view').querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    expect(views.map(t => t.tabIndex)).toEqual([0, -1, -1]);
+    views[0].focus();
+    await key('ArrowRight');
+    expect(document.activeElement).toBe(views[1]);
+    expect(views[1].getAttribute('aria-selected')).toBe('true');
+    expect(host.querySelector(`[role="tabpanel"][aria-labelledby="${views[1].id}"]`)).not.toBeNull();
+    const platforms = [...tablist('Platform for this stored run').querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    expect(platforms.map(t => t.tabIndex)).toEqual([0, -1]);
+    platforms[0].focus();
+    await key('ArrowRight');
+    expect(document.activeElement).toBe(platforms[1]);
+    expect(platforms[1].getAttribute('aria-selected')).toBe('true');
+    expect(host.querySelector(`[role="tabpanel"][aria-labelledby="${platforms[1].id}"]`)).not.toBeNull();
+  });
+
+  it('uses one tab stop per listing and arrows + Enter to select a line', async () => {
+    render({ code: SOURCE, session: 'pipeline' });
+    const output = host.querySelector<HTMLElement>('[aria-label="Assembly (-S -g) for Linux/WSL · gcc 13"]')!;
+    const source = host.querySelector<HTMLElement>('[aria-label="Source lines"]')!;
+    expect(output.tabIndex).toBe(0);
+    expect(source.tabIndex).toBe(0);
+    expect(host.querySelectorAll('button[data-line][tabindex="0"]').length).toBe(0);
+    output.focus();
+    await key('ArrowDown');
+    const first = document.activeElement as HTMLButtonElement;
+    expect(first.tagName).toBe('BUTTON');
+    expect(first.getAttribute('aria-label')).toMatch(/^Text line \d+ \(source line \d+\):/);
+    await key('ArrowDown');
+    const second = document.activeElement as HTMLButtonElement;
+    expect(second).not.toBe(first);
+    const line = Number(/source line (\d+)/.exec(second.getAttribute('aria-label')!)![1]);
+    await act(async () => { second.click(); });
+    expect(host.querySelector(`button[aria-label^="Source line ${line}:"]`)!.getAttribute('aria-pressed')).toBe('true');
+    source.focus();
+    await key('ArrowDown');
+    expect((document.activeElement as HTMLElement).getAttribute('aria-label')).toMatch(/^Source line 1:/);
+  });
+
+  it('announces the highlighted count and scrolls the first instruction inside the listing', async () => {
+    render({ code: SOURCE, session: 'pipeline' });
+    const output = host.querySelector<HTMLElement>('[aria-label="Assembly (-S -g) for Linux/WSL · gcc 13"]')!;
+    const firstMapped = [...output.querySelectorAll<HTMLButtonElement>('button[data-line]')].find(b => b.getAttribute('aria-label')!.includes('(source line 8)'))!;
+    output.getBoundingClientRect = () => ({ top: 100, bottom: 300 } as DOMRect);
+    firstMapped.getBoundingClientRect = () => ({ top: 320, bottom: 340 } as DOMRect);
+    await click(host.querySelector('button[aria-label^="Source line 8:"]')!);
+    const pressed = host.querySelectorAll('button[aria-label^="Text line"][aria-pressed="true"]').length;
+    expect(host.querySelector('[data-announce]')!.textContent).toBe(`Line 8: ${pressed} assembly line${pressed === 1 ? '' : 's'} highlighted.`);
+    expect(pressed).toBeGreaterThan(0);
+    expect(output.scrollTop).toBe(44); // 340 - 300 + 4
+    expect(window.scrollY).toBe(0);
+  });
+
+  it('puts the missing-platform note before the panes', () => {
+    render({ code: SOURCE, session: 'pipeline' });
+    const pending = host.querySelector('[data-pending]')!;
+    const listing = host.querySelector('[aria-label="Assembly (-S -g) for Linux/WSL · gcc 13"]')!;
+    expect(pending.compareDocumentPosition(listing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows the whole stored nm output, from the fixture’s own lines', async () => {
+    render({ code: SOURCE, session: 'pipeline' });
+    await click(tabs().find(t => t.textContent === 'nm')!);
+    const pane = host.querySelector('[aria-label="nm for Linux/WSL · gcc 13"]')!;
+    const stored = m97.sessions.pipeline.runs['linux-gcc']![3].stdout.trimEnd().split('\n');
+    expect(pane.querySelectorAll('li')).toHaveLength(stored.length);
+    for (const line of stored) expect(pane.textContent).toContain(line);
+  });
+
+  it('picks the stored pane that matches the my-machine setting', () => {
+    const both = {
+      id: 'both', dir: 'sessions/both', hash: '0', platforms: ['linux-gcc', 'macos'],
+      sources: { 'main.c': SOURCE },
+      runs: { 'linux-gcc': m97.sessions.pipeline.runs['linux-gcc'], macos: m97.sessions.pipeline.runs['linux-gcc'] },
+    } satisfies SessionResult;
+    sessionsFile = { ...m97, sessions: { ...m97.sessions, both } };
+    act(() => update(p => { p.settings.platform = 'mac-arm'; }));
+    render({ code: SOURCE, session: 'both' });
+    const selected = () => [...tablist('Platform for this stored run').querySelectorAll('[role="tab"]')].find(t => t.getAttribute('aria-selected') === 'true')!.textContent;
+    expect(selected()).toBe('macOS · Apple clang');
+    expect(host.querySelector('[aria-label="Assembly (-S -g) for macOS · Apple clang"]')).not.toBeNull();
+    act(() => update(p => { p.settings.platform = 'linux-x86'; }));
+    expect(selected()).toBe('Linux/WSL · gcc 13');
   });
 });
