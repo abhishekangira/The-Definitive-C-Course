@@ -7,7 +7,7 @@
 import { pathToFileURL } from 'node:url';
 
 const DOC_PATHS = [
-  /^(README|PLAN)\.md$/,
+  /^(README|PLAN|CHANGELOG)\.md$/,
   /^(?!content\/modules\/)(?:[^/]+\/)*AGENTS\.md$/,
   /^\.agents\/skills\/[^/]+\/SKILL\.md$/,
   /^\.claude\/skills\/[^/]+$/,
