@@ -78,8 +78,9 @@ export async function compileC(runClang: RunClang, support: SupportFiles, input:
 export interface StageOutput { ok: boolean; text: string; diagnostics: Diagnostic[]; raw: string; ms: number }
 
 /**
- * clang's link step runs wasm-ld on a temporary object whose name changes every run (`/tmp/main-62bf3f.o`), so the
- * learner sees `<tmpN>` instead, numbered by first use, like the native-session normaliser (docs/adr/0005).
+ * clang's link step runs wasm-ld on a temporary object under /tmp (for example `/tmp/main-62bf3f.o`). Its name is
+ * toolchain-generated and not part of the lesson, so the learner sees `<tmpN>` instead, numbered by first use, like
+ * the native-session normaliser (docs/adr/0005).
  */
 export function normaliseLinkOutput(text: string): string {
   const ids = new Map<string, number>();
@@ -91,8 +92,8 @@ export function normaliseLinkOutput(text: string): string {
 }
 
 /** clang argv for `-c`: one source to the relocatable object the symbol and disassembly views read. */
-export function objectArgs(source: string, output = 'main.o'): string[] {
-  return ['clang', ...COMPILE_FLAGS, '-c', source, '-o', output];
+export function objectArgs(source: string, output = 'main.o', opt: '-O0' | '-O1' | '-O2' = '-O0'): string[] {
+  return ['clang', ...COMPILE_FLAGS.map(f => (f === '-O0' ? opt : f)), '-c', source, '-o', output];
 }
 
 /** The llvm tool and flags for each object view. */
@@ -132,7 +133,7 @@ export async function compileStage(runClang: RunClang, runLLVM: RunLLVM, support
 
   if (stage !== 'link') {
     try {
-      const obj = await runClang(objectArgs(source), tree, { stdout: sink, stderr: sink, decodeASCII: false });
+      const obj = await runClang(objectArgs(source, 'main.o', opt), tree, { stdout: sink, stderr: sink, decodeASCII: false });
       raw += dec.decode();
       const tool = new TextDecoder();
       let text = '';
@@ -161,13 +162,16 @@ export async function compileStage(runClang: RunClang, runLLVM: RunLLVM, support
     raw += dec.decode();
     const sizeDec = new TextDecoder();
     let text = '';
+    let sizeFailed = false;
     const sizeSink = (b: Uint8Array | null) => { if (b) text += sizeDec.decode(b, { stream: true }); };
     try {
       await runLLVM(['size', 'main.wasm'], out, { stdout: sizeSink, stderr: sizeSink, decodeASCII: false });
     } catch {
-      // size only describes the artifact; the link itself succeeded.
+      // size only describes the artifact; the link itself succeeded. Say so rather than showing an empty tab.
+      sizeFailed = true;
     }
     text += sizeDec.decode();
+    if (sizeFailed && !text.trim()) text = 'The link succeeded, but llvm-size could not read main.wasm.\n';
     return done(true, text);
   } catch (err) {
     if (typeof (err as { code?: unknown })?.code !== 'number') throw err;

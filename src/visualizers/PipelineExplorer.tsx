@@ -1,7 +1,7 @@
 // V7 Pipeline Explorer: the same source at each stage of the build, produced live by the in-browser clang. Source,
 // preprocessor (-E) and assembly (-S) are the default; an MDX `stages="…"` attribute adds the relocatable object
 // (objdump -t and objdump -d -l), its nm symbols and the link step. The stored native panes are a later layer.
-import { useState, type ReactNode } from 'react';
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { getRuntime, type StageResult } from '../runtime/CRuntime';
 import type { Stage } from '../runtime/flags';
 import { CodeListing } from '../components/CodeListing';
@@ -14,13 +14,13 @@ import styles from './PipelineExplorer.module.css';
 type Tab = 'source' | Stage;
 
 const TABS: Record<Tab, { label: string; blurb: string }> = {
-  source: { label: '1. Your source', blurb: 'What you wrote.' },
-  E: { label: '2. After the preprocessor', blurb: 'Every #include is pasted in and every macro expanded. This is what the compiler proper actually reads.' },
-  S: { label: '3. Assembly (WebAssembly)', blurb: 'The compiler’s output for your browser’s “CPU”. A real machine gets x86-64 or arm64 instructions instead (Module 10).' },
-  'objdump-t': { label: '4. Object file: symbols', blurb: 'The compiler’s -c output is a relocatable object. objdump -t lists its symbol table: the names the linker can use, and the ones it must find elsewhere.' },
-  'objdump-d': { label: '5. Object file: instructions', blurb: 'objdump -d -l disassembles the object. Each instruction is labelled with the source line it came from.' },
-  nm: { label: '6. nm: defined and undefined', blurb: 'nm is the short version: one line per symbol. T and D are defined here; U is undefined — the linker must find it in another object or library.' },
-  link: { label: '7. Link', blurb: 'wasm-ld joins the object with the C library into a runnable main.wasm. A missing symbol fails here, not in the compiler.' },
+  source: { label: 'Your source', blurb: 'What you wrote.' },
+  E: { label: 'After the preprocessor', blurb: 'Every #include is pasted in and every macro expanded. This is what the compiler proper actually reads.' },
+  S: { label: 'Assembly (WebAssembly)', blurb: 'The compiler’s output for your browser’s “CPU”. A real machine gets x86-64 or arm64 instructions instead (Module 10).' },
+  'objdump-t': { label: 'Object file: symbols', blurb: 'The compiler’s -c output is a relocatable object. objdump -t lists its symbol table: the names the linker can use, and the ones it must find elsewhere.' },
+  'objdump-d': { label: 'Object file: instructions', blurb: 'objdump -d -l disassembles the object. Each instruction is labelled with the source line it came from.' },
+  nm: { label: 'nm: defined and undefined', blurb: 'nm is the short version: one line per symbol. T and D are defined here; U is undefined. The linker usually resolves a U from another object or library, but some — like __stack_pointer — are made by wasm-ld itself.' },
+  link: { label: 'Link', blurb: 'wasm-ld joins the object with the C library into a runnable main.wasm. A missing symbol fails here, not in the compiler.' },
 };
 
 /** The default tabs: exactly the three lesson 1.1 shows. */
@@ -36,14 +36,20 @@ export function parseStages(stages?: string): Tab[] {
   return out;
 }
 
+/** A tab's label carries its position among the tabs on screen, so `stages="E,nm"` reads 1, 2, 3. */
+const tabLabel = (tabs: Tab[], t: Tab): string => `${tabs.indexOf(t) + 1}. ${TABS[t].label}`;
+
 export function PipelineExplorer({ children, code: codeProp, stages }: { children?: ReactNode; code?: string; stages?: string }) {
   const nested = nestedSample(children);
   const code = nested?.code ?? codeProp ?? '';
   const tabs = parseStages(stages);
+  const name = useId();
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const [selected, setSelected] = useState<Tab>('source');
   const [out, setOut] = useState<Partial<Record<Stage, StageResult>>>({});
   const [busy, setBusy] = useState(false);
   const tab = tabs.includes(selected) ? selected : tabs[0];
+  const sel = tabs.indexOf(tab);
 
   const open = async (t: Tab) => {
     setSelected(t);
@@ -54,26 +60,44 @@ export function PipelineExplorer({ children, code: codeProp, stages }: { childre
     setBusy(false);
   };
 
+  // The tab pattern: arrow keys move selection and focus, Home and End jump; Tab leaves the tab list.
+  const onKeyDown = (e: KeyboardEvent) => {
+    const n = tabs.length;
+    const next = ({ ArrowRight: (sel + 1) % n, ArrowLeft: (sel - 1 + n) % n, Home: 0, End: n - 1 } as Record<string, number>)[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    tabRefs.current[next]?.focus();
+    void open(tabs[next]);
+  };
+
   const current = tab === 'source' ? null : out[tab];
   const text = tab === 'source' ? code : current?.text ?? '';
   const lineCount = text ? text.replace(/\n$/, '').split('\n').length : 0;
+  const label = tabLabel(tabs, tab);
+  // A failed stage's message is already in the diagnostics box: do not print the same text again below it.
+  const duplicate = Boolean(current && !current.ok && text.trim() && text === current.raw);
   return (
     <div className={styles.box} aria-label="Pipeline explorer">
       <div className={ix.kicker}>Pipeline explorer · live in your browser</div>
-      <div role="tablist" className={ix.tabs} aria-label="Compilation stage">
-        {tabs.map(t => (
-          <button key={t} type="button" role="tab" aria-selected={tab === t} className={ix.tab} onClick={() => void open(t)}>{TABS[t].label}</button>
+      <div role="tablist" className={`${ix.tabs} ${styles.tabs}`} aria-label="Compilation stage" onKeyDown={onKeyDown}>
+        {tabs.map((t, i) => (
+          <button
+            key={t} ref={el => { tabRefs.current[i] = el; }} type="button" role="tab" id={`${name}-tab-${i}`} aria-controls={`${name}-panel`}
+            aria-selected={tab === t} tabIndex={tab === t ? 0 : -1} className={ix.tab} onClick={() => void open(t)}
+          >{tabLabel(tabs, t)}</button>
         ))}
       </div>
-      <p className={ix.muted}>{TABS[tab].blurb} {lineCount > 0 && <strong>{lineCount} lines.</strong>}</p>
-      {(busy || (current && !current.ok)) && <ToolchainProgress />}
-      {busy && <p className={ix.muted}>Running clang…</p>}
-      {current && !current.ok && <DiagnosticsList diagnostics={current.diagnostics} raw={current.raw} title={tab === 'link' ? 'Linker messages' : undefined} />}
-      {!busy && text && (
-        <div className={styles.scroll}>
-          <CodeListing code={lineCount > 1500 ? text.split('\n').slice(-1500).join('\n') : text} label={TABS[tab].label} />
-        </div>
-      )}
+      <div role="tabpanel" id={`${name}-panel`} aria-labelledby={`${name}-tab-${sel}`}>
+        <p className={ix.muted}>{TABS[tab].blurb} {lineCount > 0 && <strong>{lineCount} {lineCount === 1 ? 'line' : 'lines'}.</strong>}</p>
+        {(busy || (current && !current.ok)) && <ToolchainProgress />}
+        {busy && <p className={ix.muted}>Running clang…</p>}
+        {current && !current.ok && <DiagnosticsList diagnostics={current.diagnostics} raw={current.raw} title={tab === 'link' ? 'Linker messages' : undefined} />}
+        {!busy && text && !duplicate && (
+          <div className={styles.scroll} role="region" aria-label={`${label} output`} tabIndex={0}>
+            <CodeListing code={lineCount > 1500 ? text.split('\n').slice(-1500).join('\n') : text} label={label} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
