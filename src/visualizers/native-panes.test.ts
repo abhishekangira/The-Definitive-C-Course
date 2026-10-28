@@ -56,3 +56,13 @@ describe('preferredSessionPlatform', () => {
     expect(preferredSessionPlatform(undefined)).toBeNull();
   });
 });
+
+describe('focus visibility', () => {
+  it('gives a keyboard-focused native line a visible focus ring (base.css hides tabindex=-1 focus)', () => {
+    const css = readFileSync(path.join(process.cwd(), 'src/visualizers/PipelineExplorer.module.css'), 'utf8');
+    const rule = /\.listing\s+\.lineBtn:focus-visible\s*\{([^}]*)\}/.exec(css);
+    expect(rule).not.toBeNull();
+    expect(rule![1]).toContain('var(--focus)');
+    expect(rule![1]).toMatch(/outline\s*:/);
+  });
+});
