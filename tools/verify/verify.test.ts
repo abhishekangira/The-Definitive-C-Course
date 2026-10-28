@@ -125,11 +125,6 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
       const out = path.join(ROOT, 'test-results/session-fixtures/m97.json');
       mkdirSync(path.dirname(out), { recursive: true });
       writeFileSync(out, fresh);
-      // TEMP fixture bootstrap (removed before merge): print CI's fresh file so the author can commit CI's copy.
-      const b64 = Buffer.from(fresh, 'utf8').toString('base64');
-      console.log('M97_FRESH_BEGIN');
-      for (let i = 0; i < b64.length; i += 120) console.log(`M97:${b64.slice(i, i + 120)}`);
-      console.log('M97_FRESH_END');
       expect.fail(`${path.relative(ROOT, committed)} is not what tools/verify writes now. The fresh file is ${path.relative(ROOT, out)}: commit it in its place, from a CI run (root AGENTS.md, Reference environment)`);
     }
     const step = (id: string, platform: 'linux-gcc' | 'linux-clang', i: number) => file.sessions[id].runs[platform]![i];

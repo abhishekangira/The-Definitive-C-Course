@@ -23,7 +23,7 @@ function SourceListing({ code, selected, onPick, label }: { code: string; select
   const lines = code.replace(/\n$/, '').split('\n');
   const digits = digitsOf(lines.length);
   return (
-    <ol className={styles.listing} aria-label={label} style={{ '--digits': digits } as CSSProperties}>
+    <ol className={styles.listing} aria-label={label} tabIndex={0} style={{ '--digits': digits } as CSSProperties}>
       {lines.map((line, i) => {
         const n = i + 1;
         return (
@@ -43,7 +43,7 @@ function OutputListing({ text, map, selected, onPick, label }: { text: string; m
   const lines = text.replace(/\n$/, '').split('\n');
   const digits = digitsOf(lines.length);
   return (
-    <ol className={styles.listing} aria-label={label} style={{ '--digits': digits } as CSSProperties}>
+    <ol className={styles.listing} aria-label={label} tabIndex={0} style={{ '--digits': digits } as CSSProperties}>
       {lines.map((line, i) => {
         const n = i + 1;
         const source = map ? lineAt(map, n) : null;
@@ -126,6 +126,8 @@ export function NativePanes({ session, code }: { session: string; code: string }
             <p className={styles.paneTitle}>{view === 'asm' ? 'Assembly' : view === 'nm' ? 'Symbols' : 'Disassembly'} <code>{tab.step.cmd}</code></p>
             {!sameSource && view !== 'nm' && <p className={styles.note}>The stored run is for a different version of this source, so line highlighting is off.</p>}
             <OutputListing text={text} map={map} selected={sourceLine} onPick={setSourceLine} label={`${viewLabel} for ${tab.label}`} />
+            {tab.step.stderr && <OutputListing text={tab.step.stderr} map={null} selected={null} onPick={setSourceLine} label={`stderr for ${tab.label}`} />}
+            {tab.step.exit !== 0 && <p className={styles.note}>Exit status {tab.step.exit}.</p>}
           </div>
         </div>
       )}
