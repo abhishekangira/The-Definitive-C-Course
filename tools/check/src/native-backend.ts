@@ -176,15 +176,24 @@ export function shGroup(cmd: string, args: string[], opts: { cwd?: string; input
 
 const seconds = (ms: number) => `${Math.round(ms / 100) / 10} s`;
 /**
- * Why a memory tool gave no result, or undefined when it did. The message says what was not checked, and is followed
- * by at most the last 5 lines of the tool's stderr.
+ * A line valgrind prints about itself (a broken install, a program it can't start), never about the program, whose
+ * reports start with `==PID==`. In valgrind mode the program's own stderr shares the stream, so a learner line that
+ * starts with `valgrind: ` also fails the check as "not checked": the safe direction (a false fail, never a false pass).
  */
-function toolFailure(tool: string, p: Proc, limitMs: number, unchecked: string, noSummary = false): string | undefined {
+const VALGRIND_OWN_ERROR = /^valgrind: /m;
+
+/**
+ * Why a memory tool gave no result, or undefined when it did. The message says what was not checked, and is followed
+ * by at most the last 5 lines of the tool's stderr. `ownError` (valgrind only) matches a line the tool prints about
+ * its own failure, which means it never ran the program.
+ */
+function toolFailure(tool: string, p: Proc, limitMs: number, unchecked: string, noSummary = false, ownError?: RegExp): string | undefined {
   const why = p.missing ? `${tool} was not found`
     : p.startError ? `${tool} could not be started (${p.startError})`
     : p.timedOut ? `${tool} did not finish within ${seconds(limitMs)}`
     : p.outputLimit ? `${tool} printed more than ${MAX_OUTPUT >> 20} MB and was stopped`
     : noSummary ? `${tool} ${p.signal ? `was killed by ${p.signal}` : `exited with status ${p.status}`} without its summary line`
+    : ownError?.test(p.stderr) ? `${tool} reported an error of its own (${p.signal ? `killed by ${p.signal}` : `exit status ${p.status}`})`
     : undefined;
   if (!why) return undefined;
   const tail = p.stderr.split('\n').map(l => l.trimEnd()).filter(Boolean).slice(-5);
@@ -343,7 +352,7 @@ export class NativeBackend implements ExecBackend<NativeArtifact> {
       const limit = this.opts.toolTimeoutMs ?? Math.max(o.timeoutMs * 4, 20_000);
       const r = await shGroup('valgrind', ['-q', `--error-exitcode=${VALGRIND_EXIT}`, '--leak-check=full', '--errors-for-leak-kinds=definite,indirect',
         '--show-leak-kinds=definite,indirect', a.exe, ...(o.args ?? [])], { cwd: this.dir, input: o.stdin, timeout: limit });
-      const memoryError = toolFailure('valgrind', r, limit, 'memory errors and leaks');
+      const memoryError = toolFailure('valgrind', r, limit, 'memory errors and leaks', false, VALGRIND_OWN_ERROR);
       return { ...base(r), memory: parseValgrindReport(r.stderr, learner), memoryTools: ['valgrind'], leaksChecked: true, ...(memoryError ? { memoryError } : {}) };
     }
 
@@ -377,7 +386,7 @@ export class NativeBackend implements ExecBackend<NativeArtifact> {
           const v = await shGroup('valgrind', ['-q', '--leak-check=full', '--errors-for-leak-kinds=definite,indirect', '--show-leak-kinds=definite,indirect',
             a.plainExe, ...(o.args ?? [])], { cwd: this.dir, input: o.stdin, timeout: limit });
           memory.push(...parseValgrindReport(v.stderr, learner).filter(i => i.kind === 'leak'));
-          memoryError ??= toolFailure('valgrind', v, limit, 'leaks');
+          memoryError ??= toolFailure('valgrind', v, limit, 'leaks', false, VALGRIND_OWN_ERROR);
         }
       }
       return { ...base(r), memory, memoryTools: tools, leaksChecked, ...(memoryError ? { memoryError } : {}) };

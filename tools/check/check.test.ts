@@ -340,6 +340,50 @@ describe('a memory run that does not finish fails the memory check (issue #101)'
   }, 60_000);
 });
 
+describe('a valgrind that reports its own error fails the memory check (issue #108)', () => {
+  const MEMORY = 'no memory errors or leaks';
+  // VALGRIND_LIB pointing nowhere stands in for a broken valgrind install: valgrind prints
+  // "valgrind: failed to start tool 'memcheck' ..." and exits 1 without running the program.
+  const brokenLib = () => path.join(tmp, 'no-such-valgrind-lib');
+  // A suppression for every leak makes the LeakSanitizer probe find nothing, so caps.lsan is false and the
+  // valgrind leak pass runs next to ASan (as on a Linux where LeakSanitizer doesn't work).
+  const noLsan = () => {
+    const file = path.join(tmp, 'lsan-suppress-all.txt');
+    writeFileSync(file, 'leak:*\n');
+    return `suppressions=${file}`;
+  };
+
+  it.runIf(has('valgrind'))('valgrind mode, broken install', () => {
+    const r = checkJson(project('solution', path.join(VARIANTS, 'leaky.c')), [], { CHECK_NO_SANITIZERS: '1', VALGRIND_LIB: brokenLib() }, 45_000);
+    expect(byName(r, MEMORY)).toMatchObject({
+      status: 'fail', message: 'valgrind reported an error of its own (exit status 1), so memory errors and leaks were not checked',
+    });
+    expect(byName(r, MEMORY).details?.[0]).toMatch(/^valgrind: failed to start tool 'memcheck'/);
+    expect(r.completionToken).toBeUndefined();
+    expect(r.status).not.toBe(0);
+  }, 60_000);
+
+  it.runIf(has('valgrind'))('valgrind leak pass next to ASan, broken install', () => {
+    const r = checkJson(project('solution', path.join(VARIANTS, 'leaky.c')), [], { LSAN_OPTIONS: noLsan(), VALGRIND_LIB: brokenLib() }, 45_000);
+    expect(byName(r, MEMORY)).toMatchObject({
+      status: 'fail', message: 'valgrind reported an error of its own (exit status 1), so leaks were not checked',
+    });
+    expect(byName(r, MEMORY).details?.[0]).toMatch(/^valgrind: failed to start tool 'memcheck'/);
+    expect(r.completionToken).toBeUndefined();
+    expect(r.status).not.toBe(0);
+  }, 60_000);
+
+  it.runIf(has('valgrind'))('control: the valgrind leak pass next to ASan, with a working valgrind', () => {
+    const env = { LSAN_OPTIONS: noLsan() };
+    const clean = checkJson(project('solution'), [], env, 45_000);
+    expect(byName(clean, MEMORY)).toMatchObject({ status: 'pass', note: 'AddressSanitizer, UBSan, valgrind (leaks)' });
+    expect(clean.completionToken).toBeDefined();
+    const leaky = checkJson(project('solution', path.join(VARIANTS, 'leaky.c')), [], env, 45_000);
+    expect(byName(leaky, MEMORY)).toMatchObject({ status: 'fail', message: 'memory leak: 2 bytes allocated at caesar.c:42 were never freed' });
+    expect(leaky.completionToken).toBeUndefined();
+  }, 120_000);
+});
+
 describe('make checks', () => {
   it('runs make targets and checks that a header change rebuilds the program', () => {
     const dir = path.join(tmp, 'make-proj');
