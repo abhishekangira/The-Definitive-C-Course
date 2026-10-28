@@ -120,6 +120,7 @@ CI (`.github/workflows/ci.yml`) runs all of these and deploys `dist` to GitHub P
 - **Steps for a recurring task:** a skill, `.agents/skills/<name>/SKILL.md` (frontmatter `name` and `description`), plus the symlink `.claude/skills/<name>` → `../../.agents/skills/<name>`.
 - **A decision, with its options and evidence:** a new record in `docs/adr/`. Lead each note with the rule; keep run IDs and measurements in the record or the PR.
 - **A fixed bug that a test now covers:** delete its bullet.
+- **Learner-facing release notes:** `CHANGELOG.md` (Keep a Changelog, dated by the day the change went live, UTC). A PR that changes something a learner can notice (scoring, progress, a control, a lesson they have done) adds an entry under `## [Unreleased]`, in the learner's words: what changed, what they lose, if anything, and what to do about it. The lead session moves it under that date after the merge.
 - **Detailed status and plans:** issues and PRs. The **Status** section above keeps only the current stage.
 - **Never add a `CLAUDE.md` or `CLAUDE.local.md`** in the repo, and don't keep one in a folder above your checkout (for example `~/CLAUDE.md`): either stops Claude Code from reading every `AGENTS.md` (`docs/adr/0001-agent-docs-layout.md`). The test in `tools/docs/` guards only the repo. Personal notes go in `~/.claude/CLAUDE.md`, which is safe.
 

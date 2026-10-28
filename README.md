@@ -4,7 +4,7 @@
 
 **Learn C17 and how computers really work, by predicting, breaking and fixing real programs, with a compiler that runs in your browser.**
 
-[**Start learning**](https://abhishekangira.github.io/The-Definitive-C-Course/) · [Course outline](PLAN.md) · [Contribute](AGENTS.md) · [MIT licence](LICENSE)
+[**Start learning**](https://abhishekangira.github.io/The-Definitive-C-Course/) · [Course outline](PLAN.md) · [What's new](CHANGELOG.md) · [Contribute](AGENTS.md) · [MIT licence](LICENSE)
 
 </div>
 
