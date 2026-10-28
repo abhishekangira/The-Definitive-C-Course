@@ -62,6 +62,21 @@ describe('objectArgs', () => {
   });
 });
 
+describe('object views and opt', () => {
+  it('passes the optimisation level through to the -c object compile at the call site', async () => {
+    const seen: string[][] = [];
+    const runClang: RunClang = async args => {
+      if (args?.includes('-c')) seen.push(args);
+      return { 'main.o': new Uint8Array([0]) };
+    };
+    const runLLVM: RunLLVM = async () => ({});
+    await compileStage(runClang, runLLVM, support, { 'main.c': SOURCE }, 'objdump-t', 'main.c', '-O2');
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain('-O2');
+    expect(seen[0]).not.toContain('-O0');
+  });
+});
+
 describe('the link stage when llvm-size fails', () => {
   it('still reports the successful link with a message instead of an empty tab', async () => {
     const runClang: RunClang = async () => ({ 'main.wasm': new Uint8Array([0, 97, 115, 109]) });
