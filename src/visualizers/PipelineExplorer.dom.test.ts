@@ -203,6 +203,15 @@ describe('<PipelineExplorer session> native panes', () => {
     expect(document.activeElement).toBe(platforms[1]);
     expect(platforms[1].getAttribute('aria-selected')).toBe('true');
     expect(host.querySelector(`[role="tabpanel"][aria-labelledby="${platforms[1].id}"]`)).not.toBeNull();
+    // Arrows are focus-relative: focus a non-selected view tab, then move from there.
+    views[0].focus();
+    await key('ArrowRight');
+    expect(document.activeElement).toBe(views[1]);
+    expect(views[1].getAttribute('aria-selected')).toBe('true');
+    platforms[0].focus();
+    await key('ArrowRight');
+    expect(document.activeElement).toBe(platforms[1]);
+    expect(platforms[1].getAttribute('aria-selected')).toBe('true');
   });
 
   it('uses one tab stop per listing and arrows + Enter to select a line', async () => {

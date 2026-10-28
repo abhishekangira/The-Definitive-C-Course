@@ -158,14 +158,17 @@ export function NativePanes({ session, code }: { session: string; code: string }
   const viewTabId = (i: number) => `${name}-view-tab-${i}`;
   const platformTabId = (i: number) => `${name}-platform-tab-${i}`;
   const onViewKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const next = navIndex(e.key, viewIndex, NATIVE_VIEWS.length);
+    // Arrows follow the focused tab, as the tab pattern expects (the selected one when focus is outside the list).
+    const focused = viewRefs.current.indexOf(document.activeElement as HTMLButtonElement);
+    const next = navIndex(e.key, focused >= 0 ? focused : viewIndex, NATIVE_VIEWS.length);
     if (next === null) return;
     e.preventDefault();
     viewRefs.current[next]?.focus();
     selectView(NATIVE_VIEWS[next].key);
   };
   const onPlatformKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const next = navIndex(e.key, platformIndex, tabs.length);
+    const focused = platformRefs.current.indexOf(document.activeElement as HTMLButtonElement);
+    const next = navIndex(e.key, focused >= 0 ? focused : platformIndex, tabs.length);
     if (next === null) return;
     e.preventDefault();
     platformRefs.current[next]?.focus();
