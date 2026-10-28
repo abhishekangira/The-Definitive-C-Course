@@ -31,6 +31,10 @@ node tools/anim/sync-shared.mjs     # copy _shared/vendor and _shared/fonts into
 npx vitest run tools/anim           # the pipeline's unit tests and the A1 facts test
 ```
 
+`render.mjs` takes ids (a prefix such as `a01` is enough) and `--force`, `--dry-run` and `--webm <dir>`, in any order. An
+unknown flag or id, a `--webm` without a directory or a second `--webm` exits 2 with a one-line error before anything
+renders.
+
 The CLI is run as `npx --yes hyperframes@0.8.162` (pinned in `tools/anim/lib.mjs`; it is a 157 MB dev tool and is
 deliberately **not** in `package.json`). It needs Node ≥22 and FFmpeg. Chromium comes from `/opt/pw-browsers` (do not run `playwright install`).
 Pixels can differ between Chrome versions, so each manifest entry records the browser it was rendered with and
