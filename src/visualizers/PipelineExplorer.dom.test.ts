@@ -79,8 +79,13 @@ describe('<PipelineExplorer> tabs', () => {
     expect(document.activeElement).toBe(tabs()[0]);
     await key('ArrowLeft'); // wraps to the last tab
     expect(document.activeElement).toBe(tabs()[3]);
+    // Arrows follow the focused tab, not the selected one (focus-relative, as the pattern expects).
+    tabs()[1].focus();
+    await key('ArrowRight');
+    expect(document.activeElement).toBe(tabs()[2]);
+    expect(tabs()[2].getAttribute('aria-selected')).toBe('true');
     const panel = host.querySelector('[role="tabpanel"]')!;
-    expect(panel.getAttribute('aria-labelledby')).toBe(tabs()[3].id);
+    expect(panel.getAttribute('aria-labelledby')).toBe(tabs()[2].id);
   });
 
   it('makes the output scroll box a named, focusable region', async () => {
