@@ -1,0 +1,68 @@
+// Which stored session steps V7's native panes offer, and which platform the "my machine" setting prefers.
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import type { SessionsFile, SessionResult } from '../content-model/types';
+import { nativeTabs, preferredSessionPlatform, viewCommand } from './native-panes';
+
+const m97 = JSON.parse(readFileSync(path.join(process.cwd(), 'tools/verify/fixtures/generated/sessions/m97.json'), 'utf8')) as SessionsFile;
+
+describe('nativeTabs', () => {
+  it('finds each view by its as: label, one tab per stored platform, and macOS as pending', () => {
+    const session = m97.sessions.pipeline;
+    const asm = nativeTabs(session, 'asm');
+    expect(asm.tabs.map(t => [t.platform, t.label])).toEqual([
+      ['linux-gcc', 'Linux/WSL · gcc 13'],
+      ['linux-clang', 'Linux/WSL · clang 22'],
+    ]);
+    expect(asm.tabs.map(t => t.step.as)).toEqual(['asm', 'asm']);
+    expect(asm.pending).toEqual(['macos']);
+    expect(asm.missingView).toEqual([]);
+    expect(nativeTabs(session, 'nm').tabs.map(t => t.step.as)).toEqual(['nm', 'nm']);
+    expect(nativeTabs(session, 'objdump').tabs.map(t => t.step.as)).toEqual(['objdump', 'objdump']);
+  });
+
+  it('says a stored run has no step for a view instead of showing another view', () => {
+    const session = {
+      id: 'x', dir: 'sessions/x', hash: '0', platforms: ['linux-gcc'], sources: {},
+      runs: { 'linux-gcc': [{ cmd: 'cc x.c', stdout: '', stderr: '', exit: 0 }] },
+    } satisfies SessionResult;
+    const nm = nativeTabs(session, 'nm');
+    expect(nm.tabs).toEqual([]);
+    expect(nm.missingView).toEqual(['linux-gcc']);
+    expect(nm.pending).toEqual([]);
+  });
+});
+
+describe('viewCommand', () => {
+  it('shows the -S compile for the asm view, not the cleanup step that printed it', () => {
+    const session = m97.sessions.pipeline;
+    const run = session.runs['linux-gcc']!;
+    expect(run[2].cmd).toContain('sed'); // the asm step itself is the cleanup
+    expect(viewCommand(session, 'linux-gcc', 'asm')).toBe(run[1].cmd);
+    expect(viewCommand(session, 'linux-gcc', 'asm')).toContain('-S main.c');
+    expect(viewCommand(session, 'linux-gcc', 'nm')).toBe(run[3].cmd);
+    expect(viewCommand(session, 'linux-gcc', 'objdump')).toBe(run[4].cmd);
+  });
+});
+
+describe('preferredSessionPlatform', () => {
+  it('maps the learner’s machine to a stored platform, and arm64 Linux to none', () => {
+    expect(preferredSessionPlatform('mac-arm')).toBe('macos');
+    expect(preferredSessionPlatform('mac-intel')).toBe('macos');
+    expect(preferredSessionPlatform('wsl')).toBe('linux-gcc');
+    expect(preferredSessionPlatform('linux-x86')).toBe('linux-gcc');
+    expect(preferredSessionPlatform('linux-arm')).toBeNull();
+    expect(preferredSessionPlatform(undefined)).toBeNull();
+  });
+});
+
+describe('focus visibility', () => {
+  it('gives a keyboard-focused native line a visible focus ring (base.css hides tabindex=-1 focus)', () => {
+    const css = readFileSync(path.join(process.cwd(), 'src/visualizers/PipelineExplorer.module.css'), 'utf8');
+    const rule = /\.listing\s+\.lineBtn:focus-visible\s*\{([^}]*)\}/.exec(css);
+    expect(rule).not.toBeNull();
+    expect(rule![1]).toContain('var(--focus)');
+    expect(rule![1]).toMatch(/outline\s*:/);
+  });
+});

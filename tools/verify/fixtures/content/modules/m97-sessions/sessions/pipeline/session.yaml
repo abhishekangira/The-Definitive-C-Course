@@ -1,0 +1,15 @@
+# The native side of V7 (issue #90): a real x86-64 compile, its -S -g listing with .loc line info, nm, and
+# objdump -d -l with file:line markers. -fno-ident keeps the compiler's package version out of the stored text
+# (the fixture is compared with CI's regeneration, so it must not depend on the distro's gcc build string).
+steps:
+  all:
+    - run: $CC $CFLAGS -fno-ident -c main.c -o main.o
+    - run: $CC $CFLAGS -fno-ident -S main.c -o main.s
+    # Stop at the first debug section: gcc emits the .debug_str/.debug_line_str strings in an order that changes
+    # between runs, and V7 only needs the instructions and their .loc line info.
+    - run: sed '/^\t\.section\t\.debug_/,$d' main.s
+      as: asm
+    - run: nm main.o
+      as: nm
+    - run: objdump -d -l main.o
+      as: objdump
