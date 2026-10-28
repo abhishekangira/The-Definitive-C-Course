@@ -1,6 +1,6 @@
 // Environment-neutral compile step: builds the virtual file tree, runs @yowasp/clang, parses diagnostics.
 // The compiler worker (browser) and tools/verify (Node) both call compileC().
-import { clangArgs, stageArgs, type BuildOptions, type Stage } from './flags';
+import { clangArgs, COMPILE_FLAGS, stageArgs, type BuildOptions, type Stage } from './flags';
 import type { Diagnostic, Severity } from '../content-model/types';
 
 export type RunClang = (
@@ -8,6 +8,9 @@ export type RunClang = (
   files?: Record<string, unknown>,
   opts?: Record<string, unknown>,
 ) => Promise<Record<string, unknown>>;
+
+/** nm, objdump and size: the same command shape, exported as runLLVM by the @yowasp bundle. */
+export type RunLLVM = RunClang;
 
 export interface SupportFiles {
   'course_rt.c': string;
@@ -74,22 +77,106 @@ export async function compileC(runClang: RunClang, support: SupportFiles, input:
 
 export interface StageOutput { ok: boolean; text: string; diagnostics: Diagnostic[]; raw: string; ms: number }
 
-/** Runs a single pipeline stage on one file: the preprocessed source (-E) or WebAssembly assembly (-S). */
-export async function compileStage(runClang: RunClang, support: SupportFiles, files: Record<string, string>, stage: Stage, source = 'main.c', opt?: '-O0' | '-O1' | '-O2'): Promise<StageOutput> {
+/**
+ * clang's link step runs wasm-ld on a temporary object under /tmp (for example `/tmp/main-62bf3f.o`). Its name is
+ * toolchain-generated and not part of the lesson, so the learner sees `<tmpN>` instead, numbered by first use, like
+ * the native-session normaliser (docs/adr/0005).
+ */
+export function normaliseLinkOutput(text: string): string {
+  const ids = new Map<string, number>();
+  return text.replace(/\/tmp\/[^\s:]+/g, path => {
+    let n = ids.get(path);
+    if (n === undefined) { n = ids.size + 1; ids.set(path, n); }
+    return `<tmp${n}>`;
+  });
+}
+
+/** clang argv for `-c`: one source to the relocatable object the symbol and disassembly views read. */
+export function objectArgs(source: string, output = 'main.o', opt: '-O0' | '-O1' | '-O2' = '-O0'): string[] {
+  return ['clang', ...COMPILE_FLAGS.map(f => (f === '-O0' ? opt : f)), '-c', source, '-o', output];
+}
+
+/** The llvm tool and flags for each object view. */
+const OBJECT_TOOL: Record<'objdump-t' | 'objdump-d' | 'nm', string[]> = {
+  'objdump-t': ['objdump', '-t'],
+  'objdump-d': ['objdump', '-d', '-l'],
+  nm: ['nm'],
+};
+
+/**
+ * Runs one pipeline view on one source. -E and -S are a single clang run; the object views compile once with -c and
+ * read main.o with llvm-objdump/llvm-nm; link compiles and links with clang (its wasm-ld step) and reports the
+ * linked file with llvm-size. Every text is the tool's real output.
+ */
+export async function compileStage(runClang: RunClang, runLLVM: RunLLVM, support: SupportFiles, files: Record<string, string>, stage: Stage, source = 'main.c', opt?: '-O0' | '-O1' | '-O2'): Promise<StageOutput> {
   const t0 = performance.now();
-  const { args, output } = stageArgs(stage, source, opt);
+  const tree: Record<string, string> = { ...support, ...files };
   let raw = '';
   const dec = new TextDecoder();
   const sink = (b: Uint8Array | null) => { if (b) raw += dec.decode(b, { stream: true }); };
+  const done = (ok: boolean, text: string, diagnostics = parseDiagnostics(raw)): StageOutput => ({ ok, text, diagnostics, raw, ms: performance.now() - t0 });
+
+  if (stage === 'E' || stage === 'S') {
+    const { args, output } = stageArgs(stage, source, opt);
+    try {
+      const out = await runClang(args, tree, { stdout: sink, stderr: sink, decodeASCII: false });
+      raw += dec.decode();
+      const bytes = out[output] as Uint8Array | string | undefined;
+      const text = typeof bytes === 'string' ? bytes : bytes ? new TextDecoder().decode(bytes) : '';
+      return done(true, text);
+    } catch (err) {
+      if (typeof (err as { code?: unknown })?.code !== 'number') throw err;
+      raw += dec.decode();
+      return done(false, '');
+    }
+  }
+
+  if (stage !== 'link') {
+    try {
+      const obj = await runClang(objectArgs(source, 'main.o', opt), tree, { stdout: sink, stderr: sink, decodeASCII: false });
+      raw += dec.decode();
+      const tool = new TextDecoder();
+      let text = '';
+      const toolSink = (b: Uint8Array | null) => { if (b) text += tool.decode(b, { stream: true }); };
+      try {
+        await runLLVM([...OBJECT_TOOL[stage], 'main.o'], obj, { stdout: toolSink, stderr: toolSink, decodeASCII: false });
+        text += tool.decode();
+        const diagnostics = parseDiagnostics(raw + text);
+        return { ok: true, text, diagnostics, raw: raw + text, ms: performance.now() - t0 };
+      } catch (err) {
+        if (typeof (err as { code?: unknown })?.code !== 'number') throw err;
+        text += tool.decode();
+        const diagnostics = parseDiagnostics(raw + text);
+        return { ok: false, text, diagnostics, raw: raw + text, ms: performance.now() - t0 };
+      }
+    } catch (err) {
+      if (typeof (err as { code?: unknown })?.code !== 'number') throw err;
+      raw += dec.decode();
+      return done(false, '');
+    }
+  }
+
+  // Link: the success itself is silent, so llvm-size reports the artifact wasm-ld wrote; a failure is wasm-ld's message.
   try {
-    const out = await runClang(args, { ...support, ...files }, { stdout: sink, stderr: sink, decodeASCII: false });
+    const out = await runClang(clangArgs({ sources: [source], output: 'main.wasm' }), tree, { stdout: sink, stderr: sink, decodeASCII: false });
     raw += dec.decode();
-    const bytes = out[output] as Uint8Array | string | undefined;
-    const text = typeof bytes === 'string' ? bytes : bytes ? new TextDecoder().decode(bytes) : '';
-    return { ok: true, text, diagnostics: parseDiagnostics(raw), raw, ms: performance.now() - t0 };
+    const sizeDec = new TextDecoder();
+    let text = '';
+    let sizeFailed = false;
+    const sizeSink = (b: Uint8Array | null) => { if (b) text += sizeDec.decode(b, { stream: true }); };
+    try {
+      await runLLVM(['size', 'main.wasm'], out, { stdout: sizeSink, stderr: sizeSink, decodeASCII: false });
+    } catch {
+      // size only describes the artifact; the link itself succeeded. Say so rather than showing an empty tab.
+      sizeFailed = true;
+    }
+    text += sizeDec.decode();
+    if (sizeFailed && !text.trim()) text = 'The link succeeded, but llvm-size could not read main.wasm.\n';
+    return done(true, text);
   } catch (err) {
     if (typeof (err as { code?: unknown })?.code !== 'number') throw err;
     raw += dec.decode();
-    return { ok: false, text: '', diagnostics: parseDiagnostics(raw), raw, ms: performance.now() - t0 };
+    const text = normaliseLinkOutput(raw);
+    return { ok: false, text, diagnostics: parseDiagnostics(text), raw: text, ms: performance.now() - t0 };
   }
 }

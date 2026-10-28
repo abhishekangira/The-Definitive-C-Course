@@ -50,10 +50,14 @@ export function clangArgs(o: BuildOptions): string[] {
   return ['clang', ...compile, ...(o.extraFlags ?? []), ...sources, '-o', out, ...link];
 }
 
-export type Stage = 'E' | 'S';
+/** The pipeline views the explorer can ask the compiler worker for, besides the source itself. */
+export type Stage = 'E' | 'S' | 'objdump-t' | 'objdump-d' | 'nm' | 'link';
 
-/** clang argv for one pipeline stage: preprocess only (-E -P, without line markers) or emit assembly (-S). */
-export function stageArgs(stage: Stage, source: string, opt: '-O0' | '-O1' | '-O2' = '-O0'): { args: string[]; output: string } {
+/** The stages that are one clang run writing one text file (-E and -S). */
+export type TextStage = Extract<Stage, 'E' | 'S'>;
+
+/** clang argv for one text pipeline stage: preprocess only (-E -P, without line markers) or emit assembly (-S). */
+export function stageArgs(stage: TextStage, source: string, opt: '-O0' | '-O1' | '-O2' = '-O0'): { args: string[]; output: string } {
   const base = COMPILE_FLAGS.filter(f => f !== '-g' && f !== '-O0');
   const output = stage === 'E' ? 'main.i' : 'main.s';
   const extra = stage === 'E' ? ['-E', '-P'] : ['-S', opt];

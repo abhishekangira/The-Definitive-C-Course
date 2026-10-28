@@ -5,7 +5,7 @@ import ubsanRt from './c/ubsan_rt.c?raw';
 import leakcheckC from './c/leakcheck.c?raw';
 import leakcheckH from './c/leakcheck.h?raw';
 import learncH from './c/learnc.h?raw';
-import { compileC, compileStage, type RunClang, type SupportFiles } from './compile-core';
+import { compileC, compileStage, type RunClang, type RunLLVM, type SupportFiles } from './compile-core';
 import type { CompilerIn, CompilerOut } from './protocol';
 import { classifyLoadFailure, createToolchainFetch, describeLoadFailure, loadToolchain, patchBundleSource, ToolchainDownloadError, ToolchainLoadError, type ToolchainFetch } from './toolchain-cache';
 
@@ -34,14 +34,20 @@ self.fetch = (input: RequestInfo | URL, init?: RequestInit) => (tf ? tf.fetch(in
 /**
  * Loads bundle.js (the yowasp JS that fetches the wasm files) through the cache-first fetch, so a visit with a warm cache
  * needs no network at all. A plain import() of the URL would always ask the network. See patchBundleSource for the blob: URL.
+ * The same module exports runLLVM (nm, objdump, size), so the object views share this one import and its cache.
  */
-async function importBundle(): Promise<{ runClang: RunClang }> {
+type ToolBundle = { runClang: RunClang; runLLVM: RunLLVM };
+let runLLVMFn: RunLLVM | null = null;
+
+async function importBundle(): Promise<ToolBundle> {
   const url = new URL('bundle.js', base!).href;
   const resp = await self.fetch(url);
   if (!resp.ok) throw new ToolchainDownloadError(`HTTP ${resp.status} for bundle.js`);
   const blobUrl = URL.createObjectURL(new Blob([patchBundleSource(await resp.text(), url)], { type: 'text/javascript' }));
   try {
-    return (await import(/* @vite-ignore */ blobUrl)) as { runClang: RunClang };
+    const mod = (await import(/* @vite-ignore */ blobUrl)) as ToolBundle;
+    runLLVMFn = mod.runLLVM;
+    return mod;
   } finally {
     URL.revokeObjectURL(blobUrl);
   }
@@ -93,7 +99,11 @@ self.onmessage = async (e: MessageEvent<CompilerIn>) => {
     return;
   }
   if (msg.type === 'stage') {
-    const out = await compileStage(runClang, SUPPORT, msg.files, msg.stage, msg.source, msg.opt);
+    if (!runLLVMFn) {
+      post({ type: 'staged', id: msg.id, ok: false, text: '', diagnostics: [], raw: 'The toolchain did not provide runLLVM.', ms: 0 });
+      return;
+    }
+    const out = await compileStage(runClang, runLLVMFn, SUPPORT, msg.files, msg.stage, msg.source, msg.opt);
     post({ type: 'staged', id: msg.id, ...out });
     return;
   }
