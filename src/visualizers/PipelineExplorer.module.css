@@ -1,2 +1,24 @@
 .box { margin: var(--space-5) 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); display: flex; flex-direction: column; gap: var(--space-2); }
 .scroll { max-height: 420px; overflow: auto; border-radius: var(--radius-sm); }
+/* Seven live tabs (and the native view/platform tabs) do not fit one row at 390 px: let them wrap instead of
+   pushing the last tabs outside the box. */
+.tabs { flex-wrap: wrap; }
+
+/* Stored native panes: the source and the tool's output side by side, and the line highlighting between them. */
+.native { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-2); }
+.panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3); align-items: start; }
+@media (max-width: 720px) { .panes { grid-template-columns: minmax(0, 1fr); } }
+.pane { min-width: 0; }
+.paneTitle { margin: 0 0 var(--space-1); font-size: 0.85rem; color: var(--text-faint); }
+.paneTitle code { font-size: 0.9em; overflow-wrap: anywhere; }
+.listing { list-style: none; margin: 0; padding: var(--space-2) 0; background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 13px; line-height: 1.55; max-height: 360px; overflow: auto; }
+.line { display: block; border-left: 3px solid transparent; }
+.lineBtn, .linePlain { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; font: inherit; color: inherit; white-space: pre; }
+.lineBtn { cursor: pointer; }
+.lineBtn:hover { background: var(--data-soft); }
+.no { display: inline-block; min-width: calc(var(--digits, 3) * 1ch + 2 * var(--space-2)); padding: 0 var(--space-2); text-align: right; color: var(--text-faint); user-select: none; }
+.code { padding-right: var(--space-3); }
+.mapped { background: var(--data-soft); border-left-color: var(--data); }
+.ph { color: var(--data-ink); font-weight: 600; }
+.platform { margin: 0; color: var(--text-muted); }
+.note { margin: 0; color: var(--text-muted); font-size: 0.9em; }

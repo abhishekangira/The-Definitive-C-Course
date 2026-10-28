@@ -112,7 +112,7 @@ describe.skipIf(!toolchainReady || process.platform === 'win32')('verify (fixtur
     const r = await verify({ contentRoot, generatedRoot, cacheDir, module: 'm97', trace: false });
     expect(r.problems).toEqual([]);
     const file = JSON.parse(readFileSync(path.join(generatedRoot, 'sessions/m97.json'), 'utf8')) as SessionsFile;
-    expect(Object.keys(file.sessions).sort()).toEqual(['analyser', 'asan', 'compile-error', 'gdb', 'libm', 'link-multiple', 'link-order', 'link-undefined', 'lldb', 'make', 'ubsan', 'valgrind-leak', 'valgrind-uninit']);
+    expect(Object.keys(file.sessions).sort()).toEqual(['analyser', 'asan', 'compile-error', 'gdb', 'libm', 'link-multiple', 'link-order', 'link-undefined', 'lldb', 'make', 'pipeline', 'ubsan', 'valgrind-leak', 'valgrind-uninit']);
     expect(file.generatedBy).toMatch(/gcc: .*13\.\d.*clang22: .*22\.\d.*gdb: GNU gdb.*valgrind: valgrind-3.*lldb: lldb version 22.*make: GNU Make/);
 
     // The committed copy is the app's test data (<Transcript>: src/components/transcript-tabs.test.ts and Transcript.dom.test.ts, e2e/transcript.spec.ts), so

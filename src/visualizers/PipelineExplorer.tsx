@@ -1,6 +1,7 @@
-// V7 Pipeline Explorer: the same source at each stage of the build, produced live by the in-browser clang. Source,
-// preprocessor (-E) and assembly (-S) are the default; an MDX `stages="…"` attribute adds the relocatable object
-// (objdump -t and objdump -d -l), its nm symbols and the link step. The stored native panes are a later layer.
+// V7 Pipeline Explorer: the same source at each stage of the build. Source, preprocessor (-E) and assembly (-S) are
+// produced live by the in-browser clang and are the default; an MDX `stages="…"` attribute adds the relocatable object
+// (objdump -t and objdump -d -l), its nm symbols and the link step. `session="<id>"` adds the stored native panes
+// (NativePanes.tsx) from a real machine's run, with source-line highlighting.
 import { useState, type ReactNode } from 'react';
 import { getRuntime, type StageResult } from '../runtime/CRuntime';
 import type { Stage } from '../runtime/flags';
@@ -8,6 +9,7 @@ import { CodeListing } from '../components/CodeListing';
 import { ToolchainProgress } from '../components/ToolchainProgress';
 import { DiagnosticsList } from '../components/DiagnosticsList';
 import { nestedSample } from '../interactions/nested';
+import { NativePanes } from './NativePanes';
 import ix from '../interactions/Interaction.module.css';
 import styles from './PipelineExplorer.module.css';
 
@@ -36,7 +38,7 @@ export function parseStages(stages?: string): Tab[] {
   return out;
 }
 
-export function PipelineExplorer({ children, code: codeProp, stages }: { children?: ReactNode; code?: string; stages?: string }) {
+export function PipelineExplorer({ children, code: codeProp, stages, session }: { children?: ReactNode; code?: string; stages?: string; session?: string }) {
   const nested = nestedSample(children);
   const code = nested?.code ?? codeProp ?? '';
   const tabs = parseStages(stages);
@@ -60,7 +62,7 @@ export function PipelineExplorer({ children, code: codeProp, stages }: { childre
   return (
     <div className={styles.box} aria-label="Pipeline explorer">
       <div className={ix.kicker}>Pipeline explorer · live in your browser</div>
-      <div role="tablist" className={ix.tabs} aria-label="Compilation stage">
+      <div role="tablist" className={`${ix.tabs} ${styles.tabs}`} aria-label="Compilation stage">
         {tabs.map(t => (
           <button key={t} type="button" role="tab" aria-selected={tab === t} className={ix.tab} onClick={() => void open(t)}>{TABS[t].label}</button>
         ))}
@@ -74,6 +76,7 @@ export function PipelineExplorer({ children, code: codeProp, stages }: { childre
           <CodeListing code={lineCount > 1500 ? text.split('\n').slice(-1500).join('\n') : text} label={TABS[tab].label} />
         </div>
       )}
+      {session && <NativePanes session={session} code={code} />}
     </div>
   );
 }
