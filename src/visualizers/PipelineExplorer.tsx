@@ -2,7 +2,7 @@
 // produced live by the in-browser clang and are the default; an MDX `stages="…"` attribute adds the relocatable object
 // (objdump -t and objdump -d -l), its nm symbols and the link step. `session="<id>"` adds the stored native panes
 // (NativePanes.tsx) from a real machine's run, with source-line highlighting.
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { getRuntime, type StageResult } from '../runtime/CRuntime';
 import type { Stage } from '../runtime/flags';
 import { CodeListing } from '../components/CodeListing';
@@ -52,14 +52,29 @@ export function PipelineExplorer({ children, code: codeProp, stages, session }: 
   const [busy, setBusy] = useState(false);
   const tab = tabs.includes(selected) ? selected : tabs[0];
   const sel = tabs.indexOf(tab);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const outRef = useRef(out);
+  outRef.current = out;
 
-  const open = async (t: Tab) => {
-    setSelected(t);
-    if (t === 'source' || out[t]?.ok) return; // a failed stage (for example, no compiler) is tried again
+  const stopTimer = () => { if (timer.current !== null) { clearTimeout(timer.current); timer.current = null; } };
+  useEffect(() => stopTimer, []);
+
+  const compile = async (t: Tab) => {
+    if (t === 'source' || outRef.current[t]?.ok) return; // a failed stage (for example, no compiler) is tried again
     setBusy(true);
     const r = await getRuntime().stage({ 'main.c': code }, t);
+    outRef.current = { ...outRef.current, [t]: r };
     setOut(o => ({ ...o, [t]: r }));
     setBusy(false);
+  };
+  // A click compiles at once; arrow keys select at once but defer the compile briefly, so arrowing across the tabs
+  // starts one compile (the tab it settles on), not one per tab passed.
+  const open = (t: Tab) => { stopTimer(); setSelected(t); void compile(t); };
+  const select = (t: Tab) => {
+    stopTimer();
+    setSelected(t);
+    if (t === 'source' || outRef.current[t]?.ok) return;
+    timer.current = setTimeout(() => { timer.current = null; void compile(t); }, 150);
   };
 
   // The tab pattern: arrow keys move selection and focus, Home and End jump; Tab leaves the tab list.
@@ -72,7 +87,7 @@ export function PipelineExplorer({ children, code: codeProp, stages, session }: 
     if (next === undefined) return;
     e.preventDefault();
     tabRefs.current[next]?.focus();
-    void open(tabs[next]);
+    select(tabs[next]);
   };
 
   const current = tab === 'source' ? null : out[tab];

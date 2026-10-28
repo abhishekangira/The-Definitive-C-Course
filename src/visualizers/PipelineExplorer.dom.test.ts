@@ -72,7 +72,6 @@ describe('<PipelineExplorer> tabs', () => {
     expect(tabs()[1].getAttribute('aria-selected')).toBe('true');
     expect(document.activeElement).toBe(tabs()[1]);
     expect(tabs().map(t => t.tabIndex)).toEqual([-1, 0, -1, -1]);
-    expect(stageMock).toHaveBeenCalledWith({ 'main.c': code }, 'E');
     await key('End');
     expect(document.activeElement).toBe(tabs()[3]);
     await key('Home');
@@ -97,6 +96,36 @@ describe('<PipelineExplorer> tabs', () => {
     const box = host.querySelector('[role="region"]')!;
     expect(box.getAttribute('aria-label')).toBe('2. After the preprocessor output');
     expect(box.textContent).toContain('expanded by the preprocessor');
+  });
+});
+
+describe('<PipelineExplorer> compiles and styles', () => {
+  it('compiles only the tab the arrows settle on, not every tab they pass', async () => {
+    vi.useFakeTimers();
+    try {
+      render({ code, stages: 'source,E,S,nm' });
+      tabs()[0].focus();
+      await key('ArrowRight');
+      await key('ArrowRight');
+      await key('ArrowRight');
+      expect(document.activeElement).toBe(tabs()[3]);
+      expect(stageMock).not.toHaveBeenCalled();
+      await act(async () => { vi.advanceTimersByTime(200); });
+      expect(stageMock).toHaveBeenCalledTimes(1);
+      expect(stageMock).toHaveBeenCalledWith({ 'main.c': code }, 'nm');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('wraps the stage tabs without relying on layer 2’s stylesheet', () => {
+    const css = readFileSync(path.join(process.cwd(), 'src/visualizers/PipelineExplorer.module.css'), 'utf8');
+    expect(css).toMatch(/\.tabs\s*\{[^}]*flex-wrap:\s*wrap/);
+  });
+
+  it('lets the focusable scroll region own both scroll directions', () => {
+    const css = readFileSync(path.join(process.cwd(), 'src/visualizers/PipelineExplorer.module.css'), 'utf8');
+    expect(css).toMatch(/\.scroll\s*>\s*ol\s*\{[^}]*overflow:\s*visible/);
   });
 });
 

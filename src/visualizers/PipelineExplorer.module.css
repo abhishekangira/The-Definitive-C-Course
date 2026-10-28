@@ -1,5 +1,8 @@
 .box { margin: var(--space-5) 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-elev); display: flex; flex-direction: column; gap: var(--space-2); }
 .scroll { max-height: 420px; overflow: auto; border-radius: var(--radius-sm); }
+/* The focusable .scroll region must own both scroll directions: CodeListing's inner list has overflow-x: auto, and
+   axe's scrollable-region-focusable only accepts focus on the element that actually scrolls. */
+.scroll > ol { overflow: visible; }
 /* Seven live tabs (and the native view/platform tabs) do not fit one row at 390 px: let them wrap instead of
    pushing the last tabs outside the box. */
 .tabs { flex-wrap: wrap; }
