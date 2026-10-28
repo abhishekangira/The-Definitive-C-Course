@@ -178,7 +178,7 @@ export function NativePanes({ session, code }: { session: string; code: string }
   const viewLabel = NATIVE_VIEWS[viewIndex].label;
   const pendingLabels = pending.map(p => SESSION_PLATFORM_LABEL[p]);
   const missingLabels = missingView.map(p => SESSION_PLATFORM_LABEL[p]);
-  const hasPlaceholders = /<addr\d+>|<tmp\d+>|<pid>|<dir>|<id>|==PID==|--PID==/.test(text);
+  const hasPlaceholders = /<addr\d+>|<tmp\d+>|<pid>|<dir>|<id>|==PID==|--PID--/.test(text);
   const panes = tab && (
     <div className={styles.panes}>
       {sameSource && view !== 'nm' && (
@@ -225,7 +225,7 @@ export function NativePanes({ session, code }: { session: string; code: string }
         {panes && (tabs.length > 1
           ? <div role="tabpanel" id={platformPanelId} aria-labelledby={platformTabId(platformIndex)}>{panes}</div>
           : panes)}
-        {hasPlaceholders && <p className={styles.note}>The recorder replaces the session’s folder and number-like values with placeholders such as <code>&lt;dir&gt;</code> and <code>&lt;addrN&gt;</code>; equal placeholders are equal values.</p>}
+        {hasPlaceholders && <p className={styles.note} data-placeholders>The recorder replaces the session’s folder and number-like values with placeholders such as <code>&lt;dir&gt;</code> and <code>&lt;addrN&gt;</code>; equal placeholders are equal values.</p>}
         <p className="visually-hidden" role="status" data-announce>{announcement}</p>
       </div>
     </section>

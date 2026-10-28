@@ -64,6 +64,9 @@ describe('mapAsmLines (-S -g)', () => {
     // clang: the next function's label and the format string are not line 4/11 instructions either.
     expect(lineAt(asmClang, at(clangAsmText, 'main:'))).toBeNull();
     expect(lineAt(asmClang, at(clangAsmText, '.asciz'))).toBeNull();
+    // The .loc lines themselves are line info, not instructions: they must stay unselected too.
+    expect(lineAt(asmGcc, at(gccAsmText, '.loc 1 8'))).toBeNull();
+    expect(lineAt(asmClang, at(clangAsmText, '.loc\t0 8'))).toBeNull();
     const eleven = linesFor(asmClang, 11).map(n => textAt(clangAsmText, n));
     expect(eleven.some(l => l.includes('.asciz'))).toBe(false);
     expect(eleven.some(l => l.includes('xorl'))).toBe(true);

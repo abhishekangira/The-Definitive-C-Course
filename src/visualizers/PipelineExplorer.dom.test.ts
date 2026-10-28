@@ -280,6 +280,17 @@ describe('<PipelineExplorer session> native panes', () => {
     expect(window.scrollY).toBe(0);
   });
 
+  it('shows the placeholder note for a normalised --PID-- value', () => {
+    const pid = {
+      id: 'pid', dir: 'sessions/pid', hash: '0', platforms: ['linux-gcc'],
+      sources: { 'main.c': SOURCE },
+      runs: { 'linux-gcc': [{ cmd: 'valgrind ./main', as: 'asm', stdout: '--PID-- leaked a block\n', stderr: '', exit: 0 }] },
+    } satisfies SessionResult;
+    sessionsFile = { ...m97, sessions: { ...m97.sessions, pid } };
+    render({ code: SOURCE, session: 'pid' });
+    expect(host.querySelector('[data-placeholders]')).not.toBeNull();
+  });
+
   it('puts the missing-platform note before the panes', () => {
     render({ code: SOURCE, session: 'pipeline' });
     const pending = host.querySelector('[data-pending]')!;
