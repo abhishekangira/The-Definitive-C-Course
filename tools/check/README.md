@@ -71,7 +71,7 @@ exits. Ctrl+C, closing the terminal or a SIGTERM while one runs kills that group
 they start outlives `check.mjs`. A memory tool that gives no result fails the check with a message
 that says what was not checked, for example `leaks did not finish within 40 s, so leaks were not checked`. That covers
 a tool that times out, is missing or can't be started (for example `valgrind could not be started (EACCES)`), a `leaks` that exits without its `N leaks for M total leaked bytes` line, a
-valgrind that prints an error of its own (a stderr line starting with `valgrind: `, such as a broken install's
+valgrind that prints an error of its own (a stderr line starting with `valgrind: ` in any case, such as a broken install's
 `valgrind: failed to start tool 'memcheck' …`) and so never ran the program, reported as
 `valgrind reported an error of its own (exit status 1), so memory errors and leaks were not checked`, and a
 program that doesn't finish under ASan. It is never a pass, a note or a skip.
@@ -184,7 +184,8 @@ code that `verifyCode()` accepts; a leak-only variant fails only the memory chec
 skips everything after the compile check; the valgrind fallback (clang-18, no sanitizers), the macOS
 `leaks` path (simulated, including stand-ins that print nothing, never exit, leave a process holding the pipes, keep running after Ctrl+C, or can't be started), a
 valgrind that never exits, a valgrind that reports its own error (`VALGRIND_LIB` pointing nowhere) in valgrind mode and in the
-valgrind leak pass next to ASan (`LSAN_OPTIONS` with a `leak:*` suppression turns LeakSanitizer off, plus a control with a working valgrind), a program that times out under ASan, make tests, file tests (present, missing, wrong, binary), `--doctor` (this machine,
+valgrind leak pass next to ASan (`LSAN_OPTIONS` with a `leak:*` suppression turns LeakSanitizer off, plus a control with a working valgrind), a stand-in that prints `Valgrind: FATAL: …`, a program whose
+`valgrind: hi` on stdout and mid-line `valgrind` on stderr still pass, a program that times out under ASan, make tests, file tests (present, missing, wrong, binary), `--doctor` (this machine,
 `CHECK_PLATFORM=darwin` with and without stand-in macOS commands, `CHECK_NO_SANITIZERS=1`, no compiler), the zips
 and the generated Makefile are covered too.
 

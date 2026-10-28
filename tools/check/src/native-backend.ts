@@ -177,10 +177,12 @@ export function shGroup(cmd: string, args: string[], opts: { cwd?: string; input
 const seconds = (ms: number) => `${Math.round(ms / 100) / 10} s`;
 /**
  * A line valgrind prints about itself (a broken install, a program it can't start), never about the program, whose
- * reports start with `==PID==`. In valgrind mode the program's own stderr shares the stream, so a learner line that
+ * reports start with `==PID==`. Case-insensitive: the core also prints `Valgrind: FATAL: ...` lines (the strings in
+ * memcheck-amd64-linux 3.24). In valgrind mode the program's own stderr shares the stream, so a learner line that
  * starts with `valgrind: ` also fails the check as "not checked": the safe direction (a false fail, never a false pass).
+ * The program's stdout and a `valgrind` later in a line don't match (pinned by check.test.ts, issue #108).
  */
-const VALGRIND_OWN_ERROR = /^valgrind: /m;
+const VALGRIND_OWN_ERROR = /^valgrind: /im;
 
 /**
  * Why a memory tool gave no result, or undefined when it did. The message says what was not checked, and is followed

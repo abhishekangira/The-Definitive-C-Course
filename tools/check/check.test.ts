@@ -373,6 +373,35 @@ describe('a valgrind that reports its own error fails the memory check (issue #1
     expect(r.status).not.toBe(0);
   }, 60_000);
 
+  it('a capitalised "Valgrind: FATAL: ..." line counts too (a stand-in valgrind)', () => {
+    // Memcheck's core prints fatal errors as "Valgrind: FATAL: ...", which no real run here reproduced, so a stand-in prints one.
+    const bin = path.join(tmp, 'path-valgrind-fatal');
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(path.join(bin, 'valgrind'), ['#!/bin/sh', '[ "$1" = "--version" ] && { echo valgrind-3.22.0; exit 0; }',
+      'echo "Valgrind: FATAL: aspacem assertion failed:" >&2', 'exit 1'].join('\n'));
+    chmodSync(path.join(bin, 'valgrind'), 0o755);
+    const env = { CHECK_NO_SANITIZERS: '1', PATH: `${bin}${path.delimiter}${process.env.PATH}` };
+    const r = checkJson(project('solution'), [], env, 45_000);
+    expect(byName(r, MEMORY)).toMatchObject({
+      status: 'fail', message: 'valgrind reported an error of its own (exit status 1), so memory errors and leaks were not checked',
+    });
+    expect(byName(r, MEMORY).details?.[0]).toBe('Valgrind: FATAL: aspacem assertion failed:');
+    expect(r.completionToken).toBeUndefined();
+  }, 60_000);
+
+  it.runIf(has('valgrind'))('the match is narrow: "valgrind: " on stdout, or "valgrind" later in a stderr line, still passes', () => {
+    const dir = path.join(tmp, 'valgrind-lookalike');
+    mkdirSync(dir, { recursive: true });
+    const spec = { version: 1, sources: ['say.c'], memory: true, tests: [{ name: 'says hi', run: { stdin: '', timeoutMs: 10_000 }, expect: { stdout: 'valgrind: hi\n' } }] };
+    writeFiles(dir, {
+      'check.json': JSON.stringify(spec), 'check.mjs': readFileSync(checkMjs, 'utf8'),
+      'say.c': '#include <stdio.h>\nint main(void) {\n  printf("valgrind: hi\\n");\n  fprintf(stderr, "not a valgrind: error, just the program\\n");\n  return 0;\n}\n',
+    });
+    const r = checkJson(dir, [], { CHECK_NO_SANITIZERS: '1' }, 45_000);
+    expect(byName(r, 'says hi')).toMatchObject({ status: 'pass' });
+    expect(byName(r, MEMORY)).toMatchObject({ status: 'pass', note: 'valgrind' });
+  }, 60_000);
+
   it.runIf(has('valgrind'))('control: the valgrind leak pass next to ASan, with a working valgrind', () => {
     const env = { LSAN_OPTIONS: noLsan() };
     const clean = checkJson(project('solution'), [], env, 45_000);
