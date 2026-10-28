@@ -13,7 +13,7 @@ import {
   ANIMATABLE, cssFontSizes, inFontSubset, objectKeys, stripJsComments, tweenCalls, uncoveredGlyphs, validateProject, visibleText,
 } from './validate.mjs';
 import { sampleTimes } from './check.mjs';
-import { indexSnapshots } from './render.mjs';
+import { indexSnapshots, parseArgs } from './render.mjs';
 
 const ID = 'a01-press-run';
 const SRC = path.join(ANIM_DIR, ID);
@@ -239,5 +239,32 @@ describe('validate: the A1 project', () => {
     const r = validateMutated('fast-captions', 'captions.json', t => t.replace('"end": 5.4', '"end": 1.4'));
     expect(r.errors).toEqual([]);
     expect(r.warnings.join('\n')).toMatch(/characters per second is fast/);
+  });
+});
+
+describe('render: argument parsing (#111)', () => {
+  it('keeps an id that comes before the flags', () => {
+    expect(parseArgs(['a02', '--force']).ids).toEqual(['a02']);
+  });
+  it('keeps an id that comes after the flags', () => {
+    expect(parseArgs(['--force', 'a02']).ids).toEqual(['a02']);
+  });
+  it('keeps a lone id', () => {
+    expect(parseArgs(['a02']).ids).toEqual(['a02']);
+  });
+  it('treats the argument after --webm as its directory, not an id', () => {
+    const r = parseArgs(['--webm', 'dist/animations']);
+    expect(r.ids).toEqual([]);
+    expect(r.webmDir).toBe('dist/animations');
+  });
+  it('keeps an id before --webm', () => {
+    const r = parseArgs(['a01', '--webm', 'out']);
+    expect(r.ids).toEqual(['a01']);
+    expect(r.webmDir).toBe('out');
+  });
+  it('collects the flags', () => {
+    const r = parseArgs(['a01', '--force', '--dry-run']);
+    expect([...r.flags]).toEqual(['--force', '--dry-run']);
+    expect(r.webmDir).toBeNull();
   });
 });

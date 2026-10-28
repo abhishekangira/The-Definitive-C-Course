@@ -194,15 +194,27 @@ export function transcodeWebm(id, outRoot) {
   return file;
 }
 
-function main(argv) {
+/**
+ * Splits the CLI arguments into animation ids, `--` flags and the `--webm` output directory.
+ * Ids may come before or after the flags. `webmDir` is null without `--webm`, and undefined
+ * (or a flag) when `--webm` has no directory after it; `main` rejects that.
+ */
+export function parseArgs(argv) {
   const flags = new Set(argv.filter(a => a.startsWith('--')));
   const webmIdx = argv.indexOf('--webm');
   const webmDir = webmIdx >= 0 ? argv[webmIdx + 1] : null;
-  if (webmIdx >= 0 && (!webmDir || webmDir.startsWith('--'))) {
+  // Only the argument right after --webm is its directory. Without --webm, webmIdx is -1, so an
+  // unguarded `i !== webmIdx + 1` dropped argv[0], the first id (#111).
+  const ids = argv.filter((a, i) => !a.startsWith('--') && !(webmIdx >= 0 && i === webmIdx + 1));
+  return { ids, flags, webmDir };
+}
+
+function main(argv) {
+  const { ids, flags, webmDir } = parseArgs(argv);
+  if (flags.has('--webm') && (!webmDir || webmDir.startsWith('--'))) {
     console.error('--webm needs an output directory, e.g. --webm dist/animations');
     process.exit(2);
   }
-  const ids = argv.filter((a, i) => !a.startsWith('--') && i !== webmIdx + 1);
   const projects = listProjects(ids);
   if (!projects.length) {
     console.log('No animation projects found.');
