@@ -63,7 +63,10 @@ export function PipelineExplorer({ children, code: codeProp, stages }: { childre
   // The tab pattern: arrow keys move selection and focus, Home and End jump; Tab leaves the tab list.
   const onKeyDown = (e: KeyboardEvent) => {
     const n = tabs.length;
-    const next = ({ ArrowRight: (sel + 1) % n, ArrowLeft: (sel - 1 + n) % n, Home: 0, End: n - 1 } as Record<string, number>)[e.key];
+    // Arrow keys move relative to the focused tab, as the tab pattern expects (the selected tab when focus is outside).
+    const focused = tabRefs.current.indexOf(document.activeElement as HTMLButtonElement);
+    const from = focused >= 0 ? focused : sel;
+    const next = ({ ArrowRight: (from + 1) % n, ArrowLeft: (from - 1 + n) % n, Home: 0, End: n - 1 } as Record<string, number>)[e.key];
     if (next === undefined) return;
     e.preventDefault();
     tabRefs.current[next]?.focus();
