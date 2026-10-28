@@ -1,0 +1,101 @@
+// The live V7 views beyond -E/-S, run against the pinned @yowasp/clang in Node: the same bundle and cache the compiler
+// worker imports (tools/shared/wasm-node.ts does the same for tools/verify). Each assertion reads the real tool output.
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { compileStage, normaliseLinkOutput, type RunClang, type RunLLVM, type SupportFiles } from './compile-core';
+
+const root = new URL('../../', import.meta.url);
+const versionFile = new URL('src/generated/toolchain-version.json', root);
+const prepared = existsSync(versionFile);
+
+const support: SupportFiles = Object.fromEntries(
+  ['course_rt.c', 'ubsan_rt.c', 'leakcheck.c', 'leakcheck.h', 'learnc.h'].map(f => [f, readFileSync(new URL(`src/runtime/c/${f}`, root), 'utf8')]),
+) as unknown as SupportFiles;
+
+const SOURCE = `#include <stdio.h>
+
+int square(int x) {
+    return x * x;
+}
+
+int main(void) {
+    int n = 5;
+    printf("%d\\n", square(n));
+    return 0;
+}
+`;
+
+let toolsP: Promise<{ runClang: RunClang; runLLVM: RunLLVM }> | null = null;
+function tools() {
+  return (toolsP ??= (async () => {
+    const { version } = JSON.parse(readFileSync(versionFile, 'utf8')) as { version: string };
+    const bundle = new URL(`public/toolchain/clang-${version}/bundle.js`, root);
+    const mod = (await import(/* @vite-ignore */ pathToFileURL(fileURLToPath(bundle)).href)) as { runClang: RunClang; runLLVM: RunLLVM };
+    await mod.runClang(null, {}, { fetchProgress: () => {} }); // fetch and compile the wasm modules once
+    return mod;
+  })());
+}
+
+const stage = async (view: 'objdump-t' | 'objdump-d' | 'nm' | 'link', code: string) => {
+  const { runClang, runLLVM } = await tools();
+  return compileStage(runClang, runLLVM, support, { 'main.c': code }, view);
+};
+
+// Captured from the pinned yowasp clang (22.0.0-git20542-10) linking a program that calls an undefined function; the
+// temp object name changes every run, so this exact file name is only an input to the normaliser, never shown.
+const CAPTURED_UNDEFINED = 'wasm-ld: error: /tmp/main-62bf3f.o: undefined symbol: f\n';
+
+describe('normaliseLinkOutput', () => {
+  it('replaces the temporary object name in a captured wasm-ld message, numbering by first use', () => {
+    expect(normaliseLinkOutput(CAPTURED_UNDEFINED)).toBe('wasm-ld: error: <tmp1>: undefined symbol: f\n');
+    expect(normaliseLinkOutput('/tmp/a.o: one\n/tmp/b.o: two\n/tmp/a.o: three\n')).toBe('<tmp1>: one\n<tmp2>: two\n<tmp1>: three\n');
+  });
+});
+
+describe.skipIf(!prepared)('live pipeline views (pinned yowasp clang in Node)', () => {
+  it('objdump -t of the -c object lists its symbols', async () => {
+    const r = await stage('objdump-t', SOURCE);
+    expect(r.ok).toBe(true);
+    expect(r.text).toContain('file format wasm');
+    expect(r.text).toContain('SYMBOL TABLE:');
+    expect(r.text).toMatch(/\bsquare\b/);
+    expect(r.text).toMatch(/\bmain\b/);
+    expect(r.text).toMatch(/\bprintf\b/);
+  }, 60_000);
+
+  it('objdump -d -l of the -c object disassembles it with source lines', async () => {
+    const r = await stage('objdump-d', SOURCE);
+    expect(r.ok).toBe(true);
+    expect(r.text).toContain('Disassembly of section CODE:');
+    expect(r.text).toContain('<main>:');
+    // clang's line info names the virtual file /main.c; line 8 is `int n = 5;`.
+    expect(r.text).toContain('; /main.c:8');
+    expect(r.text).toContain('i32.const');
+  }, 60_000);
+
+  it('nm of the -c object marks definitions and undefined symbols', async () => {
+    const r = await stage('nm', SOURCE);
+    expect(r.ok).toBe(true);
+    expect(r.text).toMatch(/\bT square\b/);
+    expect(r.text).toMatch(/\bT main\b/);
+    expect(r.text).toMatch(/\bU printf\b/);
+  }, 60_000);
+
+  it('link succeeds and llvm-size reports the wasm-ld artifact', async () => {
+    const r = await stage('link', SOURCE);
+    expect(r.ok).toBe(true);
+    const [header, row] = r.text.trimEnd().split('\n');
+    expect(header).toMatch(/^\s*text\s+data\s+bss\s+dec\s+hex\s+filename$/);
+    expect(row).toMatch(/^\s*\d+\s+\d+\s+\d+\s+(\d+)\s+[0-9a-f]+\s+main\.wasm$/);
+    expect(Number(row.trim().split(/\s+/)[3])).toBeGreaterThan(0);
+  }, 60_000);
+
+  it('a missing definition fails the link with wasm-ld’s real message and a normalised temp path', async () => {
+    const r = await stage('link', 'int f(void);\nint main(void) { return f(); }\n');
+    expect(r.ok).toBe(false);
+    expect(r.text).toContain('wasm-ld: error: <tmp1>: undefined symbol: f');
+    expect(r.text).not.toMatch(/\/tmp\//);
+    expect(r.raw).not.toMatch(/\/tmp\//);
+  }, 60_000);
+});
