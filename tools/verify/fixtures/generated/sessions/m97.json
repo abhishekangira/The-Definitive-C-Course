@@ -457,6 +457,91 @@
         "main.c": "#include <stdio.h>\n#include \"luhn.h\"\n\nint main(void) {\n    printf(\"%d\\n\", luhn_sum(4003600000000014LL));\n    return 0;\n}\n"
       }
     },
+    "pipeline": {
+      "dir": "sessions/pipeline",
+      "hash": "813dfa603aeafc5e",
+      "id": "pipeline",
+      "platforms": [
+        "linux-gcc",
+        "linux-clang",
+        "macos"
+      ],
+      "runs": {
+        "linux-clang": [
+          {
+            "cmd": "$CC $CFLAGS -fno-ident -c main.c -o main.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "cmd": "$CC $CFLAGS -fno-ident -S main.c -o main.s",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "asm",
+            "cmd": "sed '/^\\t\\.section\\t\\.debug_/,$d' main.s",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "\t.file\t\"main.c\"\n\t.file\t0 \"<dir>\" \"main.c\" md5 <addr1>\n\t.text\n\t.globl\tsquare                          # -- Begin function square\n\t.p2align\t4\n\t.type\tsquare,@function\nsquare:                                 # @square\n.Lfunc_begin0:\n\t.loc\t0 3 0                           # main.c:3:0\n\t.cfi_startproc\n# %bb.0:\n\tpushq\t%rbp\n\t.cfi_def_cfa_offset 16\n\t.cfi_offset %rbp, -16\n\tmovq\t%rsp, %rbp\n\t.cfi_def_cfa_register %rbp\n\tmovl\t%edi, -4(%rbp)\n.Ltmp0:\n\t.loc\t0 4 12 prologue_end             # main.c:4:12\n\tmovl\t-4(%rbp), %eax\n\t.loc\t0 4 14 is_stmt 0                # main.c:4:14\n\timull\t-4(%rbp), %eax\n\t.loc\t0 4 5 epilogue_begin            # main.c:4:5\n\tpopq\t%rbp\n\t.cfi_def_cfa %rsp, 8\n\tretq\n.Ltmp1:\n.Lfunc_end0:\n\t.size\tsquare, .Lfunc_end0-square\n\t.cfi_endproc\n                                        # -- End function\n\t.globl\tmain                            # -- Begin function main\n\t.p2align\t4\n\t.type\tmain,@function\nmain:                                   # @main\n.Lfunc_begin1:\n\t.loc\t0 7 0 is_stmt 1                 # main.c:7:0\n\t.cfi_startproc\n# %bb.0:\n\tpushq\t%rbp\n\t.cfi_def_cfa_offset 16\n\t.cfi_offset %rbp, -16\n\tmovq\t%rsp, %rbp\n\t.cfi_def_cfa_register %rbp\n\tsubq\t$16, %rsp\n\tmovl\t$0, -4(%rbp)\n.Ltmp2:\n\t.loc\t0 8 9 prologue_end              # main.c:8:9\n\tmovl\t$5, -8(%rbp)\n\t.loc\t0 9 21                          # main.c:9:21\n\tmovl\t-8(%rbp), %edi\n\t.loc\t0 9 14 is_stmt 0                # main.c:9:14\n\tcallq\tsquare\n\t.loc\t0 9 9                           # main.c:9:9\n\tmovl\t%eax, -12(%rbp)\n\t.loc\t0 10 34 is_stmt 1               # main.c:10:34\n\tmovl\t-8(%rbp), %esi\n\t.loc\t0 10 37 is_stmt 0               # main.c:10:37\n\tmovl\t-12(%rbp), %edx\n\t.loc\t0 10 5                          # main.c:10:5\n\tleaq\t.L.str(%rip), %rdi\n\tmovb\t$0, %al\n\tcallq\tprintf@PLT\n\t.loc\t0 11 5 is_stmt 1                # main.c:11:5\n\txorl\t%eax, %eax\n\t.loc\t0 11 5 epilogue_begin is_stmt 0 # main.c:11:5\n\taddq\t$16, %rsp\n\tpopq\t%rbp\n\t.cfi_def_cfa %rsp, 8\n\tretq\n.Ltmp3:\n.Lfunc_end1:\n\t.size\tmain, .Lfunc_end1-main\n\t.cfi_endproc\n                                        # -- End function\n\t.type\t.L.str,@object                  # @.str\n\t.section\t.rodata.str1.1,\"aMS\",@progbits,1\n.L.str:\n\t.asciz\t\"%d squared is %d\\n\"\n\t.size\t.L.str, 18\n\n"
+          },
+          {
+            "as": "nm",
+            "cmd": "nm main.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "0000000000000000 r .L.str\n0000000000000010 T main\n                 U printf\n0000000000000000 T square\n"
+          },
+          {
+            "as": "objdump",
+            "cmd": "objdump -d -l main.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "\nmain.o:     file format elf64-x86-64\n\n\nDisassembly of section .text:\n\n0000000000000000 <square>:\nsquare():\n<dir>/main.c:3\n   0:\t55                   \tpush   %rbp\n   1:\t48 89 e5             \tmov    %rsp,%rbp\n   4:\t89 7d fc             \tmov    %edi,-0x4(%rbp)\n<dir>/main.c:4\n   7:\t8b 45 fc             \tmov    -0x4(%rbp),%eax\n   a:\t0f af 45 fc          \timul   -0x4(%rbp),%eax\n   e:\t5d                   \tpop    %rbp\n   f:\tc3                   \tret\n\n0000000000000010 <main>:\nmain():\n<dir>/main.c:7\n  10:\t55                   \tpush   %rbp\n  11:\t48 89 e5             \tmov    %rsp,%rbp\n  14:\t48 83 ec 10          \tsub    $0x10,%rsp\n  18:\tc7 45 fc 00 00 00 00 \tmovl   $0x0,-0x4(%rbp)\n<dir>/main.c:8\n  1f:\tc7 45 f8 05 00 00 00 \tmovl   $0x5,-0x8(%rbp)\n<dir>/main.c:9\n  26:\t8b 7d f8             \tmov    -0x8(%rbp),%edi\n  29:\te8 00 00 00 00       \tcall   2e <main+0x1e>\n  2e:\t89 45 f4             \tmov    %eax,-0xc(%rbp)\n<dir>/main.c:10\n  31:\t8b 75 f8             \tmov    -0x8(%rbp),%esi\n  34:\t8b 55 f4             \tmov    -0xc(%rbp),%edx\n  37:\t48 8d 3d 00 00 00 00 \tlea    0x0(%rip),%rdi        # 3e <main+0x2e>\n  3e:\tb0 00                \tmov    $0x0,%al\n  40:\te8 00 00 00 00       \tcall   45 <main+0x35>\n<dir>/main.c:11\n  45:\t31 c0                \txor    %eax,%eax\n  47:\t48 83 c4 10          \tadd    $0x10,%rsp\n  4b:\t5d                   \tpop    %rbp\n  4c:\tc3                   \tret\n"
+          }
+        ],
+        "linux-gcc": [
+          {
+            "cmd": "$CC $CFLAGS -fno-ident -c main.c -o main.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "cmd": "$CC $CFLAGS -fno-ident -S main.c -o main.s",
+            "exit": 0,
+            "stderr": "",
+            "stdout": ""
+          },
+          {
+            "as": "asm",
+            "cmd": "sed '/^\\t\\.section\\t\\.debug_/,$d' main.s",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "\t.file\t\"main.c\"\n\t.text\n.Ltext0:\n\t.file 0 \"<dir>\" \"main.c\"\n\t.globl\tsquare\n\t.type\tsquare, @function\nsquare:\n.LFB0:\n\t.file 1 \"main.c\"\n\t.loc 1 3 19\n\t.cfi_startproc\n\tendbr64\n\tpushq\t%rbp\n\t.cfi_def_cfa_offset 16\n\t.cfi_offset 6, -16\n\tmovq\t%rsp, %rbp\n\t.cfi_def_cfa_register 6\n\tmovl\t%edi, -4(%rbp)\n\t.loc 1 4 14\n\tmovl\t-4(%rbp), %eax\n\timull\t%eax, %eax\n\t.loc 1 5 1\n\tpopq\t%rbp\n\t.cfi_def_cfa 7, 8\n\tret\n\t.cfi_endproc\n.LFE0:\n\t.size\tsquare, .-square\n\t.section\t.rodata\n.LC0:\n\t.string\t\"%d squared is %d\\n\"\n\t.text\n\t.globl\tmain\n\t.type\tmain, @function\nmain:\n.LFB1:\n\t.loc 1 7 16\n\t.cfi_startproc\n\tendbr64\n\tpushq\t%rbp\n\t.cfi_def_cfa_offset 16\n\t.cfi_offset 6, -16\n\tmovq\t%rsp, %rbp\n\t.cfi_def_cfa_register 6\n\tsubq\t$16, %rsp\n\t.loc 1 8 9\n\tmovl\t$5, -8(%rbp)\n\t.loc 1 9 14\n\tmovl\t-8(%rbp), %eax\n\tmovl\t%eax, %edi\n\tcall\tsquare\n\tmovl\t%eax, -4(%rbp)\n\t.loc 1 10 5\n\tmovl\t-4(%rbp), %edx\n\tmovl\t-8(%rbp), %eax\n\tmovl\t%eax, %esi\n\tleaq\t.LC0(%rip), %rax\n\tmovq\t%rax, %rdi\n\tmovl\t$0, %eax\n\tcall\tprintf@PLT\n\t.loc 1 11 12\n\tmovl\t$0, %eax\n\t.loc 1 12 1\n\tleave\n\t.cfi_def_cfa 7, 8\n\tret\n\t.cfi_endproc\n.LFE1:\n\t.size\tmain, .-main\n.Letext0:\n\t.file 2 \"/usr/include/stdio.h\"\n"
+          },
+          {
+            "as": "nm",
+            "cmd": "nm main.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "0000000000000013 T main\n                 U printf\n0000000000000000 T square\n"
+          },
+          {
+            "as": "objdump",
+            "cmd": "objdump -d -l main.o",
+            "exit": 0,
+            "stderr": "",
+            "stdout": "\nmain.o:     file format elf64-x86-64\n\n\nDisassembly of section .text:\n\n0000000000000000 <square>:\nsquare():\n<dir>/main.c:3\n   0:\tf3 0f 1e fa          \tendbr64\n   4:\t55                   \tpush   %rbp\n   5:\t48 89 e5             \tmov    %rsp,%rbp\n   8:\t89 7d fc             \tmov    %edi,-0x4(%rbp)\n<dir>/main.c:4\n   b:\t8b 45 fc             \tmov    -0x4(%rbp),%eax\n   e:\t0f af c0             \timul   %eax,%eax\n<dir>/main.c:5\n  11:\t5d                   \tpop    %rbp\n  12:\tc3                   \tret\n\n0000000000000013 <main>:\nmain():\n<dir>/main.c:7\n  13:\tf3 0f 1e fa          \tendbr64\n  17:\t55                   \tpush   %rbp\n  18:\t48 89 e5             \tmov    %rsp,%rbp\n  1b:\t48 83 ec 10          \tsub    $0x10,%rsp\n<dir>/main.c:8\n  1f:\tc7 45 f8 05 00 00 00 \tmovl   $0x5,-0x8(%rbp)\n<dir>/main.c:9\n  26:\t8b 45 f8             \tmov    -0x8(%rbp),%eax\n  29:\t89 c7                \tmov    %eax,%edi\n  2b:\te8 00 00 00 00       \tcall   30 <main+0x1d>\n  30:\t89 45 fc             \tmov    %eax,-0x4(%rbp)\n<dir>/main.c:10\n  33:\t8b 55 fc             \tmov    -0x4(%rbp),%edx\n  36:\t8b 45 f8             \tmov    -0x8(%rbp),%eax\n  39:\t89 c6                \tmov    %eax,%esi\n  3b:\t48 8d 05 00 00 00 00 \tlea    0x0(%rip),%rax        # 42 <main+0x2f>\n  42:\t48 89 c7             \tmov    %rax,%rdi\n  45:\tb8 00 00 00 00       \tmov    $0x0,%eax\n  4a:\te8 00 00 00 00       \tcall   4f <main+0x3c>\n<dir>/main.c:11\n  4f:\tb8 00 00 00 00       \tmov    $0x0,%eax\n<dir>/main.c:12\n  54:\tc9                   \tleave\n  55:\tc3                   \tret\n"
+          }
+        ]
+      },
+      "sources": {
+        "main.c": "#include <stdio.h>\n\nint square(int x) {\n    return x * x;\n}\n\nint main(void) {\n    int n = 5;\n    int sq = square(n);\n    printf(\"%d squared is %d\\n\", n, sq);\n    return 0;\n}\n"
+      }
+    },
     "ubsan": {
       "dir": "sessions/ubsan",
       "hash": "39c877cff945d0fa",

@@ -1,6 +1,7 @@
-// V7 Pipeline Explorer: the same source at each stage of the build, produced live by the in-browser clang. Source,
-// preprocessor (-E) and assembly (-S) are the default; an MDX `stages="…"` attribute adds the relocatable object
-// (objdump -t and objdump -d -l), its nm symbols and the link step. The stored native panes are a later layer.
+// V7 Pipeline Explorer: the same source at each stage of the build. Source, preprocessor (-E) and assembly (-S) are
+// produced live by the in-browser clang and are the default; an MDX `stages="…"` attribute adds the relocatable object
+// (objdump -t and objdump -d -l), its nm symbols and the link step. `session="<id>"` adds the stored native panes
+// (NativePanes.tsx) from a real machine's run, with source-line highlighting.
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { getRuntime, type StageResult } from '../runtime/CRuntime';
 import type { Stage } from '../runtime/flags';
@@ -8,6 +9,7 @@ import { CodeListing } from '../components/CodeListing';
 import { ToolchainProgress } from '../components/ToolchainProgress';
 import { DiagnosticsList } from '../components/DiagnosticsList';
 import { nestedSample } from '../interactions/nested';
+import { NativePanes } from './NativePanes';
 import ix from '../interactions/Interaction.module.css';
 import styles from './PipelineExplorer.module.css';
 
@@ -39,7 +41,7 @@ export function parseStages(stages?: string): Tab[] {
 /** A tab's label carries its position among the tabs on screen, so `stages="E,nm"` reads 1, 2, 3. */
 const tabLabel = (tabs: Tab[], t: Tab): string => `${tabs.indexOf(t) + 1}. ${TABS[t].label}`;
 
-export function PipelineExplorer({ children, code: codeProp, stages }: { children?: ReactNode; code?: string; stages?: string }) {
+export function PipelineExplorer({ children, code: codeProp, stages, session }: { children?: ReactNode; code?: string; stages?: string; session?: string }) {
   const nested = nestedSample(children);
   const code = nested?.code ?? codeProp ?? '';
   const tabs = parseStages(stages);
@@ -116,6 +118,7 @@ export function PipelineExplorer({ children, code: codeProp, stages }: { childre
           </div>
         )}
       </div>
+      {session && <NativePanes session={session} code={code} />}
     </div>
   );
 }
