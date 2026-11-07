@@ -194,16 +194,47 @@ export function transcodeWebm(id, outRoot) {
   return file;
 }
 
+export const FLAGS = ['--force', '--dry-run', '--webm'];
+
+/**
+ * Splits the CLI arguments into animation ids, flags and the `--webm` output directory. Ids and flags may come in
+ * any order; the argument right after `--webm` is its directory. `webmDir` is null without `--webm`.
+ * Throws an Error with a one-line message for an unknown flag (`--dryrun`, `--webm=out`), a `--webm` without a
+ * directory, or a second `--webm`.
+ */
+export function parseArgs(argv) {
+  const ids = [];
+  const flags = new Set();
+  let webmDir = null;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith('--')) {
+      ids.push(a);
+      continue;
+    }
+    if (!FLAGS.includes(a)) throw new Error(`unknown flag ${a}; valid flags: ${FLAGS.join(', ')}`);
+    if (a === '--webm') {
+      if (flags.has('--webm')) throw new Error('--webm can be given only once');
+      const dir = argv[++i];
+      if (!dir || dir.startsWith('--')) throw new Error('--webm needs an output directory, e.g. --webm dist/animations');
+      webmDir = dir;
+    }
+    flags.add(a);
+  }
+  return { ids, flags, webmDir };
+}
+
 function main(argv) {
-  const flags = new Set(argv.filter(a => a.startsWith('--')));
-  const webmIdx = argv.indexOf('--webm');
-  const webmDir = webmIdx >= 0 ? argv[webmIdx + 1] : null;
-  if (webmIdx >= 0 && (!webmDir || webmDir.startsWith('--'))) {
-    console.error('--webm needs an output directory, e.g. --webm dist/animations');
+  let args;
+  let projects;
+  try {
+    args = parseArgs(argv);
+    projects = listProjects(args.ids); // throws "Unknown animation(s): zz9. Known: a01-…" for an unknown id
+  } catch (e) {
+    console.error(`render.mjs: ${e.message}`);
     process.exit(2);
   }
-  const ids = argv.filter((a, i) => !a.startsWith('--') && i !== webmIdx + 1);
-  const projects = listProjects(ids);
+  const { flags, webmDir } = args;
   if (!projects.length) {
     console.log('No animation projects found.');
     return;

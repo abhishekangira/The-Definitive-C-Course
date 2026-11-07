@@ -24,12 +24,16 @@ export HYPERFRAMES_BROWSER_PATH=/opt/pw-browsers/chromium_headless_shell-1194/ch
 npm run anim:check                  # every project: static rules + hyperframes lint + check --strict + render freshness
 node tools/anim/check.mjs --static  # the same without a browser (seconds): validation, lint, manifest freshness
 npm run anim:render                 # render what changed (hash-cached) into public/animations/<id>/ and update manifest.json
-node tools/anim/render.mjs --force a01      # re-render one project (id after the flags; #111)
+node tools/anim/render.mjs a01 --force      # re-render one project (ids and flags in any order)
 node tools/anim/render.mjs --dry-run        # say what is stale
 node tools/anim/render.mjs --webm dist/animations   # deploy step: transcode the committed MP4s to VP9 WebM (not committed)
 node tools/anim/sync-shared.mjs     # copy _shared/vendor and _shared/fonts into the projects (check and render do it for you)
 npx vitest run tools/anim           # the pipeline's unit tests and the A1 facts test
 ```
+
+`render.mjs` takes ids (a prefix such as `a01` is enough) and `--force`, `--dry-run` and `--webm <dir>`, in any order. An
+unknown flag or id, a `--webm` without a directory or a second `--webm` exits 2 with a one-line error before anything
+renders.
 
 The CLI is run as `npx --yes hyperframes@0.8.162` (pinned in `tools/anim/lib.mjs`; it is a 157 MB dev tool and is
 deliberately **not** in `package.json`). It needs Node ≥22 and FFmpeg. Chromium comes from `/opt/pw-browsers` (do not run `playwright install`).
@@ -209,13 +213,12 @@ content, so the deploy transcode uses the fast preset.
 
 Found later (A3, A4, A2):
 
-* **`render.mjs` re-renders other animations when your browser differs.** The manifest records the browser that rendered
-  each MP4; with another local Chrome, `render.mjs <id>` also redid a01 (observed three times; that form also drops the
-  id, #111). Restore the untouched animations (`git checkout public/animations/<id>` and put their old manifest entry
-  back) and commit only the ids you authored. Set `HYPERFRAMES_BROWSER_PATH` when `/opt/pw-browsers` is absent.
-* **`render.mjs a02 --force` renders every project.** At `tools/anim/render.mjs:205` the id filter is
-  `!a.startsWith('--') && i !== webmIdx + 1`. With no `--webm`, `webmIdx` is -1, so `i !== webmIdx + 1` drops index 0,
-  the first argument (#111). Until #111 lands, put the id after the flags: `node tools/anim/render.mjs --force a02`.
+* **A different local browser makes every project stale, so name the ids you render.** The manifest records the browser
+  that rendered each MP4, and `render.mjs` re-renders a project whose browser differs. With no id it checks (and
+  re-renders) every project; with ids it checks only those: with another Chromium, `render.mjs a03 --dry-run` listed only
+  a03 while a bare `--dry-run` listed a02, a03 and a04. If a run did redo projects you did not author, restore them
+  (`git checkout public/animations/<id>` and their old manifest entry) and commit only the ids you authored. Set
+  `HYPERFRAMES_BROWSER_PATH` when `/opt/pw-browsers` is absent.
 * `svgOrigin` is rejected by the validator, so rotate an HTML element whose centre is the pivot instead of an SVG group.
 * The card class is `<prefix>-card` (copied with the prefix of the new animation), so a scene written for another
   prefix renders unstyled.

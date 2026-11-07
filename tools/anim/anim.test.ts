@@ -2,9 +2,11 @@
 // The validator tests copy the real A1 project to a temp directory, break one rule at a time and expect the matching error,
 // so a rule that stops biting fails here.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   ANIM_DIR, RENDER_FLAGS, checkFreshness, findTags, listFiles, outputHashes, readAttrs, readProject, sha256, sourceHash, syncShared,
   toTranscript, toVtt, vttTime,
@@ -13,7 +15,7 @@ import {
   ANIMATABLE, cssFontSizes, inFontSubset, objectKeys, stripJsComments, tweenCalls, uncoveredGlyphs, validateProject, visibleText,
 } from './validate.mjs';
 import { sampleTimes } from './check.mjs';
-import { indexSnapshots } from './render.mjs';
+import { indexSnapshots, parseArgs } from './render.mjs';
 
 const ID = 'a01-press-run';
 const SRC = path.join(ANIM_DIR, ID);
@@ -239,5 +241,67 @@ describe('validate: the A1 project', () => {
     const r = validateMutated('fast-captions', 'captions.json', t => t.replace('"end": 5.4', '"end": 1.4'));
     expect(r.errors).toEqual([]);
     expect(r.warnings.join('\n')).toMatch(/characters per second is fast/);
+  });
+});
+
+describe('render: argument parsing (#111)', () => {
+  it('keeps an id that comes before the flags', () => {
+    expect(parseArgs(['a02', '--force']).ids).toEqual(['a02']);
+  });
+  it('keeps an id that comes after the flags', () => {
+    expect(parseArgs(['--force', 'a02']).ids).toEqual(['a02']);
+  });
+  it('keeps a lone id', () => {
+    expect(parseArgs(['a02']).ids).toEqual(['a02']);
+  });
+  it('treats the argument after --webm as its directory, not an id', () => {
+    const r = parseArgs(['--webm', 'dist/animations']);
+    expect(r.ids).toEqual([]);
+    expect(r.webmDir).toBe('dist/animations');
+  });
+  it('keeps an id before --webm', () => {
+    const r = parseArgs(['a01', '--webm', 'out']);
+    expect(r.ids).toEqual(['a01']);
+    expect(r.webmDir).toBe('out');
+  });
+  it('collects the flags', () => {
+    const r = parseArgs(['a01', '--force', '--dry-run']);
+    expect([...r.flags]).toEqual(['--force', '--dry-run']);
+    expect(r.webmDir).toBeNull();
+  });
+  it('gives no ids, no flags and no --webm dir for no arguments', () => {
+    const r = parseArgs([]);
+    expect(r.ids).toEqual([]);
+    expect([...r.flags]).toEqual([]);
+    expect(r.webmDir).toBeNull();
+  });
+  it('rejects an unknown flag, listing the valid ones', () => {
+    expect(() => parseArgs(['--dryrun', 'a01'])).toThrow('unknown flag --dryrun; valid flags: --force, --dry-run, --webm');
+    expect(() => parseArgs(['--webm=out', 'a01'])).toThrow('unknown flag --webm=out; valid flags: --force, --dry-run, --webm');
+  });
+  it('rejects a second --webm instead of taking its directory as an id', () => {
+    expect(() => parseArgs(['--webm', 'out', '--webm', 'other'])).toThrow('--webm can be given only once');
+  });
+  it('rejects --webm without a directory', () => {
+    expect(() => parseArgs(['--webm'])).toThrow('--webm needs an output directory');
+    expect(() => parseArgs(['--webm', '--force'])).toThrow('--webm needs an output directory');
+  });
+});
+
+describe('render: the CLI rejects bad arguments with one line, before rendering anything', () => {
+  const RENDER = fileURLToPath(new URL('./render.mjs', import.meta.url));
+  const run = (...args: string[]) => spawnSync(process.execPath, [RENDER, ...args], { encoding: 'utf8', timeout: 30_000 });
+  it('an unknown id names the id and the valid ids, and exits 2', () => {
+    const r = run('zz9', '--dry-run');
+    expect(r.status).toBe(2);
+    expect(r.stdout).toBe('');
+    expect(r.stderr.trimEnd().split('\n')).toHaveLength(1);
+    expect(r.stderr).toMatch(/^render\.mjs: Unknown animation\(s\): zz9\. Known: a01-press-run, /);
+  });
+  it('an unknown flag lists the valid flags, and exits 2', () => {
+    const r = run('a01', '--dryrun');
+    expect(r.status).toBe(2);
+    expect(r.stdout).toBe('');
+    expect(r.stderr).toBe('render.mjs: unknown flag --dryrun; valid flags: --force, --dry-run, --webm\n');
   });
 });

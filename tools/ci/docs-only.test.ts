@@ -5,6 +5,7 @@ import { isDocsOnly } from './docs-only.mjs';
 describe('isDocsOnly', () => {
   it('accepts the root docs, the licence and research/', () => {
     expect(isDocsOnly(['README.md', 'AGENTS.md', 'PLAN.md', 'LICENSE', 'research/a/b.md'])).toBe(true);
+    expect(isDocsOnly(['CHANGELOG.md'])).toBe(true);
   });
   it('accepts AGENTS.md in any folder and the skills, which only the agent-notes test reads', () => {
     expect(isDocsOnly(['e2e/AGENTS.md', 'src/tutor/AGENTS.md', 'content/AGENTS.md', '.github/AGENTS.md'])).toBe(true);
@@ -29,7 +30,7 @@ describe('isDocsOnly', () => {
     expect(isDocsOnly([])).toBe(false);
   });
   it('does not match lookalike paths', () => {
-    expect(isDocsOnly(['docs/README.md', 'README.md.bak', 'researchers/x', 'sub/LICENSE'])).toBe(false);
+    expect(isDocsOnly(['docs/README.md', 'README.md.bak', 'docs/CHANGELOG.md', 'researchers/x', 'sub/LICENSE'])).toBe(false);
   });
   it('prints the answer from stdin when run as the CI step does', () => {
     const run = (s: string) => execFileSync('node', ['tools/ci/docs-only.mjs'], { input: s, encoding: 'utf8' }).trim();
