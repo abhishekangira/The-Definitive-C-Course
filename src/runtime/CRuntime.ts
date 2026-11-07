@@ -1,6 +1,7 @@
 // Main-thread facade: one persistent compiler worker + one disposable run worker per execution.
 import toolchain from '../generated/toolchain-version.json';
 import type { CompileJob, CompilerOut, RunnerOut, RunResult, StdinMode } from './protocol';
+import type { Stage } from './flags';
 import { SAB_DATA_OFFSET, SAB_SIZE } from './protocol';
 import type { Diagnostic } from '../content-model/types';
 
@@ -90,8 +91,8 @@ export class CRuntime {
     return new Promise(res => { this.pending.set(id, res); this.compiler.postMessage({ type: 'compile', id, ...job }); });
   }
 
-  /** One pipeline stage (-E preprocessed text or -S WebAssembly assembly) for the Pipeline Explorer. */
-  stage(files: Record<string, string>, stage: 'E' | 'S', opt?: '-O0' | '-O1' | '-O2'): Promise<StageResult> {
+  /** One pipeline view for the Pipeline Explorer: -E, -S, the object views (-t, -d -l, nm) or the link step. */
+  stage(files: Record<string, string>, stage: Stage, opt?: '-O0' | '-O1' | '-O2'): Promise<StageResult> {
     this.prefetch();
     const id = this.nextId++;
     return new Promise(res => { this.pendingStage.set(id, res); this.compiler.postMessage({ type: 'stage', id, files, stage, opt }); });

@@ -1,5 +1,6 @@
 // Messages between the main thread and the two workers.
 import type { Diagnostic } from '../content-model/types';
+import type { Stage } from './flags';
 
 export type StdinMode = 'jspi' | 'sab' | 'preset';
 
@@ -15,7 +16,7 @@ export type CompilerIn =
   | { type: 'init'; baseUrl: string; version: string }
   | { type: 'prefetch' }
   | ({ type: 'compile'; id: number } & CompileJob)
-  | { type: 'stage'; id: number; files: Record<string, string>; stage: 'E' | 'S'; source?: string; opt?: '-O0' | '-O1' | '-O2' };
+  | { type: 'stage'; id: number; files: Record<string, string>; stage: Stage; source?: string; opt?: '-O0' | '-O1' | '-O2' };
 
 export type CompilerOut =
   | { type: 'progress'; done: number; total: number }
